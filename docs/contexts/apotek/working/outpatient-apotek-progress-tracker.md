@@ -28,7 +28,7 @@ Safe-Interims:
 | PD-08 | OPEN | Manual TR workflow + correlation | Automated post-issue correction |
 | BC-11 | OPEN | Canonical ServedAt/DoneAt only | APT-C01 announcements |
 | BC-12 | OPEN | Actor + audit + policy seam | Mutation endpoint rollout |
-| BC-13 | OPEN | CaptureNote/DocumentRef | Physical prescription rollout |
+| BC-13 | OPEN | CaptureNote/DocumentRef; PENDING DECISION: patient/registration existence validation on physical intake (APT-B04-R1-F01) — owner assigned at BC-13 closure (BC-13 resolution or APT-B29 via ratified port) | Physical prescription rollout |
 | prescription-contract-adapter | OPEN | Fail-closed IPrescriptionContractPort + X-Release-Gate marker on intake-electronic | Electronic Resep Kerja intake from a live CPOE/Legacy-Resep source |
 
 ## Slice ledger
@@ -39,7 +39,7 @@ Safe-Interims:
 | APT-B01 | 0 | GO | B00 | — |
 | APT-B02 | 0 | GO | B00 | — |
 | APT-B03 | 1 | GO | B00 | prescription-contract-adapter |
-| APT-B04 | 1 | IMPLEMENTED | B03 | BC-13 |
+| APT-B04 | 1 | GO | B03 | BC-13 |
 | APT-B05 | 1 | IMPLEMENTED | B00 | — |
 | APT-B06 | 1 | IMPLEMENTED | B03 | — |
 | APT-B07 | 1 | IMPLEMENTED | B01 | PD-09 |
@@ -403,8 +403,62 @@ slice:
   implementationHistory:
     - attempt: 1
       actor: Composer 2.5
+      baseCommit: bc31e45b9e530b7ee8124e5b9d1b81b55dd9b9df
+      resultCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c
       summary: Physical intake persists CaptureNote and DocumentRef only; API stamps X-Release-Gate BC-13. Production physical rollout remains gated.
+      changedFiles:
+        - src/bilreg/Bilreg.Application/ApotekContext/ResepKerjaFeature/UseCases/ResepKerjaIntakeCmd.cs (ResepKerjaIntakePhysicalCmd + handler)
+        - src/bilreg/Bilreg.Domain/ApotekContext/ResepKerjaFeature/ResepKerjaModel.cs (IntakePhysical guards)
+        - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs (POST api/v1/apotek/resep-kerja/intake-physical)
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerja.sql (CaptureNote VARCHAR(512), DocumentRef VARCHAR(200))
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/Api/ResepKerjaIntakeApiTest.cs (API02 physical contract)
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaModelTest.cs
+      schemaObjects:
+        - BILRG_AptResepKerja (added columns CaptureNote VARCHAR(512) NOT NULL DEFAULT(''), DocumentRef VARCHAR(200) NOT NULL DEFAULT(''); no new table)
+      tests:
+        - command: dotnet test --filter "FullyQualifiedName~ResepKerjaIntakeApiTest"
+          result: PASS
+          count: 4
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 62
+      assumptionsUsed:
+        - BC-13 safe interim CaptureNote/DocumentRef only; no existence-check port invented
+      deferredItems:
+        - Production physical rollout (BC-13)
+  remediationHistory:
+    - round: 1
+      basedOnReviewRound: 1
+      actor: ox-alpha (opencode)
+      startedAt: 2026-08-26T17:00:00+07:00
+      completedAt: 2026-08-26T17:40:00+07:00
+      remediatedFindings:
+        - APT-B04-R1-F02
+        - APT-B04-R1-F03
+        - APT-B04-R1-F01 (decision-owner recording only; assignment stays at gate-closure per ACCEPTED observation status)
+      resultCommit: WORKING-TREE (uncommitted changes on top of e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c)
+      changedFiles:
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaModelTest.cs (F02 split guard cases, typed exceptions; +1 AC-01 pinning test for SourceKind/CaptureNote/DocumentRef retention — disclosed, no production change)
+        - docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md (F03 backfill + F01 gate-registry note)
+        - docs/contexts/apotek/working/outpatient-apotek-review-tracker.md (remediation record)
+      schemaObjects: []
+      tests:
+        - command: dotnet build src/bilreg/b09-bilreg-api.sln
+          result: PASS
+        - command: dotnet test --filter "FullyQualifiedName~ResepKerja"
+          result: PASS
+          count: 13
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 66
+      unresolvedFindings: []
+      outcome: IMPLEMENTED
 ```
+
+Notes for APT-B04 remediation:
+
+- F01: patient/registration existence validation on physical intake remains unowned by design (no cross-context port exists in this slice). Decision owner is recorded as PENDING in the gate registry BC-13 row and must be resolved when BC-13 closes — fold into BC-13 resolution or APT-B29 hardening via a ratified port. No seam was invented here.
+- F02 nuance: `IntakePhysical` blank-field guards use Ardalis `Guard.Against.NullOrWhiteSpace` and throw `GuardClauseException` (asserted as `ArgumentException` with `.WithParameterName(...)`, matching repo-wide convention); only the empty-items rule throws `ApotekDomainException`. The finding's intent — pin the typed exception and identify which guard fired — is satisfied without changing production domain behavior.
 
 ### APT-B05
 

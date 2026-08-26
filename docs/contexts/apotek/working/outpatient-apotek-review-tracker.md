@@ -183,8 +183,8 @@ Seeding rule applied:
 | APT-B01 | Neighbor prerequisites | 0 | PARTIAL | **GO** | — | — |
 | APT-B02 | Integration Task engine | 0 | PARTIAL | **GO** | — | — |
 | APT-B03 | Electronic Resep Kerja intake | 1 | PARTIAL | **GO** | — | prescription-contract-adapter |
-| APT-B04 | Physical Resep Kerja intake | 1 | PARTIAL | NOT_REVIEWED | 2 | BC-13 |
-| APT-B05 | Jual Bebas acceptance | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
+| APT-B04 | Physical Resep Kerja intake | 1 | PARTIAL | **GO** | — | BC-13 |
+| APT-B05 | Jual Bebas acceptance | 1 | PARTIAL | **NO_GO** | 2 | — |
 | APT-B06 | Telaah Resep | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
 | APT-B07 | Available Stock fail-closed port | 1 | PARTIAL | NOT_REVIEWED | 3 | PD-09 |
 | APT-B08 | Sales Order establishment | 1 | PARTIAL | NOT_REVIEWED | 2 | PD-09 |
@@ -223,9 +223,9 @@ Seeding rule applied:
 
 | Review status | Count |
 |---------------|------:|
-| GO | 4 |
-| NO_GO | 5 |
-| NOT_REVIEWED | 30 |
+| GO | 5 |
+| NO_GO | 6 |
+| NOT_REVIEWED | 28 |
 | REVIEWING | 0 |
 | REMEDIATED | 0 |
 | REVIEWING | 0 |
@@ -594,6 +594,188 @@ notes:
   - Wave-2 order 1 review opened 26 Aug 2026; Wave-2 orders 2+ (APT-B04 onward) share the same Resep Kerja document and will likely inherit F01–F03 evidence patterns once this slice's remediation lands.
   - Remediation round 1 (26 Aug 2026) closed all five findings; REMEDIATED is not GO — re-review must open a new round against the remediation working tree. F02/F01 evidence runs against devTest after deploying the three in-repo ResepKerja DDL scripts.
   - Round 2 (26 Aug 2026) re-reviewed the remediation working tree with reviewer-executed build/tests → GO, closing R1-F01..F05. Known accepted observations: one non-reproducing Wf003 first-run transient (see round-2 environmentalNote); client-sent userId remains bindable but proven non-authoritative — contract-wide normalization owned by APT-B29. Commit of the working tree is outstanding housekeeping; Wave-2 orders 2+ inherit the F01–F03 evidence patterns established here.
+```
+
+### APT-B04
+
+```yaml
+slice: APT-B04
+reviewStatus: GO
+initializedFrom: completeness-audit-2026-08-19
+reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c
+reviewHistory:
+  - round: 1
+    actor: ox-alpha (opencode)
+    reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c (clean working tree; physical intake code from bc31e45b lineage, contract tests committed in this SHA)
+    startedAt: 2026-08-26T10:30:00+07:00
+    completedAt: 2026-08-26T11:15:00+07:00
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "ResepKerjaIntakePhysicalCmd carries the full header identity (RegId, PasienId, PasienName, DokterId/Name, LayananId) plus CaptureNote/DocumentRef and items (ResepKerjaIntakeCmd.cs:16-39); IntakePhysical guards non-blank regId/pasienId/pasienName/captureNote/documentRef and ≥1 item (ResepKerjaModel.cs:122-129); fields persist through the shared BILRG_AptResepKerja DDL CaptureNote VARCHAR(512)/DocumentRef VARCHAR(200) with '' defaults (BILRG_AptResepKerja.sql:15-16), matching PD-01. Observation F01 records that 'existing' is enforced as required-field presence only — no cross-context existence check exists or is defined for this slice."
+      - criterionId: AC-02
+        result: PASS
+        evidence: "Physical path adds exactly the two PD-01 VARCHAR columns; no image/blob column, no new table/entity, no retention/authenticity workflow; handler performs no source-key lookup or deduplication — SourceResepId is stored '' and repeated submissions intentionally create distinct rows (ResepKerjaIntakeCmd.cs:90-118, ResepKerjaModel.cs:131-151); repo-wide search found no additional BC-13 machinery"
+      - criterionId: AC-03
+        result: PASS
+        evidence: "API stamps X-Release-Gate: BC-13 on POST api/v1/apotek/resep-kerja/intake-physical (ApotekController.cs:40-45), asserted by ResepKerjaIntakeApiTest.API02 (:77-78); progress tracker marks the slice releaseGates [BC-13] and gate registry holds 'BC-13 | OPEN | CaptureNote/DocumentRef | Physical prescription rollout' — the established RELEASE-BLOCKED convention (same pattern as PD-09 and prescription-contract-adapter)"
+      - criterionId: AC-04
+        result: PASS
+        evidence: "Electronic intake remains a separate command/handler/endpoint; Physical kind is rejected from the electronic path at both application (ResepKerjaIntakeCmd.cs:64-65) and domain (ResepKerjaModel.cs:76-77) layers; ResepKerjaIntakeApiTest.API01 proves authenticated idempotent electronic intake end-to-end"
+    findings:
+      - id: APT-B04-R1-F01
+        severity: LOW
+        criterionId: AC-01
+        location: src/bilreg/Bilreg.Application/ApotekContext/ResepKerjaFeature/UseCases/ResepKerjaIntakeCmd.cs:102-117
+        problem: Physical intake validates field presence but never verifies that RegId/PasienId reference an existing registration/patient; arbitrary client-supplied identity strings are persisted. The Apotek module boundary forbids direct neighbor DAL access and no lookup port is defined in the slice's target areas, so existence validation cannot be added without an approved seam. Non-blocking because BC-13 keeps production physical rollout blocked regardless.
+        requiredOutcome: Record an explicit decision owner — fold patient/registration existence validation into the BC-13 resolution or APT-B29 API hardening via a ratified cross-context port. Do not invent the seam inside this slice.
+        status: ACCEPTED (observation; decision owner to be recorded at gate-closure time)
+      - id: APT-B04-R1-F02
+        severity: LOW
+        criterionId: AC-01
+        location: src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaModelTest.cs:22
+        problem: The physical-validation test asserts actPhysical.Should().Throw<Exception>() — it neither pins ApotekDomainException nor identifies which guard fired, so a regression that fails via an unrelated exception would still pass.
+        requiredOutcome: When the file is next touched, assert ApotekDomainException and split per-guard cases (blank captureNote, blank documentRef, empty items). Not remediation-blocking for this GO.
+        status: ACCEPTED (observation)
+      - id: APT-B04-R1-F03
+        severity: LOW
+        criterionId: tracker-completeness
+        location: docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md:395-407
+        problem: The APT-B04 implementation record omits baseCommit/resultCommit, changedFiles, schemaObjects, and focused-test commands required by the master-plan slice-record template (same gap class as APT-B02-R1-F05).
+        requiredOutcome: Backfill the implementation history with commit SHAs and focused test commands/counts during the next remediation window touching this record.
+        status: ACCEPTED (observation)
+    decision: GO
+    rationale: All four acceptance criteria pass under the documented safe interim. Handler behavior is exercised through the real MediatR pipeline by ResepKerjaIntakeApiTest.API02 against an injected repo (handler+contract evidence combined, matching the accepted APT-B03 R1-F03 precedent), and model validation by ResepKerjaModelTest. Production physical rollout remains blocked by the OPEN BC-13 gate independent of this code-review GO.
+    environmentalNote: dotnet SDK unavailable in this review environment; tests not independently re-executed. Decision relies on static verification of cited code paths at e5fe0255 plus the implementer-recorded green runs of dotnet build, ResepKerjaIntakeApiTest (4), and the 62-test ApotekContext suite on the identical tree (B03 remediation round 2).
+  remediationHistory:
+    - round: 1
+      basedOnReviewRound: 1
+      actor: ox-alpha (opencode)
+      startedAt: 2026-08-26T17:00:00+07:00
+      completedAt: 2026-08-26T17:40:00+07:00
+      remediatedFindings:
+        - APT-B04-R1-F02
+        - APT-B04-R1-F03
+        - APT-B04-R1-F01 (decision-owner recording only)
+      resultCommit: WORKING-TREE (uncommitted changes on top of e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c)
+      changedFiles:
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaModelTest.cs (F02)
+        - docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md (F03 backfill + F01 gate note)
+        - docs/contexts/apotek/working/outpatient-apotek-review-tracker.md (this record)
+      tests:
+        - command: dotnet build src/bilreg/b09-bilreg-api.sln
+          result: PASS (0 errors; pre-existing warnings only)
+        - command: dotnet test --filter "FullyQualifiedName~ResepKerja"
+          result: PASS
+          count: 13
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 66
+      findingDispositions:
+        - id: APT-B04-R1-F02
+          resolution: ResepKerjaModelTest weak Throw<Exception> replaced by split per-guard facts — blank captureNote → ArgumentException WithParameterName(captureNote); blank documentRef → ArgumentException WithParameterName(documentRef); empty items → ApotekDomainException WithMessage("Physical Resep Kerja requires at least one item."). Nuance recorded in progress-tracker notes the two blank-field guards throw Ardalis GuardClauseException (ArgumentException-derived) per IntakePhysical implementation; asserting ApotekDomainException there would misstate production behavior, so the finding's intent (typed exceptions + identified guard) was satisfied without altering domain code.
+        - id: APT-B04-R1-F01
+          resolution: Decision owner recorded as PENDING DECISION on gate registry BC-13 row in the progress tracker — patient/registration existence validation must be folded into BC-13 resolution or APT-B29 hardening via a ratified cross-context port when BC-13 closes. No seam invented in this slice.
+        - id: APT-B04-R1-F03
+          resolution: APT-B04 progress-tracker record backfilled with baseCommit bc31e45b9e530b7ee8124e5b9d1b81b55dd9b9df, resultCommit e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c, changedFiles, schemaObjects (BILRG_AptResepKerja CaptureNote/DocumentRef columns), focused-test commands/counts, assumptions, and deferred items per the slice-record template.
+      disclosedAddition: One extra model fact (IntakePhysical_keeps_physical_source_and_capture_fields) pins existing AC-01 behavior (SourceKind=Physical, SourceResepId empty, capture fields retained) at domain layer; no production code touched. Declared here so re-review can score it as non-silent.
+      unresolvedFindings: []
+      outcome: IMPLEMENTED
+notes:
+  - Completeness audit (19 Aug 2026) scored PARTIAL citing missing physical handler and API-contract tests; round 1 confirms the gap was closed by ResepKerjaIntakeApiTest.API02 driving the real physical handler through the host with X-Release-Gate assertion and CaptureNote/DocumentRef persistence checks.
+  - Wave-2 order 2 complete; orders 3+ (APT-B05 onward) proceed.
+  - Remediation round 1 (26 Aug 2026) closed F02 (typed per-guard model tests, 13 ResepKerja / 66 ApotekContext PASS), F03 (record backfill), and recorded the F01 pending decision owner on the BC-13 gate row. REMEDIATED is not GO — re-review must open a new round against the remediation working tree before closing the observations.
+```
+
+### APT-B05
+
+```yaml
+slice: APT-B05
+reviewStatus: NO_GO
+initializedFrom: completeness-audit-2026-08-19
+reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c (working tree atop it contains only the two tracker-doc edits; freeze fingerprints below)
+reviewHistory:
+  - round: 1
+    actor: ox-alpha (opencode)
+    reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c
+    startedAt: 2026-08-26T10:40:00+07:00
+    completedAt: 2026-08-26T12:02:00+07:00
+    reviewerExecutedVerification:
+      - command: dotnet build src\bilreg\b09-bilreg-api.sln
+        result: PASS (0 errors; 40 pre-existing warnings, none introduced by this slice)
+      - command: dotnet test src\bilreg\Bilreg.Test\Bilreg.Test.csproj --filter "FullyQualifiedName~ApotekContext"
+        result: PASS (62/62)
+      - command: dotnet test ... --filter "FullyQualifiedName~JualBebas"
+        result: "0 tests matched — no test class or method name in the suite references JualBebas"
+      - command: dotnet test ... --filter "FullyQualifiedName~Scenarios"
+        result: PASS (8/8; includes the only Jual-Bebas-touching test, OutpatientApotekWorkflowTest.Ordinary_jual_bebas_decline_creates_no_row)
+    freezeFingerprints:
+      - JualBebasModel ade719003a2850a7
+      - JualBebasItemModel f240e8c97d539c73
+      - JualBebasRequestStatusEnum 84e57c8e5dac9a41
+      - IJualBebasKey b3a3b9dd2df1560a
+      - JualBebasCommands 6c9d4013f7ea36a5
+      - IJualBebasRepo ab7fea8590b2e5eb
+      - JualBebasPersistence 20061c3a7a7058c2
+      - BILRG_AptJualBebas.sql a618f16a37754ad1
+      - BILRG_AptJualBebasItem.sql 6effb842748ad863
+    acceptanceResults:
+      - criterionId: AC-01
+        result: FAIL
+        evidence: "One header plus items is persisted per accept (JualBebasPersistence.cs:77-88 insert path), but 'catalog-backed' is not evidenced: JualBebasItemModel.cs:7-21 accepts client-supplied BrgId/BrgName/SatuanId verbatim with no catalog validation port or lookup, and the slice's planned evidence class — repository and command tests — does not exist (dotnet test --filter FullyQualifiedName~JualBebas matched 0 tests). A criterion is PASS only when the planned evidence exists."
+      - criterionId: AC-02
+        result: FAIL
+        evidence: "No pre-accept decline operation exists anywhere in the feature, and the sole related test is misnamed: OutpatientApotekWorkflowTest.cs:58-66 'Ordinary_jual_bebas_decline_creates_no_row' invokes only JualBebasAcceptHandler and asserts store counts around accept; no decline path runs and absence of a Sales Order is never asserted. The criterion's behavior is therefore vacuous and unproven."
+      - criterionId: AC-03
+        result: PASS
+        evidence: "No pharmacist-consultation field, gate, or parameter exists anywhere under Bilreg.Domain/Application/Api ApotekContext JualBebasFeature (full file inventory grepped); Accept requires only regId/pasien/actor/items (JualBebasModel.cs:34-59)."
+      - criterionId: AC-04
+        result: FAIL
+        evidence: "Distinctness is modeled structurally (JualBebasRequestStatusEnum.DeclinedAfterAccept, JualBebasRequestStatusEnum.cs:7; guard restricting cancellation to Accepted rows, JualBegasModel.cs:79-85) but has zero test evidence — DeclineAfterAccept and MarkConvertedToSalesOrder appear in no test file — and the cancelling actor identity is discarded: handler passes request.UserId into model.DeclineAfterAccept (JualBebasCommands.cs:67) yet the model persists nothing and the repo UPDATE stamps UpdUser='' / UpdDate='3000-01-01' (JualBebasPersistence.cs:38,80), contradicting the BC-12 safe interim requirement to preserve actor identity and audit fields."
+    findings:
+      - id: APT-B05-R1-F01
+        severity: HIGH
+        criterionId: AC-01, AC-02, AC-04, planned evidence
+        location: missing tests; nearest artifact src/bilreg/Bilreg.Test/ApotekContext/Scenarios/OutpatientApotekWorkflowTest.cs:58-66 (accept-only)
+        problem: The slice's planned evidence — repository and command tests — does not exist. dotnet test --filter FullyQualifiedName~JualBebas matches 0 tests. Domain guards (blank regId/pasien/actor, empty items at JualBebasModel.cs:42-48, qty<=0 at JualBebasItemModel.cs:12-13), state transitions (DeclineAfterAccept rejection from non-Accepted states, MarkConvertedToSalesOrder gating at JualBebasModel.cs:72-85), persistence round-trip (insert vs update path, item reload ordering at JualBebasPersistence.cs:77-96), and the API commands are all untested.
+        requiredOutcome: A focused JualBebasFeature test suite covering accept guards, one-header-plus-items persistence round-trip through the real repo path or documented equivalent, decline-after-accept transition including rejection from ConvertedToSalesOrder, conversion gating by Sales Order establishment, and observable proof that an unaccepted demand leaves neither a Jual Bebas row nor an establishable Sales Order source. Replace the misnamed scenario test so its name matches what it exercises.
+        status: OPEN
+      - id: APT-B05-R1-F02
+        severity: MEDIUM
+        criterionId: AC-04 (BC-12 safe interim)
+        location: src/bilreg/Bilreg.Application/ApotekContext/JualBebasFeature/UseCases/JualBebasCommands.cs:67; src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs:38,79-80
+        problem: DeclineAfterAccept authenticates the actor and threads request.UserId into the domain method, but no persistence surface records it: the model stores no cancellation actor/timestamp, and SaveChanges builds the update DTO with UpdUser=''/UpdDate=3000-01-01 while the header UPDATE writes exactly those empty values. The plan's BC-12 interim requires an authenticated actor with preserved identity and audit fields; VodUser/VodDate columns exist in BILRG_AptJualBebas.sql:13-14 but are never written with meaningful values either.
+        requiredOutcome: Persist the cancelling actor and cancellation timestamp on the decline path (audit columns are sufficient; no new aggregate state), with test evidence that the identity survives a save/load round-trip.
+        status: OPEN
+      - id: APT-B05-R1-F03
+        severity: MEDIUM
+        criterionId: AC-01
+        location: src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/JualBebasItemModel.cs:7-21
+        problem: 'Catalog-backed items' is unverifiable: BrgId presence is enforced as non-blank, but nothing validates that BrgId/SatuanId reference existing catalog master data, and client-supplied display fields (BrgName) are stored verbatim, so a caller can persist non-catalog medication lines indistinguishable from real ones.
+        requiredOutcome: Either validate accepted items against the catalog master (port/DAL check with a negative-path test), or record an explicit approved interpretation decision in the tracker stating where catalog authority is enforced downstream (e.g., Sales Order establishment/pricing) and why acceptance-time validation is deferred.
+        status: OPEN
+      - id: APT-B05-R1-F04
+        severity: MEDIUM
+        criterionId: execution-rule compliance / regression risk
+        location: src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs:35-39,77-88; src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/JualBebasModel.cs:72-85
+        problem: JualBebas is the only Apotek aggregate without Version-based optimistic concurrency: LoadEntity → mutate → SaveChanges issues an unconditional RequestStatus UPDATE with no version/rowversion predicate, so a concurrent DeclineAfterAccept and MarkConvertedToSalesOrder (both legal only from Accepted) both succeed and last-write-wins silently. Sibling aggregates (SalesOrder, Invoice, Dispensing, TelaahResep) carry Version consumed by their commands; APT-B29 later mandates one documented conflict shape for all Apotek commands.
+        requiredOutcome: Either add optimistic-concurrency behavior on JualBebas status transitions consistent with sibling aggregates (version predicate with conflict result and test), or record an explicit approved deviation in the tracker naming where the race is otherwise prevented.
+        status: OPEN
+      - id: APT-B05-R1-F05
+        severity: LOW
+        criterionId: tracker-completeness
+        location: docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md:409-420
+        problem: The APT-B05 implementation record omits baseCommit/currentCommit, dates, changedFiles, schemaObjects, and verification.commands/testCount required by the slice-record template (master-plan section 6); its summary also claims decline-after-accept distinctness without any test reference.
+        requiredOutcome: Backfill the implementation history event with commit SHAs, dates, changed files/schema objects, and focused-test command/count consistent with remediation evidence.
+        status: OPEN
+    decision: NO_GO
+    rationale: AC-01, AC-02, and AC-04 fail on the evidence standard (planned repository/command tests absent; catalog backing and ordinary-decline behavior unproven; cancellation distinctness untested with actor identity discarded). AC-03 passes. Scope matches the approved slice with no unauthorized expansion (MarkConvertedToSalesOrder consumption belongs to APT-B08); architecture and namespace placement comply, DI registration resolves via Scrutor Nuna-marker scanning, and the authorization seam is present. Findings APT-B05-R1-F01..F05 recorded; remediation limited to these IDs.
+    environmentalNote: Build and tests executed independently by the reviewer via Windows dotnet SDK over WSL interop (build 0 errors; ApotekContext suite 62/62; ~JualBebas filter 0 matches; Scenarios 8/8).
+remediationHistory: []
+notes:
+  - Completeness audit (19 Aug 2026) scored PARTIAL citing dedicated command/repository tests missing and decline-after-accept untested; round 1 confirms both and adds catalog-backing, decline-audit, and concurrency findings.
+  - Repeated accept for the same RegId creates distinct ADQ ids with no duplicate guard; not scored as a finding because the plan assigns duplicate-active-key authority to Sales Order establishment (APT-B08), but noted for Wave-2 order 5 review.
+  - Round opened on user request while Wave-1 slices remain first in the execution roadmap (same precedent as APT-B01 round 2 and APT-B02 round 1).
 ```
 
 ### APT-B01
