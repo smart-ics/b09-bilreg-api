@@ -93,7 +93,7 @@ public class ReturJualDto
         var listItems = new List<ReturJualItemModel>();
         foreach (var item in (listItem ?? []).OrderBy(x => x.NoUrut))
         {
-            //listItems.Add(item.ToItemModel());
+            listItems.Add(item.ToItemModel());
         }
 
         return new ReturJualModel(

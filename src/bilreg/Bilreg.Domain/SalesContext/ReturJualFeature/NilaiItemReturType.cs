@@ -22,8 +22,8 @@ public record NilaiItemReturType
     public decimal HargaJual { get; init; }
     public decimal HargaRetur { get; init; }
     public decimal TaxPerUnit { get; init; }
-    public decimal SubTotalRetur { get; init; }
     public decimal SubTotalJual { get; init; }
+    public decimal SubTotalRetur { get; init; }
     public decimal SubTotalTax { get; init; }
     public decimal Total { get; init; }
 
