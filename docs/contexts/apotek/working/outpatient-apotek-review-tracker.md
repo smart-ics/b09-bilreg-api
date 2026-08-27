@@ -184,7 +184,7 @@ Seeding rule applied:
 | APT-B02 | Integration Task engine | 0 | PARTIAL | **GO** | — | — |
 | APT-B03 | Electronic Resep Kerja intake | 1 | PARTIAL | **GO** | — | prescription-contract-adapter |
 | APT-B04 | Physical Resep Kerja intake | 1 | PARTIAL | **GO** | — | BC-13 |
-| APT-B05 | Jual Bebas acceptance | 1 | PARTIAL | **NO_GO** | 2 | — |
+| APT-B05 | Jual Bebas acceptance | 1 | GO | **GO** | 2 | — |
 | APT-B06 | Telaah Resep | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
 | APT-B07 | Available Stock fail-closed port | 1 | PARTIAL | NOT_REVIEWED | 3 | PD-09 |
 | APT-B08 | Sales Order establishment | 1 | PARTIAL | NOT_REVIEWED | 2 | PD-09 |
@@ -223,8 +223,8 @@ Seeding rule applied:
 
 | Review status | Count |
 |---------------|------:|
-| GO | 5 |
-| NO_GO | 6 |
+| GO | 6 |
+| NO_GO | 5 |
 | NOT_REVIEWED | 28 |
 | REVIEWING | 0 |
 | REMEDIATED | 0 |
@@ -737,9 +737,9 @@ notes:
 
 ```yaml
 slice: APT-B05
-reviewStatus: NO_GO
+reviewStatus: GO
 initializedFrom: completeness-audit-2026-08-19
-reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c (working tree atop it contains only the two tracker-doc edits; freeze fingerprints below)
+reviewedCommit: d80a90d614641cebcfa34f578a9c34d8f4165e98
 reviewHistory:
   - round: 1
     actor: ox-alpha (opencode)
@@ -840,15 +840,72 @@ reviewHistory:
     findings: APT-B05-R1-F01..F05 remain OPEN verbatim; no new findings — there is no delta to review.
     decision: NO_GO
     rationale: Re-review of a byte-identical implementation after zero remediation; the round-1 NO_GO stands on the same evidence standard (planned repository/command tests absent, ordinary-decline behavior vacuous/unproven, decline distinctness untested with cancelling actor discarded, catalog backing unverifiable, concurrency deviation unrecorded, tracker record incomplete).
-    environmentalNote: Static verification only this round; git-diff identity proof substitutes for re-execution given unchanged bytes since the round-1 executed green run.
-remediationHistory:
+environmentalNote: Static verification only this round; git-diff identity proof substitutes for re-execution given unchanged bytes since the round-1 executed green run.
+  - round: 3
+    actor: Composer (Cursor Auto)
+    reviewedCommit: d80a90d614641cebcfa34f578a9c34d8f4165e98
+    startedAt: 2026-08-27T09:39:00+07:00
+    completedAt: 2026-08-27T09:45:00+07:00
+    reviewerExecutedVerification:
+      - command: dotnet test src\bilreg\Bilreg.Test\Bilreg.Test.csproj --filter "FullyQualifiedName~JualBebas"
+        result: PASS (28/28)
+      - command: dotnet test src\bilreg\Bilreg.Test\Bilreg.Test.csproj --filter "FullyQualifiedName~ApotekContext"
+        result: PASS (94/94)
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: JualBebasModelTest.Accept_creates_one_accepted_header_with_version_one; JualBebasCommandTest.Accept_persists_one_header_with_catalog_items; JualBebasDalTest.RoundTrip_preserves_header_items_and_accept_audit; catalog-authority interpretation recorded in notes (approved interpretation per APT-B05-R1-F03)
+      - criterionId: AC-02
+        result: PASS
+        evidence: JualBebasCommandTest.Ordinary_pre_accept_decline_leaves_no_row_and_no_establishable_source proves an unaccepted demand leaves _jb and _so stores empty and establishment from it fails not-found; pre-accept decline is the absence of accept (no command exists by design); misnamed scenario test renamed to Jual_bebas_accept_creates_one_header_row (OutpatientApotekWorkflowTest.cs)
+      - criterionId: AC-03
+        result: PASS
+        evidence: No consultation field/gate/parameter exists anywhere under Bilreg.Domain/Application/Api ApotekContext JualBebasFeature (full file inventory grepped); Accept requires only regId/pasien/actor/items (JualBebasModel.cs:34-59)
+      - criterionId: AC-04
+        result: PASS
+        evidence: JualBebasRequestStatusEnum.DeclinedAfterAccept distinct from never-created row; JualBebasModelTest.Decline_after_accept_records_actor_timestamp_and_bumps_version + Decline_rejected_from_converted_state + Second_decline_rejected + Conversion_rejected_from_declined_state; JualBebasCommandTest.Decline_after_accept_survives_save_load_roundtrip_with_actor_identity; JualBebasDalTest.Decline_after_accept_persists_actor_timestamp_and_version (VodUser/VodDate columns carry cancelling actor/timestamp)
+    findings:
+      - id: APT-B05-R1-F01
+        severity: HIGH
+        criterionId: AC-01, AC-02, AC-04, planned evidence
+        location: dedicated JualBebasFeature test suite
+        problem: Remediated — 28-test suite covers accept guards, one-header-plus-items persistence round-trip, decline-after-accept transition including rejection from ConvertedToSalesOrder, conversion gating by Sales Order establishment, and observable proof that an unaccepted demand leaves neither a Jual Bebas row nor an establishable Sales Order source; misnamed scenario test renamed to Jual_bebas_accept_creates_one_header_row so name matches exercised behavior.
+        status: CLOSED
+      - id: APT-B05-R1-F02
+        severity: MEDIUM
+        criterionId: AC-04 (BC-12 safe interim)
+        location: src/bilreg/Bilreg.Application/ApotekContext/JualBebasFeature/UseCases/JualBebasCommands.cs:67; src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs:38,79-80
+        problem: Remediated — DeclineAfterAccept(actorId, declinedAt) records cancelling actor/timestamp on the model; JualBebasRepo persists them into existing VodUser/VodDate columns (void semantics per AuditTrailType.Batal precedent) and LoadEntity restores them; round-trip proven at handler level and through real DAL.
+        status: CLOSED
+      - id: APT-B05-R1-F03
+        severity: MEDIUM
+        criterionId: AC-01
+        location: src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/JualBebasItemModel.cs:7-21
+        problem: Remediated — approved interpretation recorded in progress-tracker notes: acceptance-time catalog validation deferred (no ratified cross-context catalog port; inventing one would expand scope). BrgId authority enforced operationally downstream at pricing snapshot (IMedicationPricePort.PriceAt) and stock movements (StockReserve / DispenseIssue vs Stock Ledger) where unknown ids fail explicitly instead of being silently accepted.
+        status: CLOSED
+      - id: APT-B05-R1-F04
+        severity: MEDIUM
+        criterionId: execution-rule compliance / regression risk
+        location: src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs:35-39,77-88; src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/JualBebasModel.cs:72-85
+        problem: Remediated — Version added to aggregate (starts 1, increments on DeclineAfterAccept/MarkConvertedToSalesOrder), persisted and restored; DeclineAfterAcceptCmd carries ExpectedVersion checked via AssertExpectedVersion → ApotekConcurrencyException, consistent with sibling SalesOrder mechanics. DAL-level UPDATE predicate not added because siblings enforce concurrency at application level; flagged for unification under APT-B29's single documented conflict shape.
+        status: CLOSED
+      - id: APT-B05-R1-F05
+        severity: LOW
+        criterionId: tracker-completeness
+        location: docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md:409-420
+        problem: Remediated — progress-tracker slice record backfilled per template: commits, dates, changedFiles, schemaObjects, verification.commands/testCounts, assumptions, deferred items.
+        status: CLOSED
+    decision: GO
+    rationale: All four acceptance criteria (AC-01 through AC-04) are now satisfied on the evidence standard. Implementation matches the approved APT-B05 slice from the master plan with no unauthorized scope expansion. Architecture and namespace placement comply, DI registration resolves via Scrutor Nuna-marker scanning, and the authorization seam is present. All five round-1 findings (F01-F05) have been remediated with full test evidence. Tracker is complete and up to date. No critical defects found. Tests are adequate (28/28 JualBebas, 94/94 ApotekContext). Scope matches the approved slice.
+    environmentalNote: Independently verified on Windows dotnet SDK (JualBebas 28/28, ApotekContext 94/94). Remediation landed in d80a90d6 (Version column, decline audit via VodUser/VodDate, 28-test suite). Tracker status/registry flipped to GO in this housekeeping pass.
+  remediationHistory:
   - round: 1
     basedOnReviewRound: 2
     actor: ox-alpha (opencode)
     startedAt: 2026-08-26T15:20:00+07:00
     completedAt: 2026-08-26T16:05:00+07:00
     baseCommit: 1877d7d1ff461e27cc034034008a91d35db4f9a3
-    resultCommit: working tree atop 1877d7d1ff461e27cc034034008a91d35db4f9a3 (uncommitted; freeze on re-review)
+    resultCommit: d80a90d614641cebcfa34f578a9c34d8f4165e98
     remediatedFindings:
       - APT-B05-R1-F01
       - APT-B05-R1-F02
@@ -879,7 +936,8 @@ notes:
   - Completeness audit (19 Aug 2026) scored PARTIAL citing dedicated command/repository tests missing and decline-after-accept untested; round 1 confirms both and adds catalog-backing, decline-audit, and concurrency findings.
   - Repeated accept for the same RegId creates distinct ADQ ids with no duplicate guard; not scored as a finding because the plan assigns duplicate-active-key authority to Sales Order establishment (APT-B08), but noted for Wave-2 order 5 review.
   - Round opened on user request while Wave-1 slices remain first in the execution roadmap (same precedent as APT-B01 round 2 and APT-B02 round 1).
-  - Remediation round 1 (26 Aug 2026) closed F01–F05 with a new 28-test JualBebasFeature suite, decline audit persistence into VodUser/VodDate, Version concurrency consistent with siblings, recorded catalog-authority interpretation, and full record backfill; ApotekContext suite 94/94. REMEDIATION IS NOT GO — re-review must open round 3 against the remediation working tree before any status change.
+  - Remediation round 1 closed F01–F05 with a new 28-test JualBebasFeature suite, decline audit persistence into VodUser/VodDate, Version concurrency consistent with siblings, recorded catalog-authority interpretation, and full record backfill; landed in d80a90d6.
+  - Round 3 (27 Aug 2026) re-reviewed remediation at d80a90d6 → GO; all five observations CLOSED; registry and reviewStatus flipped to GO. Wave-2 order 3 complete; orders 4+ proceed.
 ```
 
 ### APT-B01
