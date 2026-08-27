@@ -1,4 +1,4 @@
-﻿using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -99,6 +99,28 @@ public class ErrorHandlerMiddleware
                     status = "Internal Server Error";
                     break;
             }
+
+            // Log all exceptions so errors are always traceable in the log sink (Seq, file, etc.)
+            // — 500s use LogError (full stack trace) so remote deployments can diagnose without reproduction
+            // — expected 4xx use LogWarning (no stack trace) to reduce noise
+            if (statusCode == (int)HttpStatusCode.InternalServerError)
+                _logger.LogError(
+                    error,
+                    "UnhandledException {Method} {Path} => HTTP {StatusCode} | {ExceptionType}: {ExceptionMessage}",
+                    context.Request.Method,
+                    context.Request.Path.Value,
+                    statusCode,
+                    error.GetType().FullName,
+                    error.Message);
+            else
+                _logger.LogWarning(
+                    "HandledException {Method} {Path} => HTTP {StatusCode} [{ErrorCode}] {ExceptionType}: {ExceptionMessage}",
+                    context.Request.Method,
+                    context.Request.Path.Value,
+                    statusCode,
+                    status,
+                    error.GetType().Name,
+                    error.Message);
 
             response.StatusCode = statusCode;
             Errors.Add(
