@@ -1,8 +1,11 @@
-﻿using Bilreg.Domain.SalesContext.ReturJualFeature;
+﻿using Bilreg.Application.SalesContext.ReturJualFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
+using Bilreg.Domain.SalesContext.ReturJualFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using PdfSharp.Pdf.Filters;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -13,6 +16,8 @@ public interface IReturJualItemDal :
     IDelete<IReturJualKey>,
     IListData<ReturJualItemDto, IReturJualKey>
 {
+    IEnumerable<ReturJualItemQtyDto> ListQtyReturByPenjualan(
+        IPenjualanKey jualKey, IReturJualKey returKey);
 }
 
 public class ReturJualItemDal : IReturJualItemDal
@@ -39,7 +44,6 @@ public class ReturJualItemDal : IReturJualItemDal
         bcp.AddMap("NoUrut", "fn_no_urut");
         bcp.AddMap("IsVoided", "fb_void");
         bcp.AddMap("BrgId", "fs_kd_barang");
-        bcp.AddMap("BrgName", "fs_nm_barang");
         bcp.AddMap("QtyJual", "fn_qty_jual");
         bcp.AddMap("QtyRetur", "fn_qty_retur");
         bcp.AddMap("SatuanId", "fs_kd_satuan");
@@ -47,8 +51,8 @@ public class ReturJualItemDal : IReturJualItemDal
         bcp.AddMap("HargaRetur", "fn_harga_retur");
         bcp.AddMap("TaxPerUnit", "fn_tax");
         bcp.AddMap("SubTotalJual", "fn_sub_total_jual");
-        bcp.AddMap("SubTotalRetur", "fn_sub_total_retur");
         bcp.AddMap("SubTotalTax", "fn_sub_total_tax");
+        bcp.AddMap("SubTotalRetur", "fn_sub_total_retur");
         bcp.AddMap("Total", "fn_total");
 
         bcp.BatchSize = fetched.Count;
@@ -105,5 +109,31 @@ public class ReturJualItemDal : IReturJualItemDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<ReturJualItemDto>(sql, dp);
+    }
+
+    public IEnumerable<ReturJualItemQtyDto> ListQtyReturByPenjualan(
+        IPenjualanKey jualKey, IReturJualKey returKey)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_barang AS BrgId,
+                SUM(aa.fn_qty_retur) AS QtyRetur,
+            	aa.fs_kd_satuan AS SatuanId
+            FROM 
+            	tb_trs_rjual_umum2 aa
+            	INNER JOIN tb_trs_rjual_umum bb ON aa.fs_kd_trs = bb.fs_kd_trs
+            WHERE 
+            	bb.fs_kd_dobill_umum = @PenjualanId
+                AND aa.fs_kd_trs <> @ReturJualId
+                AND bb.fd_tgl_void = '3000-01-01'  AND aa.fb_void = 0
+            GROUP BY aa.fs_kd_barang, aa.fs_kd_satuan
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@PenjualanId", jualKey.PenjualanId, SqlDbType.VarChar);
+        dp.AddParam("@ReturJualId", returKey.ReturJualId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<ReturJualItemQtyDto>(sql, dp);
     }
 }

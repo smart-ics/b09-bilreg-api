@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.SalesContext.ReturJualFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ReturJualFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -55,6 +56,19 @@ public class ReturJualRepo : IReturJualRepo
         {
             var listItem = _returJualItemDal.ListData(ReturJualModel.Key(dto.ReturJualId))?.ToList() ?? [];
             result.Add(dto.ToModel(listItem));
+        }
+
+        return result;
+    }
+
+    public IEnumerable<ReturJualItemQtyDto> ListReturQtyByPenjualan(IPenjualanKey jualKey, IReturJualKey returKey)
+    {
+        var listDto = _returJualItemDal.ListQtyReturByPenjualan(jualKey, returKey)?.ToList() ?? [];
+        var result = new List<ReturJualItemQtyDto>();
+        foreach (var dto in listDto)
+        {
+            var item = new ReturJualItemQtyDto(dto.BrgId, dto.QtyRetur, dto.SatuanId);
+            result.Add(item);
         }
 
         return result;

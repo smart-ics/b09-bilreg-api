@@ -11,6 +11,7 @@ namespace Bilreg.Domain.SalesContext.ReturJualFeature;
 public class ReturJualModel : IReturJualKey
 {
     private readonly List<ReturJualItemModel> _listItem;
+    private int _rangePembulatan;
 
     #region CREATE
     public ReturJualModel(
@@ -154,10 +155,14 @@ public class ReturJualModel : IReturJualKey
         Recalculate();
     }
 
-    public void SetPembulatan(decimal pembulatan)
+    public void SetPembulatan(int rangePembulatan)
     {
         EnsureNotVoided();
-        Nilai = NilaiReturJualType.RecalcFrom(_listItem, pembulatan);
+        if (rangePembulatan < 0)
+            throw new ArgumentException("Range pembulatan tidak boleh kurang dari 0.");
+
+        _rangePembulatan = rangePembulatan;
+        Recalculate();
     }
 
     public void Modify(string userId)
@@ -179,7 +184,7 @@ public class ReturJualModel : IReturJualKey
 
     private void Recalculate()
     {
-        Nilai = NilaiReturJualType.RecalcFrom(_listItem, Nilai.Pembulatan);
+        Nilai = NilaiReturJualType.RecalcFrom(_listItem, _rangePembulatan);
     }
 
     private void RenumberItems()
