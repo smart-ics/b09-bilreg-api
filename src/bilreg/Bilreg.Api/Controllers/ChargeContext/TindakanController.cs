@@ -10,7 +10,7 @@ namespace Bilreg.Api.Controllers.ChargeContext;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class TindakanController : Controller
 {
     private readonly IMediator _mediator;
@@ -52,6 +52,14 @@ public class TindakanController : Controller
         var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, userAgent, remoteIpAddress);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost]
+    [Route("genTdk")]
+    public async Task<IActionResult> GenerateTindakan(TdkCreateTindakanByOrderCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
     }
 }
 

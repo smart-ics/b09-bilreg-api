@@ -84,7 +84,7 @@ public class TdkCreateTindakanByOrderHandler : IRequestHandler<TdkCreateTindakan
         var listKomp = _komponenRepo
             .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];
         var listPpa = listKomp
-            .Where(x => x.ListSatTugas.Any(t => t.IsMedis))
+            .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
         var occurredAt = _tglJamProvider.Now;
