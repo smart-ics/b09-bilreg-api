@@ -40,19 +40,20 @@ public class PurchaseOrderListByPeriodeHandler : IRequestHandler<PurchaseOrderLi
         var listPurchaseOrder = _purchaseOrderRepo.ListData(periode)
             .GetValueOrDefault([]);
         
-        var response = listPurchaseOrder.Select(x => new PurchaseOrderListByPeriodeResponse(
-            x.PurchaseOrderId,
-            x.AuditTrail.Created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
-            x.Keterangan,
-            x.Partner.PartnerId,
-            x.Partner.PartnerName,
-            x.SubTotal,
-            x.TaxTotal,
-            x.Total,
-            x.DiskonLain,
-            x.BiayaLain,
-            x.GrandTotal
-        ));
+        var response = listPurchaseOrder
+            .Select(x => new PurchaseOrderListByPeriodeResponse(
+                x.PurchaseOrderId,
+                x.AuditTrail.Created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                x.Keterangan,
+                x.Partner.PartnerId,
+                x.Partner.PartnerName,
+                x.SubTotal,
+                x.TaxTotal,
+                x.Total,
+                x.DiskonLain,
+                x.BiayaLain,
+                x.GrandTotal
+            ));
 
         return Task.FromResult(response);
     }

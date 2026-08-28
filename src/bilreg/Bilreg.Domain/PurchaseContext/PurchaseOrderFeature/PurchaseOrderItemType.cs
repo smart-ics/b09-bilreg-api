@@ -23,6 +23,18 @@ public record PurchaseOrderItemType
         Total = total;
     }
 
+    public static PurchaseOrderItemType Create(int noUrut, IBrg brg, SatuanType satuan, decimal harga, decimal qty,
+        decimal qtyStok, decimal diskonPercentage, decimal taxPercentage, decimal biayaLain)
+    {
+        var diskonPerItem = harga * diskonPercentage;
+        var subtotal = harga * qty - diskonPerItem * qty;
+        var taxTotal = subtotal * taxPercentage;
+        var total = subtotal + taxTotal + biayaLain;
+
+        return new PurchaseOrderItemType(noUrut, brg.ToReff(), satuan, harga, qty, qtyStok, subtotal, diskonPercentage,
+            diskonPerItem, taxPercentage, taxTotal, biayaLain, total);
+    }
+
     public int NoUrut { get; private set; }
     public BrgReff Brg { get; init; }
     public SatuanType Satuan { get; init; }
@@ -40,4 +52,6 @@ public record PurchaseOrderItemType
 
     public decimal BiayaLain { get; init; }
     public decimal Total { get; init; }
+
+    public void SetNoUrut(int noUrut) => NoUrut = noUrut;
 }
