@@ -34,12 +34,12 @@ public record NilaiItemReturType
         decimal qtyRetur,
         decimal hargaJual,
         decimal hargaRetur,
-        decimal tax)
+        decimal taxPerUnit)
     {
         var subTotalJual = qtyJual * hargaJual;
         var subTotalRetur =  qtyRetur * hargaRetur;
-        var subTotalTax = qtyRetur * tax;
+        var subTotalTax = qtyRetur * taxPerUnit;
         var total = subTotalRetur + subTotalTax;
-        return new(hargaJual, hargaRetur, tax, subTotalJual, subTotalRetur, subTotalTax, total);
+        return new(hargaJual, hargaRetur, taxPerUnit, subTotalJual, subTotalRetur, subTotalTax, total);
     }
 }

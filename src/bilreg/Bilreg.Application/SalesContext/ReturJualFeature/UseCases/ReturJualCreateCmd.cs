@@ -51,7 +51,7 @@ public class ReturJualCreateHandler
 
         var retur = ReturJualModel.Create(penjualan, layanan, request.Reason, request.UserId);
         BuildItemRetur(retur, penjualan, listObat);
-        retur.SetPembulatan(1); // Default 1, harusnya ada setting nilai pembulatan
+        retur.SetPembulatan(1); // harusnya ada setting nilai pembulatan
 
         _returJualRepo.SaveChanges(retur);
 
@@ -78,7 +78,8 @@ public class ReturJualCreateHandler
 
             var item = new ReturableItemType(
                 jualItem.Brg, jualItem.Satuan, jualItem.Qty, jualItem.Nilai.Harga, qtySisaRetur);
-            retur.AddItem(item, obat.QtyRetur, obat.HargaRetur, jualItem.Nilai.Tax);
+            var taxPerUnit = jualItem.Nilai.Tax / jualItem.Qty;
+            retur.AddItem(item, obat.QtyRetur, obat.HargaRetur, taxPerUnit);
         }
 
         return retur;
@@ -90,7 +91,7 @@ public class ReturJualCreateHandler
             .GetValueOrThrow($"Penjualan '{request.PenjualanId}' tidak ditemukan.");
 
         if (penjualan.AuditTrail.IsVoided)
-            throw new InvalidOperationException($"Penjualan '{request.PenjualanId}' sudah  void.");
+            throw new InvalidOperationException($"Penjualan '{request.PenjualanId}' sudah void.");
         if (!penjualan.ListItem.Any())
             throw new InvalidOperationException($"Penjualan '{request.PenjualanId}' tidak memiliki item obat.");
 

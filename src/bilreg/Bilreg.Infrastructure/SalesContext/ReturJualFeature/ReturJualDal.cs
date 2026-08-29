@@ -109,11 +109,11 @@ public class ReturJualDal : IReturJualDal
         var sql = $"""
             {SelectClause()}
             WHERE
-                aa.fs_kd_trs = @PenjualanId
+                aa.fs_kd_trs = @ReturJualId
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@PenjualanId", key.ReturJualId, SqlDbType.VarChar);
+        dp.AddParam("@ReturJualId", key.ReturJualId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<ReturJualDto>(sql, dp);
@@ -137,7 +137,7 @@ public class ReturJualDal : IReturJualDal
     private static DynamicParameters BuildWriteParams(ReturJualDto model)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", model.PenjualanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", model.ReturJualId, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_trs", model.TglJam.ToString(DateFormatEnum.YMD), SqlDbType.VarChar);
         dp.AddParam("@fs_jam_trs", model.TglJam.ToString(DateFormatEnum.HMS), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas", model.UserId, SqlDbType.VarChar);
@@ -165,7 +165,7 @@ public class ReturJualDal : IReturJualDal
         	aa.fs_kd_layanan AS LayananId,
         	aa.fs_keterangan + aa.fs_keterangan2 AS Reason, 
         	aa.fs_kd_tipe_jaminan AS TipeJaminanId,
-        	aa.fs_kd_tipe_barang AS TipeBarangId,
+        	aa.fs_kd_tipe_barang AS TipeBrgId,
         	aa.fn_total_jual AS SumSubTotalJual,
         	aa.fn_total_retur AS SumSubTotalRetur,
         	aa.fn_total_tax AS SumTax,
@@ -178,7 +178,7 @@ public class ReturJualDal : IReturJualDal
         	ISNULL(cc.fs_nm_pasien, '') AS PasienName,
         	ISNULL(dd.fs_nm_layanan, '') AS LayananName,
         	ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
-        	ISNULL(ff.fs_nm_tipe_barang, '') AS TipeBarangName
+        	ISNULL(ff.fs_nm_tipe_barang, '') AS TipeBrgName
         FROM
         	tb_trs_rjual_umum aa
         	LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg

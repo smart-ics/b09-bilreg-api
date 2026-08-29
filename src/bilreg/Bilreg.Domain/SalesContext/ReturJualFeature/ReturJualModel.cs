@@ -89,7 +89,7 @@ public class ReturJualModel : IReturJualKey
     #endregion
 
     #region BEHAVIOR
-    public void AddItem(ReturableItemType item, decimal qtyRetur, decimal hargaRetur, decimal tax)
+    public void AddItem(ReturableItemType item, decimal qtyRetur, decimal hargaRetur, decimal taxPerUnit)
     {
         EnsureNotVoided();
 
@@ -107,7 +107,7 @@ public class ReturJualModel : IReturJualKey
             qtyRetur,
             item.HargaJual,
             hargaRetur,
-            tax);
+            taxPerUnit);
 
         var noUrut = _listItem.Select(x => x.NoUrut).DefaultIfEmpty(0).Max() + 1;
         var itemId = $"{ReturJualId}{noUrut:D3}";
