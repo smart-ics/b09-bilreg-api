@@ -36,4 +36,12 @@ public class PurchaseOrderController : ControllerBase
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("create")]
+    public async Task<IActionResult> Create(PurchaseOrderCreateCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

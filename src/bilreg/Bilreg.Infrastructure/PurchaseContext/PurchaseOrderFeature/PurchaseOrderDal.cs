@@ -58,7 +58,7 @@ public class PurchaseOrderDal: IPurchaseOrderDal
                 fd_tgl_cetak,
                 fs_jam_cetak,
                 fs_kd_ptg_cetak,
-                CRTUSR
+                CRTUSR)
             VALUES (
                 @fs_kd_trs,
                 @fd_tgl_trs,

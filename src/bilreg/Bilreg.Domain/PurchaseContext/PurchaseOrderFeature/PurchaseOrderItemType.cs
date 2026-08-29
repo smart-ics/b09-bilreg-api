@@ -26,9 +26,9 @@ public record PurchaseOrderItemType
     public static PurchaseOrderItemType Create(int noUrut, IBrg brg, SatuanType satuan, decimal harga, decimal qty,
         decimal qtyStok, decimal diskonPercentage, decimal taxPercentage, decimal biayaLain)
     {
-        var diskonPerItem = harga * diskonPercentage;
+        var diskonPerItem = harga * diskonPercentage / 100;
         var subtotal = harga * qty - diskonPerItem * qty;
-        var taxTotal = subtotal * taxPercentage;
+        var taxTotal = subtotal * taxPercentage / 100;
         var total = subtotal + taxTotal + biayaLain;
 
         return new PurchaseOrderItemType(noUrut, brg.ToReff(), satuan, harga, qty, qtyStok, subtotal, diskonPercentage,
