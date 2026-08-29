@@ -9,7 +9,7 @@ public interface IOpnameRequestRepo :
     ILoadEntity<OpnameRequestModel, IOpnameRequestKey>
 {
     IEnumerable<OpnameRequestModel> ListData(OpnameRequestListFilter filter);
-    MayBe<OpnameRequestModel> GetByEmrOrder(string emrOrderId);
+    MayBe<OpnameRequestModel> GetByTrsOrder(string trsOrderId);
 }
 
 public record OpnameRequestListFilter(OpnameRequestStatusEnum? Status = null);

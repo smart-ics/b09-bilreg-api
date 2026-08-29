@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Bilreg.Application.SalesContext.ReturJualFeature.UseCases;
 
-namespace Bilreg.Application.SalesContext.ReturJualFeature.UseCases
+public record ReturJualListQuery
 {
-    internal class ReturJualListQuery
-    {
-    }
 }

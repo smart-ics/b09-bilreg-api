@@ -2,8 +2,6 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
@@ -18,8 +16,8 @@ public record AdmGetOpnameRequestResponse(
     string DokterName,
     string ClinicalNotes,
     string FulfilledRegId,
-    string EmrOrderId,
-    DateTime CrtDate,
+    string TrsOrderId,
+    string CrtDate,
     AdmGetOpnameRequestInsuranceResponse Insurance);
 
 public record AdmGetOpnameRequestInsuranceResponse(
@@ -47,8 +45,8 @@ public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry
             opname.Dokter.PpaName,
             opname.ClinicalNotes,
             opname.FulfilledRegId,
-            opname.EmrOrderId,
-            opname.AuditTrail.Created.Timestamp,
+            opname.TrsOrderId,
+            opname.AuditTrail.Created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
             insurance));
     }
 }

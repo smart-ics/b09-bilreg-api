@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Bilreg.Domain.SalesContext.ReturJualFeature;
+using MediatR;
 
-namespace Bilreg.Application.SalesContext.ReturJualFeature.UseCases
-{
-    internal class ReturJualGetQuery
-    {
-    }
-}
+namespace Bilreg.Application.SalesContext.ReturJualFeature.UseCases;
+
+public record ReturJualGetQuery(string ReturJualId)
+    : IRequest<ReturJualGetResponse>, IReturJualKey;
+
+public record ReturJualGetResponse();
