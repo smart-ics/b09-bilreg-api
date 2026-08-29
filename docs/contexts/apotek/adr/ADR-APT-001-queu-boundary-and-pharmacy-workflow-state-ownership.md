@@ -1,7 +1,3 @@
-Saya menyarankan membuat artifact sebagai **Architecture Decision Record (ADR)** supaya agent masa depan menganggap ini sebagai keputusan yang sudah dikunci, bukan sekadar diskusi.
-
----
-
 # ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership
 
 **Status:** Accepted
@@ -12,16 +8,22 @@ Saya menyarankan membuat artifact sebagai **Architecture Decision Record (ADR)**
 
 Outpatient Pharmacy (Apotek Rawat Jalan) requires operational progress tracking beyond the generic Patient Tracker queue lifecycle.
 
-Examples of Pharmacy workflow states include:
+Pharmacy operational progress is owned by Pharmacy aggregates, not by the queue. Canonical Dispensing states (`apotek-domain.md` §8.4) are:
 
-* Telaah Resep
-* Sales Confirmation
-* Payment Confirmation
-* Dispensing
-* Dispensed
-* Medication Handover
-* No Show
-* Expired
+```text
+Established
+Awaiting Clearance
+Released
+Preparing
+Prepared
+Reviewed
+Completed
+Cancelled
+Expired
+Unfulfilled
+```
+
+Related Pharmacy-owned facts include Telaah Resep, Sales Order, Invoice, Dispense Authorized, Dispensing Temporary Custody, Medication Handover, Pickup Expired, and No Show. These labels are not queue statuses and must not be added to `AntrianStatusEnum`.
 
 The existing Patient Tracker queue implementation only supports the following queue lifecycle:
 
@@ -76,7 +78,18 @@ Done
 Withdrawn
 ```
 
-No Pharmacy-specific state may be introduced into the queue aggregate. 
+No Pharmacy-specific state may be introduced into the queue aggregate.
+
+Queue completion (`InService` → `Done`) may be triggered by Pickup Call or by No Show Resolution when that resolution runs before Pickup Call. Queue `Done` does not imply medication handover. Queue `Done` only means the queue service lifecycle has been completed. `DoneAt` is recorded when that completion occurs and is never reversed. This does not change ownership: Patient Tracker still owns queue identity and lifecycle; Pharmacy still owns No Show handling and fulfillment outcomes. Pharmacy Queue Close remains the separate `Waiting` → `Withdrawn` path and shall not be used after the queue is `InService`.
+
+### Canonical outpatient-pharmacy queue identity (BA-01)
+
+Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity.
+
+- F-09 `Apotek-Start` and `Apotek-Done` evidence remain reusable but must reference `QueueEntryId` from Patient Tracker.
+- Legacy Farinv queue identity is deprecated and must not create active queue records.
+- Historical Farinv queue data is read-only.
+- No dual-active queue model is allowed.
 
 ---
 
@@ -99,16 +112,20 @@ Display Workflow
 ### Pharmacy Owns
 
 ```text
-Prescription Review
-Sales Confirmation
-Payment Confirmation
-Dispensing
+Telaah Resep
+Sales Order
+Invoice
+Dispense Authorized (policy evaluation; not an aggregate)
+Dispensing lifecycle
 Medication Preparation
+Dispensing Temporary Custody
 Medication Handover
-Pickup Expiration
+Pickup Expired (projection category)
 No Show Handling
 Pharmacy Operational Progress
 ```
+
+Pharmacy ownership of these facts is unchanged. The labels above replace informal example names (`Sales Confirmation`, `Payment Confirmation`, `WaitingPayment`, `Paid`, `Dispensing`, `Dispensed`, `HandedOver`) with the canonical domain vocabulary. They remain Pharmacy-owned and are still not queue statuses.
 
 ---
 
@@ -165,24 +182,29 @@ Embedding Pharmacy states into queue statuses would couple the queue subsystem t
 
 ### Prevent State Explosion
 
-The following are Pharmacy workflow states:
+The following are Pharmacy-owned Dispensing states and related Pharmacy facts. They are not queue statuses:
 
 ```text
+Established
+Awaiting Clearance
+Released
+Preparing
+Prepared
 Reviewed
-WaitingPayment
-Paid
-Dispensing
-Dispensed
-HandedOver
+Completed
+Cancelled
 Expired
-NoShow
+Unfulfilled
+Medication Handover
+No Show
+Dispensing Temporary Custody
 ```
 
-These states do not describe queue movement.
+These labels do not describe queue movement.
 
 They describe Pharmacy operations.
 
-Therefore they belong to Pharmacy.
+Therefore they belong to Pharmacy. They must not be added to `AntrianStatusEnum`.
 
 ---
 
@@ -204,41 +226,56 @@ These are different concerns and must remain separated.
 
 ### Allowed
 
+The pairings below illustrate separated ownership. Pharmacy labels are Dispensing states or Pharmacy-owned facts from `apotek-domain.md`. They are not queue statuses.
+
 ```text
 Queue Status = InService
 
-Pharmacy Status = Dispensing
+Dispensing = Preparing
 ```
 
 ```text
 Queue Status = InService
 
-Pharmacy Status = WaitingPayment
+Dispensing = Awaiting Clearance
 ```
 
 ```text
 Queue Status = Done
 
-Pharmacy Status = HandedOver
+Dispensing = Completed
 ```
+
+```text
+Queue Status = Done
+
+Dispensing = Expired
+Pharmacy fact = No Show
+```
+
+Queue `Done` does not imply Medication Handover. Medication may remain in Dispensing Temporary Custody after the queue is `Done`.
 
 ---
 
 ### Not Allowed
 
 ```text
-Queue Status = Dispensing
+Queue Status = Preparing
 ```
 
 ```text
-Queue Status = WaitingPayment
+Queue Status = Awaiting Clearance
 ```
 
 ```text
-Queue Status = HandedOver
+Queue Status = Completed
 ```
 
-These statuses must never be added to `AntrianStatusEnum`.
+```text
+Queue Status = Expired
+```
+
+These Dispensing states must never be added to `AntrianStatusEnum`.
 
 ---
 
@@ -261,11 +298,5 @@ This decision is considered architectural and should not be revisited unless the
 * Patient Tracker Queue Excavation Report 
 * `AntrianEntryModel.cs` 
 * `AntrianStatusEnum.cs` 
-
-Saya juga menyarankan menaruh file ini di:
-
-```text
-docs/architecture/adr/ADR-APT-001-queue-boundary-and-pharmacy-workflow-state-ownership.md
-```
-
-agar agent implementasi dan reviewer dapat menemukannya sebagai keputusan arsitektur yang sudah final.
+* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`; Dispensing lifecycle §8.4; Dispensing Temporary Custody
+* [Outpatient Apotek Screen and Aggregate Design](../outpatient-apotek-screen-and-aggregate-design.md) — §4.1

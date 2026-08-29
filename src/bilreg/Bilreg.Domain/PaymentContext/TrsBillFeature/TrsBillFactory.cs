@@ -1,10 +1,13 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.DataTypeExtension;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
@@ -29,14 +32,14 @@ internal class TrsBillFactory
         foreach (var item in reg.ListKomponen)
         {
             var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
-            
+
             var rekPdpt = reffKomp?.RekPdpt.CoaId ?? string.Empty;
             var rekDiskon = reffKomp?.RekDiskon.CoaId ?? string.Empty;
 
             var ppa = reffKomp?.ListSatTugas.Any() ?? false
                 ? dokter.ToReff()
                 : PpaType.Default.ToReff();
-            
+
             var bill2Coa = new TrsBill2CoaType(
                 new CoaType(rekPpdp, ""),
                 new CoaType(rekPdpt, ""),
@@ -44,19 +47,20 @@ internal class TrsBillFactory
                 CoaType.Default,
                 CoaType.Default,
                 new CoaType(rekDiskon, ""));
-            
+
             var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
-            
+
             var trsBill2 = new TrsBill2TransEventType(
-                i++,  komponen, TrsBillJenisBayarType.Pdp, 
+                i++, komponen, TrsBillJenisBayarType.Pdp,
                 item.Nilai, ppa, bill2Coa);
 
             listBill2TransEvent.Add(trsBill2);
         }
 
         var nilai = new TrsBillNilaiType(karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0);
-        var result = new TrsBillType(reg.RegId, BillModulGroup.Jasa, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
-            reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.RekapCetak,  
+        var result = new TrsBillType(reg.RegId, BillModulGroup.Jasa,
+            reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+            reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.RekapCetak,
             nilai, ketBilling, listBill2TransEvent, [], []);
 
         return result;
@@ -80,11 +84,11 @@ internal class TrsBillFactory
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
             : jaminan.Rekening.PpdpJasaRajal.CoaId;
-        
+
         var i = 0;
         var listReffKompFetched = listReffKomp.ToList();
         var listBill2TransEvent = new List<TrsBill2TransEventType>();
-        
+
         foreach (var item in tindakan.ListKomponen)
         {
             var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
@@ -102,20 +106,69 @@ internal class TrsBillFactory
                 CoaType.Default,
                 CoaType.Default,
                 new CoaType(rekDiskon, ""));
-            
+
             var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
-            
+
             var trsBill2 = new TrsBill2TransEventType(
-                i++,  komponen, TrsBillJenisBayarType.Pdp, 
+                i++, komponen, TrsBillJenisBayarType.Pdp,
                 item.Nilai, ppa, bill2Coa);
 
             listBill2TransEvent.Add(trsBill2);
         }
 
         var nilai = new TrsBillNilaiType(tindakan.Total, 0, 0, 0);
-        
+
         var result = new TrsBillType(tindakan.TindakanId, BillModulGroup.Jasa, tindakan.TindakanDate,
-            tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak, 
+            tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak,
+            nilai, ketBilling, listBill2TransEvent, [], []);
+        return result;
+    }
+
+    public static TrsBillType CreateFromLabOrderItem(LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, DateTime createdAt = default)
+    {
+        if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
+            throw new ArgumentException("Jaminan tidak sesuai registrasi");
+
+        var audit = AuditTrailType.Create(labOrder.AuditTrail.Created.UserId, createdAt);
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap.CoaId
+            : jaminan.Rekening.PpdpJasaRajal.CoaId;
+
+        var i = 0;
+        var listReffKompFetched = listReffKomp.ToList();
+        var listBill2TransEvent = new List<TrsBill2TransEventType>();
+
+        nilaiTarif.ListKomponen.ForEach(item =>
+        {
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
+
+            var rekPdpt = reffKomp?.RekPdpt.CoaId ?? string.Empty;
+            var rekDiskon = reffKomp?.RekDiskon.CoaId ?? string.Empty;
+
+            var bill2Coa = new TrsBill2CoaType(
+                new CoaType(rekPpdp, ""),
+                new CoaType(rekPdpt, ""),
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                new CoaType(rekDiskon, ""));
+
+            var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
+
+            var trsBill2 = new TrsBill2TransEventType(i++, komponen, TrsBillJenisBayarType.Pdp,
+                item.Nilai, PpaType.Default.ToReff(), bill2Coa);
+
+            listBill2TransEvent.Add(trsBill2);
+        });
+
+        var nilai = new TrsBillNilaiType(nilaiTarif.Nilai, 0, 0, 0);
+        var billId = $"{labOrder.OrderId}-{labOrderItem.ItemNo:D2}";
+
+        var result = new TrsBillType(billId, BillModulGroup.Jasa, DateTime.Now,
+            reg.ToReff(), LayananType.Default.ToReff(), nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;
     }

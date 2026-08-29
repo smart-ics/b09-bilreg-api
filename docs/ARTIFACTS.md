@@ -172,19 +172,26 @@
 
 ### Apotek (`docs/contexts/apotek/`)
 
+Index lists **Active** and **Working** only. Historical reports live under [`docs/contexts/apotek/archive/`](contexts/apotek/archive/) and must not be used as current design (see [`docs/skills/artifact-management-skill.md`](skills/artifact-management-skill.md)). Cleanup record: [`docs/contexts/apotek/working/APOTEK-ARTIFACT-CLEANUP-REPORT.md`](contexts/apotek/working/APOTEK-ARTIFACT-CLEANUP-REPORT.md).
+
 | Path | Purpose |
 |------|---------|
 | `docs/contexts/apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership |
+| `docs/contexts/apotek/adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | ADR-APT-002 Pharmacy and Stock Ledger Boundary |
+| `docs/contexts/apotek/adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md` | ADR-APT-003 Invoice Mutability Owned by Tata Rekening Permission |
 | `docs/contexts/apotek/apotek-domain-id.md` | Domain Apotek — Pelayanan Obat Pasien |
 | `docs/contexts/apotek/apotek-domain.md` | Apotek Domain |
-| `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis-codex.md` | Outpatient Apotek Queue Gap Analysis |
-| `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis.md` | Outpatient Apotek Queue Gap Analysis |
+| `docs/contexts/apotek/outpatient-apotek-persistence-design.md` | Outpatient Apotek Persistence Design |
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Workflow Outpatient Apotek |
 | `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek Workflow |
+| `docs/contexts/apotek/outpatient-apotek-progress-tracker.md` | Outpatient Apotek Implementation Progress Tracker |
+| `docs/contexts/apotek/working/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Available Stock ≠ Current Stock (formula still open: PD-09) |
+| `docs/contexts/apotek/working/outpatient-apotek-repository-gap-analysis-report.md` | Repository Gap Analysis — remaining BC-11–BC-13 |
+| `docs/contexts/apotek/working/APOTEK-RESEP-REVISION-TASK-CONSISTENCY-REPORT.md` | PD-11 — Remove `BILRG_AptResepRevisionTask` |
 | `docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md` | Daftar SOP Pelayanan Obat Pasien Rawat Jalan |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md` | SOP APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue |
-| `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md` | SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep atau Permintaan Obat Langsung |
+| `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md` | SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep Kerja atau Jual Bebas |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md` | SOP APT-RJ-002 — Accept Outpatient Medication Demand |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-ID.md` | SOP APT-RJ-002 — Menerima Permintaan Obat Pasien Rawat Jalan |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md` | SOP APT-RJ-003 — Fulfill Medication for a General Patient |
@@ -363,6 +370,7 @@
 | Path | Purpose |
 |------|---------|
 | `docs/skills/architecture-creation-skill.md` | Architecture Creation Skill |
+| `docs/skills/artifact-management-skill.md` | Artifact Management Skill |
 | `docs/skills/domain-creation-skill.md` | DOMAIN CREATION SKILL |
 | `docs/skills/feature-model-generation.md` | FEATURE MODEL GENERATION SKILL |
 | `docs/skills/feature-persistence-generation.md` | FEATURE PERSISTENCE GENERATION SKILL |

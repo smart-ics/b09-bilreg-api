@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -26,6 +27,17 @@ public interface ICreateBillDomService
         JaminanType jaminan,
         IEnumerable<KomponenType> listReffKomp,
         DateTime createdAt = default);
+
+    TrsBillType FromLabOrderItem(
+        TataRekeningModel tataRekening,
+        LabOrderModel labOrder, 
+        LabOrderItemModel labOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -46,6 +58,14 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp, createdAt);
+    }
+
+    public TrsBillType FromLabOrderItem(TataRekeningModel tataRekening, LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, 
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromLabOrderItem(labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp, createdAt);
     }
 
     private static void ValidateReg(TataRekeningModel tataRekening, string regId)

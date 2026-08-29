@@ -1,6 +1,8 @@
 # F-09 Implementation Report — Pharmacy Queue Integrated into Patient Journey
 
-**Artifact status:** Implementation summary (closed)  
+> **Supersession (BA-01, 2026-08-15):** This report documents the legacy Farinv-integrated implementation. The canonical outpatient-pharmacy queue identity is now Patient Tracker `QueueEntry`. Farinv queue identity is deprecated for new interactions; historical Farinv data is read-only. F-09 `Apotek-Start` / `Apotek-Done` evidence remains reusable but must reference `QueueEntryId` from Patient Tracker. See [Apotek Domain](../apotek/apotek-domain.md) (`BR-APT-097`) and [ADR-APT-001](../apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md).
+
+**Artifact status:** Implementation summary (closed; queue identity superseded by BA-01)  
 **Bounded context:** Patient Tracker (Bilreg) + Farinv Sales Antrian (pharmacy Queue Session)  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  
 **Source gap:** F-09 in [`tracker-codebase-gap-report.md`](tracker-codebase-gap-report.md) (Severity: High)  
