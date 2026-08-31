@@ -365,6 +365,8 @@
     <Build Include="SalesContext\ta_trs_kartu_periksa3.sql" />
     <Build Include="SalesContext\tb_trs_dobill_umum.sql" />
     <Build Include="SalesContext\tb_trs_dobill_umum2.sql" />
+    <Build Include="SalesContext\tb_trs_rjual_umum.sql" />
+    <Build Include="SalesContext\tb_trs_rjual_umum2.sql" />
     <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifPolicy.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariant.sql" />
