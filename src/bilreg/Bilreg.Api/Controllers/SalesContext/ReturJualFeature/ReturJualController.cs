@@ -18,6 +18,14 @@ public class ReturJualController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpPost]
+    [Route("create")]
+    public async Task<IActionResult> CreateReturJual(ReturJualCreateCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)
@@ -27,11 +35,12 @@ public class ReturJualController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    [HttpPost]
-    [Route("create")]
-    public async Task<IActionResult> CreateReturJual(ReturJualCreateCmd cmd)
+    [HttpGet]
+    [Route("list/{regId}")]
+    public async Task<IActionResult> ListDataByRegId(string regId)
     {
-        var response = await _mediator.Send(cmd);
+        var query = new ReturJualListByRegQuery(regId);
+        var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
 }
