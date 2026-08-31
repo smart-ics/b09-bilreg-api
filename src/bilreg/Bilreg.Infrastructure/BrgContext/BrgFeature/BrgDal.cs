@@ -178,6 +178,8 @@ public class BrgDal : IBrgDal
     
     public IEnumerable<BrgView> ListData(string keyword)
     {
+        var keywordFts = FullTextSearch.GenKeywordContain(keyword);
+
         const string sql = """
             SELECT
                 aa.fs_kd_barang AS BrgId,
@@ -192,9 +194,10 @@ public class BrgDal : IBrgDal
                 CONTAINS(fs_nm_barang, @keyword)
             """;
         var dp = new DynamicParameters();
-        dp.AddParam("@Keyword", keyword, SqlDbType.VarChar);
+        dp.AddParam("@Keyword", keywordFts, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        FullTextSearch.CheckAvailability(conn);
         return conn.Read<BrgView>(sql,dp);
     }
 }

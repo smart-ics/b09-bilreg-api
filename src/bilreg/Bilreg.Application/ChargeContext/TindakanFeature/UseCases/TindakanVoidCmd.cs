@@ -15,6 +15,7 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly ITindakanRepo _tdkRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    
     public TindakanVoidHandler(ITindakanRepo tdkRepo, 
         IAuditRepo auditRepo, ITglJamProvider tglJamProvider)
     {
@@ -46,7 +47,8 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
 
         return Task.CompletedTask;
     }
-    private AuditLog CreateAudit(TindakanModel tdk, string snapShotJson, TindakanVoidCmd cmd)
+    
+    private static AuditLog CreateAudit(TindakanModel tdk, string snapShotJson, TindakanVoidCmd cmd)
     {
         var result = AuditLog.Create(
             tdk.AuditTrail.Voided,
@@ -57,8 +59,8 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
             originalDataJson: snapShotJson,
             correlationId: tdk.Reg.RegId,
             clientIpAddress: cmd.ClientIpAddress,
-            userAgent: cmd.UserAgent
-            );
+            userAgent: cmd.UserAgent);
+        
         return result;
     }
 }
