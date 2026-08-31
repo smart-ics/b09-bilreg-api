@@ -18,6 +18,15 @@ public class ReturJualController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new ReturJualGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPost]
     [Route("create")]
     public async Task<IActionResult> CreateReturJual(ReturJualCreateCmd cmd)

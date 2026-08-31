@@ -151,6 +151,7 @@ public class ReturJualModel : IReturJualKey
 
         var item = GetItem(returJualItemId);
         item.ChangeQtyRetur(qtyRetur);
+        item.ApplyNilai(item.Nilai.HargaRetur, item.Nilai.TaxPerUnit);
 
         Recalculate();
     }

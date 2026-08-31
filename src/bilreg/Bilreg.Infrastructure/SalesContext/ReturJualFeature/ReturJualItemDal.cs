@@ -5,7 +5,6 @@ using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using PdfSharp.Pdf.Filters;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -77,8 +76,8 @@ public class ReturJualItemDal : IReturJualItemDal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs AS PenjualanId,
-                aa.fs_kd_trs2 AS PenjualanItemId,
+                aa.fs_kd_trs AS ReturJualId,
+                aa.fs_kd_trs2 AS ReturJualItemId,
                 CAST(aa.fn_no_urut AS INT) AS NoUrut,
                 aa.fb_void AS IsVoided,
                 aa.fs_kd_barang AS BrgId,
@@ -92,7 +91,7 @@ public class ReturJualItemDal : IReturJualItemDal
                 aa.fn_sub_total_retur AS SubTotalRetur,
                 aa.fn_sub_total_tax AS SubTotalTax,
                 aa.fn_total AS Total,
-                ISNULL(bb.fs_nm_barang, '') BarangName,
+                ISNULL(bb.fs_nm_barang, '') BrgName,
             	ISNULL(cc.fs_nm_satuan, '') SatuanName
             FROM
                 tb_trs_rjual_umum2 aa

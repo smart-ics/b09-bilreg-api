@@ -157,34 +157,35 @@ public class ReturJualDal : IReturJualDal
 
     private static string SelectClause() => """
         SELECT
-        	aa.fs_kd_trs AS ReturJualId,
-        	CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) AS TglJam,
-        	aa.fs_kd_petugas AS UserId,
-        	aa.fs_kd_dobill_umum AS PenjualanId,
-        	aa.fs_kd_reg AS RegId,
-        	aa.fs_kd_layanan AS LayananId,
-        	aa.fs_keterangan + aa.fs_keterangan2 AS Reason, 
-        	aa.fs_kd_tipe_jaminan AS TipeJaminanId,
-        	aa.fs_kd_tipe_barang AS TipeBrgId,
-        	aa.fn_total_jual AS SumSubTotalJual,
-        	aa.fn_total_retur AS SumSubTotalRetur,
-        	aa.fn_total_tax AS SumTax,
-        	aa.fn_pembulatan AS Pembulatan,
-        	aa.fn_grand_total AS GrandTotal,
-        	aa.fd_tgl_void AS TglVoid,
-        	aa.fs_jam_void AS JamVoid,
-        	aa.fs_kd_petugas_void AS UserVoidId,
-        	ISNULL(bb.fs_mr, '') AS PasienId,
-        	ISNULL(cc.fs_nm_pasien, '') AS PasienName,
-        	ISNULL(dd.fs_nm_layanan, '') AS LayananName,
-        	ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
-        	ISNULL(ff.fs_nm_tipe_barang, '') AS TipeBrgName
+           	aa.fs_kd_trs AS ReturJualId,
+           	CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) AS TglJam,
+           	aa.fs_kd_petugas AS UserId,
+           	aa.fs_kd_dobill_umum AS PenjualanId,
+        	CONVERT(DATETIME, bb.fd_tgl_trs + ' ' + bb.fs_jam_trs) AS PenjualanDate,
+           	aa.fs_kd_reg AS RegId,
+           	aa.fs_kd_layanan AS LayananId,
+           	aa.fs_keterangan AS Reason, 
+           	aa.fs_kd_tipe_jaminan AS TipeJaminanId,
+           	aa.fs_kd_tipe_barang AS TipeBrgId,
+           	aa.fn_total_jual AS SumSubTotalJual,
+           	aa.fn_total_retur AS SumSubTotalRetur,
+           	aa.fn_total_tax AS SumTax,
+           	aa.fn_pembulatan AS Pembulatan,
+           	aa.fn_grand_total AS GrandTotal,
+           	aa.fd_tgl_void AS TglVoid,
+           	aa.fs_jam_void AS JamVoid,
+           	aa.fs_kd_petugas_void AS UserVoidId,
+           	ISNULL(cc.fs_mr, '') AS PasienId,
+           	ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+           	ISNULL(dd.fs_nm_layanan, '') AS LayananName,
+           	ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+           	ISNULL(ff.fs_nm_tipe_barang, '') AS TipeBrgName
         FROM
-        	tb_trs_rjual_umum aa
-        	LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg
-        	LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
-        	LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
-        	LEFT JOIN ta_tipe_jaminan ee ON aa.fs_kd_tipe_jaminan = ee.fs_kd_tipe_jaminan
-        	LEFT JOIN tb_tipe_barang ff ON aa.fs_kd_tipe_barang = ff.fs_kd_tipe_barang
+           	tb_trs_rjual_umum aa
+           	LEFT JOIN tb_trs_dobill_umum bb ON aa.fs_kd_dobill_umum = bb.fs_kd_trs
+        	LEFT JOIN ta_registrasi cc ON aa.fs_kd_reg = cc.fs_kd_reg
+           	LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
+           	LEFT JOIN ta_tipe_jaminan ee ON aa.fs_kd_tipe_jaminan = ee.fs_kd_tipe_jaminan
+           	LEFT JOIN tb_tipe_barang ff ON aa.fs_kd_tipe_barang = ff.fs_kd_tipe_barang
         """;
 }
