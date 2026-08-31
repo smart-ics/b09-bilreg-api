@@ -59,8 +59,10 @@ public class LabTestDefinitionRepo : ILabTestDefinitionRepo
         if (dto is null)
             return MayBe<LabTestDefinitionModel>.None;
 
-        var components = _componentDal.ListData(LabTestDefinitionModel.Key(dto.TestDefinitionId))
-            ?.Select(x => x.ToModel())
+        var testDefinitionKey = LabTestDefinitionModel.Key(dto.TestDefinitionId);
+        var listComponentDto = _componentDal.ListData(testDefinitionKey)?.ToList() ?? [];
+        var components = listComponentDto
+            .Select(x => x.ToModel())
             .ToList() ?? [];
         return MayBe.From(dto.ToModel(components));
     }

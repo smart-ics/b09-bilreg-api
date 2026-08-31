@@ -89,10 +89,9 @@
     <Folder Include="IgdContext\TindakanIgdFeature\" />
     <Folder Include="IgdContext\" />
     <Folder Include="Shared\AuditLogFeature\" />
-    <Folder Include="LabContext\" />
-    <Folder Include="LabContext\LabOrderFeature\" />
     <Folder Include="LabContext\LabOwareFeature\" />
     <Folder Include="LabContext\LabResultFeature\" />
+    <Folder Include="ApotekContext\" />
     <Folder Include="Shared\" />
     <Folder Include="PaymentContext\TrsBillingFeature\" />
     <Folder Include="PaymentContext\" />
@@ -120,6 +119,7 @@
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
+    <Folder Include="BedUsageContext\RoomChargeFeature" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -157,6 +157,31 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M2_AppendOnlyKey_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M3_ReffIdWiden_Alter.sql" />
     <None Include="AdmisiContext\EmrAntrianOutboundFeature\BILRG_EmrAntrianOutboundQueue.sql" />
+    <None Include="ApotekContext\BILRG_AptIntegrationTask.sql" />
+    <None Include="ApotekContext\BILRG_AptResepKerja.sql" />
+    <None Include="ApotekContext\BILRG_AptResepKerjaItem.sql" />
+    <None Include="ApotekContext\BILRG_AptResepKerjaComponent.sql" />
+    <None Include="ApotekContext\BILRG_AptJualBebas.sql" />
+    <None Include="ApotekContext\BILRG_AptJualBebasItem.sql" />
+    <None Include="ApotekContext\BILRG_AptTelaahResep.sql" />
+    <None Include="ApotekContext\BILRG_AptTelaahResepItem.sql" />
+    <None Include="ApotekContext\BILRG_AptSalesOrder.sql" />
+    <None Include="ApotekContext\BILRG_AptSalesOrderItem.sql" />
+    <None Include="ApotekContext\BILRG_AptSalesOrderItemComponent.sql" />
+    <None Include="ApotekContext\BILRG_AptUnfulfilledOutcome.sql" />
+    <None Include="ApotekContext\BILRG_AptCopyResep.sql" />
+    <None Include="ApotekContext\BILRG_AptCopyResepItem.sql" />
+    <None Include="ApotekContext\BILRG_AptInvoice.sql" />
+    <None Include="ApotekContext\BILRG_AptInvoiceItem.sql" />
+    <None Include="ApotekContext\BILRG_AptInvoiceItemCharge.sql" />
+    <None Include="ApotekContext\BILRG_AptDispensing.sql" />
+    <None Include="ApotekContext\BILRG_AptDispensingItem.sql" />
+    <None Include="ApotekContext\BILRG_AptFinalReview.sql" />
+    <None Include="ApotekContext\BILRG_AptQueueMapping.sql" />
+    <None Include="ApotekContext\BILRG_AptQueueClose.sql" />
+    <None Include="ApotekContext\BILRG_Apt_Seed_CollectionWindow.sql" />
+    <None Include="ApotekContext\BILRG_Apt_Seed_Layanan.example.sql" />
+    <None Include="ApotekContext\BILRG_Apt_Seed_ServicePoint.example.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_Booking.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktek.sql" />
     <None Include="AdmisiContext\JaminanFeature\ta_cara_bayar_dk.dataseed.sql" />
@@ -267,6 +292,9 @@
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge2.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomCharge_log.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
@@ -301,6 +329,16 @@
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceOutstanding.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M2_OutstandingEntry_Redesign_Alter.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster_M11_Alter.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\Data\BILRG_LabComponentMaster.dataseed.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItemComponent.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_BillingReleaseTrace_Alter.sql" />
+    <Build Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
+    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />
+    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />

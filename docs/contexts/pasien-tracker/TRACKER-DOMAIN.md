@@ -376,6 +376,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-038** — Queue lifecycle timestamps shall be valid business times. In Fixed Business Date simulation, ServedAt may precede CreatedAt and DoneAt may precede ServedAt; consumers that calculate durations must explicitly tolerate or exclude negative intervals.
 - **BR-TRK-039** — A Done Queue Entry is final in V1 and shall not return to Waiting or In Service.
 - **BR-TRK-039a** — An applicable feature policy may make a Waiting Queue Entry Withdrawn when participation ends before service starts; a Withdrawn Queue Entry is final and shall not be represented as completed service.
+- **BR-TRK-052** — Outpatient pharmacy is an applicable feature policy under `BR-TRK-039a`. When Apotek records a Pharmacy Queue Close with a mandatory reason for a Waiting Pharmacy Queue Entry that has not entered In Service, Patient Tracker shall make that Queue Entry Withdrawn. TAKEN shall not be added as a Patient Tracker state. No additional queue state shall be introduced.
 
 ### 7.6 Operational time interpretation
 
@@ -387,6 +388,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-045** — For every V1 outpatient pharmacy payer path, `Medication Preparation Started` supplied by Apotek shall cause the Pharmacy Queue Entry to enter In Service, record ServedAt, and establish pharmacy service-start evidence.
 - **BR-TRK-045a** — The coordinated outpatient pharmacy pickup call shall cause the Pharmacy Queue Entry to become Done and record DoneAt. Queue completion shall not assert that Medication Handover has occurred.
 - **BR-TRK-046** — Pharmacy Service Duration shall be measured from pharmacy ServedAt to pharmacy DoneAt.
+- **BR-TRK-051** — Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
 - **BR-TRK-047** — Patient Tracker shall not infer physical position, travel start, travel completion, or waiting-room arrival when no accountable business interaction occurred.
 
 ### 7.7 Ownership and historical truth
@@ -559,10 +561,11 @@ Post-Registration Consultation Waiting Time is registration DoneAt to physician 
 
 ```text
 Consultation completes and prescription work is generated
-  → Pharmacy Queue Session found or established
-  → Identified Pharmacy Queue Entry created for the same TrackerId
+  → Pharmacy Queue Session found or established on the Patient Tracker queue platform
+  → Canonical Pharmacy Queue Entry (`QueueEntry`) created for the outpatient pharmacy Service Point
   → Pharmacy CreatedAt records queue creation
   → No physical pharmacy-arrival event is inferred
+  → Legacy Farinv queue records are not created for new interactions
 ```
 
 ### 10.6 Perform and complete pharmacy service
@@ -574,6 +577,10 @@ Apotek reports Medication Preparation Started
   → Apotek later reports the coordinated pickup call
   → Pharmacy Queue Entry becomes Done
   → Pharmacy DoneAt uses the pickup-call time
+
+Apotek records Pharmacy Queue Close with mandatory reason while Waiting
+  → Pharmacy Queue Entry becomes Withdrawn
+  → ServedAt and DoneAt remain absent
 ```
 
 The queue lifecycle describes operational pharmacy queue progress. It does not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover. Detailed outpatient pharmacy sequencing is owned by the [Outpatient Apotek workflow](../apotek/outpatient-apotek-workflow.md).

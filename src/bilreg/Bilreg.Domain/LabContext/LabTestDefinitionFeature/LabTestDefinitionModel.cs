@@ -56,7 +56,8 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             AuditTrailType.Default, []);
 
     public static ILabTestDefinitionKey Key(string testDefinitionId) =>
-        Default with { TestDefinitionId = testDefinitionId };
+        new LabTestDefinitionModel(testDefinitionId, "-", "-", "-", "-", "-", "-", VacutainerTypeEnum.Edta, false,
+            AuditTrailType.Default, []);
 
     public static LabTestDefinitionModel CreateNew(
         string testDefinitionId,

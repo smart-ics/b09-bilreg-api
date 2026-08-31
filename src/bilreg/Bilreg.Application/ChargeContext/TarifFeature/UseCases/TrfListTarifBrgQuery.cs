@@ -13,27 +13,32 @@ public record TrfListTarifBrgQuery(string LayananId, string KelasId, string Tipe
 [JsonDerivedType(typeof(TrfListTarif), "TARIF")]
 [JsonDerivedType(typeof(TrfListBrg), "BARANG")]
 public abstract record TrfListTarifBrgResponseBase(string DisplayName);
+
 public record TrfListTarif(string TarifId, string TarifName, decimal Harga) 
     : TrfListTarifBrgResponseBase(TarifName);
-public record TrfListBrg(string BrgId, string BrgName, decimal Stok, string Satuan)
+
+public record TrfListBrg(string BrgId, string BrgName, decimal Stok, string SatuanId, string SatuanName)
     : TrfListTarifBrgResponseBase(BrgName);
+
 public class TrfListTarifBrgHandler 
     : IRequestHandler<TrfListTarifBrgQuery, IEnumerable<TrfListTarifBrgResponseBase>>
 {
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly IStokRepo _stokRepo;
+
     public TrfListTarifBrgHandler(INilaiTarifRepo nilaiTarifRepo, IStokRepo stokRepo)
     {
         _nilaiTarifRepo = nilaiTarifRepo;
         _stokRepo = stokRepo;
     }
+    
     public Task<IEnumerable<TrfListTarifBrgResponseBase>> Handle(TrfListTarifBrgQuery request, 
         CancellationToken cancellationToken)
     {
         var listBrg = _stokRepo.ListData(request, request.Keyword)?.ToList() ?? [];
         var listTarif = _nilaiTarifRepo.Search(request, request, request.Keyword)?.ToList() ?? [];
         
-        var brgResponse = listBrg.Select(x => new TrfListBrg(x.BrgId, x.BrgName, x.Qty, x.Satuan));
+        var brgResponse = listBrg.Select(x => new TrfListBrg(x.BrgId, x.BrgName, x.Qty, x.SatuanId, x.SatuanName));
         var tarifResponse = listTarif.Select(x => new TrfListTarif(x.TarifId, x.TarifName, x.Nilai));
         
         var result = tarifResponse

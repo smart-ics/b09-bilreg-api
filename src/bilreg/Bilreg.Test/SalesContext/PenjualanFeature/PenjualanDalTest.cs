@@ -1,5 +1,5 @@
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Infrastructure.SalesContext.PenjualanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;

@@ -48,9 +48,9 @@ public class OpnameRequestRepo : IOpnameRequestRepo
         return listDto.Select(x => x.ToModel()).ToList();
     }
 
-    public MayBe<OpnameRequestModel> GetByEmrOrder(string emrOrderId)
+    public MayBe<OpnameRequestModel> GetByTrsOrder(string trsOrderId)
     {
-        var dto = _dal.GetByEmrOrder(emrOrderId);
+        var dto = _dal.GetByTrsOrder(trsOrderId);
         if (dto is null)
             return MayBe<OpnameRequestModel>.None;
         var key = OpnameRequestModel.Key(dto.OpnameRequestId);

@@ -10,7 +10,7 @@ BEGIN
         PlannedDate         DATETIME     NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_PlannedDate DEFAULT('3000-01-01'),
         ClinicalNotes       VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_ClinicalNotes DEFAULT(''),
         FulfilledRegId      VARCHAR(10)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_FulfilledRegId DEFAULT('-'),
-        EmrOrderId          Varchar(14)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_EmrOrderId DEFAULT('-'),
+        TrsOrderId          Varchar(14)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_TrsOrderId DEFAULT('-'),
 
         CrtUser             VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_CrtUser DEFAULT(''),
         CrtDate             DATETIME     NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_CrtDate DEFAULT('3000-01-01'),
@@ -40,8 +40,8 @@ IF NOT EXISTS (
     WHERE name = 'IX_bilrg_admopnamerequest_EmrOrderId'
       AND object_id = OBJECT_ID('BILRG_AdmOpnameRequest'))
 BEGIN
-    CREATE INDEX [IX_bilrg_admopnamerequest_emrorderid]
-        ON [bilrg_admopnamerequest] ([emrorderid],[opnamerequestid])
+    CREATE INDEX [IX_bilrg_admopnamerequest_trsorderid]
+        ON [bilrg_admopnamerequest] ([trsorderid],[opnamerequestid])
         WITH(FILLFACTOR=90);
 END
 GO

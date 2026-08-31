@@ -24,7 +24,7 @@ public record OpnameRequestDto(
     DateTime UpdDate,
     string VodUser,
     DateTime VodDate,
-    string EmrOrderId)
+    string TrsOrderId)
 {
     public static OpnameRequestDto FromModel(OpnameRequestModel model) =>
         new(
@@ -45,7 +45,7 @@ public record OpnameRequestDto(
             model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId,
             model.AuditTrail.Voided.Timestamp,
-            model.EmrOrderId);
+            model.TrsOrderId);
 
     public OpnameRequestModel ToModel()
     {
@@ -69,7 +69,7 @@ public record OpnameRequestDto(
             FulfilledRegId,
             audit,
             insurance,
-            EmrOrderId);
+            TrsOrderId);
     }
     public OpnameRequestModel ToModel(OpnameRequestInsuranceDto insuranceDto)
     {
@@ -94,6 +94,6 @@ public record OpnameRequestDto(
             FulfilledRegId,
             audit,
             insurance,
-            EmrOrderId);
+            TrsOrderId);
     }
 }
