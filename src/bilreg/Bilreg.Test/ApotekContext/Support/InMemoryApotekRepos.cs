@@ -144,8 +144,11 @@ public class InMemoryIntegrationTaskRepo : IAptIntegrationTaskRepo
         => Store.Values.Where(x => x.TaskStatus == AptIntegrationTaskStatusEnum.Pending).Take(batchSize);
     public bool ClaimPending(IAptIntegrationTaskKey key)
     {
-        if (!Store.TryGetValue(key.IntegrationTaskId, out var m)
-            || m.TaskStatus != AptIntegrationTaskStatusEnum.Pending)
+        if (!Store.TryGetValue(key.IntegrationTaskId, out var m))
+            return false;
+        if (m.TaskStatus == AptIntegrationTaskStatusEnum.Processing)
+            return true;
+        if (m.TaskStatus != AptIntegrationTaskStatusEnum.Pending)
             return false;
         m.ClaimPending();
         return true;
@@ -169,6 +172,17 @@ public class FakePaymentPort : IPaymentClearancePort
     public PaymentClearanceEvidence? Load(string paymentClearanceReff) => Evidence;
 }
 
+public class FakeTataRekeningChargePort : ITataRekeningChargePort
+{
+    public int IssueCount { get; private set; }
+
+    public string IssueCharge(InvoiceModel invoice)
+    {
+        IssueCount++;
+        return "TR-CHG-1";
+    }
+}
+
 public class FakePricePort : IMedicationPricePort
 {
     public MedicationPrice PriceAt(string brgId, DateTime snapshotAt) => new(1000, 0);
@@ -177,6 +191,15 @@ public class FakePricePort : IMedicationPricePort
 public class FakeSepPort : ISepFornasPort
 {
     public SepFornasEvidence Evaluate(string regId, string brgId) => new("SEP-1", FornasCoverageEnum.Covered);
+}
+
+public class ConfigurableSepPort : ISepFornasPort
+{
+    public string SepNo { get; set; } = "SEP-1";
+    public Dictionary<string, FornasCoverageEnum> CoverageByBrgId { get; } = new();
+
+    public SepFornasEvidence Evaluate(string regId, string brgId)
+        => new(SepNo, CoverageByBrgId.TryGetValue(brgId, out var coverage) ? coverage : FornasCoverageEnum.Covered);
 }
 
 public class FakeTrackerPort : ITrackerPharmacyPort
@@ -218,6 +241,11 @@ public class FakeWindow : ICollectionWindowDaysProvider
 public class AllowTrPermission : ITataRekeningInvoicePermissionPort
 {
     public bool AllowsModification(string tataRekeningChargeId) => true;
+}
+
+public class DenyTrPermission : ITataRekeningInvoicePermissionPort
+{
+    public bool AllowsModification(string tataRekeningChargeId) => false;
 }
 
 public class RecordingIntegrationHandler : IAptIntegrationHandler

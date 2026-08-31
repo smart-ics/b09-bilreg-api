@@ -1,5 +1,9 @@
 using Bilreg.Api.Authorization;
+using Bilreg.Application.ApotekContext.CopyResepFeature;
 using Bilreg.Application.ApotekContext.ResepKerjaFeature;
+using Bilreg.Application.ApotekContext.SalesOrderFeature;
+using Bilreg.Application.ApotekContext.StockPlanningFeature;
+using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -13,18 +17,38 @@ namespace Bilreg.Test.ApotekContext.Support;
 public sealed class ApotekApiTestHarness
 {
     public InMemoryResepKerjaRepo ResepKerjaRepo { get; } = new();
+    public InMemoryTelaahRepo TelaahRepo { get; } = new();
+    public InMemorySalesOrderRepo SalesOrderRepo { get; } = new();
+    public InMemoryCopyResepRepo CopyResepRepo { get; } = new();
     public FakePrescriptionPort PrescriptionPort { get; } = new();
+    public IAvailableStockPort AvailableStockPort { get; set; } = new FailClosedAvailableStockPort();
 
     public void Reset()
     {
         ResepKerjaRepo.Store.Clear();
+        TelaahRepo.Store.Clear();
+        SalesOrderRepo.Store.Clear();
+        CopyResepRepo.Store.Clear();
         PrescriptionPort.Contract = null!;
+        AvailableStockPort = new FailClosedAvailableStockPort();
     }
 
     public void ConfigureServices(IServiceCollection services)
     {
         services.RemoveAll<IResepKerjaRepo>();
         services.AddScoped<IResepKerjaRepo>(_ => ResepKerjaRepo);
+
+        services.RemoveAll<ITelaahResepRepo>();
+        services.AddScoped<ITelaahResepRepo>(_ => TelaahRepo);
+
+        services.RemoveAll<ISalesOrderRepo>();
+        services.AddScoped<ISalesOrderRepo>(_ => SalesOrderRepo);
+
+        services.RemoveAll<ICopyResepRepo>();
+        services.AddScoped<ICopyResepRepo>(_ => CopyResepRepo);
+
+        services.RemoveAll<IAvailableStockPort>();
+        services.AddScoped<IAvailableStockPort>(_ => AvailableStockPort);
 
         services.RemoveAll<IPrescriptionContractPort>();
         services.AddScoped<IPrescriptionContractPort>(_ => PrescriptionPort);

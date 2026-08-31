@@ -340,6 +340,14 @@ public class DispensingModel : IDispensingKey
         Version++;
     }
 
+    public void RecordStockReturn(int itemNo, string returnMutasiReff)
+    {
+        var item = _items.FirstOrDefault(x => x.ItemNo == itemNo)
+                   ?? throw new ApotekDomainException($"Dispensing item {itemNo} not found.");
+        item.SetReturnReff(returnMutasiReff);
+        Version++;
+    }
+
     public void AssertExpectedVersion(int expectedVersion)
     {
         if (Version != expectedVersion)

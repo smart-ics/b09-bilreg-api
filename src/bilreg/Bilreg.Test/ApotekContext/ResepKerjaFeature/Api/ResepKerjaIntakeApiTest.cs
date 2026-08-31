@@ -8,7 +8,8 @@ using FluentAssertions;
 
 namespace Bilreg.Test.ApotekContext.ResepKerjaFeature.Api;
 
-public class ResepKerjaIntakeApiTest : IClassFixture<ApotekApiWebApplicationFactory>
+[Collection(ApotekApiCollection.Name)]
+public class ResepKerjaIntakeApiTest
 {
     private readonly ApotekApiWebApplicationFactory _factory;
 
@@ -103,12 +104,19 @@ public class ResepKerjaIntakeApiTest : IClassFixture<ApotekApiWebApplicationFact
     [Fact]
     public async Task API04_Unauthenticated_request_is_challenged_with_401()
     {
-        ApotekApiTestAuthHandler.IsAuthenticated = false;
-        var client = _factory.CreateUnauthenticatedClient();
+        try
+        {
+            ApotekApiTestAuthHandler.IsAuthenticated = false;
+            var client = _factory.CreateUnauthenticatedClient();
 
-        var response = await PostElectronic(client, 0, "RX-API-04");
+            var response = await PostElectronic(client, 0, "RX-API-04");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+        finally
+        {
+            ApotekApiTestAuthHandler.IsAuthenticated = true;
+        }
     }
 
     private static Task<HttpResponseMessage> PostElectronic(HttpClient client, int sourceKind, string sourceResepId) =>

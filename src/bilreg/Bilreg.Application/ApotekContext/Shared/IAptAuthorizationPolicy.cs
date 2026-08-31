@@ -10,6 +10,7 @@ public class AuthenticatedActorAuthorizationPolicy : IAptAuthorizationPolicy
     public void AssertCommandAllowed(string commandName, string actorUserId)
     {
         if (string.IsNullOrWhiteSpace(actorUserId))
-            throw new UnauthorizedAccessException($"Authenticated actor is required for {commandName} (BC-12).");
+            throw new UnauthorizedAccessException(
+                $"Authenticated actor is required for {commandName} (RELEASE-BLOCKED: {ApotekReleaseGates.Bc12CommandRoleMatrix}).");
     }
 }

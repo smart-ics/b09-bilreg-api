@@ -1,4 +1,5 @@
 using Bilreg.Domain.ApotekContext.DispensingFeature;
+using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
@@ -16,7 +17,8 @@ public record TelaahWorklistItem(
     TelaahStatusEnum Status,
     DateTime StartedAt);
 
-public record PelayananWorklistQuery(string AntrianId, int? NoUrut) : IRequest<IReadOnlyList<PelayananWorklistItem>>;
+public record PelayananWorklistQuery(string AntrianId, int? NoUrut, DateOnly BusinessDate)
+    : IRequest<IReadOnlyList<PelayananWorklistItem>>;
 
 public record PelayananWorklistItem(
     string AntrianId,
@@ -49,13 +51,22 @@ public record SerahWorklistItem(
 
 public record JourneyQuery(string AntrianId, int NoUrut) : IRequest<JourneyResponse>;
 
+public record JourneySalesOrderRef(string SalesOrderId, PayerPathEnum PayerPath);
+
+public record JourneyIntegrationTaskRef(
+    string IntegrationTaskId,
+    AptIntegrationTaskStatusEnum Status,
+    string LastError);
+
 public record JourneyDemand(
     QueueDemandKindEnum DemandKind,
     string DemandId,
-    IReadOnlyList<string> SalesOrderIds,
+    string TelaahResepId,
+    TelaahStatusEnum? TelaahStatus,
+    IReadOnlyList<JourneySalesOrderRef> SalesOrders,
     IReadOnlyList<string> InvoiceIds,
     IReadOnlyList<string> DispensingIds,
-    IReadOnlyList<string> PendingTasks);
+    IReadOnlyList<JourneyIntegrationTaskRef> IntegrationTasks);
 
 public record JourneyResponse(string AntrianId, int NoUrut, IReadOnlyList<JourneyDemand> Demands);
 
@@ -71,7 +82,7 @@ public record UnifiedSalesReportItem(
 public interface IAptWorklistDal
 {
     IReadOnlyList<TelaahWorklistItem> ListTelaah();
-    IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut);
+    IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut, DateOnly businessDate);
     IReadOnlyList<DispensingWorklistItem> ListDispensing();
     IReadOnlyList<SerahWorklistItem> ListSerah(DateTime asOf, int collectionWindowDays);
     JourneyResponse LoadJourney(string antrianId, int noUrut);
@@ -91,7 +102,7 @@ public class PelayananWorklistHandler : IRequestHandler<PelayananWorklistQuery, 
     private readonly IAptWorklistDal _dal;
     public PelayananWorklistHandler(IAptWorklistDal dal) => _dal = dal;
     public Task<IReadOnlyList<PelayananWorklistItem>> Handle(PelayananWorklistQuery request, CancellationToken cancellationToken)
-        => Task.FromResult(_dal.ListPelayanan(request.AntrianId, request.NoUrut));
+        => Task.FromResult(_dal.ListPelayanan(request.AntrianId, request.NoUrut, request.BusinessDate));
 }
 
 public class DispensingWorklistHandler : IRequestHandler<DispensingWorklistQuery, IReadOnlyList<DispensingWorklistItem>>
