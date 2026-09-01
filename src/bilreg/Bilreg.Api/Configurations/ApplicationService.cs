@@ -1,7 +1,6 @@
-﻿using Bilreg.Api.SignalR;
+using Bilreg.Api.SignalR;
 using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -20,9 +19,9 @@ public static class ApplicationService
     public static IServiceCollection AddApplication(this IServiceCollection services,
         IConfiguration configuration)
     {
-        services
-            .AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ApplicationAssemblyAnchor).Assembly));
-            //.AddValidatorsFromAssembly(Assembly.Load(APPLICATION_ASSEMBLY));
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssemblies(
+                typeof(ApplicationAssemblyAnchor).Assembly));
 
         services
             .AddScoped<INunaCounterBL, NunaCounterBL>()
@@ -33,6 +32,7 @@ public static class ApplicationService
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
+        
         services.AddScoped<IAdmissionQueueRefreshPublisher>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<AdmissionQueueApiOptions>>().Value;
@@ -40,6 +40,7 @@ public static class ApplicationService
                 return new NullAdmissionQueueRefreshPublisher();
             return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
         });
+        
         services
             .Scan(selector => selector
                 .FromAssemblyOf<ApplicationAssemblyAnchor>()
