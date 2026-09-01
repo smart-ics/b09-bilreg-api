@@ -2,7 +2,7 @@ CREATE TABLE tb_trs_rjual_umum
 (
     fs_kd_trs                 VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fs_kd_trs DEFAULT(''),
 
-    fd_tgl_trs                VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fd_tgl_trs DEFAULT(''),
+    fd_tgl_trs                VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fd_tgl_trs DEFAULT('3000-01-01'),
     fs_jam_trs                VARCHAR(8) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fs_jam_trs DEFAULT(''),
     fs_kd_petugas             VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fs_kd_petugas DEFAULT(''),
     fd_tgl_void               VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fd_tgl_void DEFAULT('3000-01-01'),
@@ -22,12 +22,12 @@ CREATE TABLE tb_trs_rjual_umum
     fn_pembulatan             DECIMAL(18,2) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fn_pembulatan DEFAULT(0),
     fn_grand_total            DECIMAL(18,2) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_fn_grand_total DEFAULT(0),
 
-    CRTTGL                    VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTTGL DEFAULT(''),
+    CRTTGL                    VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTTGL DEFAULT('3000-01-01'),
     CRTJAM                    VARCHAR(8) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTJAM DEFAULT(''),
     CRTIPA                    VARCHAR(40) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTIPA DEFAULT(''),
     CRTVER                    VARCHAR(12) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTVER DEFAULT(''),
     CRTUSR                    VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_CRTUSR DEFAULT(''),
-    UPDTGL                    VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_UPDTGL DEFAULT(''),
+    UPDTGL                    VARCHAR(10) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_UPDTGL DEFAULT('3000-01-01'),
     UPDJAM                    VARCHAR(8) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_UPDJAM DEFAULT(''),
     UPDIPA                    VARCHAR(40) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_UPDIPA DEFAULT(''),
     UPDVER                    VARCHAR(12) NOT NULL CONSTRAINT DF_tb_trs_rjual_umum_UPDVER DEFAULT(''),
