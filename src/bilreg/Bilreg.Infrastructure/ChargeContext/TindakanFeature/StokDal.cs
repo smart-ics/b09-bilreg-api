@@ -30,17 +30,20 @@ public class StokDal : IStokDal
                aa.fs_kd_barang AS BrgId,
                bb.fs_nm_barang AS BrgName,
                SUM(aa.fn_qty) AS Qty,
-               bb.fs_kd_sat_jual AS Satuan
+               bb.fs_kd_sat_jual AS SatuanId,
+               ISNULL(cc.fs_nm_satuan, '') AS SatuanName
            FROM 
                tb_stok aa
                INNER JOIN tb_barang bb ON aa.fs_kd_barang = bb.fs_kd_barang
+               INNER JOIN tb_satuan cc ON bb.FS_KD_SAT_JUAL = cc.fs_kd_satuan
            WHERE
                aa.fs_kd_layanan = @fs_kd_layanan
                AND bb.fs_nm_barang LIKE @fs_nm_barang
            GROUP BY
                aa.fs_kd_barang,
                bb.fs_nm_barang,
-               bb.fs_kd_sat_jual
+               bb.fs_kd_sat_jual,
+               cc.fs_nm_satuan
            """;
         
         var dp = new DynamicParameters();

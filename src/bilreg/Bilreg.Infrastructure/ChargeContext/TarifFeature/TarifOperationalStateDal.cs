@@ -35,7 +35,7 @@ public class TarifOperationalStateDal : ITarifOperationalStateDal
         dp.AddParam("@RowId", SingleRowId, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var row = conn.Read<TarifOperationalStateDto>(sql, dp).FirstOrDefault();
+        var row = conn.Read<TarifOperationalStateDto>(sql, dp)?.FirstOrDefault();
         return row ?? new TarifOperationalStateDto(
             SingleRowId, null, null, "", null, "", DateTime.Now, "SYSTEM");
     }
