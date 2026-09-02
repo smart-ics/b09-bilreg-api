@@ -89,8 +89,6 @@
     <Folder Include="IgdContext\TindakanIgdFeature\" />
     <Folder Include="IgdContext\" />
     <Folder Include="Shared\AuditLogFeature\" />
-    <Folder Include="LabContext\" />
-    <Folder Include="LabContext\LabOrderFeature\" />
     <Folder Include="LabContext\LabOwareFeature\" />
     <Folder Include="LabContext\LabResultFeature\" />
     <Folder Include="ApotekContext\" />
@@ -120,6 +118,13 @@
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
+    <Folder Include="PaymentContext\DepositFeature" />
+    <Folder Include="BedUsageContext\RoomChargeFeature" />
+    <Folder Include="LabContext\" />
+    <Folder Include="LabContext\LabOrderFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
+    <Folder Include="LabContext\LabTestDefinitionFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -292,6 +297,9 @@
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge2.sql" />
+    <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomCharge_log.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
@@ -326,6 +334,16 @@
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceOutstanding.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M2_OutstandingEntry_Redesign_Alter.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster_M11_Alter.sql" />
+    <Build Include="LabContext\LabComponentMasterFeature\Data\BILRG_LabComponentMaster.dataseed.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItemComponent.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_BillingReleaseTrace_Alter.sql" />
+    <Build Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
+    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />
+    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
@@ -348,6 +366,8 @@
     <Build Include="SalesContext\ta_trs_kartu_periksa3.sql" />
     <Build Include="SalesContext\tb_trs_dobill_umum.sql" />
     <Build Include="SalesContext\tb_trs_dobill_umum2.sql" />
+    <Build Include="SalesContext\tb_trs_rjual_umum.sql" />
+    <Build Include="SalesContext\tb_trs_rjual_umum2.sql" />
     <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifPolicy.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariant.sql" />
@@ -359,6 +379,7 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
+    <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />

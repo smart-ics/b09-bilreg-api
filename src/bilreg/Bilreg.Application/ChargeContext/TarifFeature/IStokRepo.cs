@@ -8,4 +8,4 @@ public interface IStokRepo :
 {
 }
 
-public record StokView(string BrgId, string BrgName, decimal Qty, string Satuan);
+public record StokView(string BrgId, string BrgName, decimal Qty, string SatuanId, string SatuanName);
