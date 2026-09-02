@@ -1,143 +1,578 @@
-# Planning Agent
+# IMPLEMENTATION PLANNING SKILL
 
-## Purpose
+# PURPOSE
 
-Create an implementation plan that can be executed by the Implementation Agent and evaluated by the Review Agent.
+Generate a deterministic IMPLEMENTATION-PLAN.md and IMPLEMENTATION-TRACKER.md from approved project artifacts.
 
-The plan must provide clear phases, slices, dependencies, acceptance criteria, and progress tracking.
+The Planning Agent exists to answer:
 
-The agent plans. It does not implement or review.
+> What sequence of implementation work is required to realize the approved Architecture?
 
----
+The planner is responsible for:
 
-## Inputs
+- execution decomposition;
+- implementation sequencing;
+- dependency management;
+- progress tracking;
+- review tracking;
+- remediation tracking.
 
-- Design Artifacts
-- Domain Artifacts
-- Architecture Artifacts
-- Existing Source Code (optional)
+The planner is NOT responsible for:
 
----
-
-## Workflow
-
-### 1. Load Context
-
-Read all relevant artifacts.
-
-Identify:
-
-- business capabilities
-- screens
-- aggregates
-- workflows
-- integrations
-- technical constraints
+- business analysis;
+- workflow design;
+- architecture design;
+- implementation;
+- review.
 
 ---
 
-### 2. Discover Implementation Scope
+# POSITION IN ARTIFACT CHAIN
 
-Identify all deliverables required to realize the approved design.
+```text
+DOMAIN
+    ↓
+WORKFLOW
+    ↓
+GAP ANALYSIS
+    ↓
+ARCHITECTURE
+    ↓
+IMPLEMENTATION PLAN
+    ↓
+IMPLEMENTATION
+    ↓
+REVIEW
+    ↓
+REMEDIATION
+    ↓
+TESTING
+    ↓
+DEPLOYMENT
+```
 
-Typical deliverables may include:
+Planning consumes Architecture.
 
-- domain model
-- persistence
-- application services
-- API
-- UI
-- integration
-- migration
-- tests
-
----
-
-### 3. Create Phases
-
-Group related work into implementation phases.
-
-Each phase should produce a meaningful and testable outcome.
-
-Phases should follow dependency order.
-
----
-
-### 4. Create Slices
-
-Break each phase into small executable slices.
-
-Each slice should:
-
-- have a single objective
-- have clear boundaries
-- be independently implementable
-- be independently reviewable
-
-Avoid large or multi-purpose slices.
+Planning does not reinterpret Architecture.
 
 ---
 
-### 5. Define Dependencies
+# PRIMARY OBJECTIVE
 
-For every slice identify:
+Transform approved Architecture into:
 
-- prerequisite slices
-- required artifacts
-- blocking conditions
+1. Executable Phases
+2. Executable Slices
+3. Reviewable Acceptance Criteria
+4. Deterministic Progress Tracking
+
+A successful plan minimizes implementation ambiguity.
+
+Implementation Agents should not need to invent:
+
+- scope
+- sequence
+- ownership
+- deliverables
+
+---
+
+# REQUIRED INPUTS
+
+Mandatory:
+
+- DOMAIN.md
+- WORKFLOW.md
+- GAP-ANALYSIS.md
+- ARCHITECTURE.md
+
+Optional:
+
+- Existing Source Code
+- Existing Database Schema
+- Existing Implementation Plan
+- Existing Tracker
+
+---
+
+# READINESS VALIDATION
+
+Before planning begins:
+
+Verify:
+
+- Architecture exists
+- Architecture status is APPROVED
+- No blocking gaps remain
+- Architecture readiness is YES
+
+If not:
+
+```text
+Status:
+BLOCKED
+
+Reason:
+Architecture not ready for planning.
+```
+
+Stop.
+
+---
+
+# PLANNING PRINCIPLE
+
+Planning is decomposition.
+
+Planning is not design.
+
+The planner must not:
+
+- redesign architecture;
+- redesign workflow;
+- reinterpret business rules;
+- introduce new technical decisions.
+
+If a design conflict is discovered:
+
+Create a GAP.
+
+Do not invent a solution.
+
+---
+
+# IMPLEMENTATION UNIT
+
+The smallest planning unit is:
+
+```text
+Slice
+```
+
+A slice must be:
+
+- implementable;
+- reviewable;
+- remediable;
+- traceable.
+
+---
+
+# SLICE DESIGN RULES
+
+Every slice must:
+
+- have a single objective;
+- have a single responsibility;
+- produce a measurable outcome;
+- be independently reviewable;
+- be independently remediable.
+
+Avoid:
+
+- large slices;
+- mixed concerns;
+- multi-purpose slices.
+
+---
+
+# TRACEABILITY RULE
+
+Every slice must trace to Architecture.
+
+Example:
+
+```text
+Architecture
+    ↓
+Slice
+    ↓
+Implementation
+    ↓
+Review
+```
+
+No slice may exist without an Architecture reference.
+
+---
+
+# IMPLEMENTATION CATEGORIES
+
+Each slice must belong to exactly one category.
+
+## DM
+
+Domain Model
+
+Examples:
+
+- Aggregate
+- Entity
+- Value Object
+
+---
+
+## PS
+
+Persistence
+
+Examples:
+
+- Tables
+- Repositories
+- Mappings
+
+---
+
+## APP
+
+Application Layer
+
+Examples:
+
+- Commands
+- Queries
+- Services
+
+---
+
+## API
+
+API Layer
+
+Examples:
+
+- Controllers
+- Endpoints
+
+---
+
+## UI
+
+Frontend UI
+
+Examples:
+
+- Screens
+- Components
+- Layouts
+
+---
+
+## STATE
+
+Frontend State
+
+Examples:
+
+- UI State Models
+- State Transitions
+
+---
+
+## VM
+
+View Models
+
+Examples:
+
+- Query Models
+- Screen Models
+
+---
+
+## INT
+
+Integration
+
+Examples:
+
+- Events
+- External APIs
+
+---
+
+## SEC
+
+Security
+
+Examples:
+
+- Permissions
+- Policies
+
+---
+
+## MIG
+
+Migration
+
+Examples:
+
+- Schema Updates
+- Backfill
+
+---
+
+## TEST
+
+Testing Support
+
+Examples:
+
+- Test Data
+- Test Harness
+- Test Utilities
+
+---
+
+# PLANNING PROCESS
+
+## Step 1 — Read Architecture
+
+Read:
+
+- Decision Traceability
+- Backend Architecture
+- Frontend Architecture
+- Risks
+- Implementation Guidance
+
+---
+
+## Step 2 — Extract Deliverables
+
+For every architecture section identify implementation deliverables.
+
+Example:
+
+```text
+Aggregate
+    ↓
+DM Slice
+
+Table
+    ↓
+PS Slice
+
+Screen
+    ↓
+UI Slice
+
+UI State
+    ↓
+STATE Slice
+```
+
+---
+
+## Step 3 — Create Phases
+
+Group slices into dependency-safe phases.
+
+Each phase must produce a meaningful outcome.
+
+Example:
+
+```text
+Phase 1
+Foundation
+
+Phase 2
+Backend Core
+
+Phase 3
+Frontend Core
+
+Phase 4
+Integration
+
+Phase 5
+Hardening
+```
+
+Actual phases depend on architecture.
+
+---
+
+## Step 4 — Create Slices
+
+Assign:
+
+- Slice ID
+- Category
+- Objective
+- Architecture Reference
+
+Example:
+
+```text
+P2-DM-001
+
+Objective:
+Create ProductCode Entity
+
+Architecture Reference:
+Section 5.2 ProductCode Entity
+```
+
+---
+
+## Step 5 — Define Dependencies
+
+For every slice:
+
+### Depends On
+
+List prerequisite slices.
+
+### Blocks
+
+List dependent slices.
 
 Dependencies must be explicit.
 
 ---
 
-### 6. Define Acceptance Criteria
+## Step 6 — Define Acceptance Criteria
 
-For every slice define reviewable outcomes.
+Acceptance criteria must be:
 
-Acceptance criteria must be objective and verifiable.
+- objective;
+- binary;
+- reviewable.
 
-Avoid ambiguous criteria.
-
----
-
-### 7. Create Progress Tracker
-
-Create tracker entries for every slice.
-
-Each slice should support the lifecycle:
+Bad:
 
 ```text
-PLANNED
-→ IN IMPLEMENTATION
-→ IMPLEMENTED
-→ IN REVIEW
-→ GO
+Feature works correctly.
+```
 
-or
+Good:
 
-→ NO-GO
-→ REMEDIATION
-→ IN REVIEW
-→ GO
+```text
+ProductCode entity exists.
+
+Item aggregate owns ProductCode.
+
+Build succeeds.
+
+Architecture invariant preserved.
 ```
 
 ---
 
-### 8. Validate Plan
+## Step 7 — Define Review Scope
 
-Verify:
+For every slice define:
 
-- all design scope is covered
-- dependencies are valid
-- slices are implementable
-- slices are reviewable
-- tracker is complete
+### Review Focus
+
+Examples:
+
+```text
+Architecture Compliance
+
+Workflow Compliance
+
+Persistence Compliance
+
+UI State Compliance
+```
+
+Reviewer must know what to verify.
 
 ---
 
-## Deliverables
+## Step 8 — Generate Progress Tracker
 
-### Implementation Plan
+Generate tracker entries for every slice.
+
+---
+
+# TRACKER LIFECYCLE
+
+Every slice follows:
+
+```text
+PLANNED
+    ↓
+IN IMPLEMENTATION
+    ↓
+IMPLEMENTED
+    ↓
+IN REVIEW
+    ↓
+GO
+```
+
+or
+
+```text
+IN REVIEW
+    ↓
+NO-GO
+    ↓
+REMEDIATION REQUIRED
+    ↓
+IN REMEDIATION
+    ↓
+IN REVIEW
+    ↓
+GO
+```
+
+---
+
+# IMPLEMENTATION TRACKER STRUCTURE
+
+For every slice:
+
+## Slice ID
+
+...
+
+## Category
+
+...
+
+## Objective
+
+...
+
+## Architecture Reference
+
+...
+
+## Status
+
+...
+
+## Assigned Agent
+
+...
+
+## Review Result
+
+GO / NO-GO
+
+## Review Findings
+
+...
+
+## Remediation Notes
+
+...
+
+## History
+
+...
+
+---
+
+# REQUIRED DELIVERABLES
+
+## IMPLEMENTATION-PLAN.md
 
 Contains:
 
@@ -145,8 +580,11 @@ Contains:
 - slices
 - dependencies
 - acceptance criteria
+- review scope
 
-### Progress Tracker
+---
+
+## IMPLEMENTATION-TRACKER.md
 
 Contains:
 
@@ -154,14 +592,76 @@ Contains:
 - implementation history
 - review history
 - remediation history
+- final outcome
 
 ---
 
-## Forbidden
+# PLAN VALIDATION
 
-- implementation details
-- code generation
-- redesign
-- architecture changes
-- scope changes
-- undocumented assumptions
+Verify:
+
+✓ all architecture sections are covered
+
+✓ all architecture decisions are realized
+
+✓ all screens are covered
+
+✓ all UI states are covered
+
+✓ all integrations are covered
+
+✓ dependencies are valid
+
+✓ slices are independently reviewable
+
+✓ slices are independently remediable
+
+✓ tracker is complete
+
+---
+
+# FORBIDDEN
+
+Do not:
+
+- redesign DOMAIN
+- redesign WORKFLOW
+- redesign GAP decisions
+- redesign ARCHITECTURE
+- generate source code
+- create migrations
+- create deployment scripts
+- merge unrelated concerns into a single slice
+- introduce undocumented assumptions
+
+If design ambiguity exists:
+
+Create a GAP.
+
+Do not invent a solution.
+
+---
+
+# SUCCESS CRITERIA
+
+Planning is successful when:
+
+✓ every architecture element maps to implementation work
+
+✓ every slice is independently implementable
+
+✓ every slice is independently reviewable
+
+✓ every slice is independently remediable
+
+✓ every slice is traceable to Architecture
+
+✓ progress can be measured objectively
+
+✓ review results can be tracked objectively
+
+✓ implementation becomes deterministic
+
+✓ implementation agents do not need to invent scope
+
+✓ reviewer agents can validate compliance objectively

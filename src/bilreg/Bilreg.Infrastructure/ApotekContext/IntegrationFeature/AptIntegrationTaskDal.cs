@@ -101,14 +101,13 @@ public class AptIntegrationTaskDal : IAptIntegrationTaskDal
                 aa.Destination, aa.PayloadJson, aa.TaskStatus, aa.RetryCount, aa.LastError,
                 aa.LastRetryDate, aa.ProcessedDate, aa.CorrelationId, aa.CrtDate
             FROM BILRG_AptIntegrationTask aa
-            WHERE aa.TaskStatus IN (@Pending, @Failed)
+            WHERE aa.TaskStatus = @Pending
             ORDER BY aa.CrtDate ASC
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@BatchSize", batchSize, SqlDbType.Int);
         dp.AddParam("@Pending", (int)AptIntegrationTaskStatusEnum.Pending, SqlDbType.Int);
-        dp.AddParam("@Failed", (int)AptIntegrationTaskStatusEnum.Failed, SqlDbType.Int);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<AptIntegrationTaskDto>(sql, dp).Select(x => x.ToModel()).ToList();
     }
@@ -119,14 +118,13 @@ public class AptIntegrationTaskDal : IAptIntegrationTaskDal
             UPDATE BILRG_AptIntegrationTask
             SET TaskStatus = @Processing
             WHERE IntegrationTaskId = @IntegrationTaskId
-              AND TaskStatus IN (@Pending, @Failed)
+              AND TaskStatus = @Pending
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@IntegrationTaskId", key.IntegrationTaskId, SqlDbType.VarChar);
         dp.AddParam("@Processing", (int)AptIntegrationTaskStatusEnum.Processing, SqlDbType.Int);
         dp.AddParam("@Pending", (int)AptIntegrationTaskStatusEnum.Pending, SqlDbType.Int);
-        dp.AddParam("@Failed", (int)AptIntegrationTaskStatusEnum.Failed, SqlDbType.Int);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Execute(sql, dp) == 1;
     }

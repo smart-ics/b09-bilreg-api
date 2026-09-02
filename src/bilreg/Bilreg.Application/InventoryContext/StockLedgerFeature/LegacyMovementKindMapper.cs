@@ -24,6 +24,7 @@ public static class LegacyMovementKindMapper
             ["DB_V"] = MovementKindEnum.SaleVoidDb,
             ["DU_V"] = MovementKindEnum.SaleVoidDu,
             ["DT_V"] = MovementKindEnum.SaleVoidDt,
+            ["DI"] = MovementKindEnum.DispenseIssue,
         };
 
     public static bool TryMap(string? legacyKind, out MovementKindEnum kind)

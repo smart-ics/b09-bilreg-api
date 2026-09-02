@@ -215,7 +215,7 @@ public class InvoiceModel : IInvoiceKey
         bool tataRekeningAllows)
     {
         if (InvoiceStatus == InvoiceStatusEnum.Established
-            || (InvoiceStatus == InvoiceStatusEnum.Issued && tataRekeningAllows))
+            || (IsPostIssue() && tataRekeningAllows))
         {
             ReplaceContent(items, charges, diskonLain, biayaLain, pembulatan);
             Version++;
@@ -223,6 +223,19 @@ public class InvoiceModel : IInvoiceKey
         }
 
         throw new ApotekDomainException("Invoice content is immutable under current Tata Rekening permission.");
+    }
+
+    public InvoiceCorrectionDispositionEnum CorrectionDisposition(bool tataRekeningAllowsModification)
+    {
+        if (!string.IsNullOrWhiteSpace(TataRekeningCorrectionReff))
+            return InvoiceCorrectionDispositionEnum.Correlated;
+        if (InvoiceStatus == InvoiceStatusEnum.Established)
+            return InvoiceCorrectionDispositionEnum.DirectRevisionAllowed;
+        if (IsPostIssue())
+            return tataRekeningAllowsModification
+                ? InvoiceCorrectionDispositionEnum.DirectRevisionAllowed
+                : InvoiceCorrectionDispositionEnum.ManualTataRekeningCorrectionPending;
+        return InvoiceCorrectionDispositionEnum.NotApplicable;
     }
 
     public void Issue(DateTime issuedAt)
@@ -257,6 +270,8 @@ public class InvoiceModel : IInvoiceKey
     {
         Guard.Against.NullOrWhiteSpace(correctionReff, nameof(correctionReff));
         TataRekeningCorrectionReff = correctionReff;
+        if (InvoiceStatus is InvoiceStatusEnum.Issued or InvoiceStatusEnum.FinanciallyCleared)
+            InvoiceStatus = InvoiceStatusEnum.AdjustedOrCredited;
         Version++;
     }
 
@@ -268,6 +283,9 @@ public class InvoiceModel : IInvoiceKey
         if (Version != expectedVersion)
             throw new ApotekConcurrencyException(InvoiceId, expectedVersion);
     }
+
+    private bool IsPostIssue() =>
+        InvoiceStatus is InvoiceStatusEnum.Issued or InvoiceStatusEnum.FinanciallyCleared;
 
     private void ReplaceContent(
         IEnumerable<InvoiceItemModel> items,

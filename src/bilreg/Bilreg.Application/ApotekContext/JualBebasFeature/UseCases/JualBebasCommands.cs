@@ -20,7 +20,7 @@ public record JualBebasAcceptItem(int ItemNo, string BrgId, string BrgName, stri
 
 public record JualBebasAcceptResponse(string JualBebasId);
 
-public record JualBebasDeclineAfterAcceptCmd(string UserId, string JualBebasId) : IRequest;
+public record JualBebasDeclineAfterAcceptCmd(string UserId, string JualBebasId, int ExpectedVersion) : IRequest;
 
 public class JualBebasAcceptHandler : IRequestHandler<JualBebasAcceptCmd, JualBebasAcceptResponse>
 {
@@ -64,7 +64,8 @@ public class JualBebasDeclineAfterAcceptHandler : IRequestHandler<JualBebasDecli
         _auth.AssertCommandAllowed(nameof(JualBebasDeclineAfterAcceptCmd), request.UserId);
         var model = _repo.LoadEntity(JualBebasModel.Key(request.JualBebasId))
             .GetValueOrThrow($"Jual Bebas '{request.JualBebasId}' not found");
-        model.DeclineAfterAccept(request.UserId);
+        model.AssertExpectedVersion(request.ExpectedVersion);
+        model.DeclineAfterAccept(request.UserId, DateTime.Now);
         using var trans = TransHelper.NewScope();
         _repo.SaveChanges(model);
         trans.Complete();
