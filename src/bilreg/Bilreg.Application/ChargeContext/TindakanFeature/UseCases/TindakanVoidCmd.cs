@@ -1,8 +1,13 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
@@ -15,13 +20,18 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly ITindakanRepo _tdkRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
-    
-    public TindakanVoidHandler(ITindakanRepo tdkRepo, 
-        IAuditRepo auditRepo, ITglJamProvider tglJamProvider)
+    private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IJurnalRepo _jurnalRepo;
+    public TindakanVoidHandler(ITindakanRepo tdkRepo,
+        IAuditRepo auditRepo, ITglJamProvider tglJamProvider, 
+        ITrsBillingRepo trsBillingRepo, 
+        IJurnalRepo jurnalRepo)
     {
         _tdkRepo = tdkRepo;
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
+        _trsBillingRepo = trsBillingRepo;
+        _jurnalRepo = jurnalRepo;
     }
 
     public Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
@@ -37,13 +47,17 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
             );
 
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
-
         var occurredAt = _tglJamProvider.Now;
         tdk.Void(request.UserId, occurredAt);
+
+        using var trans = TransHelper.NewScope();
         _tdkRepo.SaveChanges(tdk);
+        _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
+        _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
 
         var audit = CreateAudit(tdk, snapshotJson, request);
         _auditRepo.SaveChanges(audit);
+        trans.Complete();
 
         return Task.CompletedTask;
     }
