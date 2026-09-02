@@ -357,6 +357,12 @@ Index lists **Active** and **Working** only. Historical reports live under [`doc
 | `docs/contexts/pasien-tracker/tracker-f12-implementation-report.md` | F-12 Implementation Report — Persistence Shape (Queue Session + Deterministic Evidence) |
 | `docs/contexts/pasien-tracker/tracker-f13-implementation-report.md` | F-13 Implementation Report — Compatibility Adapter & Authority Map |
 
+### Purchasing (`docs/contexts/purchasing/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/purchasing/purchasing-delivery-order-domain.md` | Delivery Order (DO) Domain — Penerimaan Barang dari Supplier |
+
 ### TrsBilling redirect (`docs/contexts/trsbilling/`)
 
 | Path | Purpose |
