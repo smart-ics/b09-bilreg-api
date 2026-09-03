@@ -15,6 +15,7 @@ using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using System;
+using System.Globalization;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
@@ -38,12 +39,14 @@ public record RegGetResponse(
     CaraMasukDkType CaraMasukDk,
     RujukanReff Rujukan,
     PpaReff Dokter,
+    string JamPraktek,
     LayananReff Layanan,
     KarcisReff Karcis,
     TipeTarifReff TipeTarif,
     TipeBrgType TipeBarang,
     int NoAntrian,
-    string SjpNo);
+    string SjpNo
+    );
 public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 {
     private readonly IRegRepo _regRepo;
@@ -79,10 +82,15 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 
         var dateTime = reg.RegDate.ToDateTime(TimeOnly.MinValue);
         var listQue = _queRepo.ListData(dateTime)?.ToList() ?? [];
-        var que = listQue.FirstOrDefault(x => x.ReffId == reg.RegId) 
-            ?? new AntrianView("-", 0, -1, "-", "-", "-", new DateTime(3000, 1, 1), "-", "-", "-", TimeOnly.MinValue, TimeOnly.MinValue);
 
+        var physicianQue = listQue.FirstOrDefault(x =>
+                x.ReffId == reg.RegId &&
+                x.AntrianDescription.StartsWith("Praktek Dokter ", StringComparison.Ordinal))
+            ?? listQue.FirstOrDefault(x => x.ReffId == reg.RegId)
+            ?? new AntrianView("-", 0, -1, "-", "-", "-", new DateTime(3000, 1, 1),
+                "-", "-", "-", TimeOnly.MinValue, TimeOnly.MinValue);
 
+        var jamPraktek = physicianQue.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture);
 
         var result = new RegGetResponse(
             reg.RegId, reg.RegDate.ToString("yyyy-MM-dd"),
@@ -90,8 +98,8 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             reg.IsAktif, (int)reg.JenisReg, reg.JenisReg.ToString(),
             reg.Pasien, umur, reg.TipeJaminan, reg.Polis,
             reg.Kelas, reg.CaraMasukDk, reg.Rujukan,
-            reg.Dokter, reg.Layanan, reg.Karcis,
-            tipeTarif, tipeBrg, que.NoUrut, reg.Eligibility.SjpNo);
+            reg.Dokter, jamPraktek, reg.Layanan, reg.Karcis,
+            tipeTarif, tipeBrg, physicianQue.NoUrut, reg.Eligibility.SjpNo);
 
         return Task.FromResult(result);
 
