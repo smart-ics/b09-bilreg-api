@@ -1,12 +1,11 @@
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.PatternHelper;
+using System.Text.RegularExpressions;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -57,11 +56,22 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         var req = new GetGrupJaminanJetliRequest(reg.TipeJaminan);
         var grupJmnResp = _getGrupJaminanJetliService.Execute(req);
         var flag = grupJmnResp.GroupJaminanId == "JKN" ? "BPJS" : "UMUM";
+        
+        // 1. FLAG spesifik Jaminan
         var emptyMap = antrianMap.ListMap
             .Where(x => x.Flag == flag)
             .Where(x => x.IsFreeSlot())
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
+        
+        // 2. STRICT TIME - regex HH:mm
+        emptyMap ??= antrianMap.ListMap
+            .Where(x => Regex.IsMatch(x.Flag, @"^\d{2}:\d{2}$")) // 08:00,09:00... 
+            .Where(x => x.IsFreeSlot()) 
+            .OrderBy(x => x.NoUrut)
+            .FirstOrDefault();
+
+        // 3. AUTO overflow
         emptyMap = emptyMap ??
                    antrianMap.ListMap
                        .Where(x => x.Flag == "AUTO")
