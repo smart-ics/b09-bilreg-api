@@ -1,4 +1,6 @@
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -11,13 +13,16 @@ public class AptIntegrationWorker
 
     private readonly IAptIntegrationTaskRepo _repo;
     private readonly IReadOnlyDictionary<AptIntegrationTaskTypeEnum, IAptIntegrationHandler> _handlers;
+    private readonly ILogger<AptIntegrationWorker> _logger;
 
     public AptIntegrationWorker(
         IAptIntegrationTaskRepo repo,
-        IEnumerable<IAptIntegrationHandler> handlers)
+        IEnumerable<IAptIntegrationHandler> handlers,
+        ILogger<AptIntegrationWorker>? logger = null)
     {
         _repo = repo;
         _handlers = handlers.ToDictionary(x => x.TaskType);
+        _logger = logger ?? NullLogger<AptIntegrationWorker>.Instance;
     }
 
     public AptIntegrationProcessItemResult ProcessOne(string integrationTaskId)
@@ -26,17 +31,29 @@ public class AptIntegrationWorker
             .GetValueOrThrow($"Integration task '{integrationTaskId}' not found");
 
         if (task.TaskStatus == AptIntegrationTaskStatusEnum.Succeeded)
-            return new AptIntegrationProcessItemResult(task.IntegrationTaskId, true, "idempotent");
-
-        if (task.TaskStatus != AptIntegrationTaskStatusEnum.Pending
-            && task.TaskStatus != AptIntegrationTaskStatusEnum.Failed)
         {
+            _logger.LogInformation(
+                "AptIntegration process skipped idempotent task {IntegrationTaskId} type {TaskType} source {SourceKind}:{SourceId} correlation {CorrelationId}",
+                task.IntegrationTaskId,
+                task.TaskType,
+                task.SourceKind,
+                task.SourceId,
+                task.CorrelationId);
+            return new AptIntegrationProcessItemResult(task.IntegrationTaskId, true, "idempotent");
+        }
+
+        if (task.TaskStatus != AptIntegrationTaskStatusEnum.Pending)
+        {
+            _logger.LogWarning(
+                "AptIntegration process rejected task {IntegrationTaskId} type {TaskType} source {SourceKind}:{SourceId} status {TaskStatus}",
+                task.IntegrationTaskId,
+                task.TaskType,
+                task.SourceKind,
+                task.SourceId,
+                task.TaskStatus);
             return new AptIntegrationProcessItemResult(
                 task.IntegrationTaskId, false, $"Cannot process status {task.TaskStatus}");
         }
-
-        if (task.TaskStatus == AptIntegrationTaskStatusEnum.Failed)
-            task.PrepareRetry();
 
         task.ClaimPending();
         if (!_repo.ClaimPending(task))
@@ -74,6 +91,23 @@ public class AptIntegrationWorker
             task.MarkFailed(send.ErrorMessage ?? "handler failed");
 
         Persist(task);
+        if (send.Success)
+            _logger.LogInformation(
+                "AptIntegration process succeeded task {IntegrationTaskId} type {TaskType} source {SourceKind}:{SourceId} correlation {CorrelationId}",
+                task.IntegrationTaskId,
+                task.TaskType,
+                task.SourceKind,
+                task.SourceId,
+                task.CorrelationId);
+        else
+            _logger.LogWarning(
+                "AptIntegration process failed task {IntegrationTaskId} type {TaskType} source {SourceKind}:{SourceId} error {LastError}",
+                task.IntegrationTaskId,
+                task.TaskType,
+                task.SourceKind,
+                task.SourceId,
+                task.LastError);
+
         return new AptIntegrationProcessItemResult(task.IntegrationTaskId, send.Success, task.LastError);
     }
 

@@ -26,13 +26,13 @@ public class TrackerPharmacyAdapter : ITrackerPharmacyPort
         var entry = queue.ListEntry.First(x => x.NoUrut == noUrut);
         if (entry.AntrianStatus == AntrianStatusEnum.InService || entry.AntrianStatus == AntrianStatusEnum.Done)
         {
-            AppendStart(pasienTrackerId, reffId, at);
+            AppendStart(antrianId, noUrut, pasienTrackerId, at);
             return new TrackerPharmacyCommandResult(false, entry.ServedAt.ToString("O"));
         }
         entry.Serve(at);
         if (!_antrianRepo.TrySaveWaitingToInServiceTransition(queue, entry))
             throw new Domain.ApotekContext.Shared.ApotekConcurrencyException($"{antrianId}:{noUrut}", 0);
-        AppendStart(pasienTrackerId, reffId, at);
+        AppendStart(antrianId, noUrut, pasienTrackerId, at);
         return new TrackerPharmacyCommandResult(true, entry.ServedAt.ToString("O"));
     }
 
@@ -43,16 +43,18 @@ public class TrackerPharmacyAdapter : ITrackerPharmacyPort
         var entry = queue.ListEntry.First(x => x.NoUrut == noUrut);
         if (entry.AntrianStatus == AntrianStatusEnum.Done)
         {
-            AppendDone(pasienTrackerId, reffId, at);
+            AppendDone(antrianId, noUrut, pasienTrackerId, at);
             return new TrackerPharmacyCommandResult(false, entry.DoneAt.ToString("O"));
         }
+        if (entry.AntrianStatus == AntrianStatusEnum.Waiting)
+            return new TrackerPharmacyCommandResult(false, "");
         if (entry.AntrianStatus == AntrianStatusEnum.InService)
         {
             entry.Done(at);
             if (!_antrianRepo.TrySaveInServiceToDoneTransition(queue, entry))
                 throw new Domain.ApotekContext.Shared.ApotekConcurrencyException($"{antrianId}:{noUrut}", 0);
         }
-        AppendDone(pasienTrackerId, reffId, at);
+        AppendDone(antrianId, noUrut, pasienTrackerId, at);
         return new TrackerPharmacyCommandResult(true, at.ToString("O"));
     }
 
@@ -75,21 +77,24 @@ public class TrackerPharmacyAdapter : ITrackerPharmacyPort
     private AntrianEntryModel Entry(string antrianId, int noUrut)
         => Queue(antrianId).ListEntry.First(x => x.NoUrut == noUrut);
 
-    private void AppendStart(string pasienTrackerId, string reffId, DateTime at)
+    private void AppendStart(string antrianId, int noUrut, string pasienTrackerId, DateTime at)
     {
         if (!PasienTrackerStableIdentity.IsRealTrackerId(pasienTrackerId))
             return;
         var tracker = PharmacyQueueEvidence.RequireTracker(_trackerRepo, pasienTrackerId);
-        PharmacyQueueEvidence.AppendApotekStart(tracker, reffId, at);
+        PharmacyQueueEvidence.AppendApotekStart(tracker, QueueEvidenceReff(antrianId, noUrut), at);
         _trackerRepo.SaveChanges(tracker);
     }
 
-    private void AppendDone(string pasienTrackerId, string reffId, DateTime at)
+    private void AppendDone(string antrianId, int noUrut, string pasienTrackerId, DateTime at)
     {
         if (!PasienTrackerStableIdentity.IsRealTrackerId(pasienTrackerId))
             return;
         var tracker = PharmacyQueueEvidence.RequireTracker(_trackerRepo, pasienTrackerId);
-        PharmacyQueueEvidence.AppendApotekDone(tracker, reffId, at);
+        PharmacyQueueEvidence.AppendApotekDone(tracker, QueueEvidenceReff(antrianId, noUrut), at);
         _trackerRepo.SaveChanges(tracker);
     }
+
+    private static string QueueEvidenceReff(string antrianId, int noUrut)
+        => QueueEvidenceReference.Create(antrianId, noUrut).Value;
 }

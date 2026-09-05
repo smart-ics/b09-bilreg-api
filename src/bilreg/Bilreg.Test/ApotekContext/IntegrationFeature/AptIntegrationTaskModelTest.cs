@@ -32,6 +32,47 @@ public class AptIntegrationTaskModelTest
     }
 
     [Fact]
+    public void ClaimPending_StampProcessingStartTime()
+    {
+        var task = NewPending();
+        var before = DateTime.Now.AddSeconds(-5);
+        task.ClaimPending();
+        task.ProcessedDate.Should().BeOnOrAfter(before);
+    }
+
+    [Fact]
+    public void Reclaim_FromStaleProcessing_ReturnsToPending()
+    {
+        var staleAt = DateTime.Now.AddMinutes(-AptIntegrationTaskModel.StaleProcessingMinutes - 1);
+        var task = Rehydrated(AptIntegrationTaskStatusEnum.Processing, staleAt);
+        task.IsStaleProcessing(DateTime.Now).Should().BeTrue();
+
+        task.ReclaimStaleProcessing();
+
+        task.TaskStatus.Should().Be(AptIntegrationTaskStatusEnum.Pending);
+        task.LastError.Should().Contain("reclaimed");
+    }
+
+    [Fact]
+    public void Reclaim_FromFreshProcessing_Throws()
+    {
+        var task = NewPending();
+        task.ClaimPending();
+        var act = () => task.ReclaimStaleProcessing();
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Reclaim_FromFailed_Throws()
+    {
+        var task = NewPending();
+        task.ClaimPending();
+        task.MarkFailed("boom");
+        var act = () => task.ReclaimStaleProcessing();
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void MarkSucceeded_FromProcessing_StoresCorrelation()
     {
         var task = NewPending();
@@ -95,4 +136,22 @@ public class AptIntegrationTaskModelTest
             "ASI000000001:CHARGE",
             AptIntegrationDestinationEnum.TataRekening,
             "{\"invoiceId\":\"ASI000000001\"}");
+
+    private static AptIntegrationTaskModel Rehydrated(
+        AptIntegrationTaskStatusEnum status, DateTime processedDate)
+        => AptIntegrationTaskModel.Rehydrate(
+            "AITR00000001",
+            AptIntegrationTaskTypeEnum.BillingCharge,
+            AptIntegrationSourceKindEnum.Invoice,
+            "ASI000000001",
+            "ASI000000001:CHARGE",
+            AptIntegrationDestinationEnum.TataRekening,
+            "{}",
+            status,
+            0,
+            "",
+            new DateTime(3000, 1, 1),
+            processedDate,
+            "",
+            DateTime.Now);
 }

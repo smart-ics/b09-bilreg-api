@@ -26,6 +26,7 @@ public class CollectionWindowDaysProviderTest
     {
         ApotekLocationIds.PharmacyUnitLayananId.Should().Be("LYAPT");
         ApotekLocationIds.DispensingTemporaryUnitLayananId.Should().Be("LYDTU");
+        ApotekLocationIds.PharmacyServicePointId.Should().Be("APT");
         ApotekLocationIds.PharmacyUnitLayananId
             .Should().NotBe(ApotekLocationIds.DispensingTemporaryUnitLayananId);
     }

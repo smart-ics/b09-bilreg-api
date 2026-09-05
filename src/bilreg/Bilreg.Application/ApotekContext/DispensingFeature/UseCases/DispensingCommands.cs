@@ -167,7 +167,7 @@ public class DispensingStartHandler : IRequestHandler<DispensingStartCmd, Dispen
                     request.AntrianId,
                     request.NoUrut,
                     request.PasienTrackerId,
-                    reffId = d.DispensingId
+                    ReffId = d.DispensingId
                 })));
         }
         trans.Complete();
@@ -225,21 +225,44 @@ public class DispensingPickupCallHandler : IRequestHandler<DispensingPickupCallC
     {
         _auth.AssertCommandAllowed(nameof(DispensingPickupCallCmd), request.UserId);
         var mappings = _mappingRepo.ListByQueue(request.AntrianId, request.NoUrut);
-        var intended = new List<DispensingModel>();
+        if (mappings.Count == 0)
+            throw new ApotekDomainException("Pickup call requires mapped medication demands.");
+
+        var preparedForPickup = new List<DispensingModel>();
+        var resolvedCount = 0;
         foreach (var map in mappings)
         {
             var sourceKind = map.DemandKind == Domain.ApotekContext.QueueFeature.QueueDemandKindEnum.ResepKerja
                 ? SalesOrderSourceKindEnum.ResepKerja
                 : SalesOrderSourceKindEnum.JualBebas;
-            foreach (var so in _salesOrderRepo.ListBySource(sourceKind, map.DemandId))
-                intended.AddRange(_dispensingRepo.ListBySalesOrder(so.SalesOrderId));
+            var orders = _salesOrderRepo.ListBySource(sourceKind, map.DemandId);
+            if (orders.Count == 0)
+                throw new ApotekDomainException("Pickup call requires every mapped demand Established or accountably resolved.");
+
+            var activeOrders = orders.Where(x => x.IsActiveKey).ToList();
+            var demandDispensings = orders
+                .SelectMany(so => _dispensingRepo.ListBySalesOrder(so.SalesOrderId))
+                .ToList();
+            resolvedCount += demandDispensings.Count(x => x.IsAccountablyResolved);
+
+            if (activeOrders.Count == 0)
+                continue;
+
+            var activeDispensings = activeOrders
+                .SelectMany(so => _dispensingRepo.ListBySalesOrder(so.SalesOrderId))
+                .ToList();
+            if (activeDispensings.Count == 0
+                || activeDispensings.Any(x => !x.IsPrepared && !x.IsAccountablyResolved))
+                throw new ApotekDomainException("Pickup call requires every intended Dispensing Prepared or accountably resolved.");
+
+            preparedForPickup.AddRange(activeDispensings.Where(x => x.IsPrepared));
         }
 
-        if (intended.Count == 0 || intended.Any(x => !x.IsPrepared && !x.IsAccountablyResolved))
+        if (preparedForPickup.Count == 0)
             throw new ApotekDomainException("Pickup call requires every intended Dispensing Prepared or accountably resolved.");
 
         using var trans = TransHelper.NewScope();
-        foreach (var d in intended.Where(x => x.IsPrepared))
+        foreach (var d in preparedForPickup)
         {
             d.RecordPickupCall(DateTime.Now);
             _dispensingRepo.SaveChanges(d);
@@ -252,9 +275,7 @@ public class DispensingPickupCallHandler : IRequestHandler<DispensingPickupCallC
             AptIntegrationDestinationEnum.Tracker,
             System.Text.Json.JsonSerializer.Serialize(new { request.AntrianId, request.NoUrut, request.PasienTrackerId })));
         trans.Complete();
-        return Task.FromResult(new DispensingPickupResponse(
-            intended.Count(x => x.IsPrepared),
-            intended.Count(x => x.IsAccountablyResolved)));
+        return Task.FromResult(new DispensingPickupResponse(preparedForPickup.Count, resolvedCount));
     }
 }
 
@@ -437,7 +458,6 @@ public class DispensingNoShowHandler : IRequestHandler<DispensingNoShowCmd, Disp
         var so = _salesOrderRepo.LoadEntity(SalesOrderModel.Key(d.SalesOrderId)).GetValueOrThrow("Sales Order not found");
         foreach (var item in d.Items)
             so.AppendUnfulfilled(item.SalesOrderItemNo, item.Qty, UnfulfilledReasonEnum.CollectionWindowExpired, "", request.UserId, DateTime.Now);
-        so.Resolve(SalesOrderResolvedReasonEnum.CollectionWindowExpired);
 
         using var trans = TransHelper.NewScope();
         _repo.SaveChanges(d);

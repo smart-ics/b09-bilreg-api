@@ -32,7 +32,10 @@ public class ApotekController : ControllerBase
 
     [HttpPost("resep-kerja/intake-electronic")]
     public async Task<IActionResult> IntakeElectronic(ResepKerjaIntakeElectronicCmd cmd)
-        => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+    {
+        Response.Headers["X-Release-Gate"] = "prescription-contract-adapter";
+        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+    }
 
     [HttpPost("resep-kerja/intake-physical")]
     public async Task<IActionResult> IntakePhysical(ResepKerjaIntakePhysicalCmd cmd)
@@ -75,9 +78,24 @@ public class ApotekController : ControllerBase
     public async Task<IActionResult> Unfulfilled(SalesOrderAppendUnfulfilledCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
+    [HttpPost("sales-order/decline-purchase")]
+    public async Task<IActionResult> DeclinePurchase(SalesOrderDeclinePurchaseCmd cmd)
+        => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
     [HttpPost("sales-order/coverage")]
     public async Task<IActionResult> Coverage(SalesOrderApplyCoverageCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
+    [HttpPost("sales-order/establish-mixed")]
+    public async Task<IActionResult> EstablishMixedSalesOrder(SalesOrderEstablishMixedCmd cmd)
+    {
+        Response.Headers["X-Release-Gate"] = "PD-09";
+        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+    }
+
+    [HttpGet("sales-order/mixed-coverage")]
+    public async Task<IActionResult> MixedCoverage([FromQuery] string resepKerjaId)
+        => Ok(new JSendOk(await _mediator.Send(new MixedCoverageReadQuery(resepKerjaId))));
 
     [HttpPost("queue/map")]
     public async Task<IActionResult> Map(QueueMapCmd cmd)
@@ -106,6 +124,10 @@ public class ApotekController : ControllerBase
     [HttpPost("invoice/correction")]
     public async Task<IActionResult> InvoiceCorrection(InvoiceRecordCorrectionCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
+    [HttpGet("invoice/correction-status")]
+    public async Task<IActionResult> InvoiceCorrectionStatus([FromQuery] string invoiceId)
+        => Ok(new JSendOk(await _mediator.Send(new InvoiceCorrectionStatusQuery(invoiceId))));
 
     [HttpPost("dispensing/establish")]
     public async Task<IActionResult> DispensingEstablish(DispensingEstablishCmd cmd)
@@ -152,8 +174,14 @@ public class ApotekController : ControllerBase
         => Ok(new JSendOk(await _mediator.Send(new TelaahWorklistQuery())));
 
     [HttpGet("worklist/pelayanan")]
-    public async Task<IActionResult> Pelayanan([FromQuery] string antrianId, [FromQuery] int? noUrut)
-        => Ok(new JSendOk(await _mediator.Send(new PelayananWorklistQuery(antrianId ?? "", noUrut))));
+    public async Task<IActionResult> Pelayanan(
+        [FromQuery] string antrianId,
+        [FromQuery] int? noUrut,
+        [FromQuery] DateOnly? businessDate)
+        => Ok(new JSendOk(await _mediator.Send(new PelayananWorklistQuery(
+            antrianId ?? "",
+            noUrut,
+            businessDate ?? DateOnly.FromDateTime(DateTime.Now)))));
 
     [HttpGet("worklist/dispensing")]
     public async Task<IActionResult> DispensingWorklist()
@@ -174,6 +202,10 @@ public class ApotekController : ControllerBase
     [HttpGet("integration/failures")]
     public async Task<IActionResult> Failures([FromQuery] AptIntegrationFailureQuery query)
         => Ok(new JSendOk(await _mediator.Send(query)));
+
+    [HttpPost("integration/process")]
+    public async Task<IActionResult> Process([FromQuery] int batchSize)
+        => Ok(new JSendOk(await _mediator.Send(new AptIntegrationProcessCmd(AptActor.Require(_user), batchSize))));
 
     [HttpPost("integration/retry")]
     public async Task<IActionResult> Retry(AptIntegrationRetryCmd cmd)

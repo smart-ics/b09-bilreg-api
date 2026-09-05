@@ -16,6 +16,14 @@ public enum InvoiceItemKindEnum
     Bhp = 1
 }
 
+public enum InvoiceCorrectionDispositionEnum
+{
+    DirectRevisionAllowed = 0,
+    ManualTataRekeningCorrectionPending = 1,
+    Correlated = 2,
+    NotApplicable = 3
+}
+
 public interface IInvoiceKey
 {
     string InvoiceId { get; }

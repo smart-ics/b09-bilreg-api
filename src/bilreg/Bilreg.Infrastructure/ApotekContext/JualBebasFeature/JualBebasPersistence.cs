@@ -11,7 +11,8 @@ namespace Bilreg.Infrastructure.ApotekContext.JualBebasFeature;
 
 public record JualBebasDto(
     string JualBebasId, string RegId, string PasienId, string PasienName, string AcceptedBy, DateTime AcceptedAt,
-    int RequestStatus, string CrtUser, DateTime CrtDate, string UpdUser, DateTime UpdDate, string VodUser, DateTime VodDate);
+    int RequestStatus, int Version, string CrtUser, DateTime CrtDate, string UpdUser, DateTime UpdDate,
+    string VodUser, DateTime VodDate);
 
 public record JualBebasItemDto(string JualBebasId, int ItemNo, string BrgId, string BrgName, string SatuanId, decimal Qty, string Signa);
 
@@ -27,15 +28,19 @@ public class JualBebasDal : IJualBebasDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
             INSERT INTO BILRG_AptJualBebas (JualBebasId, RegId, PasienId, PasienName, AcceptedBy, AcceptedAt, RequestStatus,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                Version, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (@JualBebasId, @RegId, @PasienId, @PasienName, @AcceptedBy, @AcceptedAt, @RequestStatus,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+                @Version, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """, model);
     }
     public void Update(JualBebasDto model)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute("UPDATE BILRG_AptJualBebas SET RequestStatus=@RequestStatus, UpdUser=@UpdUser, UpdDate=@UpdDate WHERE JualBebasId=@JualBebasId", model);
+        conn.Execute("""
+            UPDATE BILRG_AptJualBebas SET RequestStatus=@RequestStatus, Version=@Version,
+                UpdUser=@UpdUser, UpdDate=@UpdDate, VodUser=@VodUser, VodDate=@VodDate
+            WHERE JualBebasId=@JualBebasId
+            """, model);
     }
     public JualBebasDto GetData(IJualBebasKey key)
     {
@@ -77,7 +82,8 @@ public class JualBebasRepo : IJualBebasRepo
     public void SaveChanges(JualBebasModel model)
     {
         var dto = new JualBebasDto(model.JualBebasId, model.RegId, model.PasienId, model.PasienName, model.AcceptedBy,
-            model.AcceptedAt, (int)model.RequestStatus, model.AcceptedBy, model.AcceptedAt, "", new DateTime(3000,1,1), "", new DateTime(3000,1,1));
+            model.AcceptedAt, (int)model.RequestStatus, model.Version, model.AcceptedBy, model.AcceptedAt,
+            "", new DateTime(3000, 1, 1), model.DeclinedBy, model.DeclinedAt);
         if (_dal.GetData(model) is null)
         {
             _dal.Insert(dto);
@@ -92,6 +98,8 @@ public class JualBebasRepo : IJualBebasRepo
         var dto = _dal.GetData(key);
         if (dto is null) return MayBe<JualBebasModel>.None;
         var items = _itemDal.ListData(key).Select(x => new JualBebasItemModel(x.ItemNo, x.BrgId, x.BrgName, x.SatuanId, x.Qty, x.Signa));
-        return MayBe.From(JualBebasModel.Rehydrate(dto.JualBebasId, dto.RegId, dto.PasienId, dto.PasienName, dto.AcceptedBy, dto.AcceptedAt, (JualBebasRequestStatusEnum)dto.RequestStatus, items));
+        return MayBe.From(JualBebasModel.Rehydrate(dto.JualBebasId, dto.RegId, dto.PasienId, dto.PasienName,
+            dto.AcceptedBy, dto.AcceptedAt, (JualBebasRequestStatusEnum)dto.RequestStatus, dto.Version,
+            dto.VodUser, dto.VodDate, items));
     }
 }

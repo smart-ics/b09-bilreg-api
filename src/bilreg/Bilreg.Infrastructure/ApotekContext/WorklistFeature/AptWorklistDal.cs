@@ -1,10 +1,13 @@
 using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
 using Bilreg.Application.ApotekContext.WorklistFeature;
 using Bilreg.Domain.ApotekContext.DispensingFeature;
+using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
+using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -21,37 +24,94 @@ public class AptWorklistDal : IAptWorklistDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<TelaahWorklistItem>("""
-            SELECT t.TelaahResepId, t.ResepKerjaId, r.PasienName, t.TelaahStatus AS Status, t.StartedAt
-            FROM BILRG_AptTelaahResep t
-            INNER JOIN BILRG_AptResepKerja r ON r.ResepKerjaId = t.ResepKerjaId
-            WHERE t.TelaahStatus IN (0,1) AND t.VodDate = '3000-01-01'
-            ORDER BY t.StartedAt
-            """).ToList();
+            SELECT ISNULL(t.TelaahResepId, '') AS TelaahResepId,
+                   r.ResepKerjaId,
+                   r.PasienName,
+                   ISNULL(t.TelaahStatus, @availableStatus) AS Status,
+                   COALESCE(NULLIF(t.StartedAt, '3000-01-01'), r.CrtDate) AS StartedAt
+            FROM BILRG_AptResepKerja r
+            LEFT JOIN BILRG_AptTelaahResep t
+                ON t.ResepKerjaId = r.ResepKerjaId AND t.VodDate = '3000-01-01'
+            WHERE r.VodDate = '3000-01-01'
+              AND (t.TelaahResepId IS NULL OR t.TelaahStatus IN (@availableStatus, @underReviewStatus))
+            ORDER BY StartedAt
+            """, new
+            {
+                availableStatus = (int)TelaahStatusEnum.Available,
+                underReviewStatus = (int)TelaahStatusEnum.UnderReview
+            }).ToList();
     }
 
-    public IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut)
+    public IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut, DateOnly businessDate)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PelayananWorklistRow>("""
-            SELECT m.AntrianId, m.NoUrut, m.DemandKind, m.DemandId,
+        var filterByQueue = !string.IsNullOrWhiteSpace(antrianId);
+        var sql = filterByQueue ? PelayananByQueueSql : PelayananWaitingSql;
+        return conn.Query<PelayananWorklistRow>(sql, new
+        {
+            antrianId = antrianId ?? "",
+            noUrut,
+            businessDate = businessDate.ToDateTime(TimeOnly.MinValue),
+            servicePointId = ApotekLocationIds.PharmacyServicePointId,
+            waitingStatus = (int)AntrianStatusEnum.Waiting,
+            resepDemand = (int)QueueDemandKindEnum.ResepKerja,
+            jualBebasDemand = (int)QueueDemandKindEnum.JualBebas
+        }).Select(MapPelayanan).ToList();
+    }
+
+    private const string PelayananDemandJoinSql = """
+            LEFT JOIN BILRG_AptQueueMapping m ON m.AntrianId = e.AntrianId AND m.NoUrut = e.NoUrut
+            LEFT JOIN BILRG_AptResepKerja r ON m.DemandKind = @resepDemand AND r.ResepKerjaId = m.DemandId AND r.VodDate = '3000-01-01'
+            LEFT JOIN BILRG_AptJualBebas j ON m.DemandKind = @jualBebasDemand AND j.JualBebasId = m.DemandId AND j.VodDate = '3000-01-01'
+            LEFT JOIN BILRG_AptSalesOrder s
+                ON m.DemandId IS NOT NULL
+               AND s.SourceId = m.DemandId
+               AND s.SourceKind = m.DemandKind
+               AND s.VodDate = '3000-01-01'
+            LEFT JOIN BILRG_AptInvoice i ON i.SalesOrderId = s.SalesOrderId AND i.VodDate = '3000-01-01'
+        """;
+
+    private readonly string PelayananWaitingSql = $"""
+            SELECT e.AntrianId, e.NoUrut,
+                   ISNULL(m.DemandKind, @resepDemand) AS DemandKind,
+                   ISNULL(m.DemandId, '') AS DemandId,
                    COALESCE(r.PasienName, j.PasienName, '') AS PasienName,
                    ISNULL(s.SalesOrderId, '') AS SalesOrderId,
                    ISNULL(s.PayerPath, 0) AS PayerPath,
                    ISNULL(i.InvoiceId, '') AS InvoiceId,
                    i.InvoiceStatus AS InvoiceStatus
-            FROM BILRG_AptQueueMapping m
-            LEFT JOIN BILRG_AptResepKerja r ON m.DemandKind = 0 AND r.ResepKerjaId = m.DemandId
-            LEFT JOIN BILRG_AptJualBebas j ON m.DemandKind = 1 AND j.JualBebasId = m.DemandId
-            LEFT JOIN BILRG_AptSalesOrder s ON s.SourceId = m.DemandId AND s.SourceKind = m.DemandKind AND s.VodDate = '3000-01-01'
+            FROM BILRG_Antrian q
+            INNER JOIN BILRG_AntrianEntry e ON e.AntrianId = q.AntrianId
+            {PelayananDemandJoinSql}
+            WHERE q.ServicePointCode = @servicePointId
+              AND q.AntrianDate = @businessDate
+              AND e.AntrianStatus = @waitingStatus
+            ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut, m.DemandKind, m.DemandId
+            """;
+
+    private readonly string PelayananByQueueSql = $"""
+            SELECT e.AntrianId, e.NoUrut,
+                   m.DemandKind,
+                   m.DemandId,
+                   COALESCE(r.PasienName, j.PasienName, '') AS PasienName,
+                   ISNULL(s.SalesOrderId, '') AS SalesOrderId,
+                   ISNULL(s.PayerPath, 0) AS PayerPath,
+                   ISNULL(i.InvoiceId, '') AS InvoiceId,
+                   i.InvoiceStatus AS InvoiceStatus
+            FROM BILRG_Antrian q
+            INNER JOIN BILRG_AntrianEntry e ON e.AntrianId = q.AntrianId
+            INNER JOIN BILRG_AptQueueMapping m ON m.AntrianId = e.AntrianId AND m.NoUrut = e.NoUrut
+            LEFT JOIN BILRG_AptResepKerja r ON m.DemandKind = @resepDemand AND r.ResepKerjaId = m.DemandId AND r.VodDate = '3000-01-01'
+            LEFT JOIN BILRG_AptJualBebas j ON m.DemandKind = @jualBebasDemand AND j.JualBebasId = m.DemandId AND j.VodDate = '3000-01-01'
+            LEFT JOIN BILRG_AptSalesOrder s
+                ON s.SourceId = m.DemandId AND s.SourceKind = m.DemandKind AND s.VodDate = '3000-01-01'
             LEFT JOIN BILRG_AptInvoice i ON i.SalesOrderId = s.SalesOrderId AND i.VodDate = '3000-01-01'
-            WHERE (@antrianId = '' OR m.AntrianId = @antrianId)
-              AND (@noUrut IS NULL OR m.NoUrut = @noUrut)
-            """, new { antrianId = antrianId ?? "", noUrut }).Select(x => new PelayananWorklistItem(
-                x.AntrianId, x.NoUrut, (QueueDemandKindEnum)x.DemandKind, x.DemandId, x.PasienName, x.SalesOrderId,
-                (PayerPathEnum)x.PayerPath, x.InvoiceId,
-                x.InvoiceStatus is null ? null : (InvoiceStatusEnum)x.InvoiceStatus,
-                AttentionLabel(x))).ToList();
-    }
+            WHERE q.ServicePointCode = @servicePointId
+              AND q.AntrianDate = @businessDate
+              AND e.AntrianId = @antrianId
+              AND (@noUrut IS NULL OR e.NoUrut = @noUrut)
+            ORDER BY m.DemandKind, m.DemandId
+            """;
 
     public IReadOnlyList<DispensingWorklistItem> ListDispensing()
     {
@@ -59,8 +119,12 @@ public class AptWorklistDal : IAptWorklistDal
         return conn.Query<DispensingWorklistItem>("""
             SELECT DispensingId, SalesOrderId, DispensingStatus AS Status, PreparationStartedAt
             FROM BILRG_AptDispensing
-            WHERE DispensingStatus IN (2,3) AND VodDate = '3000-01-01'
-            """).ToList();
+            WHERE DispensingStatus IN (@releasedStatus, @preparingStatus) AND VodDate = '3000-01-01'
+            """, new
+        {
+            releasedStatus = (int)DispensingStatusEnum.Released,
+            preparingStatus = (int)DispensingStatusEnum.Preparing
+        }).ToList();
     }
 
     public IReadOnlyList<SerahWorklistItem> ListSerah(DateTime asOf, int collectionWindowDays)
@@ -69,9 +133,27 @@ public class AptWorklistDal : IAptWorklistDal
         var rows = conn.Query<SerahRow>("""
             SELECT DispensingId, SalesOrderId, DispensingStatus, PreparedAt, PickupCalledAt, EducationAt, HandoverAt, OverrideAt
             FROM BILRG_AptDispensing
-            WHERE DispensingStatus IN (4,5,7) AND VodDate = '3000-01-01'
-            """).ToList();
-        return rows.Select(x => new SerahWorklistItem(x.DispensingId, x.SalesOrderId, Category(x, asOf, collectionWindowDays), x.PreparedAt, x.PickupCalledAt)).ToList();
+            WHERE DispensingStatus IN (@preparedStatus, @completedStatus, @expiredStatus) AND VodDate = '3000-01-01'
+            """, new
+        {
+            preparedStatus = (int)DispensingStatusEnum.Prepared,
+            completedStatus = (int)DispensingStatusEnum.Completed,
+            expiredStatus = (int)DispensingStatusEnum.Expired
+        }).ToList();
+        return rows.Select(x => new SerahWorklistItem(
+            x.DispensingId,
+            x.SalesOrderId,
+            SerahWorklistProjection.ComputeCategory(
+                (DispensingStatusEnum)x.DispensingStatus,
+                x.PreparedAt,
+                x.PickupCalledAt,
+                x.EducationAt,
+                x.HandoverAt,
+                x.OverrideAt,
+                asOf,
+                collectionWindowDays),
+            x.PreparedAt,
+            x.PickupCalledAt)).ToList();
     }
 
     public JourneyResponse LoadJourney(string antrianId, int noUrut)
@@ -80,22 +162,65 @@ public class AptWorklistDal : IAptWorklistDal
         var maps = conn.Query<QueueMappingDtoLite>(
             "SELECT DemandKind, DemandId FROM BILRG_AptQueueMapping WHERE AntrianId=@antrianId AND NoUrut=@noUrut",
             new { antrianId, noUrut }).ToList();
-        var pending = conn.Query<string>("""
-            SELECT SourceId FROM BILRG_AptIntegrationTask
-            WHERE TaskStatus IN (0,2,4)
-            """).ToList();
+        var openTasks = conn.Query<JourneyTaskRow>("""
+            SELECT IntegrationTaskId, SourceId, TaskStatus, LastError
+            FROM BILRG_AptIntegrationTask
+            WHERE TaskStatus IN (@pending, @processing, @failed, @dead)
+            """, new
+        {
+            pending = (int)AptIntegrationTaskStatusEnum.Pending,
+            processing = (int)AptIntegrationTaskStatusEnum.Processing,
+            failed = (int)AptIntegrationTaskStatusEnum.Failed,
+            dead = (int)AptIntegrationTaskStatusEnum.Dead
+        }).ToList();
         var demands = new List<JourneyDemand>();
         foreach (var map in maps)
         {
-            var orders = conn.Query<string>(
-                "SELECT SalesOrderId FROM BILRG_AptSalesOrder WHERE SourceKind=@kind AND SourceId=@id AND VodDate='3000-01-01'",
+            string telaahResepId = "";
+            TelaahStatusEnum? telaahStatus = null;
+            if (map.DemandKind == (int)QueueDemandKindEnum.ResepKerja)
+            {
+                var telaah = conn.QueryFirstOrDefault<TelaahLite>(
+                    "SELECT TelaahResepId, TelaahStatus FROM BILRG_AptTelaahResep WHERE ResepKerjaId=@id AND VodDate='3000-01-01'",
+                    new { id = map.DemandId });
+                if (telaah is not null)
+                {
+                    telaahResepId = telaah.TelaahResepId;
+                    telaahStatus = (TelaahStatusEnum)telaah.TelaahStatus;
+                }
+            }
+
+            var orderRows = conn.Query<SalesOrderLite>(
+                "SELECT SalesOrderId, PayerPath FROM BILRG_AptSalesOrder WHERE SourceKind=@kind AND SourceId=@id AND VodDate='3000-01-01'",
                 new { kind = map.DemandKind, id = map.DemandId }).ToList();
-            var invoices = orders.Count == 0 ? [] : conn.Query<string>(
-                "SELECT InvoiceId FROM BILRG_AptInvoice WHERE SalesOrderId IN @orders", new { orders }).ToList();
-            var dispensings = orders.Count == 0 ? [] : conn.Query<string>(
-                "SELECT DispensingId FROM BILRG_AptDispensing WHERE SalesOrderId IN @orders", new { orders }).ToList();
-            demands.Add(new JourneyDemand((QueueDemandKindEnum)map.DemandKind, map.DemandId, orders, invoices, dispensings,
-                pending.Where(p => orders.Contains(p) || invoices.Contains(p) || dispensings.Contains(p) || p == map.DemandId).ToList()));
+            var salesOrders = orderRows
+                .Select(x => new JourneySalesOrderRef(x.SalesOrderId, (PayerPathEnum)x.PayerPath))
+                .ToList();
+            var orderIds = orderRows.Select(x => x.SalesOrderId).ToList();
+            var invoices = orderIds.Count == 0 ? [] : conn.Query<string>(
+                "SELECT InvoiceId FROM BILRG_AptInvoice WHERE SalesOrderId IN @orders AND VodDate='3000-01-01'", new { orders = orderIds }).ToList();
+            var dispensings = orderIds.Count == 0 ? [] : conn.Query<string>(
+                "SELECT DispensingId FROM BILRG_AptDispensing WHERE SalesOrderId IN @orders AND VodDate='3000-01-01'", new { orders = orderIds }).ToList();
+            var relatedIds = new HashSet<string>([map.DemandId]);
+            foreach (var id in orderIds) relatedIds.Add(id);
+            foreach (var id in invoices) relatedIds.Add(id);
+            foreach (var id in dispensings) relatedIds.Add(id);
+            var integrationTasks = openTasks
+                .Where(t => relatedIds.Contains(t.SourceId))
+                .Select(t => new JourneyIntegrationTaskRef(
+                    t.IntegrationTaskId,
+                    (AptIntegrationTaskStatusEnum)t.TaskStatus,
+                    t.LastError))
+                .ToList();
+            demands.Add(new JourneyDemand(
+                (QueueDemandKindEnum)map.DemandKind,
+                map.DemandId,
+                telaahResepId,
+                telaahStatus,
+                salesOrders,
+                invoices,
+                dispensings,
+                integrationTasks));
         }
         return new JourneyResponse(antrianId, noUrut, demands);
     }
@@ -104,31 +229,45 @@ public class AptWorklistDal : IAptWorklistDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var apt = conn.Query<UnifiedSalesReportItem>("""
-            SELECT 'APT' AS SourceKind, InvoiceId AS DocumentId, EstablishedAt AS DocumentDate,
-                   '' AS PasienName, GrandTotal
-            FROM BILRG_AptInvoice
-            WHERE EstablishedAt >= @date1 AND EstablishedAt < @date2 AND VodDate = '3000-01-01'
+            SELECT 'APT' AS SourceKind, i.InvoiceId AS DocumentId, i.EstablishedAt AS DocumentDate,
+                   ISNULL(s.PasienName, '') AS PasienName, i.GrandTotal
+            FROM BILRG_AptInvoice i
+            LEFT JOIN BILRG_AptSalesOrder s
+                ON s.SalesOrderId = i.SalesOrderId AND s.VodDate = '3000-01-01'
+            WHERE i.EstablishedAt >= @date1 AND i.EstablishedAt < @date2 AND i.VodDate = '3000-01-01'
             """, new { date1, date2 }).ToList();
         var du = conn.Query<UnifiedSalesReportItem>("""
-            SELECT 'DU' AS SourceKind, fs_kd_trs AS DocumentId, fd_tgl_trs AS DocumentDate,
-                   ISNULL(fs_nm_pasien,'') AS PasienName, ISNULL(fn_grandtotal,0) AS GrandTotal
+            SELECT 'DU' AS SourceKind, fs_kd_trs AS DocumentId,
+                   CONVERT(DATETIME, fd_tgl_trs, 112) AS DocumentDate,
+                   ISNULL(fs_nm_pasien,'') AS PasienName, ISNULL(fn_grand_total,0) AS GrandTotal
             FROM tb_trs_dobill_umum
-            WHERE fd_tgl_trs >= @date1 AND fd_tgl_trs < @date2
+            WHERE CONVERT(DATETIME, fd_tgl_trs, 112) >= @date1
+              AND CONVERT(DATETIME, fd_tgl_trs, 112) < @date2
+              AND (fd_tgl_void = '' OR fd_tgl_void = '3000-01-01')
             """, new { date1, date2 }).ToList();
         return apt.Concat(du).ToList();
     }
 
-    private static string AttentionLabel(PelayananWorklistRow row)
-        => string.IsNullOrWhiteSpace(row.SalesOrderId) ? "NeedSalesOrder" : row.InvoiceStatus is null ? "NeedInvoiceOrCoverage" : "";
+    private PelayananWorklistItem MapPelayanan(PelayananWorklistRow row)
+        => new(
+            row.AntrianId,
+            row.NoUrut,
+            (QueueDemandKindEnum)row.DemandKind,
+            row.DemandId,
+            row.PasienName,
+            row.SalesOrderId,
+            (PayerPathEnum)row.PayerPath,
+            row.InvoiceId,
+            row.InvoiceStatus is null ? null : (InvoiceStatusEnum)row.InvoiceStatus,
+            AttentionLabel(row));
 
-    private static string Category(SerahRow x, DateTime asOf, int days)
+    private static string AttentionLabel(PelayananWorklistRow row)
     {
-        if (x.DispensingStatus == (int)DispensingStatusEnum.Completed) return "Completed";
-        if (x.HandoverAt < new DateTime(2999, 1, 1)) return "Completed";
-        if (x.EducationAt < new DateTime(2999, 1, 1) && x.PickupCalledAt < new DateTime(2999, 1, 1)) return "ReadyForHandover";
-        if (x.PickupCalledAt < new DateTime(2999, 1, 1)) return "ReadyForReview";
-        if (x.OverrideAt >= new DateTime(2999, 1, 1) && asOf > x.PreparedAt.AddDays(days)) return "PickupExpired";
-        return "ReadyForPickup";
+        if (string.IsNullOrWhiteSpace(row.DemandId))
+            return "NeedMapping";
+        if (string.IsNullOrWhiteSpace(row.SalesOrderId))
+            return "NeedSalesOrder";
+        return row.InvoiceStatus is null ? "NeedInvoiceOrCoverage" : "";
     }
 
     private sealed record PelayananWorklistRow(
@@ -136,6 +275,9 @@ public class AptWorklistDal : IAptWorklistDal
         string InvoiceId, int? InvoiceStatus);
     private sealed record SerahRow(string DispensingId, string SalesOrderId, int DispensingStatus, DateTime PreparedAt, DateTime PickupCalledAt, DateTime EducationAt, DateTime HandoverAt, DateTime OverrideAt);
     private sealed record QueueMappingDtoLite(int DemandKind, string DemandId);
+    private sealed record TelaahLite(string TelaahResepId, int TelaahStatus);
+    private sealed record SalesOrderLite(string SalesOrderId, int PayerPath);
+    private sealed record JourneyTaskRow(string IntegrationTaskId, string SourceId, int TaskStatus, string LastError);
 }
 
 public class AptIntegrationOpsDal : IAptIntegrationOpsDal
@@ -146,14 +288,22 @@ public class AptIntegrationOpsDal : IAptIntegrationOpsDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<AptIntegrationFailureItem>("""
-            SELECT IntegrationTaskId, TaskType, SourceId, TaskStatus AS Status, LastError, RetryCount
+            SELECT IntegrationTaskId, TaskType, SourceKind, SourceId, TaskStatus AS Status,
+                   LastError, CorrelationId, RetryCount
             FROM BILRG_AptIntegrationTask
             WHERE (@TaskType IS NULL OR TaskType = @TaskType)
               AND (@SourceKind IS NULL OR SourceKind = @SourceKind)
               AND (@Status IS NULL OR TaskStatus = @Status)
+              AND (@LastErrorContains IS NULL OR LastError LIKE '%' + @LastErrorContains + '%')
             ORDER BY CrtDate DESC
-            """, new { TaskType = filter.TaskType is null ? (int?)null : (int)filter.TaskType,
+            """, new
+            {
+                TaskType = filter.TaskType is null ? (int?)null : (int)filter.TaskType,
                 SourceKind = filter.SourceKind is null ? (int?)null : (int)filter.SourceKind,
-                Status = filter.Status is null ? (int?)null : (int)filter.Status }).ToList();
+                Status = filter.Status is null ? (int?)null : (int)filter.Status,
+                LastErrorContains = string.IsNullOrWhiteSpace(filter.LastErrorContains)
+                    ? null
+                    : filter.LastErrorContains.Trim()
+            }).ToList();
     }
 }
