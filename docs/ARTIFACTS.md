@@ -146,6 +146,13 @@
 | `docs/contexts/admisi-rajal/reg-deep-search-feature-id.md` | Fitur Reg Deep Search |
 | `docs/contexts/admisi-rajal/reg-deep-search-feature.md` | Reg Deep Search Feature |
 
+### Pasien Digital Sign (`docs/contexts/pasien-digital-sign/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/pasien-digital-sign/pasien-digital-sign-resolve.md` | Pasien Digital Sign — Signer Resolve (MyHospital/Bilreg BFF) |
+| `docs/contexts/pasien-digital-sign/pasien-digital-sign-implementation-report.md` | Pasien Digital Sign — Implementation Report |
+
 ### Stock Ledger (`docs/contexts/stok-ledger/`)
 
 | Path | Purpose |
