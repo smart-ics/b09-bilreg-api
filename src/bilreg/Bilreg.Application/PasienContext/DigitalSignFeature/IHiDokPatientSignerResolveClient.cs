@@ -19,6 +19,7 @@ public enum HiDokPatientSignerResolveStatus
 {
     Success,
     NotFound,
+    NotVerified,
     ProvisionFailed,
     Unauthorized,
     Error
