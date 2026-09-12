@@ -18,26 +18,26 @@ Sinkronisasi identitas pasien untuk Digital Sign diimplementasikan sebagai **ide
 | `HospitalApiKeyVerifier` | verifikasi `X-Api-Key` dengan perbandingan constant-time (`FixedTimeEquals`) |
 | `DigitalSignHospitalController` | `GET api/digital-sign/patient-signers/resolve` `[AllowAnonymous]` + `X-Api-Key`; mapping 200/400/401/404/502/500 (JSend) |
 | Konfigurasi | `Web.config` → `AppSettings["BilregApiKey"]`; registrasi DI di `WebApiConfig.cs` |
-| Test | `ResolvePatientSignerHandlerTest`, `HospitalApiKeyVerifierTest`, `DigitalSignHospitalControllerTest` — 20 kasus, lulus semua |
+| Test | `ResolvePatientSignerHandlerTest`, `HospitalApiKeyVerifierTest`, `DigitalSignHospitalControllerTest` — 23 kasus, lulus semua |
 
 ### MyHospital/Bilreg (BFF)
 | Asset | Detail |
 |---|---|
 | Port | `IHiDokPatientSignerResolveClient` (`INunaService<Response, Request>`) + enum status + records |
-| Query | `ResolvePatientSignerQuery` (MediatR), `hospitalId` dari `IGetKodeRsService.Execute()` |
+| Query | `ResolvePatientSignerQuery` (MediatR), `hospitalId` dari `IGetProjectIdService.Execute()` (param `RS__XXXXXX_PROJECT_ID_`); untuk status gagal (404/428/502) melampirkan data sosial pasien via `IPasienRepo.LoadEntity` (`fs_mr = mr`) |
 | Client | `HiDokPatientSignerResolveClient` (RestSharp, header `X-Api-Key`, parse JSend, cache sukses 30 menit) |
-| Controller | `DigitalSignController` → `GET /api/digital-sign/patient-signers/resolve?mr={NoMR}`; Ok/404/502 JSend |
+| Controller | `DigitalSignController` → `GET /api/digital-sign/patient-signers/resolve?mr={NoMR}`; success `JSendOk`; 404/428/502 `JSendModel` `data = { message, patient? }` (patient nested, key PascalCase) |
 | Config | `HiDok:BaseApiUrl`, `HiDok:ApiKey` di `appsettings*.json` |
-| Test | `HiDokPatientSignerResolveClientTest` — 6 kasus (WireMock): sukses+header, 404, 502, 401, 500, cache |
+| Test | `HiDokPatientSignerResolveClientTest` — 8 kasus (WireMock): sukses+header, 404, 428 NotVerified, 502, 401, 500, cache, no-cache-for-NotVerified; `ResolvePatientSignerQueryHandlerTest` — 6 kasus; `DigitalSignControllerTest` — 5 kasus |
 
 ## 3. Verifikasi
 
 | Check | Hasil |
 |---|---|
 | `dotnet build` Bilreg (Bilreg.Api) | Sukses (hanya warning pre-existing) |
-| `dotnet test` → `HiDokPatientSignerResolveClientTest` | 6/6 lulus |
+| `dotnet test` → DigitalSign (Bilreg.Test) | 19/19 lulus (8 client + 6 handler + 5 controller) |
 | HiDok `BackEnd` build | Sukses |
-| HiDok `BackEnd.Test` + `WebApi` (VS MSBuild 18) | Sukses; 20/20 test resolve lulus |
+| HiDok `BackEnd.Test` + `WebApi` (VS MSBuild 18) | Sukses; 23/23 test DigitalSign (resolve/controller/key verifier) lulus |
 
 ## 4. Konfigurasi produksi (wajib)
 
@@ -56,3 +56,26 @@ Sinkronisasi identitas pasien untuk Digital Sign diimplementasikan sebagai **ide
 - `docs/contexts/pasien-digital-sign/pasien-digital-sign-resolve.md`
 - `HiDokBackEnd/docs/contexts/pasien-digital-sign/digital-sign-contract-hospital-resolve.md`
 - `HiDokBackEnd/docs/contexts/pasien-digital-sign/digital-sign-architecture.md` — ADR-PDS-016
+
+## 7. Verified-gate implementation (7 September 2026)
+
+| Item | Detail |
+|---|---|
+| Enum | `HiDokPatientSignerResolveStatus.NotVerified` added to `IHiDokPatientSignerResolveClient` |
+| HiDok controller mapping | `DigitalSignHospitalController.cs` maps `NotVerified` → HTTP 428 JSend failed |
+| b09 client mapping | `HiDokPatientSignerResolveClient` maps HTTP 428 → `NotVerified` with Indonesian message: "Pasien belum terverifikasi di RS ini. Silakan verifikasi kartu pasien (scan QR MR) di depan petugas admisi via aplikasi HiDok." |
+| b09 controller mapping | `DigitalSignController` maps `NotVerified` → HTTP 428 JSend failed |
+| Caching | `NotVerified` is **not** cached; only `Success` is cached (TTL 30 min) |
+| Tests | `HiDokPatientSignerResolveClientTest` passes 8/8 (adds 428 NotVerified case and a no-cache-for-NotVerified case) |
+| HiDokBackEnd tests | DigitalSign tests (DigitalSignHospitalControllerTest + ResolvePatientSignerHandlerTest) pass 18/18 |
+
+## 8. Data sosial pasien pada respons error (11 September 2026)
+
+Untuk kesalahan `NotFound`/`NotVerified`/`ProvisionFailed`, BFF menyertakan **data sosial pasien** agar frontend bisa menampilkan konteks pasien:
+
+- Envelope: `data = { message, patient: { UserrID, NoMR, PasienName, Alamat, TglLahir, NoTelp, NoKTP, RSID } }`.
+- `patient` hanya diisi bila pasien lokal (`tc_mr` by `fs_mr = mr`) ditemukan via `IPasienRepo.LoadEntity(PasienModel.Key(mr))`; bila tidak ditemukan, `data = { message }` saja.
+- `NoMR` = `mr` apa adanya (tanpa normalisasi). `RSID` dari `IGetProjectIdService.Execute()` (param `RS__XXXXXX_PROJECT_ID_`). `TglLahir` format `dd-MM-yyyy`. `NoTelp` = kontak **Mobile** dulu, fallback **Phone**; nilai `-`/kosong → `""`. `Alamat` = gabungan baris alamat non-kosong.
+- `UserrID` mengikuti `UserrId` yang dikembalikan HiDok (kosong pada status gagal).
+- Controller: `DigitalSignController.cs` — `404`/`428`/`502` memakai `JSendModel` flat dengan `status=failed`, `code` = HTTP status, `data` nested di atas; key `patient` memakai PascalCase via `ResolvePatientSignerPatientDto`.
+- Tests: `ResolvePatientSignerQueryHandlerTest` (pemetaan untuk 3 status, pasien lokal tidak ditemukan, success tanpa lookup, fallback no-telp) & `DigitalSignControllerTest` (nested envelope, message-only, 428, 502, success) — semua lulus.

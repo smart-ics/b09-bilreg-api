@@ -72,6 +72,11 @@ public class HiDokPatientSignerResolveClient : IHiDokPatientSignerResolveClient
                     HiDokPatientSignerResolveStatus.NotFound,
                     string.Empty, string.Empty, "Pasien Belum Terdaftar Di PenaEl");
 
+            case (HttpStatusCode)428:
+                return new HiDokPatientSignerResolveResponse(
+                    HiDokPatientSignerResolveStatus.NotVerified,
+                    string.Empty, string.Empty, "Pasien belum terverifikasi di RS ini. Silakan verifikasi kartu pasien (scan QR MR) di depan petugas admisi via aplikasi HiDok.");
+
             case HttpStatusCode.BadGateway:
                 return new HiDokPatientSignerResolveResponse(
                     HiDokPatientSignerResolveStatus.ProvisionFailed,

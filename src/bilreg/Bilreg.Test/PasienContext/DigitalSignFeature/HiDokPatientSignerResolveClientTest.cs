@@ -101,7 +101,28 @@ public class HiDokPatientSignerResolveClientTest : IDisposable
     }
 
     [Fact]
-    public void UT03_Given_HiDokReturnsBadGateway_When_ExecuteIsCalled_Then_ShouldReturnProvisionFailed()
+    public void UT03_Given_HiDokReturnsPreconditionRequired_When_ExecuteIsCalled_Then_ShouldReturnNotVerified()
+    {
+        // Arrange
+        _mockServer
+            .Given(WireMock.RequestBuilders.Request.Create()
+                .WithPath("/api/digital-sign/patient-signers/resolve")
+                .UsingGet())
+            .RespondWith(WireMock.ResponseBuilders.Response.Create()
+                .WithStatusCode(428)
+                .WithBody("Precondition Required"));
+
+        // Act
+        var result = _sut.Execute(new HiDokPatientSignerResolveRequest("1000000", "MR-001"));
+
+        // Assert
+        result.Status.Should().Be(HiDokPatientSignerResolveStatus.NotVerified);
+        result.SignerId.Should().BeEmpty();
+        result.ErrorMessage.Should().Contain("terverifikasi");
+    }
+
+    [Fact]
+    public void UT03b_Given_HiDokReturnsBadGateway_When_ExecuteIsCalled_Then_ShouldReturnProvisionFailed()
     {
         // Arrange
         _mockServer
@@ -158,6 +179,31 @@ public class HiDokPatientSignerResolveClientTest : IDisposable
         // Assert
         result.Status.Should().Be(HiDokPatientSignerResolveStatus.Error);
         result.SignerId.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UT07_Given_NotVerifiedWasReturned_When_ExecuteIsCalledAgain_Then_ShouldCallHiDokAgain()
+    {
+        // Arrange
+        _mockServer
+            .Given(WireMock.RequestBuilders.Request.Create()
+                .WithPath("/api/digital-sign/patient-signers/resolve")
+                .UsingGet())
+            .RespondWith(WireMock.ResponseBuilders.Response.Create()
+                .WithStatusCode(428)
+                .WithBody("Precondition Required"));
+
+        var request = new HiDokPatientSignerResolveRequest("1000000", "MR-001");
+
+        // Act
+        var first = _sut.Execute(request);
+        _mockServer.ResetLogEntries();
+        var second = _sut.Execute(request);
+
+        // Assert
+        first.Status.Should().Be(HiDokPatientSignerResolveStatus.NotVerified);
+        second.Status.Should().Be(HiDokPatientSignerResolveStatus.NotVerified);
+        _mockServer.LogEntries.Should().HaveCount(1, "same NotVerified resolve should hit HiDok again");
     }
 
     [Fact]
