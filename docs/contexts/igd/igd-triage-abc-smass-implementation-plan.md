@@ -1,503 +1,1016 @@
-# IGD Triage ABC → SMASS — Implementation Plan
+---
+Title: IGD Triage ABC to SMASS Implementation Plan
+Code: IGD-TRIAGE-ABC-SMASS
+Artifact: IMPLEMENTATION-PLAN
+Version: 1.0
+LastUpdated: 2026-09-19
+Status: NOT-STARTED
+Execution Approval: PENDING
+---
 
-> **Document status:** PLANNING (implementation plan only — no implementation in this document)
-> **Date:** 2026-09-17
-> **Canonical location:** `docs/contexts/igd/igd-triage-abc-smass-implementation-plan.md`
-> **Planning authority:** Architecture (`docs/contexts/igd/igd-triage-abc-smass-architecture.md`)
-> **Source of truth for decisions:** `docs/contexts/igd/igd-triage-abc-smass-architecture.md` (D-01…D-15, BR-01…BR-33, AR-01…AR-16)
+# 1. Objective
+
+Implement the approved ARCHITECTURE
+`b09-bilreg-api/docs/contexts/igd/igd-triage-abc-smass-architecture.md` (V2.0):
+every IGD Visit Triage ABC submission (first triage and re-triage) synchronously
+produces one immutable structured medical assessment in SMASS, correlated by
+(`IgdVisitId`, `NoTriage`), created before administrative registration exists,
+and linked to the registration when `AssignRegister` / `ReplaceRegister`
+succeeds.
+
+Referenced artifacts:
+
+- FEATURE: `b09-bilreg-api/docs/contexts/igd/igd-01-context.md` (IGD Visit)
+- DOMAIN: `b09-bilreg-api/docs/contexts/igd/igd-02-domain.md`
+- ARCHITECTURE: `b09-bilreg-api/docs/contexts/igd/igd-triage-abc-smass-architecture.md` (V2.0)
+- FEASIBILITY-ASSESSMENT (READY-FOR-PLANNING):
+  `b09-bilreg-api/docs/contexts/igd/igd-triage-abc-smass-feasibility-assessment.md` (V2.0)
+- IGD Design / API Contract: `b09-bilreg-api/docs/contexts/igd/igd-03-design.md`,
+  `b09-bilreg-api/docs/contexts/igd/igd-04-api-contract.md`
+
+The architecture closes every planning-level input (AR-01…AR-16) and realizes
+approved decisions D-01…D-15. This plan does not re-decide any WHAT; it orders
+the implementation of the approved target state.
 
 ---
 
-## 1. Planning Authority
+# 2. Planning Scope
 
-```text
-ARCHITECTURE
-```
+Target repositories (one repository per slice):
 
-This plan realizes the approved architecture and does **not** introduce, reinterpret, or override any business or architecture decision. Where the architecture closes a planning input with an explicit decision register entry (AR-01…AR-16), that decision is binding and is cited rather than re-decided.
-
----
-
-## 2. Scope Summary
-
-Realize, in software, the approved capability: **every IGD Visit Triage ABC submission (first triage and re-triage) synchronously produces one immutable structured medical assessment in SMASS**, built against a dedicated IGD Triage Paper, correlated by (`IgdVisitId`, `NoTriage`), created before registration exists (`PendingRegistration`), and linked to the administrative registration when `AssignRegister` / `ReplaceRegister` succeeds.
-
-The implementation spans three repositories:
-
-| Repository | Scope |
-|---|---|
-| `b09-bilreg-api` (BILREG, `IgdContext`) | `IgdVisitSmassTask` operational task store, `ISmassAssessmentGateway`, configuration/retry surface, four handler hooks, list/retry/worklist API |
-| `a043_smass_structuredmedicalassesment_api` (SMASS, `AssesmentContext` + `StructureContext`) | Pending-registration creation path, registration-link path, by-visit query, mapping master data, persistence changes, seed data |
-| `c012_myhospital_web` (Web) | `IgdSmassIntegrationPanel` (SCR-03), `TriageHistoryPanel` badge (SCR-02), hooks/types/query-keys |
-
-All work is **additive**; `IgdVisitVoidCmd`, `CreateFixAssesmentCommand`, `AssesmentValidator`, and legacy `SMASS_Assesment` rows are untouched (BR-18, BR-21, BR-22).
-
----
-
-## 3. Impact Inventory
-
-### 3.1 Database
-
-| Component | Kind | Reference |
+| Alias | Repository | Contents in scope |
 |---|---|---|
-| `SMASS_Assesment` | Alter (additive: `IgdVisitId`, `NoTriage`, `RegistrationLinkStatus`; filtered unique index `UX_SMASS_Assesment_IgdVisitTriage`; index `IX_SMASS_Assesment_IgdVisitId`) | §6.2 |
-| `SMASS_TriageConceptMap` | New table + `IX_SMASS_TriageConceptMap_ConceptId` | §6.3 |
-| IGD Triage Paper master data (`SMASS_Paper`, `SMASS_PaperSection`, `SMASS_CustomSection`, `SMASS_CustomSectionConcept`) | New seed data | §6.4 |
-| `IgdTriagePaperDataSeed.sql`, `TriageConceptMapDataSeed.sql` | New seed scripts | §6.5 |
-| `BILRG_IgdVisitSmassTask` | New table + `UX_..._BusinessKey`, `IX_..._Visit`, `IX_..._Status` | §6.1 |
+| SMASS | `a043_smass_structuredmedicalassesment_api` | `SMASS_Assesment` alteration, `SMASS_TriageConceptMap`, IGD Triage Paper + mapping seeds, assessment provenance DAL, generate/link commands, by-visit and pending-registration reads, controller actions |
+| BILREG | `b09-bilreg-api` | `BILRG_IgdVisitSmassTask` table, task domain/model/repo, SMASS gateway + token service + options, four handler hooks, retry/process commands, task queries, task controller |
+| WEB | `c012_myhospital_web` | Emergency contracts/hooks/query keys, SCR-02 SMASS status, SCR-03 SMASS Integration Panel + retry |
 
-### 3.2 Backend
+In scope (architecture sections realized):
 
-| Component | Kind | Reference |
-|---|---|---|
-| SMASS `AssesmentModel` | Extend (3 fields, `IIgdVisitKey`, INV-A1…A6) | §5.2 |
-| SMASS `RegistrationLinkStatusEnum`, `IIgdVisitKey` | New value object / enum | §5.2 |
-| SMASS `TriageConceptMapModel`, `ITriageConceptMapKey` | New aggregate | §5.3 |
-| SMASS `IAssesmentDal` | Extend (`GetData`, `ListData(IIgdVisitKey)`, `ListPendingRegistration`, quarantine predicate, column projection) | §5.2, AR-11 |
-| SMASS `TriageConceptMapDal` | New DAL | §5.3 |
-| SMASS `GenerateIgdTriageAssesmentCommand` | New command | §7.2 |
-| SMASS `LinkAssesmentByIgdVisitIdCommand` | New command | §7.2 |
-| SMASS `ListAssesmentByIgdVisitIdQuery`, `ListPendingRegistrationAssesmentQuery` | New queries | §7.2 |
-| SMASS `AssesmentController` | Extend (3 endpoints + `[Authorize]`) | §9.2 |
-| BILREG `IgdVisitSmassTaskModel`, `SmassTaskTypeEnum`, `SmassTaskStatusEnum`, `IIgdVisitSmassTaskKey` | New aggregate + enums | §5.1 |
-| BILREG `IgdVisitSmassTaskDal` / `IgdVisitSmassTaskRepo` | New DAL / repo | §5.1 |
-| BILREG `SmassOptions`, `IgdVisitOptions`, `ISmassTokenService` | New configuration + service | §9.1, §10.6 |
-| BILREG `ISmassAssessmentGateway` / `SmassAssessmentGateway` | New port / adapter | §4.1, §8 |
-| BILREG handler hooks (`IgdVisitAssessTriageCmd`, `IgdVisitReAssessTriageCmd`, `IgdVisitAssignRegisterCmd`, `IgdVisitReplaceRegisterCmd`) | Modify (post-commit hook) | §7.1 |
-| BILREG `IgdVisitSmassTaskRetryCmd`, `IgdVisitSmassTaskProcessCmd` | New commands | §7.1 |
-| BILREG `IgdVisitListSmassTaskQuery`, `IgdVisitSmassWorklistQuery` | New queries | §7.1 |
-| BILREG `IgdVisitSmassTaskController` | New controller | §4.1 |
-| BILREG `IgdVisitSmassTaskView`, `IgdVisitAssessTriageResponse` (extended) | New / extended DTO | §7.1, §19.1 |
+- SMASS §5.3, §5.4, §6.5, §8.1–§8.4, §9.1.
+- BILREG §5.2, §6.2–§6.6, §8.1, §8.5–§8.7, §9.1, §9.6.
+- WEB §5.5, §6.5.
 
-### 3.3 Frontend
+Out of scope (architecture §3 Excluded):
 
-| Component | Kind | Reference |
-|---|---|---|
-| `src/modules/Emergency/types/contract.ts` | Extend (Zod schemas: `IgdSmassTaskView`, `AssignTriaseResponse`, `TriageHistoryItem`) | §19, §23 |
-| `src/core/api/queryConfigs.ts` | Extend (`queryKeys.emergency`) | §23 |
-| `src/modules/Emergency/queries/EmergencyService.ts` | Extend (`useIgdSmassTask`, `useRetryIgdSmassTask`) | §17, §23 |
-| `TriageHistoryPanel.vue` (SCR-02) | Modify (SMASS status badge + `AssessmentId`) | §11, §12, §19.3 |
-| `IgdSmassIntegrationPanel.vue` (SCR-03) | New component | §11, §12, §16 |
+- The SMASS-first 30-item form and reverse-direction flow.
+- Rework of unrelated SMASS validation, catalogs, reports, formulas, or existing IGD Papers.
+- Any SMASS clinical display application (`Smass.Winform`, `Smass.Api` are out of scope for screens); the required display fields are exposed as API view models only (§5.5, R-06).
+- Automatic background retry workers, outbox, or async synchronization (D-07).
+- Backfilling `IgdVisitId` into historical assessments (BR-21).
+- New authentication scheme, authorization policy, role, or permission.
 
-### 3.4 Integration
+Planning-level decisions carried into the plan (from architecture §2.3, §4.2, §9.6):
 
-| Component | Kind | Reference |
-|---|---|---|
-| `POST {Smass}/api/Assesment/generateIgdTriage` | BILREG → SMASS outbound | §8.1 |
-| `PATCH {Smass}/api/Assesment/linkIgdVisit` | BILREG → SMASS outbound | §8.2 |
-| `POST {Smass}/Token` (JWT, cached) | BILREG → SMASS auth | §9.1, AR-04 |
-| `GET api/IgdVisitSmassTask/{igdVisitId}`, `GET api/IgdVisitSmassTask/worklist`, `PATCH api/IgdVisitSmassTask/retry` | BILREG read/retry surfaces | §4.1, §8.3 |
-| `GET api/Assesment/igdVisit/{igdVisitId}`, `GET api/Assesment/pendingRegistration` | SMASS read surfaces | §8.3 |
+- `IgdVisit:EnableSmassIntegration` default `false` (AR-01); with the toggle off no task row and no HTTP call are produced.
+- `IgdVisit:SmassLayananId` and `IgdVisit:SmassTriagePaperId` validated at call time; invalid → task Failed without HTTP (AR-02), fail-closed (P-08).
+- SMASS owns mapping master data; revision is a seed-script change only (AR-07).
+- Mapping and deployment order: DB → SMASS application → verify legacy → enable toggle → monitor (§8.6).
+- No `PayloadJson`; retry rebuilds from `BILRG_IgdVisitTriage` (AR-12).
+- No `AuditLog` / `BILRG_IgdVisitEvent` entry for task transitions (AR-16).
+- No screen is added in the SMASS repository; WEB covers BILREG display only (R-06).
 
 ---
 
-## 4. Phases
+# 3. Dependencies
 
-| Phase | Objective | Result |
-|---|---|---|
-| Phase 1 | SMASS Persistence & Master Data | SMASS schema + seed data in place, verifiable in isolation (BR-23 step 1–2) |
-| Phase 2 | SMASS Domain & Application | SMASS generate/link/query surfaces complete and independently testable (BR-23 step 2–3) |
-| Phase 3 | BILREG Persistence & Domain | `IgdVisitSmassTask` aggregate + persistence in place |
-| Phase 4 | BILREG Integration & Application | Gateway, options, handler hooks, retry/worklist API; end-to-end backend slice |
-| Phase 5 | Frontend | SCR-02 badge + SCR-03 panel (display-only; cannot change backend outcomes) |
-| Phase 6 | End-to-End Verification & Rollout | Ordered rollout + rollback verified against BR-23 |
+External dependencies:
 
-Sequencing rationale (from architecture §23): SMASS persistence + master data must exist before the BILREG toggle is enabled; SMASS read/write surfaces must be complete before BILREG records any task row; frontend is last; manual-retry and monitoring are delivered with the first end-to-end slice (Phase 4).
+- SMASS and BILREG run against separate databases (respectively `HOSPITAL_PKL`
+  and `HOSPITAL_HPL` in current configuration). There is no cross-database
+  foreign key or link table (BR-04); integration is HTTP only.
+- SMASS IGD Triage Paper and `SMASS_TriageConceptMap` must be seeded before IGD
+  traffic is enabled (architecture §8.6, §11.3).
+- SMASS new endpoints must be deployed before the BILREG toggle is switched on.
+- BILREG requires `Smass:BaseApiUrl`, `Smass:TokenEmail`, `Smass:TokenPass`,
+  `IgdVisit:SmassLayananId`, `IgdVisit:SmassTriagePaperId` in configuration
+  (§9.6). Missing values degrade the integration to a Failed task, not a
+  startup failure (no `ValidateOnStart`).
+- Reused existing infrastructure: BILREG `IRestClientFactory` (RestSharp),
+  options pattern, Nuna `TransHelper`, `IMemoryCache`, existing Scrutor DI scan;
+  SMASS `AssesmentBuilder`/`AssesmentWriter`, Nuna `TransHelper`, Dawn `Guard`.
 
----
+For slice dependencies:
 
-## 5. Slices
+- `Depends On` declares implementation prerequisites.
+- Dependencies reference Slice IDs only.
+- Dependency satisfaction requires the referenced slice to have implementation
+  status IMPLEMENTED.
+- Dependency satisfaction does not require review status GO.
+- Dependencies must represent real implementation prerequisites.
 
-### Phase 1 — SMASS Persistence & Master Data
-
-#### P1S1 — `SMASS_Assesment` additive alteration
-
-- **Objective:** Add `IgdVisitId`, `NoTriage`, `RegistrationLinkStatus` columns; add filtered unique index `UX_SMASS_Assesment_IgdVisitTriage` and index `IX_SMASS_Assesment_IgdVisitId`.
-- **Dependencies:** None.
-- **Acceptance Criteria:**
-  - `Smass.Db/AssesmentContext/SMASS_Assesment.sql` is altered additively only (`NOT NULL DEFAULT('')` / `DEFAULT(0)`), no drop/rewrite of existing columns.
-  - `UX_SMASS_Assesment_IgdVisitTriage (IgdVisitId, NoTriage) WHERE IgdVisitId <> ''` enforces INV-A4 / BR-07 / BR-11.
-  - `IX_SMASS_Assesment_IgdVisitId (IgdVisitId) INCLUDE (AssesmentId, NoTriage, RegistrationLinkStatus)` exists (D-10).
-  - Existing rows default to `IgdVisitId = ''`, `NoTriage = 0`, `RegistrationLinkStatus = 0` (`Registered`) — no backfill (BR-21).
-- **Review Focus:** Persistence Compliance; Backward Compatibility (BR-22).
-
-#### P1S2 — `SMASS_TriageConceptMap` table
-
-- **Objective:** Create `SMASS_TriageConceptMap` with PK `(TriageFieldCode, TriageValue)` and `IX_SMASS_TriageConceptMap_ConceptId`, registered in `Smass.Db.sqlproj`.
-- **Dependencies:** None.
-- **Acceptance Criteria:**
-  - Table columns match §6.3 exactly; PK enforces INV-M1.
-  - Script registered under `<Build>` ItemGroup (precedent `SMASS_LayananSmf.sql`).
-  - No soft-delete/audit columns (pure master data).
-- **Review Focus:** Persistence Compliance; Master-Data Ownership (D-12).
-
-#### P1S3 — IGD Triage Paper master data seed
-
-- **Objective:** Seed the dedicated IGD Triage Paper (`PP-001-IGDTR`), its `CustomSection` PaperSections, `SMASS_CustomSection`, and `SMASS_CustomSectionConcept` rows.
-- **Dependencies:** None (SMASS master data).
-- **Acceptance Criteria:**
-  - `Smass.Db/DataSeeds/IgdTriagePaperDataSeed.sql` registered `<None>` (precedent `PaperDataSeed.sql`), idempotent (`DELETE` then `INSERT`).
-  - Exactly one new Paper; no existing IGD Paper modified (D-05).
-  - Every concept referenced by §5.3 `TriageFieldCode` mapping is present in the Paper's custom sections.
-- **Review Focus:** Master-Data Compliance (D-05, AR-09).
-
-#### P1S4 — `TriageConceptMapDataSeed.sql` mapping seed
-
-- **Objective:** Seed one `SMASS_TriageConceptMap` row per (`TriageFieldCode`, `TriageValue`) from §5.3, using `ConceptId` from existing `SMASS_Concept` seeds.
-- **Dependencies:** P1S2, P1S3.
-- **Acceptance Criteria:**
-  - Covers all ten `TriageFieldCode` domains (AIRWAYS, BREATHING, CIRCULATION, GCS_EYE/MOTOR/VOICE/TOTAL, ATS_LEVEL, TRIAGE_COLOR incl. `BLACK`, MANUAL_OVERRIDE_BLACK).
-  - Idempotent (`DELETE` then `INSERT`), registered `<None>` (precedent `PreferenceDataSeed.sql`).
-  - Every `ConceptId` resolves to an existing `SMASS_Concept`; values derived from existing concept/preference seeds (D-03, D-12).
-- **Review Focus:** Mapping Master-Data Compliance (BR-24, BR-25, BR-26, AR-07).
+Planning note (documentation, not a code prerequisite): the README
+`b09-bilreg-api/AGENTS.md` and `docs/ARTIFACTS.md` conventions apply to any
+documentation touched inside `b09-bilreg-api`.
 
 ---
 
-### Phase 2 — SMASS Domain & Application
+# 4. Progress Summary
 
-#### P2S1 — `AssesmentModel` extension + `RegistrationLinkStatusEnum` + `IIgdVisitKey`
+Plan status values are:
 
-- **Objective:** Add `IgdVisitId`, `NoTriage`, `RegistrationLinkStatus` to `AssesmentModel`; add `IIgdVisitKey`; add `RegistrationLinkStatusEnum`; encode INV-A1…A6.
-- **Dependencies:** None (domain only).
-- **Acceptance Criteria:**
-  - `RegistrationLinkStatusEnum { Registered = 0, PendingRegistration = 1 }` in `Smass.Domain/AssesmentContext/AssesmentAgg/RegistrationLinkStatus.cs`.
-  - `IIgdVisitKey { string IgdVisitId }` in `Smass.Domain/ExternalContext/IgdVisitAgg/IIgdVisitKey.cs`.
-  - INV-A1…A6 hold (pending ⇒ `IgdVisitId` non-empty and `RegId`/`PasienId`/names empty; `AggStateEnum` never written by feature).
-  - Domain tests cover INV-A1…A6.
-- **Review Focus:** Architecture Compliance; Domain Invariant Compliance (BR-01, BR-02, BR-06, BR-13, BR-14).
+- NOT-STARTED
+- IN-PROGRESS
+- BLOCKED
+- COMPLETED
 
-#### P2S2 — `TriageConceptMapModel` + `IAssesmentDal` extension + `TriageConceptMapDal`
+Execution Approval values are:
 
-- **Objective:** Add `TriageConceptMapModel`/`ITriageConceptMapKey`; extend `IAssesmentDal` with `GetData(IIgdVisitKey,int)`, `ListData(IIgdVisitKey)`, `ListPendingRegistration()`, column projection; add quarantine predicate to `ListData(IRegKey)`/`ListData(IPasienKey)`; add `TriageConceptMapDal`.
-- **Dependencies:** P2S1, P1S1, P1S2.
-- **Acceptance Criteria:**
-  - `AssesmentDal.SelectClause()`/`Insert`/`Update` include the three new columns.
-  - Quarantine predicate `RegistrationLinkStatus = 0` is applied inside `ListData(IRegKey)`/`ListData(IPasienKey)` — not per-query (AR-11).
-  - `TriageConceptMapDal` exposes `ListData()` loading the full small table (read-only usage).
-  - INV-M2 (concept exists) and INV-M3 (closed `TriageFieldCode` set) are enforced at generation time, not seed.
-- **Review Focus:** Persistence Compliance; Quarantine Compliance (BR-05, BR-19, BR-20, AR-11).
+- PENDING
+- APPROVED
 
-#### P2S3 — `GenerateIgdTriageAssesmentCommand`
+Execution Approval is owned by the Architect. It is PENDING during Planning and
+set to APPROVED when the plan is released for execution. Execution must not begin
+while Execution Approval is PENDING.
 
-- **Objective:** Implement `POST api/Assesment/generateIgdTriage` per the §7.2 normative algorithm.
-- **Dependencies:** P2S1, P2S2, P1S3, P1S4.
-- **Acceptance Criteria:**
-  - Guard validates all request fields; `NoTriage > 0`; date/time formats.
-  - Idempotency: pre-check by (`IgdVisitId`, `NoTriage`) returns existing `AssesmentId` without mutation (BR-07, BR-11).
-  - Resolves all ten mapping pairs (including computed `GCS_TOTAL`); any unresolved pair or unmapped concept → `ArgumentException` (AR-08, fail closed).
-  - Bypasses `IGetRegService`/`IGetLayananService` (AR-10), date-window validation (AR-08); sets `RegId = PasienId = PasienName = ''`; `RegistrationLinkStatus = PendingRegistration`.
-  - Persists via existing `AssesmentWriter` (owns `TransHelper.NewScope()`); never calls `Finish()`; publishes no event (AR-13, AR-14).
-  - Handler tests cover: success build, idempotent return, fail-closed on missing mapping, fail-closed on Paper absent.
-- **Review Focus:** Architecture Compliance; Idempotency Compliance; Fail-Closed Compliance (AR-08); Workflow Compliance (WF-01/02).
+COMPLETED is a plan-level status only. Set it only when every slice has
+implementation status IMPLEMENTED and review status GO.
 
-#### P2S4 — `LinkAssesmentByIgdVisitIdCommand`
+Testing and test-package creation must not begin until the plan is COMPLETED.
+An individual slice with review status GO is not a testing entry condition.
 
-- **Objective:** Implement `PATCH api/Assesment/linkIgdVisit` per §7.2.
-- **Dependencies:** P2S2, P2S1.
-- **Acceptance Criteria:**
-  - Guard requires all six fields non-empty.
-  - Selects **all** assessments by `IgdVisitId` (pending + registered) — satisfies BR-15, BR-17, idempotent (AR-15).
-  - Empty list → `LinkedCount = 0` (success, nothing to link).
-  - Per-assessment `TransHelper.NewScope()`; sets `RegId`, `PasienId`, `PasienName`, `LayananId`, `LayananName`, `RegistrationLinkStatus = Registered`; never touches `AssesmentState`/sections/concepts (BR-13, BR-14).
-  - Partial failure persists; command throws after loop (BR-16); no event publish (AR-14).
-  - No `IGetRegService`/`IGetLayananService` call (AR-10).
-- **Review Focus:** Architecture Compliance; All-or-Nothing Key Population (BR-02, BR-09); Idempotency (D-09).
-
-#### P2S5 — `ListAssesmentByIgdVisitIdQuery` + `ListPendingRegistrationAssesmentQuery` + view models
-
-- **Objective:** Implement `GET api/Assesment/igdVisit/{igdVisitId}` and `GET api/Assesment/pendingRegistration` with `AssesmentIgdView`/`PendingRegistrationView` projections (§19.4, §19.5).
-- **Dependencies:** P2S2, P2S1.
-- **Acceptance Criteria:**
-  - By-visit query returns every assessment (pending + registered) with `RegistrationLinkStatus`, backed by `IX_SMASS_Assesment_IgdVisitId`.
-  - Pending query returns `PendingRegistration` rows oldest-first (BR-33); read-only; no delete/purge/archive action (BR-31).
-  - View models include `registrationLinkStatusLabel`, `sourceLabel = "Generated From IGD Triage"` when `IgdVisitId` non-empty (D-14).
-  - By-visit query is the **only** surface that can return a pending row (BR-19).
-- **Review Focus:** Quarantine Compliance (BR-19); Monitoring Surface (D-15, BR-33); View-Model Compliance.
-
-#### P2S6 — `AssesmentController` actions + `[Authorize]`
-
-- **Objective:** Wire the three new endpoints on `AssesmentController` with `[Authorize]` (bare).
-- **Dependencies:** P2S3, P2S4, P2S5.
-- **Acceptance Criteria:**
-  - `POST generateIgdTriage`, `PATCH linkIgdVisit`, `GET igdVisit/{igdVisitId}`, `GET pendingRegistration` routed 1:1 to their use cases.
-  - `[Authorize]` present on the three new endpoints only; existing SMASS actions keep current behaviour (BR-22).
-  - `JSend` responses per SMASS convention.
-- **Review Focus:** Security Compliance (AR-05); API Contract Compliance.
+| Phase | Implementation Status | Review Status | Progress |
+|---|---|---|---|
+| P1 — SMASS Persistence and Master Data | NOT-STARTED | NOT-REVIEWED | 0/4 |
+| P2 — SMASS Application | NOT-STARTED | NOT-REVIEWED | 0/4 |
+| P3 — BILREG Persistence | NOT-STARTED | NOT-REVIEWED | 0/2 |
+| P4 — BILREG Integration | NOT-STARTED | NOT-REVIEWED | 0/5 |
+| P5 — Web Client | NOT-STARTED | NOT-REVIEWED | 0/3 |
 
 ---
 
-### Phase 3 — BILREG Persistence & Domain
+# 5. Phases
 
-#### P3S1 — `BILRG_IgdVisitSmassTask` table
+## P1 - SMASS Persistence and Master Data
 
-- **Objective:** Create `BILRG_IgdVisitSmassTask` + `UX_..._BusinessKey`, `IX_..._Visit`, `IX_..._Status`.
-- **Dependencies:** None.
-- **Acceptance Criteria:**
-  - Columns match §6.1; PK `IgdVisitSmassTaskId VARCHAR(14)`.
-  - `UX_BILRG_IgdVisitSmassTask_BusinessKey (IgdVisitId, NoTriage, TaskType)` enforces INV-T1 / BR-11.
-  - `IX_..._Status (TaskStatus, CrtDate)` supports `ListProcessable()`.
-  - No soft-delete; no audit columns (AR-16); no backfill.
-- **Review Focus:** Persistence Compliance; Operational-Store Compliance (AR-03, D-07).
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
 
-#### P3S2 — `IgdVisitSmassTaskModel` + enums + key
+Repository for all P1 slices: `a043_smass_structuredmedicalassesment_api`.
 
-- **Objective:** Implement `IgdVisitSmassTaskModel` with `SmassTaskTypeEnum`, `SmassTaskStatusEnum`, `IIgdVisitSmassTaskKey`, and INV-T1…T8 behaviours (`CreatePending`, `MarkSucceeded`, `MarkFailed`, `Rehydrate`, `AssertCanManualRetry`).
-- **Dependencies:** None (domain only).
-- **Acceptance Criteria:**
-  - Enum code values as §5.1 (`ToCode()` → `"GENERATE"`/`"LINK"`, `"PENDING"`/`"SUCCEEDED"`/`"FAILED"`).
-  - INV-T1…T8 enforced; `LastError` truncated to 500 chars.
-  - Domain tests cover state transitions (INV-T4/T5/T6/T7), `NoTriage`/`TaskType` coupling (INV-T2/T3), non-deletion (INV-T8).
-- **Review Focus:** Architecture Compliance; Domain Invariant Compliance.
+### P1-S01
 
-#### P3S3 — `IgdVisitSmassTaskDal` + `IgdVisitSmassTaskRepo`
+Title: SMASS schema — assessment provenance columns and TriageConceptMap table
 
-- **Objective:** Implement `IIgdVisitSmassTaskRepo`/`IgdVisitSmassTaskRepo` + `IgdVisitSmassTaskDal` with `LoadEntity`, `FindByBusinessKey`, `ListByVisit`, `ListProcessable`, `SaveChanges` (upsert).
-- **Dependencies:** P3S1, P3S2.
-- **Acceptance Criteria:**
-  - Auto-registered by Scrutor scan (implements `ISaveChange<>`/`ILoadEntity<,>`, precedent `EmrAntrianOutboundQueueRepo`).
-  - `FindByBusinessKey` supports idempotent upsert (BR-11); `ListProcessable` returns `Failed` ordered by `CrtDate` ascending.
-  - Repo round-trip test (insert/update/load) passes.
-- **Review Focus:** Persistence Compliance; Repository Boundary Compliance.
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
 
----
+Objective:
 
-### Phase 4 — BILREG Integration & Application
+Extend `SMASS_Assesment` additively and create `SMASS_TriageConceptMap` (AR-03,
+D-03, D-04, D-08) in the SMASS database, and register the scripts in the SSDT
+project.
 
-#### P4S1 — `SmassOptions` + `IgdVisitOptions`
+Depends On: None
 
-- **Objective:** Add `SmassOptions` and `IgdVisitOptions`, registered via `.Configure<T>(...)` in `InfrastructureService.cs`.
-- **Dependencies:** None.
-- **Acceptance Criteria:**
-  - `SmassOptions.SECTION_NAME = "Smass"`; `IgdVisitOptions.SECTION_NAME = "IgdVisit"`; keys per §10.6.
-  - `IgdVisit:EnableSmassIntegration` default `false` (AR-01); `Smass:TimeoutSeconds` default `10` with range 1–120.
-  - No `ValidateOnStart()` for either (misconfig must not prevent API start).
-- **Review Focus:** Configuration Compliance (AR-01, AR-02, §10.6).
+Repository: `a043_smass_structuredmedicalassesment_api`
 
-#### P4S2 — `ISmassTokenService`
+Completion Criteria:
 
-- **Objective:** Implement token acquisition from `POST {Smass:BaseApiUrl}/Token`, cached in `IMemoryCache` (key `SmassToken`), expiry = `exp` − 60 s.
-- **Dependencies:** P4S1.
-- **Acceptance Criteria:**
-  - Uses existing `JSend<T>`/`DeserializeOrThrow` helper pattern (precedent `UsmanGetTokenService`).
-  - Returns Bearer token; caches; empty `TokenEmail`/`TokenPass` handled at call time (task Failed, no HTTP call).
-  - Unit test for cache hit/miss and token parse.
-- **Review Focus:** Security Compliance (AR-04, BR-27).
+- `Smass.Db/AssesmentContext/SMASS_Assesment.sql` adds, additively:
+  `IgdVisitId VARCHAR(12) NOT NULL DEFAULT('')`,
+  `NoTriage INT NOT NULL DEFAULT(0)`,
+  `RegistrationLinkStatus INT NOT NULL DEFAULT(0)`.
+- Filtered unique constraint
+  `UX_SMASS_Assesment_IgdVisitTriage (IgdVisitId, NoTriage) WHERE IgdVisitId <> ''`
+  exists (INV-A4, BR-07, BR-11).
+- Index `IX_SMASS_Assesment_IgdVisitId (IgdVisitId) INCLUDE (AssesmentId, NoTriage,
+  RegistrationLinkStatus)` exists.
+- Existing PK `AssesmentId` and existing `IX_SMASS_Assesment_RegId` unchanged; no
+  foreign key added.
+- `Smass.Db/Tables/SMASS_TriageConceptMap.sql` created with
+  `TriageFieldCode VARCHAR(30)`, `TriageValue VARCHAR(20)`, `ConceptId VARCHAR(6)`,
+  `AssValue VARCHAR(255)`, `ValueSnomedCtId VARCHAR(18)`,
+  `ValueTaxonomy VARCHAR(30)`, `QualifierValue VARCHAR(128)`, `NoUrut INT`,
+  PK `PK_SMASS_TriageConceptMap (TriageFieldCode, TriageValue)`, index on
+  `ConceptId` (INV-M1).
+- Both scripts registered in `Smass.Db/Smass.Db.sqlproj` (`<Build>` ItemGroup for
+  the table; the altered assessment script is already registered).
+- SSDT project builds without error.
 
-#### P4S3 — `ISmassAssessmentGateway` / `SmassAssessmentGateway`
+Notes:
 
-- **Objective:** Implement the outbound gateway with `Generate` and `Link` operations, `SmassGatewayResult(bool Success, string? AssessmentId, string? ErrorMessage)`, catching **all** exceptions.
-- **Dependencies:** P4S1, P4S2.
-- **Acceptance Criteria:**
-  - Port in `Bilreg.Application`, adapter in `Bilreg.Infrastructure` (precedent `IDoctorServiceGateway`); one explicit `AddScoped`.
-  - Uses `IRestClientFactory` (RestSharp); no `IHttpClientFactory`/Polly.
-  - Generate → `POST .../generateIgdTriage`; Link → `PATCH .../linkIgdVisit`; payloads per §8.1/§8.2; timeout from `Smass:TimeoutSeconds`.
-  - No exception propagates (BR-10); missing config → `MarkFailed` without HTTP call; unique-index violation on concurrent retry → re-read then `MarkSucceeded`.
-  - Gateway unit tests with mocked RestSharp client for 2xx/4xx/5xx/timeout/config-missing.
-- **Review Focus:** Integration Compliance; Transaction-Boundary Compliance (BR-10, §7.1).
-
-#### P4S4 — Triage handler hooks + response extension
-
-- **Objective:** Modify `IgdVisitAssessTriageCmd` and `IgdVisitReAssessTriageCmd` per the §7.1 execution-ordering rule; extend `IgdVisitAssessTriageResponse` with `SmassAssessmentId` + `SmassGenerationStatus`.
-- **Dependencies:** P4S3, P3S3.
-- **Acceptance Criteria:**
-  - Gateway call placed **after** `trans.Complete()`, outside every `TransHelper` scope, guarded by `IgdVisitOptions.EnableSmassIntegration`.
-  - Task upserted (`FindByBusinessKey` ?? `CreatePending`), then `MarkSucceeded`/`MarkFailed`; exceptions never rethrow into the triage handler (BR-10).
-  - Response carries `SmassAssessmentId` + `SmassGenerationStatus` (`"Disabled" | "Pending" | "Generated" | "Failed"`).
-  - Handler tests: toggle-off (no task row, no HTTP), success, failure swallowed.
-- **Review Focus:** Workflow Compliance (WF-01/02); Transaction-Boundary Compliance (BR-10); Toggle Compliance (AR-01).
-
-#### P4S5 — Register handler hooks
-
-- **Objective:** Modify `IgdVisitAssignRegisterCmd` and `IgdVisitReplaceRegisterCmd` to invoke the Link gateway after commit; `NoTriage = 0`, `TaskType = Link`; response unchanged.
-- **Dependencies:** P4S3, P3S3.
-- **Acceptance Criteria:**
-  - Link payload built from loaded `RegModel` (`reg.RegId`, `reg.Pasien.*`, `reg.Layanan.*`) — not from `IgdVisitModel.Reg` (BR-16).
-  - Failure → `Link` task Failed; registration never rolled back (BR-16); response stays `"Done"`.
-  - Handler tests: success, gateway failure, toggle-off.
-- **Review Focus:** Workflow Compliance (WF-03/04); Registration-Link Compliance (D-09, BR-03).
-
-#### P4S6 — Retry + Process commands
-
-- **Objective:** Implement `IgdVisitSmassTaskRetryCmd` and `IgdVisitSmassTaskProcessCmd` (batch variant).
-- **Dependencies:** P4S3, P3S3, P4S4 (payload rebuild from immutable triage row).
-- **Acceptance Criteria:**
-  - `AssertCanManualRetry()` (INV-T6) gate; payload rebuilt by re-reading `BILRG_IgdVisitTriage` by (`IgdVisitId`, `NoTriage`) — no `PayloadJson` column (AR-12).
-  - Generate retry re-uses `GenerateIgdTriageAssesmentCommand`; Link retry re-uses link path; `ProcessCmd` loops failed tasks.
-  - Handler tests for retry success, retry-not-allowed on non-Failed, payload rebuild.
-- **Review Focus:** Workflow Compliance (WF-06); Idempotency Compliance (AR-12, D-07).
-
-#### P4S7 — List queries + worklist + DTOs
-
-- **Objective:** Implement `IgdVisitListSmassTaskQuery`, `IgdVisitSmassWorklistQuery`, and `IgdVisitSmassTaskView` DTO.
-- **Dependencies:** P3S3.
-- **Acceptance Criteria:**
-  - `IgdVisitSmassTaskView` fields per §19.1; sentinel `3000-01-01` mapped to `null`.
-  - Worklist returns `Failed` tasks across visits oldest-first (BR-12, BR-33).
-  - Query tests for projection + sentinel mapping.
-- **Review Focus:** Read-Model Compliance; Monitoring Surface (BR-30, BR-33).
-
-#### P4S8 — `IgdVisitSmassTaskController` + `[Authorize]`
-
-- **Objective:** Wire `GET /{igdVisitId}`, `GET /worklist`, `PATCH /retry` (and `POST` process) on `IgdVisitSmassTaskController`.
-- **Dependencies:** P4S6, P4S7.
-- **Acceptance Criteria:**
-  - Routes per §4.1; `[Authorize]` matching other IGD controllers; `JSendOk` responses.
-  - No new policy/role/permission (AR-05).
-- **Review Focus:** Security Compliance; API Contract Compliance.
+- Additive only; `DEFAULT` values make every pre-existing row `Registered` with
+  empty provenance (BR-21, BR-22). No backfill, no new soft-delete or audit
+  columns.
+- `SMASS_TriageConceptMap` is pure master data: no soft delete, no audit columns.
+- `ConceptId` is validated at generation, not enforced as a physical FK (INV-M2).
 
 ---
 
-### Phase 5 — Frontend
+### P1-S02
 
-#### P5S1 — Types + query keys + service hooks
+Title: SMASS master data seeds — IGD Triage Paper and ATS-to-SMASS mapping
 
-- **Objective:** Add Zod schemas (`IgdSmassTaskView`, extended `AssignTriaseResponse`, extended `TriageHistoryItem`), `queryKeys.emergency` entries, and `useIgdSmassTask`/`useRetryIgdSmassTask` hooks.
-- **Dependencies:** Phase 4 (backend contracts).
-- **Acceptance Criteria:**
-  - Schemas added to `src/modules/Emergency/types/contract.ts`; query keys in `src/core/api/queryConfigs.ts`; hooks in `queries/EmergencyService.ts`.
-  - `useIgdSmassTask(visitId)` uses TanStack Query (no polling); `useRetryIgdSmassTask` invalidates cache on settle (`onSettled`), no optimistic update.
-  - No Pinia store introduced; no direct SMASS call from the client (D-02).
-- **Review Focus:** UI State Compliance; Contract Compliance.
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
 
-#### P5S2 — SCR-02 `TriageHistoryPanel` badge
+Objective:
 
-- **Objective:** Add an inline SMASS status badge + `AssessmentId` per triage event row.
-- **Dependencies:** P5S1.
-- **Acceptance Criteria:**
-  - `smassGenerationStatus`/`smassAssessmentId` joined client-side in a `computed` (no new endpoint, §19.3).
-  - Badge reflects `Generated | Failed | Pending | Disabled`; no slot rendered when `smassGenerationStatus = "Disabled"` (IR-04).
-  - Backward compatible with visits created before rollout (no task → no slot).
-- **Review Focus:** UI State Compliance (IR-04); Backward Compatibility.
+Seed the dedicated IGD Triage Paper (D-05) and the closed-set `TriageFieldCode` /
+`TriageValue` mapping rows (D-03, D-12, AR-07) as idempotent SSDT seed scripts.
 
-#### P5S3 — SCR-03 `IgdSmassIntegrationPanel` + retry
+Depends On: P1-S01
 
-- **Objective:** Implement new `IgdSmassIntegrationPanel.vue`, mounted inside SCR-01; render task list with status/error/`AssessmentId` and `Coba Ulang` retry.
-- **Dependencies:** P5S1.
-- **Acceptance Criteria:**
-  - Rendered for `Triaged`/`Paired`/`Terminal` modes (read-only retry allowed in `Terminal`, IR-07); hidden in `Empty`/`NewVisit`.
-  - `Coba Ulang` only on `Failed` (IR-01), hidden for `Succeeded`; single-flight retry (IR-02); auto-expand + "n gagal" chip when ≥1 Failed (IR-03).
-  - `AssessmentId` shown only for `Generate` tasks (IR-05/IR-06); retry outcome via `vue-sonner` toast; no delete/cancel/archive action (BR-31).
-- **Review Focus:** UI State Compliance (IR-01…IR-07); Workflow Compliance (WF-06, WF-08).
+Repository: `a043_smass_structuredmedicalassesment_api`
 
----
+Completion Criteria:
 
-### Phase 6 — End-to-End Verification & Rollout
+- `Smass.Db/DataSeeds/IgdTriagePaperDataSeed.sql` creates one Paper
+  (`SMASS_Paper`), its `SMASS_PaperSection` rows (`SectionType = CustomSection`
+  only), the `SMASS_CustomSection` row(s), and the
+  `SMASS_CustomSectionConcept` rows required by the mapping. `DELETE` then
+  `INSERT`, idempotent by PaperId.
+- The seeded Paper id (suggested `PP-001-IGDTR`) is recorded so it can be mirrored
+  into BILREG `IgdVisit:SmassTriagePaperId`. No existing IGD Paper is modified.
+- `Smass.Db/DataSeeds/TriageConceptMapDataSeed.sql` inserts one row per
+  (`TriageFieldCode`, `TriageValue`) covering the closed domain: `AIRWAYS` (0–2),
+  `BREATHING` (0–5), `CIRCULATION` (0–4), `GCS_EYE` (1–4), `GCS_MOTOR` (1–6),
+  `GCS_VOICE` (1–5), `GCS_TOTAL` (3–15), `ATS_LEVEL` (`ATS1`…`ATS5`),
+  `TRIAGE_COLOR` (`RED`, `YELLOW`, `GREEN`, `BLACK`), `MANUAL_OVERRIDE_BLACK`
+  (`true`, `false`).
+- Every mapping `ConceptId` exists in `SMASS_Concept`, and the same `ConceptId` is
+  attached to the IGD Triage Paper's CustomSection via
+  `SMASS_CustomSectionConcept` (so generation-time section grouping resolves).
+- Both scripts registered in `Smass.Db.sqlproj` as `<None>` (manual execution,
+  precedent `PaperDataSeed.sql`).
+- Re-running both scripts is idempotent.
 
-#### P6S1 — End-to-end scenario verification
+Notes:
 
-- **Objective:** Verify the six workflow capabilities (WF-01…WF-08) end-to-end in staging, including failure/retry/pending paths.
-- **Dependencies:** Phase 2, Phase 4 (all backend slices).
-- **Acceptance Criteria:**
-  - First triage → pending assessment created (BR-01); re-triage → second snapshot (BR-07).
-  - Assign/Replace register → link populates keys all-or-nothing (BR-02, BR-09, BR-17).
-  - Failed generation recorded as task row, recoverable via retry; pending rows unreachable from RegId/PasienId surfaces (BR-05, BR-19, BR-20).
-  - Void unchanged (BR-18, BR-32); no assessment ever deleted (BR-31).
-- **Review Focus:** Workflow Compliance; Critical Invariants (§23).
-
-#### P6S2 — Rollout ordering + rollback verification
-
-- **Objective:** Verify BR-23 rollout order and rollback per §10.2/§10.3.
-- **Dependencies:** P6S1.
-- **Acceptance Criteria:**
-  - DB → SMASS app → legacy regression check → toggle enable → monitor, in order.
-  - Toggle off stops new attempts immediately; existing rows/assessments untouched (BR-22); schema rollback not required.
-  - Legacy assessment behaviour (create/finish/catalog/OFTA) unchanged with toggle off (BR-23 step 3).
-- **Review Focus:** Rollout Compliance (BR-21, BR-22, BR-23); Rollback Safety.
+- Mapping values are derived from existing `SMASS_Concept` /
+  `SMASS_ConceptPreference` seed data; they are approved provisional truth (D-12).
+- `GCS_TOTAL` is derived inside SMASS at generation time, so the table needs one
+  row per possible total (GAP-004).
+- Mapping revision after deployment = edit and re-run this seed script; no code
+  change, no Paper change (AR-07, BR-26).
+- This slice is a deployment prerequisite for end-to-end verification of P2-S05
+  and for enabling the BILREG toggle (§8.6 step 2/4).
 
 ---
 
-## 6. Dependency Graph
+### P1-S03
 
-```text
-P1S1 ─┬─ P2S2 ─┬─ P2S3 ── P2S6
-P1S2 ─┘        ├─ P2S4 ── P2S6
-P1S3 ─┬─ P1S4 ─┴─ P2S5 ── P2S6
-      └─ P2S3
-P2S1 ─┬─ P2S2
-      └─ P2S4, P2S5
+Title: SMASS assessment provenance persistence — model, enum, key, DAL, quarantine
 
-P3S1 ─ P3S3 ─┬─ P4S4 ── P4S8
-P3S2 ─┘       ├─ P4S5 ── P4S8
-P4S1 ─ P4S2 ──┴─ P4S6 ── P4S8
-P4S3 ─┬─ P4S4
-      ├─ P4S5
-      └─ P4S6
-P4S7 ── P4S8
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
 
-P5S1 ── P5S2
-     └─ P5S3
+Objective:
 
-Phase 2 + Phase 4 ── P6S1 ── P6S2
-Phase 4 ── Phase 5
-```
+Extend `AssesmentModel` with IGD provenance and `RegistrationLinkStatus`, add the
+`IIgdVisitKey` and `RegistrationLinkStatusEnum` contracts, extend the assessment
+DAL for the three new columns and the IGD read methods, and apply the
+construction-level quarantine predicate (D-01, D-08, D-10, AR-11, §5.3, §8.2).
 
----
+Depends On: P1-S01
 
-## 7. Progress Tracker
+Repository: `a043_smass_structuredmedicalassesment_api`
 
-| Slice | Status | Implementation History | Review History | Remediation History |
-|---|---|---|---|---|
-| P1S1 | PLANNED | — | — | — |
-| P1S2 | PLANNED | — | — | — |
-| P1S3 | PLANNED | — | — | — |
-| P1S4 | PLANNED | — | — | — |
-| P2S1 | PLANNED | — | — | — |
-| P2S2 | PLANNED | — | — | — |
-| P2S3 | PLANNED | — | — | — |
-| P2S4 | PLANNED | — | — | — |
-| P2S5 | PLANNED | — | — | — |
-| P2S6 | PLANNED | — | — | — |
-| P3S1 | PLANNED | — | — | — |
-| P3S2 | PLANNED | — | — | — |
-| P3S3 | PLANNED | — | — | — |
-| P4S1 | PLANNED | — | — | — |
-| P4S2 | PLANNED | — | — | — |
-| P4S3 | PLANNED | — | — | — |
-| P4S4 | PLANNED | — | — | — |
-| P4S5 | PLANNED | — | — | — |
-| P4S6 | PLANNED | — | — | — |
-| P4S7 | PLANNED | — | — | — |
-| P4S8 | PLANNED | — | — | — |
-| P5S1 | PLANNED | — | — | — |
-| P5S2 | PLANNED | — | — | — |
-| P5S3 | PLANNED | — | — | — |
-| P6S1 | PLANNED | — | — | — |
-| P6S2 | PLANNED | — | — | — |
+Completion Criteria:
 
-Lifecycle: `PLANNED → IN IMPLEMENTATION → IMPLEMENTED → IN REVIEW → GO` (or `NO-GO → REMEDIATION → IN REVIEW → GO`).
+- `AssesmentModel` gains `IgdVisitId` (`string`, default `''`), `NoTriage`
+  (`int`, default `0`), `RegistrationLinkStatus`
+  (`RegistrationLinkStatusEnum`), and implements `IIgdVisitKey`.
+- `Smass.Domain/ExternalContext/IgdVisitAgg/IIgdVisitKey.cs` declares
+  `string IgdVisitId { get; }`.
+- `RegistrationLinkStatusEnum { Registered = 0, PendingRegistration = 1 }` exists
+  at `Smass.Domain/AssesmentContext/AssesmentAgg/RegistrationLinkStatus.cs`.
+- `AssesmentDal.SelectClause()`, `Insert`, and `Update` include the three new
+  columns; default `RegistrationLinkStatus = Registered` for new non-IGD rows.
+- `AssesmentDal.ListData(IRegKey)` and `AssesmentDal.ListData(IPasienKey)` apply the
+  predicate `RegistrationLinkStatus = 0 /* Registered */` (AR-11, BR-05/19/20).
+- `IAssesmentDal` gains and `AssesmentDal` implements:
+  `GetData(IIgdVisitKey key, int noTriage)` (idempotency pre-check),
+  `ListData(IIgdVisitKey key)` (by-visit surface + link selection),
+  `ListPendingRegistration()` (monitoring, oldest first).
+- By-visit query is backed by `IX_SMASS_Assesment_IgdVisitId`.
+- SMASS solution builds; existing consumers of `ListData(IRegKey)` /
+  `ListData(IPasienKey)` see byte-identical results for pre-existing rows.
+
+Notes:
+
+- INV-A1/A2/A3 are realized by the generation and link commands (P2-S05, P2-S06);
+  this slice provides the shape they enforce.
+- `AggStateEnum` is not modified (D-08, AR-13).
+- No audit columns are added; IGD provenance is carried by `IgdVisitId`,
+  `NoTriage`, `UserrId` (§8.2).
 
 ---
 
-## 8. Cross-Cutting Constraints (binding, from architecture §23)
+### P1-S04
 
-- **Backend (BILREG):** gateway call after `trans.Complete()`, never inside a `TransHelper` scope; catch every exception, never rethrow (BR-10); do not modify `IgdVisitVoidCmd` (BR-18); use `IRestClientFactory`; do not add SMASS columns to `BILRG_IgdVisitTriage`/`BILRG_IgdVisit`.
-- **Backend (SMASS):** MediatR one-file pattern; persist only via `AssesmentWriter`; no `IGetRegService`/`IGetLayananService` (AR-10); no event publish (AR-14); do not modify `CreateFixAssesmentCommand` or re-enable `AssesmentValidator`; additive DDL only; `[Authorize]` on the three new endpoints only.
-- **Frontend:** no direct SMASS call (D-02); extend existing schemas/hooks/query-keys; SCR-03 presentational but owns `useIgdSmassTask` (precedent `TriageHistoryPanel.vue`); no Pinia store.
-- **Critical invariants:** commit before outbound call; (`IgdVisitId`, `NoTriage`) → exactly one assessment; all-or-nothing keys; `AggStateEnum` never written; pending unreachable from RegId/PasienId surfaces; assessments never deleted/purged/archived/unlinked.
+Title: SMASS TriageConceptMap domain model and DAL
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Add the SMASS-owned ATS-to-SMASS mapping master data model and read DAL used by the
+generation command (D-03, D-12, §5.3).
+
+Depends On: P1-S01
+
+Repository: `a043_smass_structuredmedicalassesment_api`
+
+Completion Criteria:
+
+- `Smass.Domain/AssesmentContext/TriageConceptMapAgg/TriageConceptMapModel.cs` with
+  members `TriageFieldCode`, `TriageValue`, `ConceptId`, `AssValue`,
+  `ValueSnomedCtId`, `ValueTaxonomy`, `QualifierValue`, `NoUrut`, and
+  `ITriageConceptMapKey`.
+- `ITriageConceptMapDal` in `Smass.Application` declares read access
+  (`ListData()` returning the whole small master table); implementation
+  `TriageConceptMapDal` in `Smass.Infrastructure` reads
+  `SMASS_TriageConceptMap`.
+- DAL is discoverable by the existing DI registration (Nuna data-access markers /
+  Scrutor scan); no manual registration required beyond the existing pattern.
+- SMASS solution builds.
+
+Notes:
+
+- Table is small master data; loading the whole table per generate request is
+  acceptable (§9.5).
+- Interface declares insert/update/delete per §5.3 but this feature uses read only;
+  do not introduce any delete/purge path.
 
 ---
 
-## 9. Prohibited Shortcuts (from architecture §23)
+## P2 - SMASS Application
 
-- Reusing `CreateFixAssesmentCommand` with empty keys.
-- Gateway call inside the existing `TransHelper` scope.
-- A `PayloadJson` column replaying stale snapshots.
-- Filtering pending assessments per-query instead of at the DAL list level.
-- Hard-coding the ATS→SMASS mapping in the gateway or the Paper.
-- Frontend dual dispatch to SMASS.
-- In-request retry or an automatic retry worker.
-- Backfilling `IgdVisitId` into historical assessments.
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Repository for all P2 slices: `a043_smass_structuredmedicalassesment_api`.
+
+### P2-S05
+
+Title: GenerateIgdTriageAssesmentCommand
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Implement the pending-registration generation command that creates one immutable
+assessment snapshot per triage event, resolving concepts through
+`SMASS_TriageConceptMap` and bypassing registration/service dependencies
+(D-01, D-02, D-03, D-04, D-06, AR-08, AR-10, AR-13, AR-14, §5.3, §6.2).
+
+Depends On: P1-S03, P1-S04
+
+Repository: `a043_smass_structuredmedicalassesment_api`
+
+Completion Criteria:
+
+- `Smass.Application/AssesmentContext/AssesmentAgg/UseCases/Commands/GenerateIgdTriageAssesmentCommand.cs`
+  contains request, response, and handler; route `POST api/Assesment/generateIgdTriage`.
+- Request accepts `IgdVisitId`, `NoTriage (>0)`, `PaperId`, `LayananId`, `UserrId`,
+  `AssesmentDate` (`yyyy-MM-dd`), `AssesmentTime` (`HH:mm:ss`), the six scores,
+  `AtsLevel`, `TriageColor`, `IsManualOverrideBlack`; `RegId`/`PasienId` are absent.
+- Response is `{ AssesmentId, IgdVisitId, NoTriage, RegistrationLinkStatus, AssesmentState }`.
+- Dawn `Guard` validates every field; `NoTriage > 0`; date/time formats.
+- Idempotency: `_assesmentDal.GetData(request, request.NoTriage)`; when found,
+  return the existing `AssesmentId` without mutation.
+- Mapping resolution: builds the ten (`TriageFieldCode`, `TriageValue`) pairs,
+  computing `GCS_TOTAL = GcsEye + GcsMotor + GcsVoice`; any unresolved pair throws
+  `ArgumentException` (fail closed, no partial snapshot).
+- Creation bypasses `IGetRegService` / `IGetLayananService` and the JenisRawat
+  `AssesmentDate` window; `LayananId` comes from the request and `LayananName = ''`;
+  `RegId = PasienId = PasienName = ''`; `IgdVisitId`, `NoTriage`,
+  `RegistrationLinkStatus = PendingRegistration` are set.
+- The builder supports pending creation without external lookups (a new builder
+  path or equivalent), and the concept builder accepts explicit
+  `assValue`/`ValueSnomedCtId`/`ValueTaxonomy`/`QualifierValue` from the mapping row.
+- Paper existence is validated via `IPaperDal`; concepts are grouped into the
+  Paper's CustomSection via `IPaperSectionDal` + `ICustomSectionConceptDal`; a
+  mapped `ConceptId` absent from the Paper throws `ArgumentException`.
+- Sections are added ordered by `NoUrut`; persistence uses `IAssesmentWriter.Save`;
+  no `Finish()`; no `CreatedAssesmentEvent` / `AddedSectionAssesmentEvent` publish.
+- SMASS solution builds.
+
+Notes:
+
+- Post-condition state is whatever `AddSection` produces (`Drafting`); the command
+  never calls `Finish()` (R-02, BR-13/BR-14).
+- `AssesmentValidator` (currently unused) must not be re-enabled; it rejects empty
+  `RegId`/`PasienId`.
+- `CreateFixAssesmentCommand` must not be modified.
 
 ---
 
-## 10. Out of Scope (explicitly deferred, not planned here)
+### P2-S06
 
-- Automatic retry worker / background worker (D-07).
-- Event fan-out from the new SMASS commands (AR-14, R-03).
-- SMASS clinical display surface (R-06 — fields exposed as API view-models only).
-- Closing pending-assessment completion-state/editability (R-02) — requires a follow-up decision.
-- Retention governance for never-registered assessments (D-15, R-08).
+Title: LinkAssesmentByIgdVisitIdCommand
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Implement the registration-link command that populates administrative keys on all
+assessments of a visit, all-or-nothing, idempotently, without touching completion
+state (D-09, AR-10, AR-13, AR-14, AR-15, §5.3, §6.3).
+
+Depends On: P1-S03
+
+Repository: `a043_smass_structuredmedicalassesment_api`
+
+Completion Criteria:
+
+- `Smass.Application/AssesmentContext/AssesmentAgg/UseCases/Commands/LinkAssesmentByIgdVisitIdCommand.cs`
+  contains request, response, and handler; route `PATCH api/Assesment/linkIgdVisit`.
+- Request accepts `IgdVisitId`, `RegId`, `PasienId`, `PasienName`, `LayananId`,
+  `LayananName`; all six are guarded non-empty.
+- `_assesmentDal.ListData(request /* IIgdVisitKey */)` selects all assessments of the
+  visit (pending and registered); empty list returns `LinkedCount = 0` without error.
+- For each assessment, inside its own `TransHelper.NewScope()`, the command sets
+  `RegId`, `PasienId`, `PasienName`, `LayananId`, `LayananName` and
+  `RegistrationLinkStatus = Registered`, then calls `_assesmentDal.Update(model)`.
+- `AssesmentState`, sections, and concepts are never modified; `Finish()` is not
+  called; `IGetRegService` / `IGetLayananService` are not called.
+- No `CreatedAssesmentEvent` / `AddedSectionAssesmentEvent` publish.
+- Response is `{ IgdVisitId, LinkedCount, ListAssesmentId[] }`; partial failures
+  throw after the loop so BILREG records a Failed link task (BR-16).
+- SMASS solution builds.
+
+Notes:
+
+- One repeatable behaviour satisfies BR-15 (all pending become `Registered`) and
+  BR-17 (replace-latest over previously linked rows); naturally idempotent (AR-15).
+- No unlink/delete path exists (BR-18, BR-31/32).
 
 ---
 
-*End of implementation plan. Planning authority: `docs/contexts/igd/igd-triage-abc-smass-architecture.md`.*
+### P2-S07
+
+Title: SMASS read surfaces — by-visit, pending-registration monitoring, provenance view fields
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Add the by-visit read surface and the pending-registration monitoring query, and
+expose IGD provenance/link view-model fields on the existing catalog and RegId
+surfaces (D-10, D-14, D-15, §5.3, §6.5).
+
+Depends On: P1-S03
+
+Repository: `a043_smass_structuredmedicalassesment_api`
+
+Completion Criteria:
+
+- `ListAssesmentByIgdVisitIdQuery` (route `GET api/Assesment/igdVisit/{igdVisitId}`)
+  returns every assessment correlated to the `IgdVisitId` (pending and registered),
+  each carrying `RegistrationLinkStatus`; it is the only surface that returns a
+  pending assessment.
+- `ListPendingRegistrationAssesmentQuery` (route
+  `GET api/Assesment/pendingRegistration`) returns `PendingRegistration`
+  assessments, oldest first, including `IgdVisitId`, `NoTriage`, `AssesmentDate`,
+  `CreateDate`, `PaperId`, `UserrId`.
+- `AssesmentIgdView` fields are surfaced on `ListAssesmentByIgdVisitIdQuery`,
+  `ListPendingRegistrationAssesmentQuery`, `ListCatalogQuery`, and
+  `ListAssesmentByRegIdQuery`: `assesmentId`, `igdVisitId`, `noTriage`,
+  `registrationLinkStatus`, `registrationLinkStatusLabel`
+  (`"Pending Registration"` / `"Registered"`), `sourceLabel`
+  (`"Generated From IGD Triage"` when `igdVisitId` is non-empty, else `""`), plus
+  existing display fields.
+- No delete/purge/archive action is introduced on any read surface.
+- SMASS solution builds; existing `ListCatalogQuery` / `ListAssesmentByRegIdQuery`
+  consumers keep their current fields.
+
+Notes:
+
+- Pending rows are excluded from every RegId/PasienId surface by the P1-S03
+  quarantine predicate, so the catalog and RegId responses never expose them.
+- `ListAssesmentByPasienIdQuery` and OFTA/report flows require no new code; they
+  inherit the quarantine predicate.
+
+---
+
+### P2-S08
+
+Title: SMASS API endpoints and authorization
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Expose the new SMASS operations on `AssesmentController` and enforce the existing
+JWT Bearer authorization on the new actions only (D-13, AR-05, §5.3, §9.1).
+
+Depends On: P2-S05, P2-S06, P2-S07
+
+Repository: `a043_smass_structuredmedicalassesment_api`
+
+Completion Criteria:
+
+- `AssesmentController` exposes `POST api/Assesment/generateIgdTriage` (P2-S05),
+  `PATCH api/Assesment/linkIgdVisit` (P2-S06),
+  `GET api/Assesment/igdVisit/{igdVisitId}` and
+  `GET api/Assesment/pendingRegistration` (P2-S07).
+- `[Authorize]` is applied to each new action; no existing action changes its
+  authorization and no policy/role/permission is added.
+- Responses use the existing `JSendOk` convention.
+- SMASS solution builds and the endpoints are reachable when the BILREG service
+  identity presents a valid token.
+
+Notes:
+
+- Architecture §9.1 and AR-05 refer to "three new SMASS endpoints" while §5.3 and
+  the §9.1 permission-boundary table enumerate four surfaces
+  (`generateIgdTriage`, `linkIgdVisit`, `igdVisit/{id}`, `pendingRegistration`).
+  This plan treats every new action as authorized; no approved decision or existing
+  consumer behaviour is changed. Flagged for later architecture wording alignment;
+  it does not block implementation.
+
+---
+
+## P3 - BILREG Persistence
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Repository for all P3 slices: `b09-bilreg-api`.
+
+### P3-S09
+
+Title: BILRG_IgdVisitSmassTask table
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Create the BILREG operational task store table that records one outbound SMASS
+operation per IGD triage event or per visit-level link operation (D-07, AR-03,
+INV-T1, §8.1).
+
+Depends On: None
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `Bilreg.SqlDb/IgdContext/IgdVisitSmassTaskFeature/BILRG_IgdVisitSmassTask.sql`
+  creates the table with columns `IgdVisitSmassTaskId VARCHAR(14)` (PK),
+  `IgdVisitId VARCHAR(12)`, `NoTriage INT`, `TaskType INT`, `TaskStatus INT`,
+  `AssessmentId VARCHAR(13) DEFAULT('')`, `RetryCount INT DEFAULT(0)`,
+  `LastRetryDate DATETIME DEFAULT('3000-01-01')`,
+  `ProcessedDate DATETIME DEFAULT('3000-01-01')`,
+  `LastError VARCHAR(500) DEFAULT('')`, `CrtDate DATETIME`.
+- Unique constraint `UX_BILRG_IgdVisitSmassTask_BusinessKey (IgdVisitId, NoTriage, TaskType)`
+  exists (INV-T1, BR-11).
+- Indexes `IX_BILRG_IgdVisitSmassTask_Visit (IgdVisitId) INCLUDE (NoTriage,
+  TaskType, TaskStatus, AssessmentId)` and
+  `IX_BILRG_IgdVisitSmassTask_Status (TaskStatus, CrtDate)` exist.
+- No soft-delete column; no `AuditLog` and no `BILRG_IgdVisitEvent` change (AR-16,
+  INV-T8).
+- No backfill and no change to `BILRG_IgdVisitTriage` or `BILRG_IgdVisit`.
+
+Notes:
+
+- Retention is governance-owned and never automatic (D-15, BR-31).
+- Precedent naming/DDL: `BILRG_EmrAntrianOutboundQueue`-style operational tables.
+
+---
+
+### P3-S10
+
+Title: IgdVisitSmassTask domain model, enums, repository, and DAL
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Implement the task aggregate, its value objects, and its persistence so generation,
+link, retry, and worklist operations have a single operational record (D-07, §5.2).
+
+Depends On: P3-S09
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `Bilreg.Domain/IgdContext/IgdVisitSmassTaskFeature/IgdVisitSmassTaskModel.cs`
+  exposes `IgdVisitSmassTaskId` (`NunaId.New("IST")`), `IgdVisitId`, `NoTriage`,
+  `TaskType`, `TaskStatus`, `AssessmentId`, `RetryCount`, `LastRetryDate`,
+  `ProcessedDate`, `LastError`, `CrtDate`.
+- `SmassTaskTypeEnum { Generate = 0, Link = 1 }` and
+  `SmassTaskStatusEnum { Pending = 0, Succeeded = 1, Failed = 2 }` exist with
+  `ToCode()` returning `"GENERATE"`/`"LINK"` and `"PENDING"`/`"SUCCEEDED"`/`"FAILED"`;
+  `IIgdVisitSmassTaskKey` exists.
+- Behaviours `CreatePending`, `MarkSucceeded(assessmentId, processedAt)`,
+  `MarkFailed(error, failedAt)`, `Rehydrate(...)` are implemented; `LastError` is
+  truncated to 500 chars.
+- Invariants INV-T1…INV-T8 are enforced (business-key uniqueness, `Link ⇒ NoTriage = 0`,
+  `Generate ⇒ NoTriage > 0`, transition legality, `AssertCanManualRetry()` requires
+  `Failed`, `Generate + Succeeded ⇒ AssessmentId` non-empty, no delete transition).
+- `IIgdVisitSmassTaskRepo` (Application) declares `LoadEntity`, `FindByBusinessKey`,
+  `ListByVisit`, `ListProcessable` (Failed, ordered by `CrtDate` ascending),
+  `SaveChanges`.
+- `IgdVisitSmassTaskRepo`, `IgdVisitSmassTaskDal`, and `IgdVisitSmassTaskDto` exist
+  in Infrastructure and are auto-registered by the existing Scrutor/Nuna scan
+  (precedent `EmrAntrianOutboundQueueRepo`).
+- BILREG solution builds.
+
+Notes:
+
+- Sentinel date is `3000-01-01`.
+- No state transition deletes the row (D-15); no `PayloadJson` column is added
+  (AR-12).
+
+---
+
+## P4 - BILREG Integration
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Repository for all P4 slices: `b09-bilreg-api`.
+
+### P4-S11
+
+Title: SMASS gateway, token service, and configuration options
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Implement the BILREG outbound SMASS gateway (port + adapter), JWT token acquisition,
+and the configuration options that drive the integration (D-02, D-13, AR-01, AR-02,
+AR-04, §6.2, §6.3, §9.1, §9.6).
+
+Depends On: None
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `SmassOptions` with `BaseApiUrl`, `TokenEmail`, `TokenPass`, `TimeoutSeconds`
+  (default `10`), `SECTION_NAME = "Smass"`; `IgdVisitOptions` with
+  `EnableSmassIntegration` (default `false`), `SmassLayananId`,
+  `SmassTriagePaperId`, `SECTION_NAME = "IgdVisit"`.
+- `ISmassAssessmentGateway` (Application port) and `SmassAssessmentGateway`
+  (Infrastructure adapter) implement `GenerateIgdTriage` (POST
+  `{Smass:BaseApiUrl}/api/Assesment/generateIgdTriage`) and `LinkIgdVisit` (PATCH
+  `{Smass:BaseApiUrl}/api/Assesment/linkIgdVisit`) using `IRestClientFactory`;
+  payloads are camelCase JSON; responses parse via `JSend<T>` with
+  `PropertyNamingPolicy = CamelCase` and `PropertyNameCaseInsensitive = true`.
+- The gateway catches all exceptions and returns
+  `SmassGatewayResult(bool Success, string? AssessmentId, string? ErrorMessage)`;
+  no exception escapes to the caller (BR-10). Missing `BaseApiUrl`, `TokenEmail`,
+  `TokenPass`, `SmassLayananId`, or `SmassTriagePaperId` produces a failed result
+  without performing an HTTP call (AR-02, P-08).
+- `ISmassTokenService` / `SmassTokenService` obtains a JWT from
+  `POST {Smass:BaseApiUrl}/Token` with `{ email, pass }` and caches it in
+  `IMemoryCache` under `SmassToken` with absolute expiry = token `exp` − 60 s; the
+  token is attached as `Authorization: Bearer <jwt>` via RestSharp `AddHeader`.
+- Both options are registered in `Bilreg.Api/Configurations/InfrastructureService.cs`
+  with `.Configure<T>(...)`; `ValidateOnStart()` is **not** used for them. The
+  gateway and token service receive explicit `AddScoped` lines (they are not
+  Scrutor-resolved).
+- No `IHttpClientFactory`, no Polly.
+- BILREG solution builds.
+
+Notes:
+
+- First outbound Bearer in BILREG; precedent `UsmanGetTokenService` for token
+  parsing and `IRestClientFactory` usage.
+- Exactly one attempt per request; no in-request retry and no background worker
+  (D-07, P-02).
+
+---
+
+### P4-S12
+
+Title: Triage generation hooks and response extension
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Invoke the generate operation synchronously after triage persistence commits, in
+both triage handlers, recording the outcome as a task row and surfacing SMASS
+status in the response (D-02, D-04, D-07, BR-10, §5.2, §6.2, §6.6).
+
+Depends On: P3-S10, P4-S11
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `IgdVisitAssessTriageCmd` and `IgdVisitReAssessTriageCmd` follow the §6.6
+  ordering: domain behaviour → `TransHelper.NewScope()` → `SaveChanges(visit)` →
+  `trans.Complete()` → toggle check → task upsert → gateway call → mark result →
+  task save → response.
+- With `IgdVisit:EnableSmassIntegration = false` no task row is created and no HTTP
+  call is made.
+- The `Generate` task (`NoTriage > 0`) is upserted via
+  `FindByBusinessKey(igdVisitId, noTriage, Generate)` / `CreatePending`, then
+  `MarkSucceeded(assessmentId)` or `MarkFailed(error)`.
+- The generate payload contains the six scores, `AtsLevel` (from
+  `TriageLevelEnum.ToCode()`), `TriageColor` (including `Black` for manual
+  override), `IsManualOverrideBlack`, `AssesmentDate`/`AssesmentTime` from the
+  committed triage `AssessmentDateTime`, `UserrId` from `AssessorUserId`, plus
+  `PaperId` from `IgdVisit:SmassTriagePaperId` and `LayananId` from
+  `IgdVisit:SmassLayananId`.
+- No exception from the gateway or task persistence propagates into the triage
+  handler; triage remains committed.
+- The HTTP call is outside every `TransHelper` scope; the task is saved in a
+  separate write with no transaction spanning the HTTP call.
+- `IgdVisitAssessTriageResponse` gains `SmassAssessmentId` (`string`, empty when not
+  generated) and `SmassGenerationStatus`
+  (`"Disabled" | "Pending" | "Generated" | "Failed"`), consumed by the controller.
+- Existing triage scores, history, and visit persistence are unchanged.
+- BILREG solution builds.
+
+Notes:
+
+- Unique-index violation on a concurrent duplicate is handled by re-reading the
+  business key and treating an existing assessment as success (§6.2).
+- No `IgdEventEnum`/`AuditLog` entry is added (AR-16).
+
+---
+
+### P4-S13
+
+Title: Registration link hooks
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Invoke the link operation synchronously after registration persistence commits, in
+both register handlers, recording the outcome as a `Link` task (D-09, BR-16, BR-17,
+§5.2, §6.3, §6.6).
+
+Depends On: P3-S10, P4-S11
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `IgdVisitAssignRegisterCmd` and `IgdVisitReplaceRegisterCmd` follow the §6.6
+  ordering after `trans.Complete()`.
+- With the toggle disabled, no task row and no HTTP call are produced.
+- A `Link` task (`NoTriage = 0`) is upserted via `FindByBusinessKey` /
+  `CreatePending`, then `MarkSucceeded` / `MarkFailed`.
+- The link payload is built from the already-loaded `RegModel`:
+  `reg.RegId`, `reg.Pasien.PasienId`, `reg.Pasien.PasienName`,
+  `reg.Layanan.LayananId`, `reg.Layanan.LayananName`, plus `IgdVisitId`. Values are
+  read from `RegModel` because `IgdVisitModel.Reg` is only a
+  `RegReff(RegId, PasienId, PasienName)`.
+- No exception propagates; registration is never rolled back (BR-16).
+- Handler responses are unchanged (`"Done"`).
+- `IgdVisitVoidCmd` is not modified (BR-18, BR-32).
+- BILREG solution builds.
+
+Notes:
+
+- Link task is idempotent and replace-latest by construction (AR-15).
+- The HTTP call is outside every `TransHelper` scope.
+
+---
+
+### P4-S14
+
+Title: Manual retry, batch process, and task queries
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Provide the manual retry surface and the monitoring/list queries over the
+operational task store (D-07, BR-12, BR-30, BR-33, §5.2, §6.2, §6.3).
+
+Depends On: P3-S10, P4-S11
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `IgdVisitSmassTaskRetryCmd` loads the task via `IIgdVisitSmassTaskRepo.LoadEntity`,
+  calls `AssertCanManualRetry()`, rebuilds the payload (Generate: re-read
+  `BILRG_IgdVisitTriage` by (`IgdVisitId`, `NoTriage`) through the visit aggregate
+  and the immutable triage row; Link: rebuild from the visit/`Reg`), invokes the
+  gateway, then marks the task result. No `PayloadJson` is stored or replayed.
+- `IgdVisitSmassTaskProcessCmd` is a batch variant that loops failed tasks with the
+  same semantics.
+- `IgdVisitListSmassTaskQuery` returns tasks for one visit as
+  `IgdVisitSmassTaskView { IgdVisitSmassTaskId, IgdVisitId, NoTriage, TaskType,
+  TaskStatus, AssessmentId, RetryCount, LastRetryDate, ProcessedDate, LastError,
+  CrtDate }` (BR-30).
+- `IgdVisitSmassWorklistQuery` returns failed tasks across visits, oldest first
+  (BR-12, BR-33).
+- No delete/purge/archive path is introduced (BR-31).
+- BILREG solution builds.
+
+Notes:
+
+- Retry rebuild relies on the immutability of `BILRG_IgdVisitTriage` (DR-02) and
+  the absence of a payload column (AR-12).
+- Automatic workers remain explicitly out of scope (D-07).
+
+---
+
+### P4-S15
+
+Title: IgdVisitSmassTaskController
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Expose the task endpoints consumed by the web client and operators, consistent with
+existing IGD controllers (BR-12, BR-30, AR-06, §5.2, §6.4).
+
+Depends On: P4-S14
+
+Repository: `b09-bilreg-api`
+
+Completion Criteria:
+
+- `IgdVisitSmassTaskController` (BILREG API) exposes:
+  `GET api/IgdVisitSmassTask/{igdVisitId}`,
+  `GET api/IgdVisitSmassTask/worklist`,
+  `PATCH api/IgdVisitSmassTask/retry`,
+  `POST api/IgdVisitSmassTask/process`.
+- The controller carries `[Authorize]`, matching all other IGD controllers; no new
+  policy, role, or permission is introduced.
+- Responses use the existing `JSendOk` convention.
+- BILREG solution builds.
+
+Notes:
+
+- Monitoring is endpoint-only; no new operator screen is added (AR-06; precedent
+  `BedIgd/pakaiBedIgd/orphan`).
+
+---
+
+## P5 - Web Client
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Repository for all P5 slices: `c012_myhospital_web`.
+
+### P5-S16
+
+Title: Emergency contracts, query keys, and SMASS task hooks
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Add the frontend contracts and TanStack Query wiring for reading SMASS task status
+and triggering manual retry through BILREG only (D-02, §5.5, §6.5, §10.3).
+
+Depends On: P4-S12, P4-S15
+
+Repository: `c012_myhospital_web`
+
+Completion Criteria:
+
+- `src/modules/Emergency/types/contract.ts` adds `igdSmassTaskViewSchema`
+  (`igdVisitSmassTaskId`, `igdVisitId`, `noTriage`, `taskType`
+  `"GENERATE" | "LINK"`, `taskStatus` `"PENDING" | "SUCCEEDED" | "FAILED"`,
+  `assessmentId`, `retryCount`, `lastRetryDate`, `processedDate`, `lastError`,
+  `crtDate`) and extends `assignTriaseResponseSchema` with `smassAssessmentId` and
+  `smassGenerationStatus` (`"DISABLED" | "PENDING" | "GENERATED" | "FAILED"`).
+- `src/modules/Emergency/queries/EmergencyService.ts` adds
+  `useIgdSmassTask(visitId)` (GET `IgdVisitSmassTask/{igdVisitId}`) and
+  `useRetryIgdSmassTask` (PATCH `IgdVisitSmassTask/retry`), plus the corresponding
+  `EMERGENCY_SERVICE_KEYS` entries.
+- `src/core/api/queryConfigs.ts` adds `queryKeys.emergency.igdSmassTask` list/detail
+  keys.
+- Retry mutation invalidates the task query on settle; no optimistic update.
+- The client never calls SMASS directly.
+- `pnpm tc:app` (and type-check) passes.
+
+Notes:
+
+- Sentinel `3000-01-01` dates are converted to `null` using the existing
+  `isSentinel()` helper; the architecture places the conversion in the module
+  mapper/util path.
+- No Pinia store is introduced (§10.3).
+
+---
+
+### P5-S17
+
+Title: SCR-02 — Triage History SMASS status
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Show, per triage event, the SMASS generation status and linked `AssessmentId` in the
+existing triage history panel (BR-30, §5.5 SCR-02, UI state architecture).
+
+Depends On: P5-S16
+
+Repository: `c012_myhospital_web`
+
+Completion Criteria:
+
+- `src/modules/Emergency/components/TriageHistoryPanel.vue` renders an inline SMASS
+  status slot at the right of the timestamp for each row.
+- The status is derived from a `computed` join of the already-cached
+  `useTriageHistory` result and `useIgdSmassTask(visitId)` on
+  (`igdVisitId`, `noTriage`, `GENERATE`); no new endpoint and no extra request.
+- Rows show `Generated | Failed | Pending | Disabled`; when no `Generate` task
+  exists, no SMASS slot is rendered (backward compatible with visits created before
+  rollout).
+- `AssessmentId` is displayed as text only (no navigation).
+- `showReTriage` and `showTriageHistory` remain the source-of-truth toggles; the
+  panel stays read-only.
+- Type-check and lint pass.
+
+Notes:
+
+- No new table column is added; the narrow tablet layout is preserved
+  (architecture SCR-02 UI state).
+
+---
+
+### P5-S18
+
+Title: SCR-03 — SMASS Integration Panel and manual retry
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective:
+
+Add the SMASS Integration Panel to the IGD Triage workspace showing generation/link
+tasks, status, error, and `AssessmentId`, with manual retry for failed tasks
+(D-07, BR-12, BR-30, §5.5 SCR-03, interaction rules IR-01…IR-07).
+
+Depends On: P5-S16
+
+Repository: `c012_myhospital_web`
+
+Completion Criteria:
+
+- New `src/modules/Emergency/components/IgdSmassIntegrationPanel.vue`, presentational
+  with its own `useIgdSmassTask` query (precedent `TriageHistoryPanel.vue`),
+  receiving props from `TriaseIGD.vue`.
+- Panel lists one row per task: `TaskType` label, `NoTriage` or `Visit`, status
+  badge, `AssessmentId` (Generate only), and `LastError`.
+- "Coba Ulang" is available only for `taskStatus = "FAILED"` (IR-01); it is hidden
+  for `Succeeded` and disabled/hidden for `Pending`.
+- While any row is retrying, all retry buttons are disabled (IR-02); on settle the
+  task query cache is invalidated and a single toast reports the outcome.
+- The panel auto-expands with a summary chip ("n gagal") when at least one task is
+  `Failed`, otherwise it is collapsed by default (IR-03).
+- The panel is mounted directly below SCR-02 in the desktop right column, and as a
+  section inside the tablet/mobile triage drawer; it renders for every selected
+  visit, including terminal/voided visits where retry remains available (IR-07).
+- Nothing in the UI deletes, cancels, or archives a task or assessment (BR-31).
+- No Pinia store is introduced; UI state is local to the view.
+- Type-check and lint pass.
+
+Notes:
+
+- `taskType = "LINK"` rows do not display a single `AssessmentId` (IR-06).
+- The web client calls only BILREG (`IgdVisitSmassTask/*`), never SMASS (D-02).
+
+---
+
+# 6. Change Log
+
+- 2026-09-19 — v1.0 — Initial IMPLEMENTATION-PLAN created from ARCHITECTURE
+  `igd-triage-abc-smass-architecture.md` (V2.0). 18 slices across 5 phases and 3
+  repositories. `Execution Approval` remains `PENDING`; the plan is ready for
+  Architect release.
+
+Planning notes:
+
+- Architecture wording inconsistency recorded in P2-S08: §9.1/AR-05 say "three new
+  SMASS endpoints" while §5.3 and the §9.1 permission-boundary table enumerate
+  four. The plan authorizes every new action; no approved decision is changed.
+- Architecture §2.1 records that the FEATURE-owned `BR-01`…`BR-33` register is still
+  pending relocation into the owning FEATURE artifact (feasibility FND-001). That
+  is a FEATURE change owned by the Feature Knowledge Steward; it does not affect
+  the implementation slices, which realize the architecture's enforcement mapping.
+- Implementation delta discovered during planning and covered by slices: the
+  existing `AssesmentBuilder` cannot create an assessment without
+  `IGetRegService`/`IGetLayananService` lookups and only exposes a qualifier lookup
+  via concept preferences, so P2-S05 must add a pending-creation builder path and
+  an explicit-value concept path. This is required by AR-08/AR-10 and does not
+  alter any decision.
+- Deployment/rollout order (§8.6) is an operational sequence, not a slice
+  dependency: DB → SMASS app → verify legacy → enable
+  `IgdVisit:EnableSmassIntegration` → monitor. P1-S02 and P2-S08 must be deployed
+  before the toggle is enabled.
