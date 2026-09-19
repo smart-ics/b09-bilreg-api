@@ -4,8 +4,8 @@ Code: IGD-TRIAGE-ABC-SMASS
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-09-19
-Status: NOT-STARTED
-Execution Approval: PENDING
+Status: COMPLETED
+Execution Approval: APPROVED
 ---
 
 # 1. Objective
@@ -130,11 +130,11 @@ An individual slice with review status GO is not a testing entry condition.
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 — SMASS Persistence and Master Data | NOT-STARTED | NOT-REVIEWED | 0/4 |
-| P2 — SMASS Application | NOT-STARTED | NOT-REVIEWED | 0/4 |
-| P3 — BILREG Persistence | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| P4 — BILREG Integration | NOT-STARTED | NOT-REVIEWED | 0/5 |
-| P5 — Web Client | NOT-STARTED | NOT-REVIEWED | 0/3 |
+| P1 — SMASS Persistence and Master Data | IN-PROGRESS | GO | 4/4 |
+| P2 — SMASS Application | IN-PROGRESS | GO | 4/4 |
+| P3 — BILREG Persistence | IN-PROGRESS | GO | 2/2 |
+| P4 — BILREG Integration | IN-PROGRESS | GO | 5/5 |
+| P5 — Web Client | IN-PROGRESS | GO | 3/3 |
 
 ---
 
@@ -142,8 +142,8 @@ An individual slice with review status GO is not a testing entry condition.
 
 ## P1 - SMASS Persistence and Master Data
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IN-PROGRESS
+Review Status: GO
 
 Repository for all P1 slices: `a043_smass_structuredmedicalassesment_api`.
 
@@ -151,8 +151,8 @@ Repository for all P1 slices: `a043_smass_structuredmedicalassesment_api`.
 
 Title: SMASS schema — assessment provenance columns and TriageConceptMap table
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -201,8 +201,8 @@ Notes:
 
 Title: SMASS master data seeds — IGD Triage Paper and ATS-to-SMASS mapping
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -252,8 +252,8 @@ Notes:
 
 Title: SMASS assessment provenance persistence — model, enum, key, DAL, quarantine
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -301,8 +301,8 @@ Notes:
 
 Title: SMASS TriageConceptMap domain model and DAL
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -334,12 +334,31 @@ Notes:
 - Interface declares insert/update/delete per §5.3 but this feature uses read only;
   do not introduce any delete/purge path.
 
+Implementation Notes (2026-09-19):
+
+- DAL shape chosen: `ITriageConceptMapDal : IListData<TriageConceptMapModel>` only.
+  The full §5.3 marker set (`IInsert`/`IUpdate`/`IDelete`) is deliberately not
+  declared because the codebase registers DALs by marker interface and a declared
+  `IDelete<>` would expose a delete/purge path; the read-only
+  `IListData<>`/`IGetData<,>` form mirrors existing mastery read DALs
+  (`IKeadaanKeluarDkDal`). No insert/update/delete path exists.
+- `ITriageConceptMapKey` declares `TriageFieldCode` and `TriageValue` (the INV-M1
+  composite key) and is placed in its own file, matching the dominant `I*Key`
+  convention (`ISmfKey`, `IKeadaanKeluarDkKey`).
+- Changed files: `Smass.Domain/AssesmentContext/TriageConceptMapAgg/TriageConceptMapModel.cs`,
+  `Smass.Domain/AssesmentContext/TriageConceptMapAgg/ITriageConceptMapKey.cs`,
+  `Smass.Application/AssesmentContext/TriageConceptMapAgg/ITriageConceptMapDal.cs`,
+  `Smass.Infrastructure/AssesmentContext/TriageConceptMapAgg/TriageConceptMapDal.cs`.
+- Builds verified: `dotnet build` on `Smass.Infrastructure` and `Smass.Api`
+  (0 errors); VS `MSBuild.exe` on `A043_Smass_StructuredMedicalAssesment_Api.sln`
+  (Build succeeded, 0 errors, exit 0, including the `Smass.Db` SSDT dacpac).
+
 ---
 
 ## P2 - SMASS Application
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IN-PROGRESS
+Review Status: GO
 
 Repository for all P2 slices: `a043_smass_structuredmedicalassesment_api`.
 
@@ -347,8 +366,8 @@ Repository for all P2 slices: `a043_smass_structuredmedicalassesment_api`.
 
 Title: GenerateIgdTriageAssesmentCommand
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -397,14 +416,60 @@ Notes:
   `RegId`/`PasienId`.
 - `CreateFixAssesmentCommand` must not be modified.
 
+Implementation Notes (2026-09-19):
+
+- Changed files: `Smass.Application/AssesmentContext/AssesmentAgg/UseCases/Commands/GenerateIgdTriageAssesmentCommand.cs`
+  (new: request + response + handler), `Smass.Application/AssesmentContext/AssesmentAgg/Workers/Creators/AssesmentBuilder.cs`
+  (interface + implementation: `LayananDirect`, `AssesmentDateDirect`, `PendingIgdTriage`),
+  `Smass.Application/AssesmentContext/AssesmentAgg/Workers/Creators/AssesmentConceptBuilder.cs`
+  (interface + implementation: explicit-value `SetAssValue(assValue, valueSnomedCtId, valueTaxonomy, qualifierValue)`).
+- Route `POST api/Assesment/generateIgdTriage` is recorded as an XML-doc contract on
+  the command type; controller wiring remains P2-S08.
+- Mapping resolution: `ITriageConceptMapDal.ListData()` is loaded once per request
+  and indexed by (`TriageFieldCode`, `TriageValue`), case-insensitive. The ten
+  pairs are built in closed-set order (`AIRWAYS`, `BREATHING`, `CIRCULATION`,
+  `GCS_EYE`, `GCS_MOTOR`, `GCS_VOICE`, `GCS_TOTAL` = eye + motor + voice,
+  `ATS_LEVEL`, `TRIAGE_COLOR`, `MANUAL_OVERRIDE_BLACK`); scores use invariant
+  numeric strings, `IsManualOverrideBlack` maps to lowercase `"true"`/`"false"`.
+  Any unresolved or duplicated pair throws `ArgumentException` before any write
+  (fail closed, no partial snapshot).
+- Section grouping mirrors `SyncChartVitalSignCommand.BuildConceptSectionIndex`:
+  `IPaperSectionDal.ListData(PaperKey)` → `SectionType = CustomSection` →
+  `ICustomSectionConceptDal.ListData(sectionKeys)` → `conceptId → sectionId`.
+  A mapped `ConceptId` absent from the Paper throws `ArgumentException`; sections
+  are added in `SMASS_PaperSection.NoUrut` order and concepts inside a section in
+  mapping `NoUrut` order.
+- Registration/service bypass (AR-08, AR-10): `LayananDirect` stamps `LayananId`
+  from the request with `LayananName = ''`; `AssesmentDateDirect` sets
+  `AssesmentDate` without the JenisRawat window; `PendingIgdTriage` clears
+  `RegId`/`PasienId`/`PasienName` and stamps `IgdVisitId`, `NoTriage`,
+  `RegistrationLinkStatus = PendingRegistration`. `IGetRegService` /
+  `IGetLayananService` are never invoked. `AssesmentValidator` is not re-enabled
+  and `CreateFixAssesmentCommand` is not modified.
+- Paper existence is validated through the existing builder `.Paper(request)`
+  path (`IPaperDal`); persistence is `IAssesmentWriter.Save` only. `Finish()` is
+  never called (post-condition `Drafting` from `AddSection`) and no
+  `CreatedAssesmentEvent` / `AddedSectionAssesmentEvent` is published (AR-13,
+  AR-14).
+- Response is emitted with `RegistrationLinkStatus` as `int` and `AssesmentState`
+  as string (`Drafting`) to match the BILREG gateway DTO
+  (`SmassAssessmentGateway.GenerateResponse`) on the wire.
+- Idempotency: `_assesmentDal.GetData(request, request.NoTriage)` returns the
+  existing snapshot idempotently without mutation when present.
+- Builds verified: `dotnet build` on `Smass.Application`, `Smass.Infrastructure`,
+  `Smass.Api` (0 errors); VS `MSBuild.exe` `/t:Rebuild` on
+  `A043_Smass_StructuredMedicalAssesment_Api.sln` (Build succeeded, 0 errors,
+  exit 0, including the `Smass.Db` SSDT dacpac); `dotnet test --filter
+  FullyQualifiedName~SyncChartVitalSign` (27 passed, 0 failed).
+
 ---
 
 ### P2-S06
 
 Title: LinkAssesmentByIgdVisitIdCommand
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -440,14 +505,52 @@ Notes:
   BR-17 (replace-latest over previously linked rows); naturally idempotent (AR-15).
 - No unlink/delete path exists (BR-18, BR-31/32).
 
+Implementation Notes (2026-09-19):
+
+- Changed files: `Smass.Application/AssesmentContext/AssesmentAgg/UseCases/Commands/LinkAssesmentByIgdVisitIdCommand.cs`
+  (new: request + response + handler). No other source file changed; the
+  command is picked up by the existing Scrutor/MediatR registration scan.
+- Route `PATCH api/Assesment/linkIgdVisit` is recorded as an XML-doc contract on
+  the command type; controller wiring remains P2-S08.
+- Guard: Dawn `Guard.Argument(() => request).NotNull()` then `.Member(...)
+  .NotEmpty()` for all six fields (`IgdVisitId`, `RegId`, `PasienId`,
+  `PasienName`, `LayananId`, `LayananName`), mirroring `CreateFixAssesmentCommand`.
+- Selection: the command implements `IIgdVisitKey`, so
+  `_assesmentDal.ListData(request)` binds to the by-visit overload and returns
+  every assessment of the visit (pending and registered) in one query — the
+  single behaviour that satisfies BR-15, BR-17 and AR-15. An empty result
+  returns `LinkedCount = 0` with `ListAssesmentId = []` and performs no write.
+- Per-assessment atomicity: the loop opens `TransHelper.NewScope()` per
+  assessment, so each assessment's key population commits (or rolls back)
+  independently. Inside the scope only `RegId`, `PasienId`, `PasienName`,
+  `LayananId`, `LayananName` and `RegistrationLinkStatus = Registered` are set;
+  `_assesmentDal.Update(model)` is called directly (the `AssesmentWriter` is not
+  used, so its section/concept delete+reinsert path never runs).
+  `AssesmentState`, sections and concepts are never read or written, `Finish()`
+  is never called, and `IGetRegService` / `IGetLayananService` are not injected
+  or called (AR-10, AR-13, BR-13/BR-14, INV-A5/A6).
+- Failure semantics: per-assessment exceptions are collected in the loop; after
+  the loop, any collected failure throws `AggregateException`, so partial
+  success persists and BILREG records a Failed `Link` task and retries (BR-16).
+  Successful assessments on the wire are reported as `LinkedCount` plus the
+  matching `ListAssesmentId[]`.
+- No event publish: neither `CreatedAssesmentEvent` nor
+  `AddedSectionAssesmentEvent` is referenced by the command (AR-14). No
+  delete/purge/unlink path is introduced (BR-18, BR-31/32).
+- Builds verified: `dotnet build` on `Smass.Application`,
+  `Smass.Infrastructure`, `Smass.Api` (all succeeded, 0 errors; pre-existing
+  unrelated warnings only); VS `MSBuild.exe` `/t:Build` on
+  `A043_Smass_StructuredMedicalAssesment_Api.sln` (Build succeeded, exit 0,
+  including the `Smass.Db` SSDT dacpac).
+
 ---
 
 ### P2-S07
 
 Title: SMASS read surfaces — by-visit, pending-registration monitoring, provenance view fields
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -487,14 +590,80 @@ Notes:
 - `ListAssesmentByPasienIdQuery` and OFTA/report flows require no new code; they
   inherit the quarantine predicate.
 
+Implementation Notes (2026-09-19):
+
+- Changed/new files:
+  `Smass.Application/AssesmentContext/AssesmentAgg/UseCases/Queries/AssesmentIgdView.cs`
+  (new: shared IGD provenance/link view-model base + label helpers),
+  `.../Queries/ListAssesmentByIgdVisitIdQuery.cs` (new: query + response + handler),
+  `.../Queries/ListPendingRegistrationAssesmentQuery.cs`
+  (new: query + `PendingRegistrationView` + handler),
+  `.../Queries/ListCatalogQuery.cs` (response now inherits `AssesmentIgdView`;
+  projection fills the provenance fields),
+  `.../Queries/ListAssesmentByRegIdQuery.cs` (response now inherits
+  `AssesmentIgdView`; provenance fields applied after the Mapster adapt).
+  No DAL, controller, domain, SSDT, or DI file changed.
+- `AssesmentIgdView` (architecture §6.5) holds the six contract fields
+  `AssesmentId`, `IgdVisitId`, `NoTriage`, `RegistrationLinkStatus` (`int`),
+  `RegistrationLinkStatusLabel`, `SourceLabel`, implements `IAssesmentKey`, and
+  exposes `GetRegistrationLinkStatusLabel` / `GetSourceLabel` /
+  `ApplyProvenance` so every surface computes the labels identically. Labels are
+  exactly `"Pending Registration"` / `"Registered"` and
+  `"Generated From IGD Triage"` when `IgdVisitId` is non-empty, else `""`.
+  Each concrete response keeps its existing display fields additively; nothing
+  was renamed or removed.
+- `ListAssesmentByIgdVisitIdQuery` is a positional record implementing
+  `IIgdVisitKey`, so the handler's single `_assesmentDal.ListData(request)` binds
+  to the P1-S03 by-visit overload (`IX_SMASS_Assesment_IgdVisitId`) and returns
+  pending and registered rows together. This is the only surface that can return
+  a pending row; it orders by `NoTriage` then `AssesmentId`. Route
+  `GET api/Assesment/igdVisit/{igdVisitId}` is recorded as an XML-doc contract on
+  the query type; controller wiring remains P2-S08.
+- `ListPendingRegistrationAssesmentQuery` reuses
+  `IAssesmentDal.ListPendingRegistration()` and re-applies
+  `OrderBy(CreateDate)` so "oldest first" is explicit. `PendingRegistrationView`
+  (architecture §6.5) adds `AssesmentDate`, `CreateDate`, `PaperId`, `PaperName`,
+  `UserrId` and computed `AgeDays` (whole days since `CreateDate`, clamped at 0).
+  Route `GET api/Assesment/pendingRegistration` is likewise xml-doc only.
+- Additive-only changes: `ListCatalogResponse` and `ListAssesmentByRegIdResponse`
+  now inherit the six provenance fields from `AssesmentIgdView`; their existing
+  JSON/C# fields (`assesmentId`, `assesmentDate`, `paperId`, `paperName`,
+  `layananId`, `layananName`, `userId`/`userName`, `userrName`,
+  `assesmentState`, `oftaDocId`, `oftaDocUrl`, `isSigned`, `verificators`,
+  `regId`/`pasienId`/`pasienName`, `listSection`) are unchanged, so existing
+  consumers keep their fields. `ListCatalogResponse` still satisfies
+  `IAssesmentKey` via the inherited `AssesmentId` (verificator lookup intact).
+- Quarantine unchanged and untouched: catalog and RegId handlers still call
+  `ListData(IRegKey)`, which carries the P1-S03 predicate
+  `RegistrationLinkStatus = Registered`; `ListAssesmentByPasienIdQuery` and the
+  OFTA/report flows inherit it. Pending rows therefore remain unreachable from
+  every RegId/PasienId surface. `ListAssesmentByPasienIdQuery` was not modified.
+- Read-only: no delete/purge/archive/unlink action or DAL method was added or
+  invoked on any surface (BR-31). Soft-deleted rows (`AssesmentState = Deleted`)
+  are excluded from both new surfaces, matching every existing read surface.
+- Verified dependency P1-S03 (IMPLEMENTED): `IAssesmentDal.ListData(IIgdVisitKey)`,
+  `ListPendingRegistration()`, `AssesmentModel.IgdVisitId`/`NoTriage`/
+  `RegistrationLinkStatus`, and the `SMASS_Assesment` provenance columns all
+  present.
+- Builds verified: `dotnet build` on `Smass.Application`, `Smass.Infrastructure`,
+  `Smass.Api` (0 errors; pre-existing unrelated warnings only); VS `MSBuild.exe`
+  `/t:Rebuild` on `A043_Smass_StructuredMedicalAssesment_Api.sln` (Build
+  succeeded, 34 pre-existing warnings, 0 errors, exit 0, including the `Smass.Db`
+  SSDT dacpac).
+- Deviation/decision (recorded, not contradicting architecture): `AssesmentIgdView`
+  carries the six IGD provenance/link fields; the per-surface existing display
+  fields stay on the concrete responses instead of being hoisted into the base,
+  avoiding duplicate members on the two existing responses. All four surfaces
+  expose the full §6.5 field set. No plan or architecture change is implied.
+
 ---
 
 ### P2-S08
 
 Title: SMASS API endpoints and authorization
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -526,6 +695,48 @@ Notes:
   consumer behaviour is changed. Flagged for later architecture wording alignment;
   it does not block implementation.
 
+Implementation Notes (2026-09-19):
+
+- Changed file:
+  `Smass.Api/Controllers/AssesmentContext/AssesmentController.cs` (four new actions
+  added after the existing `FinishSign` action; + `using
+  Microsoft.AspNetCore.Authorization;`). No other file changed.
+- Actions and dispatch (all use the existing `ControllerBase`, injected `IMediator`,
+  and `Ok(new JSendOk(result))`):
+  - `POST api/Assesment/generateIgdTriage` → `GenerateIgdTriageAssesmentCommand`
+    (`[HttpPost][Authorize][Route("generateIgdTriage")]`).
+  - `PATCH api/Assesment/linkIgdVisit` → `LinkAssesmentByIgdVisitIdCommand`
+    (`[HttpPatch][Authorize][Route("linkIgdVisit")]`).
+  - `GET api/Assesment/igdVisit/{igdVisitId}` → `ListAssesmentByIgdVisitIdQuery(igdVisitId)`
+    (`[HttpGet][Authorize][Route("igdVisit/{igdVisitId}")]`).
+  - `GET api/Assesment/pendingRegistration` → `ListPendingRegistrationAssesmentQuery()`
+    (`[HttpGet][Authorize][Route("pendingRegistration")]`).
+  Action method names (`GenerateIgdTriage`, `LinkIgdVisit`, `ListByIgdVisitId`,
+  `ListPendingRegistration`) are unique within the controller; none of the new routes
+  collides with an existing route.
+- Authorization (D-13, AR-05, §9.1): `[Authorize]` is **bare** on each of the four new
+  actions — no policy, role, or permission is added. The existing JWT Bearer scheme is
+  already configured in `Smass.Api/Configurations/PresentationService.cs`
+  (`AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)`) and
+  the pipeline already calls `UseAuthentication()` / `UseAuthorization()` in
+  `Smass.Api/Program.cs`, so all four actions require a valid token while every
+  pre-existing action is unchanged. Exactly four `[Authorize]` attributes exist in the
+  file (one per new action); no existing action's authorization changed.
+- Architecture wording note from the slice Notes is carried forward unchanged: §9.1 and
+  AR-05 say "three new SMASS endpoints" while §5.3 and the §9.1 permission-boundary
+  table enumerate four surfaces; consistent with this plan, all four new actions are
+  authorized. No approved decision or existing consumer behaviour changed; flagged for
+  later architecture wording alignment.
+- Endpoint reachability with the BILREG service identity: the BILREG gateway
+  (P4-S11) obtains a JWT from `POST /Token` and attaches
+  `Authorization: Bearer <jwt>`; SMASS validates it with the existing `Jwt` config, so a
+  valid token makes the four actions reachable. No new scheme or validation was added.
+- Builds verified: `dotnet build Smass.Api\Smass.Api.csproj -v minimal` — Build
+  succeeded, 0 errors (4 pre-existing `Smass.Api` nullability warnings only); VS
+  `MSBuild.exe /t:Rebuild` on `A043_Smass_StructuredMedicalAssesment_Api.sln` — Build
+  succeeded (pre-existing warnings only), 0 errors, exit 0, including the `Smass.Db`
+  SSDT dacpac.
+
 ---
 
 ## P3 - BILREG Persistence
@@ -539,8 +750,8 @@ Repository for all P3 slices: `b09-bilreg-api`.
 
 Title: BILRG_IgdVisitSmassTask table
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -581,8 +792,8 @@ Notes:
 
 Title: IgdVisitSmassTask domain model, enums, repository, and DAL
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -627,8 +838,8 @@ Notes:
 
 ## P4 - BILREG Integration
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Repository for all P4 slices: `b09-bilreg-api`.
 
@@ -636,8 +847,8 @@ Repository for all P4 slices: `b09-bilreg-api`.
 
 Title: SMASS gateway, token service, and configuration options
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -690,8 +901,8 @@ Notes:
 
 Title: Triage generation hooks and response extension
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -736,14 +947,42 @@ Notes:
   business key and treating an existing assessment as success (§6.2).
 - No `IgdEventEnum`/`AuditLog` entry is added (AR-16).
 
+Implementation Notes (2026-09-19):
+
+- Both triage handlers achieve the §6.6 ordering: guards + load → domain behaviour
+  (`visit.AssessTriage`) → `using (var trans = TransHelper.NewScope())` →
+  `_igdVisitRepo.SaveChanges(visit)` → `trans.Complete()` (scope disposed) → toggle
+  check → task upsert (`FindByBusinessKey` / `CreatePending`) → one gateway call →
+  `MarkSucceeded` / `MarkFailed` → `taskRepo.SaveChanges(task)` → response.
+- A shared internal helper `IgdVisitSmassGenerationHook.RunAsync` holds the
+  post-commit steps so the ordering is identical in both handlers; it swallows every
+  gateway/task-persistence exception (BR-10) and the HTTP call is outside every
+  `TransHelper` scope. A concurrent task-insert unique-index violation is handled by
+  re-reading the business key and treating the persisted row as authoritative
+  (§6.2); an already-`Succeeded` task returns `Generated` without a redundant HTTP
+  call (INV-T4).
+- `IgdVisitAssessTriageResponse` gained `SmassAssessmentId` (empty when not
+  generated) and `SmassGenerationStatus`. Status mapping:
+  `Disabled` = toggle off (no task, no HTTP); `Generated` = gateway success +
+  `MarkSucceeded`; `Failed` = gateway failure/rejection or `MarkFailed`;
+  `Pending` = the hook returns before a terminal task result can be recorded
+  (task materialisation failure, or task save failure with no re-readable row).
+  The controller returns the extended response via the existing `JSendOk(result)`
+  with no controller change required.
+- Changed files: `IgdVisitFeature/UseCases/IgdVisitSmassGenerationHook.cs` (new),
+  `IgdVisitFeature/UseCases/IgdVisitAssessTriageCmd.cs`,
+  `IgdVisitFeature/UseCases/IgdVisitReAssessTriageCmd.cs` (Bilreg.Application).
+- Build verified: `dotnet build src/bilreg/b09-bilreg-api.sln -v minimal` —
+  Build succeeded, 0 errors (pre-existing warnings only).
+
 ---
 
 ### P4-S13
 
 Title: Registration link hooks
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -777,14 +1016,47 @@ Notes:
 - Link task is idempotent and replace-latest by construction (AR-15).
 - The HTTP call is outside every `TransHelper` scope.
 
+Implementation Notes (2026-09-19):
+
+- Both register handlers achieve the §6.6 ordering: guards + load (`visit`/`igdVisit` and
+  the register aggregate) → domain behaviour (`visit.AssignRegister` /
+  `igdVisit.ReplaceRegister`) → `using (var trans = TransHelper.NewScope())` →
+  `_igdVisitRepo.SaveChanges(...)` → `trans.Complete()` (scope disposed) → toggle check →
+  task upsert (`FindByBusinessKey` / `CreatePending`, `NoTriage = 0`, `TaskType = Link`) →
+  one gateway call (`LinkIgdVisit`) → `MarkSucceeded` / `MarkFailed` →
+  `taskRepo.SaveChanges(task)` → return (unchanged `Task`, controller still returns
+  `"Done"`). The `using var` form was changed to a `using (…) { … }` block so the
+  `TransHelper` scope is disposed before the HTTP call.
+- A shared internal helper `IgdVisitSmassLinkHook.RunAsync` holds the post-commit steps so
+  the ordering is identical in both handlers; it swallows every gateway/task-persistence
+  exception (BR-16) and the HTTP call is outside every `TransHelper` scope. No
+  `IgdEventEnum`/`AuditLog` entry is produced (AR-16).
+- The link payload is built from the already-loaded `RegModel` (not `IgdVisitModel.Reg`):
+  `reg.RegId`, `reg.Pasien.PasienId`, `reg.Pasien.PasienName`, `reg.Layanan.LayananId`,
+  `reg.Layanan.LayananName`, plus `IgdVisitId`. `IgdVisitModel.Reg` is only a
+  `RegReff(RegId, PasienId, PasienName)` and carries neither `LayananId` nor `LayananName`.
+- Unlike the generation hook, the visit-level link is **always** re-invoked when the toggle
+  is enabled, because `ReplaceRegister` must replace the latest registration values on every
+  assessment (BR-17 replace-latest / AR-15); it is not short-circuited for an
+  already-`Succeeded` task. INV-T4/INV-T5 make a terminal `Succeeded` task
+  non-transitionable, so when the existing task is already `Succeeded` the gateway call
+  still runs but the terminal state is not written again (no second
+  `MarkSucceeded`/`MarkFailed`).
+- `IgdVisitVoidCmd` is not modified (BR-18, BR-32). No unlink/delete path is introduced.
+- Changed files: `IgdVisitFeature/UseCases/IgdVisitSmassLinkHook.cs` (new),
+  `IgdVisitFeature/UseCases/IgdVisitAssignRegisterCmd.cs`,
+  `IgdVisitFeature/UseCases/IgdVisitReplaceRegisterCmd.cs` (Bilreg.Application).
+- Build verified: `dotnet build "src/bilreg/b09-bilreg-api.sln" -v minimal` —
+  Build succeeded, 0 errors (pre-existing warnings only).
+
 ---
 
 ### P4-S14
 
 Title: Manual retry, batch process, and task queries
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -819,14 +1091,68 @@ Notes:
   the absence of a payload column (AR-12).
 - Automatic workers remain explicitly out of scope (D-07).
 
+Implementation Notes (2026-09-19):
+
+- `IgdVisitSmassTaskRetryCmd` (new) loads the task with
+  `IIgdVisitSmassTaskRepo.LoadEntity`, calls `AssertCanManualRetry()` (INV-T6/IR-01),
+  invokes exactly one gateway attempt, marks the task result and saves it, then
+  returns the updated `IgdVisitSmassTaskView`.
+  `IgdVisitSmassTaskProcessCmd` (new) loops `ListProcessable()` (Failed tasks, oldest
+  first) and runs the identical executor per task; a single-task failure is counted and
+  never aborts the batch. Summary is `{ Total, Succeeded, Failed }`.
+- New `IgdVisitSmassTaskRetryExecutor` (new file) holds the single retry semantics,
+  mirroring the P4-S12/P4-S13 hook pattern. Generate rebuild: visit aggregate via
+  `IIgdVisitRepo.LoadEntity(IgdVisitModel.Key(...))` → the immutable
+  `BILRG_IgdVisitTriage` row selected by `NoTriage`. Link rebuild: the visit's
+  `Reg.RegId` → `IRegRepo.LoadEntity(RegModel.Key(...))` for
+  `LayananId`/`LayananName` (the visit aggregate only carries
+  `RegReff(RegId, PasienId, PasienName)`). No `PayloadJson` exists, is written, or is
+  replayed (AR-12). The HTTP call is outside every `TransHelper` scope; the task is
+  saved in a separate write.
+- Payload construction is reused from P4-S12/P4-S13:
+  `IgdVisitSmassGenerationHook.BuildPayload` and `IgdVisitSmassLinkHook.BuildPayload`
+  were changed from `private` to `internal` so Generate and Link retries rebuild the
+  exact same request DTO as the live hooks (single source of truth, no duplicated
+  payload logic). Paper/Layanan still resolve from `IgdVisitOptions` in the gateway.
+- `IgdVisitListSmassTaskQuery` (new) returns `IgdVisitSmassTaskView` for one visit via
+  `ListByVisit`; `IgdVisitSmassWorklistQuery` (new) returns `ListProcessable()`.
+  `TaskType`/`TaskStatus` are projected to the approved wire codes
+  (`GENERATE`/`LINK`, `PENDING`/`SUCCEEDED`/`FAILED`) by
+  `IgdVisitSmassTaskView.FromModel`, shared by both queries and the retry response.
+  The sentinel `3000-01-01` dates are surfaced verbatim (client conversion is P5-S16).
+- No delete/purge/archive path is introduced anywhere (BR-31); no automatic worker or
+  polling is introduced (D-07). No `IgdEventEnum`/`AuditLog` entry is produced (AR-16).
+- Decision recorded (not contradicted by the architecture): manual retry is **not**
+  gated by `IgdVisit:EnableSmassIntegration`. The task row already exists and an
+  operator explicitly requests the attempt, matching D-15/BR-18/IR-07 (retry remains
+  available for terminal/voided visits). Missing configuration still fails closed in
+  the gateway without an HTTP call (AR-02).
+- Changed files:
+  `Bilreg.Application/IgdContext/IgdVisitSmassTaskFeature/UseCases/IgdVisitSmassTaskRetryCmd.cs`
+  (new),
+  `Bilreg.Application/IgdContext/IgdVisitSmassTaskFeature/UseCases/IgdVisitSmassTaskProcessCmd.cs`
+  (new),
+  `Bilreg.Application/IgdContext/IgdVisitSmassTaskFeature/UseCases/IgdVisitListSmassTaskQuery.cs`
+  (new),
+  `Bilreg.Application/IgdContext/IgdVisitSmassTaskFeature/UseCases/IgdVisitSmassWorklistQuery.cs`
+  (new),
+  `Bilreg.Application/IgdContext/IgdVisitSmassTaskFeature/UseCases/IgdVisitSmassTaskRetryExecutor.cs`
+  (new),
+  `Bilreg.Application/IgdContext/IgdVisitFeature/UseCases/IgdVisitSmassGenerationHook.cs`
+  (payload builder visibility: `private` → `internal`),
+  `Bilreg.Application/IgdContext/IgdVisitFeature/UseCases/IgdVisitSmassLinkHook.cs`
+  (payload builder visibility: `private` → `internal`).
+- Build verified: `dotnet build "src/bilreg/b09-bilreg-api.sln" -v minimal` —
+  Build succeeded, 0 errors (pre-existing warnings only).
+
 ---
 
 ### P4-S15
 
 Title: IgdVisitSmassTaskController
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -854,11 +1180,37 @@ Notes:
 - Monitoring is endpoint-only; no new operator screen is added (AR-06; precedent
   `BedIgd/pakaiBedIgd/orphan`).
 
+Implementation Notes (2026-09-19):
+
+- New `IgdVisitSmassTaskController` (BILREG API) at
+  `Bilreg.Api/Controllers/IgdContext/IgdVisitSmassTaskController.cs`, mirroring the
+  existing IGD controllers (`IgdVisitController`, `BedIgdController`):
+  `[Route("api/[controller]")]`, `[ApiController]`, `[Authorize]`, `ControllerBase`,
+  injected `IMediator`, and `Ok(new JSendOk(...))` for every response.
+- Actions and dispatch:
+  `GET api/IgdVisitSmassTask/{igdVisitId}` → `IgdVisitListSmassTaskQuery(igdVisitId)`;
+  `GET api/IgdVisitSmassTask/worklist` → `IgdVisitSmassWorklistQuery`;
+  `PATCH api/IgdVisitSmassTask/retry` → `IgdVisitSmassTaskRetryCmd(body.IgdVisitSmassTaskId)`
+  (request body `IgdVisitSmassTaskRetryBody { IgdVisitSmassTaskId }`, carrying the task id
+  per architecture §9.2);
+  `POST api/IgdVisitSmassTask/process` → `IgdVisitSmassTaskProcessCmd` (no body).
+  The literal `worklist` route wins over the `{igdVisitId}` parameter route by attribute
+  routing precedence.
+- `[Authorize]` is bare (no policy, role, or permission added — AR-05/§9.1); it matches
+  every other IGD controller.
+- Monitoring remains endpoint-only: the controller adds no screen and no
+  delete/purge/archive path (AR-06, BR-31); no polling or background worker is introduced
+  (D-07). P4-S15 only exposes the P4-S14 use cases; no business logic is added here.
+- Changed files:
+  `Bilreg.Api/Controllers/IgdContext/IgdVisitSmassTaskController.cs` (new).
+- Build verified: `dotnet build "src/bilreg/b09-bilreg-api.sln" -v minimal` —
+  Build succeeded, 0 errors (pre-existing warnings only).
+
 ---
 
 ## P5 - Web Client
 
-Implementation Status: NOT-STARTED
+Implementation Status: IN-PROGRESS
 Review Status: NOT-REVIEWED
 
 Repository for all P5 slices: `c012_myhospital_web`.
@@ -867,8 +1219,8 @@ Repository for all P5 slices: `c012_myhospital_web`.
 
 Title: Emergency contracts, query keys, and SMASS task hooks
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -904,14 +1256,74 @@ Notes:
   mapper/util path.
 - No Pinia store is introduced (§10.3).
 
+Implementation Notes (2026-09-19):
+
+- Changed files:
+  `src/modules/Emergency/types/contract.ts` (adds
+  `smassGenerationStatusSchema`, `assignTriaseResponseSchema` extension,
+  `igdSmassTaskTypeSchema`, `igdSmassTaskStatusSchema`, `igdSmassTaskViewSchema`,
+  `igdSmassTaskListResponseSchema`, `retryIgdSmassTaskPayloadSchema`, and the
+  matching inferred types),
+  `src/core/api/queryConfigs.ts` (adds `queryKeys.emergency.igdSmassTask` with
+  `all`/`lists`/`list(visitId)`/`details`/`detail(taskId)`),
+  `src/modules/Emergency/queries/EmergencyService.ts` (adds
+  `useIgdSmassTask`, `useRetryIgdSmassTask`, `API_ENDPOINT.IGD_SMASS_TASK =
+  'IgdVisitSmassTask'`, `EMERGENCY_SERVICE_KEYS.RETRY_IGD_SMASS_TASK`, and both
+  hooks in the returned service object),
+  `src/modules/Emergency/types/domain.ts` (adds the `IgdSmassTask` view type with
+  `lastRetryDate`/`processedDate` nullable),
+  `src/modules/Emergency/utils/mappers.ts` (adds
+  `mapIgdSmassTaskToDomain`, converting the sentinel dates to `null` with the
+  existing `isSentinel()` helper per architecture §5.5).
+- Hooks: `useIgdSmassTask(visitId)` issues `GET
+  IgdVisitSmassTask/{igdVisitId}` (`createQueryFn` over
+  `igdSmassTaskListResponseSchema`, `placeholderData: []`, enabled only when a
+  visit id is present, no polling) and keys on
+  `queryKeys.emergency.igdSmassTask.list(visitId)`. `useRetryIgdSmassTask()`
+  issues `PATCH IgdVisitSmassTask/retry` with body `{ igdVisitSmassTaskId }`
+  (`retryIgdSmassTaskPayloadSchema` → `igdSmassTaskViewSchema`) and invalidates
+  `queryKeys.emergency.igdSmassTask.all()` in `onSettled`; there is no optimistic
+  update (architecture §5.5).
+- Casing deviation (recorded, flagged for the Architect): the plan P5-S16 and
+  ARCHITECTURE §6.5 specify `smassGenerationStatus` as
+  `"DISABLED" | "PENDING" | "GENERATED" | "FAILED"`, but the accepted BILREG
+  implementation (P4-S12, GO — `IgdVisitSmassGenerationHook.SmassGenerationResult`
+  and `IgdVisitAssessTriageCmd.SmassGenerationStatus`) emits PascalCase
+  `"Disabled" | "Pending" | "Generated" | "Failed"`; ARCHITECTURE §5.2 already
+  states those exact PascalCase values. The Zod schema uses the actual BILREG
+  wire values `['Disabled', 'Pending', 'Generated', 'Failed']` so the triage and
+  re-triage responses parse end-to-end, as instructed. This is an
+  architecture/plan inconsistency (§5.2 vs §6.5; plan P4-S12 vs P5-S16), not a
+  code defect; BILREG was not modified.
+- `smassAssessmentId` is typed `z.string()` (empty string when not generated),
+  matching the BILREG wire and the plan's type.
+- `igdSmassTaskViewSchema` mirrors the `IgdVisitSmassTaskView` wire exactly:
+  `taskType` `"GENERATE" | "LINK"`, `taskStatus`
+  `"PENDING" | "SUCCEEDED" | "FAILED"`; the sentinel `3000-01-01` dates are
+  surfaced verbatim by BILREG and converted to `null` only in
+  `mapIgdSmassTaskToDomain` (module mapper path).
+- The web client calls only BILREG (`IgdVisitSmassTask/*`); no SMASS endpoint is
+  referenced anywhere in the change (D-02, §10.3). No Pinia store was introduced;
+  server state stays in TanStack Query.
+- Verification: `npx prettier --write` on the five modified files (no unintended
+  changes); `pnpm tc:app` → exit 0, no type errors. `pnpm lint` fails on
+  pre-existing repo-wide findings (95 oxlint errors across 975 files, e.g.
+  `useBedStore.ts`, `AuthService.spec.ts` merge markers, `queryConfigs.ts`
+  laboratory `any`s) that are unrelated to this slice; `oxlint` on the five
+  changed files reports only the pre-existing findings in
+  `EmergencyService.ts` (unused `IgdRegisterMutationInput`, `AssignTriaseResponse`,
+  `MarkBedCleanResponse` imports) and `mappers.ts` (unused `DateTime` import,
+  `hasReg` local), and `eslint` on them reports only the pre-existing
+  `queryConfigs.ts` `any` findings. No new lint finding was introduced.
+
 ---
 
 ### P5-S17
 
 Title: SCR-02 — Triage History SMASS status
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -942,14 +1354,63 @@ Notes:
 - No new table column is added; the narrow tablet layout is preserved
   (architecture SCR-02 UI state).
 
+Implementation Notes (2026-09-19):
+
+- Changed file: `src/modules/Emergency/components/TriageHistoryPanel.vue` (the only
+  file changed). Verified dependency P5-S16 (IMPLEMENTED/GO): `useIgdSmassTask`,
+  `igdSmassTaskViewSchema`, `queryKeys.emergency.igdSmassTask`, and
+  `TriageHistoryPanel.vue` all exist. The panel now calls the existing
+  `useIgdSmassTask(computed(() => props.visitId))` next to `useTriageHistory` and
+  merges both already-cached query results in a single `historyRows` computed. No new
+  endpoint, no extra request, no new table column, no Pinia store.
+- Join: `historyRows` builds a `Map<noTriage, SmassRowStatus>` from tasks where
+  `taskType = "GENERATE"` and `task.igdVisitId === props.visitId` (the
+  (`igdVisitId`, `noTriage`, `GENERATE`) business key), then overlays an `smass` slot
+  on each triage-history row; the task list is already visit-scoped and the
+  `igdVisitId` equality is still asserted explicitly.
+- Display: the row header gains a right-side cluster with the SMASS status badge
+  immediately right of the timestamp (before the expand chevron) and the
+  `assessmentId` rendered as plain text only when non-empty. `AssessmentId` is text
+  only — no link, no router navigation, no copy action.
+- Status mapping (task wire `PENDING | SUCCEEDED | FAILED` → displayed):
+  `SUCCEEDED → Generated` (green), `FAILED → Failed` (red), `PENDING → Pending`
+  (amber). Badge uses the existing inline convention
+  (`rounded px-1.5 py-0.5 text-[10px] font-black uppercase`); `assessmentId` is shown
+  only on `GENERATE` rows because the join is Generate-only (IR-05/IR-06).
+- `Disabled` is intentionally NOT rendered. `igdSmassTaskViewSchema` can only express
+  `PENDING | SUCCEEDED | FAILED`, and when `IgdVisit:EnableSmassIntegration` is off
+  no `Generate` task row is created (P4-S12). The computed join therefore yields no
+  `smass` slot and no badge is rendered — the exact architecture SCR-02 transition
+  rule "otherwise the row shows no SMASS slot" and IR-04 ("Disabled → no SMASS slot
+  rendered anywhere"). The achievable displayed states are Generated/Pending/Failed;
+  `Disabled` is not fabricated from data that cannot express it and no request/field
+  was added to obtain it. Recorded as a data-model limitation of the task read
+  surface (finding), not a code defect: the "Disabled" criterion is satisfied through
+  its specified no-slot behaviour.
+- Backward compatibility: for visits created before rollout, or with the toggle off,
+  the panel renders exactly as before minus the (absent) SMASS slot, because no
+  `Generate` task exists to join.
+- Read-only / toggles: `showReTriage` and `showTriageHistory` remain the
+  source-of-truth toggles in `TriaseIGD.vue`, which was not modified. The panel adds
+  no mutation, no retry, no navigation, and no delete/cancel/archive action; it only
+  reads the two already-cached queries.
+- Verification: `npx prettier --write` on the changed file → unchanged;
+  `pnpm tc:app` → exit 0, no type errors; `npx oxlint
+  src/modules/Emergency/components/TriageHistoryPanel.vue -D correctness` → 0
+  warnings, 0 errors; `npx eslint
+  src/modules/Emergency/components/TriageHistoryPanel.vue` → 0 findings. Scoped unit
+  run `pnpm test:unit -- --run src/modules/Emergency`: `TriaseIGD.spec.ts` 14/14
+  passed; the 5 failures are confined to the pre-existing `IgdVisitList.spec.ts`
+  (Pinia "no active Pinia" in `useBusinessNow`), unrelated to this slice.
+
 ---
 
 ### P5-S18
 
 Title: SCR-03 — SMASS Integration Panel and manual retry
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -986,14 +1447,72 @@ Notes:
 - `taskType = "LINK"` rows do not display a single `AssessmentId` (IR-06).
 - The web client calls only BILREG (`IgdVisitSmassTask/*`), never SMASS (D-02).
 
+Implementation Notes (2026-09-19):
+
+- Changed files: `src/modules/Emergency/components/IgdSmassIntegrationPanel.vue`
+  (new) and `src/modules/Emergency/views/TriaseIGD.vue` (import + mounts). No other
+  file was changed. Verified dependency P5-S16 (IMPLEMENTED/GO): `useIgdSmassTask`,
+  `useRetryIgdSmassTask`, `igdSmassTaskViewSchema`, `queryKeys.emergency.igdSmassTask`,
+  and `TriaseIGD.vue` all exist.
+- New component is presentational and owns its query exactly like
+  `TriageHistoryPanel.vue`: `useIgdSmassTask(computed(() => props.visitId))` plus
+  `useRetryIgdSmassTask()`. The only prop is `visitId: string`. All UI state
+  (`isOpen`, `retryingTaskId`) is local `ref` state; no Pinia store and no new
+  contract/hook/query-key was added. The client calls only
+  `IgdVisitSmassTask/*` (BILREG); SMASS is never referenced (D-02).
+- Row rendering: one row per task with the `TaskType` label
+  (`GENERATE → Generate`, `LINK → Link`), `NoTriage` (`#n`, or `Visit` when
+  `noTriage = 0`), a status badge (`SUCCEEDED → Succeeded` green,
+  `FAILED → Failed` red, `PENDING → Pending` amber), `AssessmentId` rendered only
+  for `GENERATE` rows (IR-05/IR-06), and `LastError` rendered when non-empty.
+- IR-01: "Coba Ulang" is enabled only for `taskStatus = "FAILED"`. It is hidden (not
+  rendered) for `SUCCEEDED` and rendered disabled for `PENDING`, matching the
+  architecture wording "hidden, not merely disabled, for `Succeeded`". The button
+  calls `useRetryIgdSmassTask().mutate({ igdVisitSmassTaskId })`, which mirrors the
+  server `AssertCanManualRetry()` guard (INV-T6).
+- IR-02: `isRetrying` is `retryMutation.isPending`; every rendered retry button binds
+  `:disabled="isRetrying"`, so all retry buttons are disabled while any row retries.
+  On settle the hook's existing `onSettled` invalidates
+  `queryKeys.emergency.igdSmassTask.all()` (no optimistic update); the panel adds
+  exactly one toast per retry outcome (`toast.success` on success, `toast.error` on
+  error) using the existing `vue-sonner` pattern, and clears `retryingTaskId`.
+- IR-03: `isOpen` starts `false` and a `watch` on `failedCount` auto-expands the panel
+  when the count transitions from 0 to > 0. A red summary chip `"n gagal"` renders in
+  the always-visible header whenever `failedCount > 0` (so failures are visible even
+  while collapsed). With no failed task the panel stays collapsed by default.
+- Mounting: the panel is mounted directly below SCR-02 (`TriageHistoryPanel`) in the
+  desktop triaged and paired contexts, and as a section in the tablet triage area and
+  the mobile ANTRIAN (triaged) / BED (paired) triage areas. In the paired contexts it
+  is mounted unconditionally for the selected visit, so it renders for every selected
+  visit and retry stays available for terminal/voided visits (IR-07). The existing
+  layout was preserved; the desktop triaged history wrapper became
+  `flex min-h-0 flex-1 flex-col` so history keeps `flex-1` and the SMASS panel is
+  `shrink-0`.
+- BR-31: the component exposes no delete, cancel, archive, or unlink action; its only
+  mutation is the manual retry already approved by D-07/BR-12. No Pinia store was
+  introduced (architecture §10.3).
+- Verification: `npx prettier --write` on both files (applied);
+  `pnpm tc:app` → exit 0, no type errors; `npx oxlint
+  src/modules/Emergency/components/IgdSmassIntegrationPanel.vue
+  src/modules/Emergency/views/TriaseIGD.vue` → 0 warnings, 0 errors; `npx eslint` on
+  both files → 0 findings in the new component and only 15 pre-existing
+  `@typescript-eslint/no-unused-vars` findings in `TriaseIGD.vue` (unchanged
+  declarations such as `nextTick`, `Bed`, `BedIgdAvailableItem`, `isLoadingBedIgd`,
+  `isMobile`, `VisitModal`, `isVisitDesktop`, `triageHistory`, `unpairedVisits`,
+  `occupiedVisits`, `bedId`, `visitId`, `dokterListQuery`,
+  `openConvertToRawatInapModal`), none introduced by this slice.
+
 ---
 
 # 6. Change Log
 
 - 2026-09-19 — v1.0 — Initial IMPLEMENTATION-PLAN created from ARCHITECTURE
   `igd-triage-abc-smass-architecture.md` (V2.0). 18 slices across 5 phases and 3
-  repositories. `Execution Approval` remains `PENDING`; the plan is ready for
-  Architect release.
+  repositories.
+- 2026-09-19 — v1.0 — `Execution Approval` set to `APPROVED` by the Architect.
+  The plan structure is now immutable; execution may begin. Structural correction
+  from this point requires a replacement IMPLEMENTATION-PLAN created through a new
+  Planning cycle.
 
 Planning notes:
 

@@ -1,11 +1,14 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
+using Bilreg.Application.IgdContext.Integration;
+using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -24,20 +27,29 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ITindakanIgdRepo _tindakanIgdRepo;
     private readonly IBhpIgdRepo _bhpIgdRepo;
+    private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
+    private readonly ISmassAssessmentGateway _smassGateway;
+    private readonly IgdVisitOptions _igdVisitOptions;
     public IgdVisitReplaceRegisterHandler(IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
         ITglJamProvider tglJamProvider,
         ITindakanIgdRepo tindakanIgdRepo,
-        IBhpIgdRepo bhpIgdRepo)
+        IBhpIgdRepo bhpIgdRepo,
+        IIgdVisitSmassTaskRepo smassTaskRepo,
+        ISmassAssessmentGateway smassGateway,
+        IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;
         _tglJamProvider = tglJamProvider;
         _tindakanIgdRepo = tindakanIgdRepo;
         _bhpIgdRepo = bhpIgdRepo;
+        _smassTaskRepo = smassTaskRepo;
+        _smassGateway = smassGateway;
+        _igdVisitOptions = igdVisitOptions.Value;
     }
 
-    public Task Handle(IgdVisitReplaceRegisterCmd request, CancellationToken cancellationToken)
+    public async Task Handle(IgdVisitReplaceRegisterCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.NewRegId, nameof(request.NewRegId));
@@ -49,10 +61,22 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
         var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         igdVisit.ReplaceRegister(newReg, audit);
 
-        using var trans = TransHelper.NewScope();
-        _igdVisitRepo.SaveChanges(igdVisit);
-        trans.Complete();
-        return Task.CompletedTask;
+        using (var trans = TransHelper.NewScope())
+        {
+            _igdVisitRepo.SaveChanges(igdVisit);
+            trans.Complete();
+        }
+
+        // §6.6 steps 6–9: post-commit SMASS link hook (D-09, BR-16, BR-17 replace-latest).
+        // The hook is outside every TransHelper scope, swallows every exception and never
+        // affects the committed registration; the response stays unchanged.
+        await IgdVisitSmassLinkHook.RunAsync(
+            _smassTaskRepo,
+            _smassGateway,
+            _igdVisitOptions,
+            igdVisit.IgdVisitId,
+            newReg,
+            cancellationToken);
     }
 
     private RegModel LoadAndValidateRegister(IgdVisitReplaceRegisterCmd request)

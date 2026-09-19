@@ -28,6 +28,8 @@ using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.IgdContext;
+using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
@@ -44,6 +46,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
+using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
@@ -145,6 +148,8 @@ public static class InfrastructureService
             .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
             .AddScoped<ITransferReceivableService, TransferReceivableService>()
             .AddScoped<IUsmanGetTokenService,  UsmanGetTokenService>()
+            .AddScoped<ISmassTokenService, SmassTokenService>()
+            .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -168,6 +173,8 @@ public static class InfrastructureService
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME))
+            .Configure<SmassOptions>(configuration.GetSection(SmassOptions.SECTION_NAME))
+            .Configure<IgdVisitOptions>(configuration.GetSection(IgdVisitOptions.SECTION_NAME))
             .Configure<StockLedgerCoexistenceOptions>(
                 configuration.GetSection(StockLedgerCoexistenceOptions.SectionName));
 
