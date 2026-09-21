@@ -10,7 +10,9 @@ Source Architecture: b09-bilreg-api/docs/contexts/igd/igd-triage-abc-smass-archi
 Source Feature: b09-bilreg-api/docs/contexts/igd/igd-01-context.md (IGD Visit)
 ---
 
-# IGD Triage ABC → SMASS — Test Package
+# IGD Triage ABC → SMASS
+
+## Test Package
 
 This package validates the finished capability **as a whole**: every IGD Visit triage
 (first triage and re-triage) produces one immutable structured assessment in SMASS,
@@ -19,12 +21,36 @@ the visit is registered. It also validates BILREG-side status display, manual re
 monitoring.
 
 It describes **what** to test and the expected observable outcome. It does not say who
-must run it. Any qualified person (Programmer, Trainer, Reviewer, Customer, operator)
+must run it. Any qualified person (Programmer, Trainer, Reviewer, Customer, or operator)
 can execute it.
+
+> **Execution status:** This package is ready for execution. Record the result of every
+> test case as `PASS`, `FAIL`, or `BLOCKED`; do not leave a case without a result.
+
+## Contents
+
+- [1. How to use this document](#1-how-to-use-this-document)
+- [2. Scope of testing](#2-scope-of-testing)
+- [3. Test environment](#3-test-environment)
+- [4. Test data](#4-test-data)
+- [5. Coverage summary](#5-coverage-summary)
+- [6. Recommended execution sequence](#6-recommended-execution-sequence)
+- [7. Test cases](#7-test-cases)
+  - [A. Readiness and configuration](#a-readiness-and-configuration)
+  - [B. Assessment generation](#b-assessment-generation)
+  - [C. Registration linking](#c-registration-linking)
+  - [D. Quarantine and read surfaces](#d-quarantine-and-read-surfaces)
+  - [E. Error handling and fail-closed](#e-error-handling-and-fail-closed)
+  - [F. Manual retry and monitoring](#f-manual-retry-and-monitoring)
+  - [G. Web client](#g-web-client)
+  - [H. Regression and non-goals](#h-regression-and-non-goals)
+- [8. Acceptance-condition coverage](#8-acceptance-condition-coverage)
+- [9. Result recording](#9-result-recording)
+- [10. Change log](#10-change-log)
 
 ---
 
-# 1. How to use this document
+## 1. How to use this document
 
 1. Read sections 2–5 to prepare the environment and test data.
 2. Execute the test cases in section 7 in the recommended order (section 6).
@@ -39,9 +65,9 @@ intentional — record what you actually observe, verbatim.
 
 ---
 
-# 2. Scope of testing
+## 2. Scope of testing
 
-## In scope
+### In scope
 
 - SMASS assessment generation from IGD triage (first triage and re-triage), including
   concept mapping, immutability and idempotency.
@@ -55,7 +81,7 @@ intentional — record what you actually observe, verbatim.
   manual retry (SCR-03).
 - Regression safety of existing IGD and existing SMASS behaviour.
 
-## Out of scope (do not report findings here)
+### Out of scope (do not report findings here)
 
 - The SMASS-first 30-item form and any reverse-direction flow.
 - SMASS clinical display screens (none exist in this workspace; SMASS exposes API
@@ -65,7 +91,7 @@ intentional — record what you actually observe, verbatim.
   are deliberately not implemented.
 - Any new authentication scheme, role or permission.
 
-## Known wording differences (not defects)
+### Known wording differences (not defects)
 
 - The triage response field `smassGenerationStatus` is emitted on the wire in
   **PascalCase**: `"Disabled" | "Pending" | "Generated" | "Failed"`. Architecture §6.5
@@ -77,7 +103,7 @@ intentional — record what you actually observe, verbatim.
 
 ---
 
-# 3. Test environment
+## 3. Test environment
 
 | Item | Value / note |
 |---|---|
@@ -99,7 +125,7 @@ Access needed to execute this package:
   BILREG API (only for the configuration cases, TC-IGD-SMASS-002, -003, -040).
 - At least two available IGD beds and one valid `RegId` that exists in Admisi.
 
-## Deployment precondition
+### Deployment precondition
 
 The following must already be deployed before testing starts (architecture §8.6):
 
@@ -113,7 +139,7 @@ The following must already be deployed before testing starts (architecture §8.6
 
 ---
 
-# 4. Test data
+## 4. Test data
 
 Prepare the following before execution. Record any ids you create; they are evidence.
 
@@ -131,7 +157,7 @@ Prepare the following before execution. Record any ids you create; they are evid
 | DATA-10 | Visit V6 — fail-closed control | A visit triaged while a configuration value is invalid or a mapping row is removed |
 | DATA-11 | SMASS assessment id prefix | Generated assessments are new SMASS documents; note the `AssesmentId` returned |
 
-## Data-05/06/07 triage body example
+### Data-05/06/07 triage body example
 
 ```json
 {
@@ -155,7 +181,7 @@ Prepare the following before execution. Record any ids you create; they are evid
 - For DATA-07 set `isManualOverrideBlack: true` and `overrideReason` non-empty; the ATS
   engine then forces `TriageColor = BLACK`.
 
-## Useful verification queries
+### Useful verification queries
 
 SMASS database (`HOSPITAL_PKL`):
 
@@ -187,7 +213,7 @@ Interpretation: `TaskType` `0 = GENERATE`, `1 = LINK`; `TaskStatus` `0 = PENDING
 
 ---
 
-# 5. Coverage summary
+## 5. Coverage summary
 
 | Area | Test cases |
 |---|---|
@@ -205,7 +231,7 @@ handling, and regression risk.
 
 ---
 
-# 6. Recommended execution sequence
+## 6. Recommended execution sequence
 
 1. **A** — confirm the deployment and configuration are correct.
 2. **B** — prove generation works (happy path), then re-triage, then edge/concurrency.
@@ -221,11 +247,11 @@ Do not start G before B–F, because the panel and badges depend on real task ro
 
 ---
 
-# 7. Test cases
+## 7. Test cases
 
-## A. Readiness and configuration
+### A. Readiness and configuration
 
-### TC-IGD-SMASS-001 — Schema and master data are present
+#### TC-IGD-SMASS-001 — Schema and master data are present
 
 **Objective:** Confirm the database and master data the feature depends on exist before
 behaviour is tested.
@@ -264,7 +290,7 @@ behaviour is tested.
 
 ---
 
-### TC-IGD-SMASS-002 — Toggle off produces no task and no call
+#### TC-IGD-SMASS-002 — Toggle off produces no task and no call
 
 **Objective:** With integration disabled, triage behaves exactly as it did before the
 feature and touches SMASS not at all.
@@ -293,7 +319,7 @@ feature and touches SMASS not at all.
 
 ---
 
-### TC-IGD-SMASS-003 — Missing configuration fails closed, does not block startup
+#### TC-IGD-SMASS-003 — Missing configuration fails closed, does not block startup
 
 **Objective:** A half-configured deployment still serves IGD triage; the integration
 degrades to a failed task instead of an exception.
@@ -322,9 +348,9 @@ degrades to a failed task instead of an exception.
 
 ---
 
-## B. Assessment generation
+### B. Assessment generation
 
-### TC-IGD-SMASS-010 — First triage generates one pending assessment
+#### TC-IGD-SMASS-010 — First triage generates one pending assessment
 
 **Objective:** A successful first triage synchronously creates exactly one immutable
 SMASS assessment before registration exists, built from the dedicated IGD Triage Paper.
@@ -362,7 +388,7 @@ SMASS reachable.
 
 ---
 
-### TC-IGD-SMASS-011 — Re-triage adds a second immutable snapshot
+#### TC-IGD-SMASS-011 — Re-triage adds a second immutable snapshot
 
 **Objective:** Every triage event produces a new snapshot; the previous snapshot is not
 modified.
@@ -392,7 +418,7 @@ modified.
 
 ---
 
-### TC-IGD-SMASS-012 — Manual override Black is mapped correctly
+#### TC-IGD-SMASS-012 — Manual override Black is mapped correctly
 
 **Objective:** A manual override (not an ATS score) is carried through as the `BLACK`
 colour.
@@ -416,7 +442,7 @@ colour.
 
 ---
 
-### TC-IGD-SMASS-013 — Idempotency of generation
+#### TC-IGD-SMASS-013 — Idempotency of generation
 
 **Objective:** Repeating generation for the same (`IgdVisitId`, `NoTriage`) does not
 create a second assessment or a duplicate task.
@@ -440,7 +466,7 @@ create a second assessment or a duplicate task.
 
 ---
 
-### TC-IGD-SMASS-014 — Concurrent duplicate generation creates one snapshot
+#### TC-IGD-SMASS-014 — Concurrent duplicate generation creates one snapshot
 
 **Objective:** Two near-simultaneous attempts for the same key cannot create two
 assessments.
@@ -465,9 +491,9 @@ parallel.
 
 ---
 
-## C. Registration linking
+### C. Registration linking
 
-### TC-IGD-SMASS-020 — AssignRegister links all pending assessments
+#### TC-IGD-SMASS-020 — AssignRegister links all pending assessments
 
 **Objective:** Linking a registration populates all administrative keys on every
 assessment of the visit and marks it `Registered`.
@@ -494,7 +520,7 @@ assessment of the visit and marks it `Registered`.
 
 ---
 
-### TC-IGD-SMASS-021 — ReplaceRegister replaces latest idempotently
+#### TC-IGD-SMASS-021 — ReplaceRegister replaces latest idempotently
 
 **Objective:** Replace-registration re-applies the latest administrative values to every
 assessment, repeatably, without duplicates.
@@ -519,7 +545,7 @@ assessment, repeatably, without duplicates.
 
 ---
 
-### TC-IGD-SMASS-022 — Linking a visit with no assessment is a no-op success
+#### TC-IGD-SMASS-022 — Linking a visit with no assessment is a no-op success
 
 **Objective:** Linking before any assessment exists is harmless.
 
@@ -541,7 +567,7 @@ registered; integration enabled.
 
 ---
 
-### TC-IGD-SMASS-023 — Linking never mutates clinical content or completion state
+#### TC-IGD-SMASS-023 — Linking never mutates clinical content or completion state
 
 **Objective:** Prove the only sanctioned post-creation change is the administrative keys
 and link status.
@@ -563,9 +589,9 @@ and link status.
 
 ---
 
-## D. Quarantine and read surfaces
+### D. Quarantine and read surfaces
 
-### TC-IGD-SMASS-030 — Pending assessment is hidden from RegId/PasienId surfaces
+#### TC-IGD-SMASS-030 — Pending assessment is hidden from RegId/PasienId surfaces
 
 **Objective:** Before registration, a pre-registration assessment must not leak into any
 surface that is keyed by registration or patient.
@@ -589,7 +615,7 @@ surface that is keyed by registration or patient.
 
 ---
 
-### TC-IGD-SMASS-031 — By-visit surface returns pending and registered
+#### TC-IGD-SMASS-031 — By-visit surface returns pending and registered
 
 **Objective:** The by-visit surface is the only place a pending assessment is visible.
 
@@ -615,7 +641,7 @@ assessment.
 
 ---
 
-### TC-IGD-SMASS-032 — Pending-registration monitoring
+#### TC-IGD-SMASS-032 — Pending-registration monitoring
 
 **Objective:** Operators can see never-registered assessments, oldest first.
 
@@ -637,7 +663,7 @@ assessment.
 
 ---
 
-### TC-IGD-SMASS-033 — Legacy assessments and rows are untouched
+#### TC-IGD-SMASS-033 — Legacy assessments and rows are untouched
 
 **Objective:** Additive change with no backfill; existing data behaves exactly as before.
 
@@ -661,9 +687,9 @@ assessment.
 
 ---
 
-## E. Error handling and fail-closed
+### E. Error handling and fail-closed
 
-### TC-IGD-SMASS-040 — Missing mapping fails closed without a partial snapshot
+#### TC-IGD-SMASS-040 — Missing mapping fails closed without a partial snapshot
 
 **Objective:** An incomplete ATS→SMASS mapping must fail the whole generation, never
 create a partial clinical document, and never fail the triage.
@@ -690,7 +716,7 @@ triage will produce.
 
 ---
 
-### TC-IGD-SMASS-041 — SMASS unavailable: triage stays committed, task fails
+#### TC-IGD-SMASS-041 — SMASS unavailable: triage stays committed, task fails
 
 **Objective:** A transport failure, timeout or server error is recorded, not propagated.
 
@@ -715,7 +741,7 @@ API, block the URL, or point `Smass:BaseApiUrl` at a dead port).
 
 ---
 
-### TC-IGD-SMASS-042 — SMASS rejects the call (4xx): task fails, triage stays
+#### TC-IGD-SMASS-042 — SMASS rejects the call (4xx): task fails, triage stays
 
 **Objective:** A business rejection from SMASS does not roll back triage.
 
@@ -738,7 +764,7 @@ configuration.
 
 ---
 
-### TC-IGD-SMASS-043 — Paper / concept mismatch fails closed
+#### TC-IGD-SMASS-043 — Paper / concept mismatch fails closed
 
 **Objective:** If the configured Paper is missing, or a mapped concept is not attached
 to the Paper, generation fails cleanly.
@@ -761,7 +787,7 @@ custom section.
 
 ---
 
-### TC-IGD-SMASS-044 — Authorization on the new surfaces
+#### TC-IGD-SMASS-044 — Authorization on the new surfaces
 
 **Objective:** New endpoints require authentication; existing endpoints keep their
 current behaviour.
@@ -791,7 +817,7 @@ current behaviour.
 
 ---
 
-### TC-IGD-SMASS-045 — Link failure does not roll back registration
+#### TC-IGD-SMASS-045 — Link failure does not roll back registration
 
 **Objective:** A failed link leaves the registration committed and recoverable.
 
@@ -815,9 +841,9 @@ bad configuration value).
 
 ---
 
-## F. Manual retry and monitoring
+### F. Manual retry and monitoring
 
-### TC-IGD-SMASS-050 — Manual retry of a failed Generate task
+#### TC-IGD-SMASS-050 — Manual retry of a failed Generate task
 
 **Objective:** An operator can recover a failed generation after the cause is fixed; the
 payload is rebuilt from the immutable triage record.
@@ -845,7 +871,7 @@ underlying cause has been fixed and integration is enabled.
 
 ---
 
-### TC-IGD-SMASS-051 — Manual retry of a failed Link task
+#### TC-IGD-SMASS-051 — Manual retry of a failed Link task
 
 **Objective:** A failed link can be retried and applies the latest registration values.
 
@@ -867,7 +893,7 @@ pending; integration enabled.
 
 ---
 
-### TC-IGD-SMASS-052 — Retry is only available for Failed tasks
+#### TC-IGD-SMASS-052 — Retry is only available for Failed tasks
 
 **Objective:** The retry guard in the server rejects tasks that are not failed.
 
@@ -888,7 +914,7 @@ obtainable.
 
 ---
 
-### TC-IGD-SMASS-053 — Batch process loops failed tasks without aborting
+#### TC-IGD-SMASS-053 — Batch process loops failed tasks without aborting
 
 **Objective:** The operator worklist process handles many failed tasks and isolates
 failures.
@@ -911,7 +937,7 @@ will succeed — for example because only one has a fixable cause).
 
 ---
 
-### TC-IGD-SMASS-054 — Worklist lists failed tasks oldest first
+#### TC-IGD-SMASS-054 — Worklist lists failed tasks oldest first
 
 **Objective:** Operators can find outstanding failures across all visits.
 
@@ -934,7 +960,7 @@ times.
 
 ---
 
-### TC-IGD-SMASS-055 — Retry remains available for terminal/voided visits
+#### TC-IGD-SMASS-055 — Retry remains available for terminal/voided visits
 
 **Objective:** Records and retry survive visit completion.
 
@@ -956,9 +982,9 @@ redirected or voided. Integration enabled (retry is not gated by the toggle).
 
 ---
 
-## G. Web client
+### G. Web client
 
-### TC-IGD-SMASS-060 — Triage history shows SMASS status and assessment id
+#### TC-IGD-SMASS-060 — Triage history shows SMASS status and assessment id
 
 **Objective:** Each triage event shows its SMASS generation status and the linked
 assessment id.
@@ -981,7 +1007,7 @@ assessment id.
 
 ---
 
-### TC-IGD-SMASS-061 — No SMASS slot when there is no Generate task
+#### TC-IGD-SMASS-061 — No SMASS slot when there is no Generate task
 
 **Objective:** Backward compatibility for visits created before rollout or with the
 toggle off.
@@ -1001,7 +1027,7 @@ rollout (no `GENERATE` task).
 
 ---
 
-### TC-IGD-SMASS-062 — SMASS Integration Panel content
+#### TC-IGD-SMASS-062 — SMASS Integration Panel content
 
 **Objective:** The panel shows one row per task with the right fields.
 
@@ -1025,7 +1051,7 @@ rollout (no `GENERATE` task).
 
 ---
 
-### TC-IGD-SMASS-063 — Retry interaction rules
+#### TC-IGD-SMASS-063 — Retry interaction rules
 
 **Objective:** Retry is available exactly when it should be, and only one retry runs at a
 time.
@@ -1051,7 +1077,7 @@ time.
 
 ---
 
-### TC-IGD-SMASS-064 — Panel expand behaviour
+#### TC-IGD-SMASS-064 — Panel expand behaviour
 
 **Objective:** Failures are visible even while collapsed.
 
@@ -1074,7 +1100,7 @@ failures.
 
 ---
 
-### TC-IGD-SMASS-065 — No destructive actions and no local store
+#### TC-IGD-SMASS-065 — No destructive actions and no local store
 
 **Objective:** The UI cannot delete or silently change server state.
 
@@ -1096,9 +1122,9 @@ failures.
 
 ---
 
-## H. Regression and non-goals
+### H. Regression and non-goals
 
-### TC-IGD-SMASS-070 — Legacy SMASS behaviour is unchanged
+#### TC-IGD-SMASS-070 — Legacy SMASS behaviour is unchanged
 
 **Objective:** Existing SMASS create/finish/catalog/OFTA flows still work.
 
@@ -1118,7 +1144,7 @@ failures.
 
 ---
 
-### TC-IGD-SMASS-071 — Existing IGD flows unchanged
+#### TC-IGD-SMASS-071 — Existing IGD flows unchanged
 
 **Objective:** Triage, bed, transfer, registration and discharge still work end to end
 with integration enabled and SMASS available.
@@ -1139,7 +1165,7 @@ with integration enabled and SMASS available.
 
 ---
 
-### TC-IGD-SMASS-072 — Void preserves SMASS records; no unlink path exists
+#### TC-IGD-SMASS-072 — Void preserves SMASS records; no unlink path exists
 
 **Objective:** Voiding a visit does not delete or unlink assessments.
 
@@ -1162,7 +1188,7 @@ tindakan/BHP).
 
 ---
 
-### TC-IGD-SMASS-073 — Manual retry only; no automatic worker or polling
+#### TC-IGD-SMASS-073 — Manual retry only; no automatic worker or polling
 
 **Objective:** Confirm the approved operational model.
 
@@ -1180,7 +1206,7 @@ tindakan/BHP).
 
 ---
 
-### TC-IGD-SMASS-074 — No new audit/event entries for task transitions
+#### TC-IGD-SMASS-074 — No new audit/event entries for task transitions
 
 **Objective:** The task row is the operational record; the IGD timeline is not extended.
 
@@ -1198,7 +1224,7 @@ tindakan/BHP).
 
 ---
 
-### TC-IGD-SMASS-075 — No historical backfill
+#### TC-IGD-SMASS-075 — No historical backfill
 
 **Objective:** The change is additive with no data migration.
 
@@ -1215,7 +1241,7 @@ tindakan/BHP).
 
 ---
 
-# 8. Acceptance-condition coverage
+## 8. Acceptance-condition coverage
 
 | Architecture acceptance condition (§11.2) | Covered by |
 |---|---|
@@ -1232,7 +1258,7 @@ tindakan/BHP).
 
 ---
 
-# 9. Result recording
+## 9. Result recording
 
 Record every executed case with its identifier, observed result, timestamp, and
 evidence (response snippets, screenshots, query output). Use only `PASS`, `FAIL`, or
@@ -1256,7 +1282,7 @@ The **TEST PASSED** gate is granted only when every test case in TEST-EXECUTION 
 
 ---
 
-# 10. Change log
+## 10. Change log
 
 - 2026-09-21 — v1.0 — Initial TEST-PACKAGE created from the COMPLETED
   IMPLEMENTATION-PLAN `igd-triage-abc-smass-implementation-plan.md` (18 slices,
