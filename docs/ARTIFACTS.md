@@ -59,6 +59,9 @@
 | `docs/contexts/igd/igd-03-design.md` | 03-design.md — IGD Visit |
 | `docs/contexts/igd/igd-04-api-contract.md` | igd-04-api-contract.md — IGD Visit API |
 | `docs/contexts/igd/igd-05-runbook.md` | igd-05-runbook.md — IGD Visit Operations |
+| `docs/contexts/igd/igd-triage-abc-smass-architecture.md` | IGD Triage ABC → SMASS Architecture |
+| `docs/contexts/igd/igd-triage-abc-smass-implementation-plan.md` | IGD Triage ABC → SMASS Implementation Plan |
+| `docs/contexts/igd/igd-triage-abc-smass-test-scenarios.md` | IGD Triage ABC → SMASS Test Scenarios |
 | `docs/contexts/igd/igd-artifacts-gap-analysis-report.md` | IGD Visit Artifact-to-Code Gap Analysis Report |
 
 ### Admisi — Rawat Inap (`docs/contexts/admisi-ranap/`)

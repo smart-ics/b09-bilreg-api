@@ -1,8 +1,11 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
+using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -27,16 +30,23 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly ITriageMethodEngineResolver _engineResolver;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
+    private readonly ISmassAssessmentGateway _smassGateway;
+    private readonly IgdVisitOptions _igdVisitOptions;
 
     public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider, IIgdVisitSmassTaskRepo smassTaskRepo,
+        ISmassAssessmentGateway smassGateway, IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
         _engineResolver = engineResolver;
         _tglJamProvider = tglJamProvider;
+        _smassTaskRepo = smassTaskRepo;
+        _smassGateway = smassGateway;
+        _igdVisitOptions = igdVisitOptions.Value;
     }
 
-    public Task<IgdVisitAssessTriageResponse> Handle(IgdVisitReAssessTriageCmd request, CancellationToken cancellationToken)
+    public async Task<IgdVisitAssessTriageResponse> Handle(IgdVisitReAssessTriageCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
@@ -72,17 +82,32 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
             nextReTriageAt: triageResult.NextReTriageAt,
             audit: audit);
 
-        using var trans = TransHelper.NewScope();
-        _igdVisitRepo.SaveChanges(visit);
-        trans.Complete();
+        using (var trans = TransHelper.NewScope())
+        {
+            _igdVisitRepo.SaveChanges(visit);
+            trans.Complete();
+        }
 
-        return Task.FromResult(new IgdVisitAssessTriageResponse(
+        // §6.6 steps 6–9: post-commit SMASS hook (toggle → task upsert → gateway → task save).
+        // The HTTP call happens after the TransHelper scope has been disposed and never
+        // propagates an exception into this handler (BR-10).
+        var smass = await IgdVisitSmassGenerationHook.RunAsync(
+            _smassTaskRepo,
+            _smassGateway,
+            _igdVisitOptions,
+            visit.IgdVisitId,
+            visit.Triage,
+            cancellationToken);
+
+        return new IgdVisitAssessTriageResponse(
             visit.IgdVisitId,
             visit.Triage.NoTriage,
             visit.Triage.Method.ToCode(),
             visit.Triage.Level.ToCode(),
             visit.Triage.Color.ToCode(),
             visit.LastTriageAt,
-            visit.NextReTriageAt));
+            visit.NextReTriageAt,
+            smass.AssessmentId,
+            smass.Status);
     }
 }
