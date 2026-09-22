@@ -68,6 +68,7 @@
 | `docs/contexts/admisi-ranap/admisi-ranap-architecture.md` | Rawat Inap Admission Architecture |
 | `docs/contexts/admisi-ranap/admisi-ranap-coordinated-cancellation-design.md` | Coordinated Cancellation Design — Rawat Inap Admission and Registration |
 | `docs/contexts/admisi-ranap/admisi-ranap-domain.md` | Rawat Inap Admission Domain |
+| `docs/contexts/admisi-ranap/admisi-ranap-digital-sign.md` | Admisi Ranap Digital Sign Tracking (signingRequestId record + lookup) |
 | `docs/contexts/admisi-ranap/admisi-ranap-implementation-plan.md` | admisi-ranap-implementation-plan.md — Rawat Inap Admission Backend |
 | `docs/contexts/admisi-ranap/admisi-ranap-persistent-workspace-capability-matrix.md` | Admisi Ranap — Persistent Workspace Capability Matrix |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-0-implementation-report.md` | Admisi Ranap Phase 0 — Implementation Report |

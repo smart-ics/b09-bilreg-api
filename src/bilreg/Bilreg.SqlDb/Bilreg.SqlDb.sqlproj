@@ -125,6 +125,7 @@
     <Folder Include="LabContext\LabComponentMasterFeature\" />
     <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
     <Folder Include="LabContext\LabTestDefinitionFeature\" />
+    <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -300,6 +301,7 @@
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge.sql" />
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge2.sql" />
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomCharge_log.sql" />
+    <None Include="AdmisiRanapContext\DigitalSignFeature\BILRG_AdmDigitalSign.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
