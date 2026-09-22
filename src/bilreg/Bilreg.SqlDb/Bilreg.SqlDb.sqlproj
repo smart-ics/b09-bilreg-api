@@ -119,6 +119,8 @@
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
+    <Folder Include="PurchaseContext\" />
+    <Folder Include="PurchaseContext\DeliveryFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
     <Folder Include="BedUsageContext\RoomChargeFeature" />
     <Folder Include="LabContext\" />
@@ -298,6 +300,8 @@
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
+    <None Include="PurchaseContext\DeliveryFeature\BILRG_DeliveryOrder.sql" />
+    <None Include="PurchaseContext\DeliveryFeature\BILRG_DeliveryOrderItem.sql" />
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge.sql" />
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomcharge2.sql" />
     <None Include="BedUsageContext\RoomChargeFeature\ta_trs_roomCharge_log.sql" />
