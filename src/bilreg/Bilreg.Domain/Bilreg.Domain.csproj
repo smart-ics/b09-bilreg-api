@@ -29,7 +29,6 @@
 
   <ItemGroup>
     <Folder Include="BedUsageContext\BedOperationalFeature\" />
-    <Folder Include="AdmisiRanapContext\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />

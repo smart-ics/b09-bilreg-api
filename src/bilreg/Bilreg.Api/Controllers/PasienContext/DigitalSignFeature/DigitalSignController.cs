@@ -1,4 +1,6 @@
+using Bilreg.Api.Filters;
 using Bilreg.Application.PasienContext.DigitalSignFeature;
+using Bilreg.Application.AdmisiRanapContext.DigitalSignFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +52,81 @@ public class DigitalSignController : Controller
         }
     }
 
+    [HttpPost("~/api/admisi-ranap/digital-sign")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> RecordRanapDigitalSign([FromBody] AdmRecordDigitalSignBody body)
+    {
+        try
+        {
+            var cmd = new AdmRecordDigitalSignCmd(
+                body.RegId,
+                body.HisReference ?? string.Empty,
+                body.DokumenId,
+                body.SigningRequestId,
+                body.SignerId ?? string.Empty,
+                body.FileName ?? string.Empty,
+                body.UserId);
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(new Exception(ex.Message)));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new JSendFailed(ex));
+        }
+    }
+
+    [HttpGet("~/api/admisi-ranap/digital-sign")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> GetRanapDigitalSign(
+        [FromQuery] string regId,
+        [FromQuery] string dokumenId)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            return BadRequest(new JSendFailed(new ArgumentException("regId wajib diisi.")));
+        if (string.IsNullOrWhiteSpace(dokumenId))
+            return BadRequest(new JSendFailed(new ArgumentException("dokumenId wajib diisi.")));
+
+        try
+        {
+            var result = await _mediator.Send(new AdmGetDigitalSignQry(regId, dokumenId));
+            var item = result.Items.SingleOrDefault();
+            return item is null
+                ? NotFound(new JSend(StatusCodes.Status404NotFound, "Not Found",
+                    $"DigitalSign regId '{regId}' dokumenId '{dokumenId}' was not found."))
+                : Ok(new JSendOk(item));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
+    }
+
+    [HttpGet("~/api/admisi-ranap/digital-sign/list")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> ListRanapDigitalSign([FromQuery] string regId)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            return BadRequest(new JSendFailed(new ArgumentException("regId wajib diisi.")));
+
+        try
+        {
+            var result = await _mediator.Send(new AdmGetDigitalSignQry(regId));
+            return Ok(new JSendOk(result.Items));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
+    }
+
     private static JSendModel FailedResult(ResolvePatientSignerResponse result, string code)
     {
         object data;
@@ -79,6 +156,15 @@ public class DigitalSignController : Controller
 }
 
 public record ResolvePatientSignerResultDto(string UserrId, string SignerId);
+
+public record AdmRecordDigitalSignBody(
+    string RegId,
+    string? HisReference,
+    string DokumenId,
+    string SigningRequestId,
+    string? SignerId,
+    string? FileName,
+    string UserId);
 
 public record ResolvePatientSignerPatientDto(
     [property: JsonPropertyName("UserrID")] string UserrId,
