@@ -35,8 +35,8 @@ All TEST-PACKAGE preconditions were verified before execution:
 
 | Item | Value |
 |--------|--------|
-| Total Cases | 27 |
-| Passed | 25 |
+| Total Cases | 39 |
+| Passed | 37 |
 | Failed | 2 |
 | Blocked | 0 |
 | Not Tested | 0 |
@@ -567,17 +567,248 @@ Status: PASS
 
 Notes:
 
-- **Precondition check:** Query `BILRG_IgdVisit` untuk `IGV08FXLX20C` menunjukkan `RegId = -` (belum terdaftar), `PasienId = -`, `PasienName = -`. Kunjungan masih memiliki task `FAILED` — syarat terpenuhi.
-- **Hit endpoint** `PATCH /api/IgdVisitSmassTask/retry` dengan payload `{ "igdVisitSmassTaskId": "IST08FXM3QLN" }`
-- **Response:** `200 Success`, data: `taskStatus = "SUCCEEDED"`, `assessmentId = "AS-269-UZS2OG"`, `retryCount = 2` (naik dari 1), `lastError = ""`.
-- **Evidence no deletion:** TTask and assessment are not deleted, cancelled, archived, or unlinked.
+- **Precondition check:** Query `BILRG_IgdVisit` for `IGV08FXLX20C` shows `RegId = -` (not registered), `PasienId = -`, `PasienName = -`. The visit still has a `FAILED` task — precondition met.
+- **Hit endpoint** `PATCH /api/IgdVisitSmassTask/retry` with payload `{ "igdVisitSmassTaskId": "IST08FXM3QLN" }`
+- **Response:** `200 Success`, data: `taskStatus = "SUCCEEDED"`, `assessmentId = "AS-269-UZS2OG"`, `retryCount = 2` (increased from 1), `lastError = ""`.
+- **Evidence no deletion:** Task and assessment are not deleted, cancelled, archived, or unlinked.
 
 Expected results met: retry call accepted (task row exists, operator explicitly requested it); task state updated (SUCCEEDED, AssessmentId filled, RetryCount increased); no delete/cancel/archive effects on task or assessment.
 
-Evidence: respons retry (`200` + body `taskStatus SUCCEEDED, assessmentId AS-269-UZS2OG, retryCount 2`), query task after retry (TaskStatus 1, AssessmentId terisi), note that task state was not deleted.
+Evidence: retry response (`200` + body `taskStatus SUCCEEDED, assessmentId AS-269-UZS2OG, retryCount 2`), query task after retry (TaskStatus 1, AssessmentId filled), note that task state was not deleted.
 
 
---- 
+---
+
+## TC-IGD-SMASS-060 — Triage history shows SMASS status and assessment id
+
+Status: PASS
+
+Notes:
+
+- Web client (`/app/igd/triase_igd`), visit `IGV08F7H1ZA5` (RUKYAT HIDAYAT, TN):
+  - In the Riwayat Triage (triage history) tab, each triage row shows a **green SMASS status badge** with caption `GENERATED`.
+  - The **AssessmentId** is displayed with value `AS-269-UYZEAG` (plain text next to the generated row, matching that row's NoTriage).
+- No new table column observed; existing narrow layout preserved.
+
+Expected results met: green `Generated` badge shown for the generated row; AssessmentId surfaced as plain text with no navigation/copy action; layout unchanged.
+
+Evidence: web client triage history screenshot data (badge green caption `GENERATED`, AssessmentId `AS-269-UYZEAG`) recorded from `IGV08F7H1ZA5`.
+
+---
+
+## TC-IGD-SMASS-061 — No SMASS slot when there is no Generate task
+
+Status: PASS
+
+Notes:
+
+- Web client (`/app/igd/triase_igd`), visit `IGV08F6PG5X2` (KRESNO LUKITO, TN) — visit from TC-002 whose triage ran while integration was off (no `GENERATE` task row exists).
+- Riwayat Triage rows render exactly as before: **no SMASS badge** and no empty slot.
+- No error is shown when the visit loads; no extra SMASS request triggered.
+
+Expected results met: rows rendered without any SMASS badge/slot; no error displayed; backward compatibility preserved.
+
+Evidence: web client triage history for `IGV08F6PG5X2` (no SMASS badge, clean load, no error).
+
+---
+
+## TC-IGD-SMASS-062 — SMASS Integration Panel content
+
+Status: PASS
+
+Notes:
+
+- Web client (`/app/igd/triase_igd`), visit `IGV08F572FGJ` (SUCI FITRI YANI, NY):
+  - **Integrasi SMASS panel** renders one row per task:
+    - `GENERATE #1` → badge `SUCCEEDED`, `AssesmentId = AS-269-TMORH7`, no `LastError`.
+    - `LINK Visit` → badge `SUCCEEDED`, no AssessmentId displayed (Link rows do not show an AssessmentId).
+  - Header reads **"INTEGRASI SMASS"** (confirmed on screen; tester typo earlier corrected).
+  - No failure summary chip shown (expected, since no task is Failed).
+  - No SMASS endpoint called from the client; only BILREG `IgdVisitSmassTask/*` is used.
+
+Expected results met: one row per task with correct labels (`Generate`/`Link`, `#n`/`Visit`), status badges, AssessmentId only on Generate rows, LastError hidden when empty; panel renders for the selected visit.
+
+Evidence: web client Integrasi SMASS panel content for `IGV08F572FGJ` (GENERATE #1 + LINK Visit rows, both SUCCEEDED, AssessmentId on Generate row only).
+
+---
+
+## TC-IGD-SMASS-063 — Retry interaction rules
+
+Status: PASS
+
+Notes:
+
+- Web client (`/app/igd/triase_igd`), visit `IGV08H7Q1V0E` (Mr Tesst retry):
+  - Setup: triage #1 with valid PaperId (`PP-ICS-TRGE`) → GENERATED; re-triage #2 and #3 with `SmassTriagePaperId = PP-ICS-TRGEX` (invalid) → both FAILED; config restored to `PP-ICS-TRGE` afterward.
+  - Riwayat triage shows 3 rows: `#1 GENERATED` (AssessmentId shown), `#2 FAILED`, `#3 FAILED`.
+  - **Integrasi SMASS panel** shows 3 task rows:
+    - `GENERATE #1` → SUCCEEDED, AssessmentId shown (correct value verified via DB: `AS-S69-VH1T5`).
+    - `GENERATE #2` → FAILED, no AssessmentId, `LastError = "SMASS generateIgdTriage gagal: HTTP 400 Bad Request"`.
+    - `GENERATE #3` → FAILED, no AssessmentId, `LastError = "SMASS generateIgdTriage gagal: HTTP 400 Bad Request"`.
+  - **Retry interaction:**
+    - "Coba Ulang" button is present/enabled only on the FAILED rows (#2, #3); no retry button on the SUCCEEDED row (#1).
+    - Started retry on `GENERATE #2`; while in progress, the "Coba Ulang" button on `GENERATE #3` was **disabled** (not clickable).
+    - After settle: exactly **one toast** reported `SUCCESS`; task list refreshed; the "Coba Ulang" button on `GENERATE #2` **disappeared** and its label changed to `SUCCEEDED`.
+    - Repeated for `GENERATE #3`: one toast `SUCCESS`, row refreshed to `SUCCEEDED`, retry button hidden.
+
+Expected results met: retry button enabled only on FAILED rows and hidden on Succeeded rows; while a retry is running every retry button is disabled; on settle the list refreshes with exactly one toast per outcome.
+
+Evidence: web client Integrasi SMASS panel rows for `IGV08H7Q1V0E` (GENERATE #1 SUCCEEDED + #2/#3 FAILED with LastError), retry button visibility/disable behavior during in-flight retry, single SUCCESS toast after settle, post-retry rows SUCCEEDED.
+
+---
+
+## TC-IGD-SMASS-064 — Panel expand behaviour
+
+Status: PASS
+
+Notes:
+
+- Web client (`/app/igd/triase_igd`):
+  - **Visit with FAILED task** (`IGV08H7Q1V0E`, Mr Tesst retry — re-triage #4 with invalid PaperId `PP-ICS-TRGEX`):
+    - Panel **INTEGRASI SMASS auto-expands**.
+    - Header/row shows `GENERATE #4 FAILED`, `AssesmentId = '-'`, error description present.
+  - **Visit without failed task**:
+    - Panel **INTEGRASI SMASS collapsed by default**, no "n gagal" chip shown.
+  - **Mount position (desktop):** panel INTEGRASI SMASS appears **directly below** the Riwayat Triase panel — confirmed.
+  - **Tablet/mobile:** panel INTEGRASI SMASS also appears **below RIWAYAT TRIASE** for the visit — confirmed (renders beneath the triage history, consistent with the mount requirement).
+
+Expected results met: panel auto-expands when at least one task is Failed and shows the failure indicator; collapsed with no chip when no failures; mounted below the triage history panel on desktop.
+
+Evidence: web client panel behavior for visit with FAILED (auto-expand + `GENERATE #4 FAILED` + error) and visit without FAILED (collapsed, no chip); desktop mount position confirmed below Riwayat Triase.
+
+---
+
+## TC-IGD-SMASS-065 — No destructive actions and no local store
+
+Status: PASS
+
+Notes:
+
+- Web client, visit `IGV08H7Q1V0E` (Mr Tesst retry):
+  - Inspected every control in the **RIWAYAT TRIASE** and **INTEGRASI SMASS** panels: **no** delete / cancel / archive / unlink button or action exists.
+  - **No optimistic update:** during an in-flight retry the row does not change until the server responds to the previous action (row stays in its previous state, e.g. FAILED, until settle).
+  - **No SMASS call from the client:** Network tab shows only `{BilregApi}` requests — no `{SmassApi}` calls.
+  - **No new Pinia store:** state on these screens is managed with the existing mechanism; no new Pinia store was introduced for these screens.
+
+Expected results met: the only mutation available is the approved manual retry (`PATCH /api/IgdVisitSmassTask/retry`); server state stays authoritative with the task list re-read after settle; no SMASS call and no new Pinia store.
+
+Evidence: web client control inspection (no destructive actions on either panel), row behavior during retry (no optimistic update), Network tab (BILREG only, no SMASS API), no new Pinia store.
+
+---
+
+## TC-IGD-SMASS-070 — Legacy SMASS behaviour is unchanged
+
+Status: PASS
+
+Notes:
+
+- SMASS API (standard creation path, not BILREG task):
+  - `POST {SMASS}/api/Assesment` with legacy payload (`pasienId=337502200231611`, `regId=RG01376991`, `layananId=1GD01`, `paperId=PP-ICS-TRGE`, `userrId=admin_ics`) — **no `IgdVisitId`/`NoTriage`** → HTTP 200, created `AS-269-VJ99LV`; response still carries the original fields (`pasienId`, `pasienName`, `regId`, `layananId`, `paperId`, `userrId`, `assesmentDate`).
+  - `POST {SMASS}/api/Assesment/finish/AS-269-VJ99LV` → HTTP 200, no error.
+  - `GET {SMASS}/api/Assesment/catalog/RG01376991` → HTTP 200; the created assessment `AS-269-VJ99LV` now `assesmentState = Finished` with `oftaDocId = DOCU269000320` and `oftaDocUrl = http://dev.smart-ics.com/ofta-storage/DOCU269000320_Assesment.pdf` (OFTA document generated — OFTA/documents flow works). (Note: tester's finish note mentioned DOCU269000314; the catalog response identifies DOCU269000320 as the doc for AS-269-VJ99LV — catalog value recorded as authoritative.)
+  - Pre-existing assessment `AS-269-VJ6NYA` in the same reg remains unchanged: `igdVisitId ""`, `noTriage 0`, `RegistrationLinkStatus Registered`, `sourceLabel ""`.
+- No new required field blocks the existing create path (create succeeded without `IgdVisitId`/`NoTriage`).
+
+Expected results met: existing SMASS create/finish/catalog/OFTA behaviours and responses are unchanged and carry their original fields; no new required field on the legacy create path.
+
+Evidence: SMASS API responses for create (`AS-269-VJ99LV`), finish (200, document generated), catalog (both assessments listed, OFTA doc URLs present), legacy fields intact.
+
+---
+
+## TC-IGD-SMASS-071 — Existing IGD flows unchanged
+
+Status: PASS
+
+Notes:
+
+- BILREG API, visit `IGV08H9YG2Y1` (Visit Normal), integration enabled (`IgdVisit:EnableSmassIntegration = true`), SMASS reachable:
+  - `POST /api/IgdVisit` → 200, `IgdVisitId = IGV08H9YG2Y1`.
+  - `POST /api/IgdVisit/{id}/dokter` → 200 `"Done"`.
+  - `POST /api/IgdVisit/{id}/triage` → 200; response keeps the original fields (`noTriage 1`, `triageMethod ATS`, `triageLevel ATS3`, `triageColor YELLOW`, `lastTriageAt`, `nextReTriageAt`) **plus** `smassAssessmentId = AS-269-VJUZVO` and `smassGenerationStatus = Generated`.
+  - `POST /api/IgdVisit/{id}/assignBed` → 200, `bedIgdId = BED00006`, `pakaiBedIgdId = PBI08HA3KSLV`.
+  - `POST /api/IgdVisit/{id}/register` → 200 `"Done"`.
+  - `POST /api/IgdVisit/{id}/discharge` → 200, `administrativeState = DISCHARGED`, `dischargeDateTime` set, `bedReleased = true`.
+- Bed occupancy and visit state remain consistent (bed released on discharge, administrative state DISCHARGED).
+- Transfer bed step is optional per the test package — not executed, no impact.
+
+Expected results met: every existing IGD step behaves as before; the extended triage response contains the original fields plus `smassAssessmentId` and `smassGenerationStatus`; bed occupancy and visit state stay consistent.
+
+Evidence: BILREG API responses for create/dokter/triage/assignBed/register/discharge on `IGV08H9YG2Y1` (triage response with original fields + `smassAssessmentId`/`smassGenerationStatus`; final state DISCHARGED with bed released).
+
+---
+
+## TC-IGD-SMASS-072 — Void preserves SMASS records; no unlink path exists
+
+Status: PASS
+
+Notes:
+
+- BILREG API + SMASS DB, visit `IGV08HBV96TQ` (created fresh, triage only — voidable, no tindakan/BHP):
+  - `POST /api/IgdVisit` → 200, `IgdVisitId = IGV08HBV96TQ`.
+  - `POST /api/IgdVisit/{id}/triage` → 200, `smassAssessmentId = AS-269-VLI73U`, `smassGenerationStatus = Generated`.
+  - **Before void** — task row (`GET /api/IgdVisitSmassTask/IGV08HBV96TQ`): `IST08HBW9KZF`, GENERATE, SUCCEEDED, `assessmentId AS-269-VLI73U`, `retryCount 0`, `lastError ""`. Assessment row (`SMASS_Assesment WHERE IgdVisitId = IGV08HBV96TQ`): `NoTriage 1`, `RegistrationLinkStatus 1` (Pending Registration — visit not yet registered), `LayananId 1GD01`, `PaperId PP-ICS-TRGE`.
+  - `POST /api/IgdVisit/{id}/void` → 200, `isVoided = true`, `bedReleased = false` (void succeeds as before).
+  - **After void** — task row and assessment row are **identical** to before: same task id, status, assessment id, retry count, error; same assessment `IgdVisitId`, `NoTriage`, `RegistrationLinkStatus`. Nothing deleted, unlinked or archived.
+  - **API surface:** `IgdVisitSmassTaskController` exposes only `GET {igdVisitId}`, `GET worklist`, `PATCH retry`, `POST process` — no DELETE/unlink endpoint exists.
+
+Expected results met: void succeeds; assessments and tasks still exist with the same values; no unlink/delete endpoint (confirmed by controller inspection).
+
+Evidence: task and assessment rows captured before and after void on `IGV08HBV96TQ` (identical), void response (isVoided true), controller endpoint inventory (no DELETE/unlink).
+
+---
+
+## TC-IGD-SMASS-073 — Manual retry only; no automatic worker or polling
+
+Status: PASS
+
+Notes:
+
+- Left one FAILED task untouched and observed the system for ~5 minutes:
+  - Task: `IST08H8CF318` (visit `IGV08H7Q1V0E`, `NoTriage 4`, TaskType GENERATE, TaskStatus FAILED, `retryCount 1`, `lastError "SMASS generateIgdTriage gagal: HTTP 400 Bad Request"`, `processedDate 2026-09-25 09:51:22.980`).
+  - `GET /api/IgdVisitSmassTask/worklist` after the observation period: the task is **still FAILED**, `retryCount` unchanged (1), `lastRetryDate`/`processedDate`/`lastError` unchanged — no automatic retry occurred.
+  - Confirmed no background worker, scheduler or outbox attempted the task.
+  - Web client on the visit left without interaction for 5 minutes: Network tab shows **no polling** — no repeated `IgdVisitSmassTask/*` requests without user action.
+
+Expected results met: no background worker/scheduler/outbox retries the task on its own; it stays FAILED until a manual retry; the client does not poll the task endpoint.
+
+Evidence: DB row (`BILRG_IgdVisitSmassTask WHERE TaskStatus = 2`) before/after observation; worklist response after 5 minutes (status/retryCount/timestamps identical); Network tab (no polling).
+
+---
+
+## TC-IGD-SMASS-074 — No new audit/event entries for task transitions
+
+Status: PASS
+
+Notes:
+
+- Visit `IGV08F572FGJ` (has GENERATE task `IST08F57HX99` and LINK task `IST08FRZHK6C`, both SUCCEEDED — see TC-020/TC-062):
+  - `SELECT * FROM BILRG_IgdVisitEvent WHERE IgdVisitId = 'IGV08F572FGJ' ORDER BY NoEvent` returns only the normal IGD flow events: 1 DAFTAR, 2 ASSESS_TRIAGE, 3 ASSIGN_BED, 4 ASSIGN_REGISTER, 5 REPLACE_REGISTER. **No entry related to SMASS** — no GENERATE/LINK/RETRY events were added by the task operations.
+  - `SELECT * FROM BILRG_AuditLog WHERE entityId IN ('IGV08F572FGJ', 'IST08F57HX99', 'IST08FRZHK6C')` → **empty result**; no audit-log entry for the visit or its SMASS tasks.
+
+Expected results met: no `IgdVisitEvent` row and no audit-log entry was added by the generation, link or retry operations; the task row remains the only operational record.
+
+Evidence: `BILRG_IgdVisitEvent` rows for `IGV08F572FGJ` (5 normal IGD events, none SMASS-related); `BILRG_AuditLog` query for visit + task ids returns empty.
+
+---
+
+## TC-IGD-SMASS-075 — No historical backfill
+
+Status: PASS
+
+Notes:
+
+- Historical assessments (created before the feature, `IgdVisitId` empty) — sample `SELECT TOP 3 ... FROM SMASS_Assesment WHERE IgdVisitId IS NULL OR IgdVisitId = ''`:
+  - `AS-236-000001` (2023-06-05) → `IgdVisitId ''`, `NoTriage 0`, `RegistrationLinkStatus 0`.
+  - `AS-236-000012` (2023-06-05) → `IgdVisitId ''`, `NoTriage 0`, `RegistrationLinkStatus 0`.
+  - `AS-236-000028` (2023-06-05) → `IgdVisitId ''`, `NoTriage 0`, `RegistrationLinkStatus 0`.
+- No historical assessment was updated: they keep empty `IgdVisitId`, `NoTriage = 0` and `RegistrationLinkStatus = 0 (Registered)`.
+- No script or process in repo/env backfills historical assessment data (`IgdVisitId`/`NoTriage`/`RegistrationLinkStatus`).
+
+Expected results met: the change is additive with no data migration; historical assessments are untouched and no backfill exists.
+
+Evidence: SMASS DB query on historical assessments (IgdVisitId empty, NoTriage 0, RegistrationLinkStatus 0); repo/env inspection confirming no backfill script/job.
+
+---
 
 # 3. Defects
 
