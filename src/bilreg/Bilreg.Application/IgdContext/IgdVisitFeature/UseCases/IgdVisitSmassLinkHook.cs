@@ -20,15 +20,17 @@ namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 internal static class IgdVisitSmassLinkHook
 {
     /// <summary>
-    /// Executes §6.6 steps 6–9. The caller is responsible for steps 1–5 (guard, load,
-    /// domain behaviour, transaction, commit).
+    /// Executes §6.6 steps 6–9 and TD-04 post-link EMR label creation.
+    /// The caller is responsible for steps 1–5 (guard, load, domain behaviour, transaction, commit).
     /// </summary>
     public static async Task RunAsync(
         IIgdVisitSmassTaskRepo taskRepo,
         ISmassAssessmentGateway gateway,
+        IEmrLabelGateway emrLabelGateway,
         IgdVisitOptions options,
         string igdVisitId,
         RegModel reg,
+        string userId,
         CancellationToken cancellationToken)
     {
         // §6.6 step 6 — with the toggle off no task row is created and no HTTP call is made (AR-01).
@@ -102,7 +104,47 @@ internal static class IgdVisitSmassLinkHook
             // A concurrent duplicate may have won UX_BILRG_IgdVisitSmassTask_BusinessKey;
             // swallow it so registration is never affected (BR-16).
         }
+
+        // Architecture TD-04 / TD-05: Post-link EMR 2.0 label registration.
+        // Sequential iteration for each linked assessment. Any failure is swallowed to isolate errors.
+        if (result.Success && emrLabelGateway != null && result.LinkedAssessmentIds is { Count: > 0 })
+        {
+            foreach (var assessmentId in result.LinkedAssessmentIds)
+            {
+                try
+                {
+                    var labelRequest = new EmrAddSmassLabelRequest
+                    {
+                        AssesmentId = assessmentId,
+                        LayananId = !string.IsNullOrWhiteSpace(reg.Layanan?.LayananId)
+                            ? reg.Layanan.LayananId
+                            : options.SmassLayananId,
+                        PaperId = options.SmassTriagePaperId,
+                        PaperName = options.SmassTriagePaperName,
+                        RegId = reg.RegId,
+                        UserrId = userId
+                    };
+                    await emrLabelGateway.AddSmassLabel(labelRequest, cancellationToken);
+                }
+                catch
+                {
+                    // Swallow EMR exceptions so registration and SMASS task status remain unaffected (TD-05).
+                }
+            }
+        }
     }
+
+    /// <summary>
+    /// Backwards-compatible overload for callers that have not yet been updated with IEmrLabelGateway (P3-S05).
+    /// </summary>
+    public static Task RunAsync(
+        IIgdVisitSmassTaskRepo taskRepo,
+        ISmassAssessmentGateway gateway,
+        IgdVisitOptions options,
+        string igdVisitId,
+        RegModel reg,
+        CancellationToken cancellationToken)
+        => RunAsync(taskRepo, gateway, null!, options, igdVisitId, reg, string.Empty, cancellationToken);
 
     /// <summary>
     /// Builds the §6.3 payload from the already-loaded <see cref="RegModel"/>.

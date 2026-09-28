@@ -13,7 +13,7 @@ namespace Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature.UseCases;
 /// (<c>ListProcessable</c>, oldest first) with exactly the same retry semantics as the
 /// single-task command.
 /// </summary>
-public record IgdVisitSmassTaskProcessCmd : IRequest<IgdVisitSmassTaskProcessResult>;
+public record IgdVisitSmassTaskProcessCmd(string UserId = "") : IRequest<IgdVisitSmassTaskProcessResult>;
 
 public record IgdVisitSmassTaskProcessResult(int Total, int Succeeded, int Failed);
 
@@ -24,6 +24,7 @@ public class IgdVisitSmassTaskProcessHandler
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IRegRepo _regRepo;
     private readonly ISmassAssessmentGateway _gateway;
+    private readonly IEmrLabelGateway _emrLabelGateway;
     private readonly IgdVisitOptions _options;
 
     public IgdVisitSmassTaskProcessHandler(
@@ -31,12 +32,14 @@ public class IgdVisitSmassTaskProcessHandler
         IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
         ISmassAssessmentGateway gateway,
+        IEmrLabelGateway emrLabelGateway,
         IOptions<IgdVisitOptions> options)
     {
         _taskRepo = taskRepo;
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;
         _gateway = gateway;
+        _emrLabelGateway = emrLabelGateway;
         _options = options.Value;
     }
 
@@ -53,7 +56,7 @@ public class IgdVisitSmassTaskProcessHandler
             try
             {
                 await IgdVisitSmassTaskRetryExecutor.ExecuteAsync(
-                    _taskRepo, _igdVisitRepo, _regRepo, _gateway, _options, task, cancellationToken);
+                    _taskRepo, _igdVisitRepo, _regRepo, _gateway, _emrLabelGateway, _options, task, request.UserId, cancellationToken);
 
                 if (task.TaskStatus == SmassTaskStatusEnum.Succeeded)
                     succeeded++;
