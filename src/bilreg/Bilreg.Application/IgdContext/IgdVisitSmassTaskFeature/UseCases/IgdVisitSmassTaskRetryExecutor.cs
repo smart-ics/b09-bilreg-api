@@ -25,6 +25,7 @@ internal static class IgdVisitSmassTaskRetryExecutor
     /// <summary>
     /// Rebuilds the payload from immutable sources, performs one gateway attempt and
     /// records the outcome on the task row (separate write, no transaction across HTTP).
+    /// If Link task succeeds, sequentially registers clinical labels in EMR 2.0 (TD-06).
     /// The caller owns the task's lifecycle and any surrounding loop.
     /// </summary>
     public static async Task ExecuteAsync(
@@ -32,22 +33,31 @@ internal static class IgdVisitSmassTaskRetryExecutor
         IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
         ISmassAssessmentGateway gateway,
+        IEmrLabelGateway emrLabelGateway,
         IgdVisitOptions options,
         IgdVisitSmassTaskModel task,
+        string userId,
         CancellationToken cancellationToken)
     {
         // INV-T6 / IR-01 — manual retry is only legal from Failed. Re-asserted here so
         // the batch path enforces the same transition guard as the single-task path.
         task.AssertCanManualRetry();
 
+        RegModel? reg = null;
         SmassGatewayResult result;
         try
         {
-            result = task.TaskType == SmassTaskTypeEnum.Generate
-                ? await gateway.GenerateIgdTriage(
-                    BuildGeneratePayload(igdVisitRepo, options, task), cancellationToken)
-                : await gateway.LinkIgdVisit(
-                    BuildLinkPayload(igdVisitRepo, regRepo, task), cancellationToken);
+            if (task.TaskType == SmassTaskTypeEnum.Generate)
+            {
+                result = await gateway.GenerateIgdTriage(
+                    BuildGeneratePayload(igdVisitRepo, options, task), cancellationToken);
+            }
+            else
+            {
+                var (linkPayload, loadedReg) = BuildLinkPayload(igdVisitRepo, regRepo, task);
+                reg = loadedReg;
+                result = await gateway.LinkIgdVisit(linkPayload, cancellationToken);
+            }
         }
         catch (Exception ex)
         {
@@ -75,7 +85,56 @@ internal static class IgdVisitSmassTaskRetryExecutor
 
         // Separate write; no TransHelper scope spans the HTTP call (architecture §6.6).
         taskRepo.SaveChanges(task);
+
+        // Architecture TD-04 / TD-06: Post-link EMR 2.0 label registration on manual retry.
+        // Sequential iteration for each linked assessment. Any failure is swallowed to isolate errors (TD-05).
+        if (task.TaskType == SmassTaskTypeEnum.Link &&
+            result.Success &&
+            emrLabelGateway != null &&
+            reg != null &&
+            result.LinkedAssessmentIds is { Count: > 0 })
+        {
+            var effectiveUserId = !string.IsNullOrWhiteSpace(userId)
+                ? userId
+                : reg.RegMasukAudit?.UserId ?? string.Empty;
+
+            foreach (var assessmentId in result.LinkedAssessmentIds)
+            {
+                try
+                {
+                    var labelRequest = new EmrAddSmassLabelRequest
+                    {
+                        AssesmentId = assessmentId,
+                        LayananId = !string.IsNullOrWhiteSpace(reg.Layanan?.LayananId)
+                            ? reg.Layanan.LayananId
+                            : options.SmassLayananId,
+                        PaperId = options.SmassTriagePaperId,
+                        PaperName = options.SmassTriagePaperName,
+                        RegId = reg.RegId,
+                        UserrId = effectiveUserId
+                    };
+                    await emrLabelGateway.AddSmassLabel(labelRequest, cancellationToken);
+                }
+                catch
+                {
+                    // Swallow EMR exceptions so retry SMASS task status remains unaffected (TD-05).
+                }
+            }
+        }
     }
+
+    /// <summary>
+    /// Backwards-compatible overload for callers that do not supply IEmrLabelGateway or userId.
+    /// </summary>
+    public static Task ExecuteAsync(
+        IIgdVisitSmassTaskRepo taskRepo,
+        IIgdVisitRepo igdVisitRepo,
+        IRegRepo regRepo,
+        ISmassAssessmentGateway gateway,
+        IgdVisitOptions options,
+        IgdVisitSmassTaskModel task,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(taskRepo, igdVisitRepo, regRepo, gateway, null!, options, task, string.Empty, cancellationToken);
 
     /// <summary>
     /// Rebuilds the Generate payload from the immutable triage row selected by
@@ -104,7 +163,7 @@ internal static class IgdVisitSmassTaskRetryExecutor
     /// <c>RegReff(RegId, PasienId, PasienName)</c>, so the full <see cref="RegModel"/> is
     /// loaded by <c>RegId</c> for <c>LayananId</c>/<c>LayananName</c>.
     /// </summary>
-    private static SmassLinkIgdVisitRequest BuildLinkPayload(
+    private static (SmassLinkIgdVisitRequest Request, RegModel Reg) BuildLinkPayload(
         IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
         IgdVisitSmassTaskModel task)
@@ -120,6 +179,6 @@ internal static class IgdVisitSmassTaskRetryExecutor
         var reg = regRepo.LoadEntity(RegModel.Key(visit.Reg.RegId))
             .GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found");
 
-        return IgdVisitSmassLinkHook.BuildPayload(task.IgdVisitId, reg);
+        return (IgdVisitSmassLinkHook.BuildPayload(task.IgdVisitId, reg), reg);
     }
 }

@@ -25,17 +25,20 @@ public class IgdVisitAssignRegisterHandler : IRequestHandler<IgdVisitAssignRegis
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
     private readonly ISmassAssessmentGateway _smassGateway;
+    private readonly IEmrLabelGateway _emrLabelGateway;
     private readonly IgdVisitOptions _igdVisitOptions;
 
     public IgdVisitAssignRegisterHandler(IIgdVisitRepo igdVisitRepo, IRegRepo regRepo,
         ITglJamProvider tglJamProvider, IIgdVisitSmassTaskRepo smassTaskRepo,
-        ISmassAssessmentGateway smassGateway, IOptions<IgdVisitOptions> igdVisitOptions)
+        ISmassAssessmentGateway smassGateway, IEmrLabelGateway emrLabelGateway,
+        IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;
         _tglJamProvider = tglJamProvider;
         _smassTaskRepo = smassTaskRepo;
         _smassGateway = smassGateway;
+        _emrLabelGateway = emrLabelGateway;
         _igdVisitOptions = igdVisitOptions.Value;
     }
 
@@ -63,9 +66,11 @@ public class IgdVisitAssignRegisterHandler : IRequestHandler<IgdVisitAssignRegis
         await IgdVisitSmassLinkHook.RunAsync(
             _smassTaskRepo,
             _smassGateway,
+            _emrLabelGateway,
             _igdVisitOptions,
             visit.IgdVisitId,
             reg,
+            request.UserId,
             cancellationToken);
     }
 }

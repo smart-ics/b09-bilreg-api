@@ -27,4 +27,10 @@ public class IgdVisitOptions
     /// time → generation task Failed, no HTTP call.
     /// </summary>
     public string SmassTriagePaperId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Dedicated IGD Triage Paper name sent to EMR 2.0 Label API (architecture TD-03,
+    /// e.g. <c>FORMULIR TRIASE IGD</c>).
+    /// </summary>
+    public string SmassTriagePaperName { get; set; } = string.Empty;
 }

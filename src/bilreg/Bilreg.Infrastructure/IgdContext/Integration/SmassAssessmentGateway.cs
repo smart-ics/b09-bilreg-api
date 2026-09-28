@@ -130,7 +130,11 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
                     "linkIgdVisit", envelope?.Status, envelope?.Code, response.Content));
 
             // A link operation is visit-level and carries no single AssessmentId (IR-06).
-            return new SmassGatewayResult(true, null, null);
+            return new SmassGatewayResult(
+                true,
+                null,
+                null,
+                envelope.Data.ListAssesmentId ?? Array.Empty<string>());
         }
         catch (Exception ex)
         {

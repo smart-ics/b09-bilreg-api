@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
@@ -150,6 +150,7 @@ public static class InfrastructureService
             .AddScoped<IUsmanGetTokenService,  UsmanGetTokenService>()
             .AddScoped<ISmassTokenService, SmassTokenService>()
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
+            .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -167,6 +168,7 @@ public static class InfrastructureService
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
             .Configure<RemoteCetakOptions>(configuration.GetSection(RemoteCetakOptions.SECTION_NAME))
             .Configure<EmrOptions>(configuration.GetSection(EmrOptions.SECTION_NAME))
+            .Configure<Emr20Options>(configuration.GetSection(Emr20Options.SECTION_NAME))
             .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME))
             .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME))
             .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))

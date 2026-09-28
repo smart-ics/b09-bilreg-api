@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
 using Bilreg.Application.IgdContext.Integration;
@@ -29,6 +29,7 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
     private readonly IBhpIgdRepo _bhpIgdRepo;
     private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
     private readonly ISmassAssessmentGateway _smassGateway;
+    private readonly IEmrLabelGateway _emrLabelGateway;
     private readonly IgdVisitOptions _igdVisitOptions;
     public IgdVisitReplaceRegisterHandler(IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
@@ -37,6 +38,7 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
         IBhpIgdRepo bhpIgdRepo,
         IIgdVisitSmassTaskRepo smassTaskRepo,
         ISmassAssessmentGateway smassGateway,
+        IEmrLabelGateway emrLabelGateway,
         IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
@@ -46,6 +48,7 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
         _bhpIgdRepo = bhpIgdRepo;
         _smassTaskRepo = smassTaskRepo;
         _smassGateway = smassGateway;
+        _emrLabelGateway = emrLabelGateway;
         _igdVisitOptions = igdVisitOptions.Value;
     }
 
@@ -73,9 +76,11 @@ public class IgdVisitReplaceRegisterHandler : IRequestHandler<IgdVisitReplaceReg
         await IgdVisitSmassLinkHook.RunAsync(
             _smassTaskRepo,
             _smassGateway,
+            _emrLabelGateway,
             _igdVisitOptions,
             igdVisit.IgdVisitId,
             newReg,
+            request.UserId,
             cancellationToken);
     }
 

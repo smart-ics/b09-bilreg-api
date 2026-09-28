@@ -16,7 +16,7 @@ namespace Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature.UseCases;
 /// sources (no <c>PayloadJson</c> is stored or replayed, AR-12), the gateway is invoked
 /// exactly once and the outcome is recorded on the task row.
 /// </summary>
-public record IgdVisitSmassTaskRetryCmd(string IgdVisitSmassTaskId)
+public record IgdVisitSmassTaskRetryCmd(string IgdVisitSmassTaskId, string UserId = "")
     : IRequest<IgdVisitSmassTaskView>, IIgdVisitSmassTaskKey;
 
 public class IgdVisitSmassTaskRetryHandler
@@ -26,6 +26,7 @@ public class IgdVisitSmassTaskRetryHandler
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IRegRepo _regRepo;
     private readonly ISmassAssessmentGateway _gateway;
+    private readonly IEmrLabelGateway _emrLabelGateway;
     private readonly IgdVisitOptions _options;
 
     public IgdVisitSmassTaskRetryHandler(
@@ -33,12 +34,14 @@ public class IgdVisitSmassTaskRetryHandler
         IIgdVisitRepo igdVisitRepo,
         IRegRepo regRepo,
         ISmassAssessmentGateway gateway,
+        IEmrLabelGateway emrLabelGateway,
         IOptions<IgdVisitOptions> options)
     {
         _taskRepo = taskRepo;
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;
         _gateway = gateway;
+        _emrLabelGateway = emrLabelGateway;
         _options = options.Value;
     }
 
@@ -56,7 +59,7 @@ public class IgdVisitSmassTaskRetryHandler
         task.AssertCanManualRetry();
 
         await IgdVisitSmassTaskRetryExecutor.ExecuteAsync(
-            _taskRepo, _igdVisitRepo, _regRepo, _gateway, _options, task, cancellationToken);
+            _taskRepo, _igdVisitRepo, _regRepo, _gateway, _emrLabelGateway, _options, task, request.UserId, cancellationToken);
 
         return IgdVisitSmassTaskView.FromModel(task);
     }
