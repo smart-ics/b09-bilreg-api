@@ -71,6 +71,7 @@
     <Folder Include="PasienContext\PasienFeature" />
     <Folder Include="PasienContext\StatusSosialFeature" />
     <Folder Include="ChargeContext\AmbulanceFeature" />
+    <Folder Include="ChargeContext\TindakanFeature" />
     <Folder Include="Helpers" />
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
@@ -324,6 +325,10 @@
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
+    <Build Include="ChargeContext\TindakanFeature\trs_tindakan_lanjut.sql" />
+    <Build Include="ChargeContext\TindakanFeature\trs_tindakan_lanjut_item.sql" />
+    <Build Include="ChargeContext\TindakanFeature\trs_tujuan_lanjut.sql" />
+    <None Include="ChargeContext\TindakanFeature\trs_tujuan_lanjut.dataseed.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
     <Content Include="LabContext\LabOrderFeature\BILRG_LabOrder.sql" />
     <Content Include="LabContext\LabOrderFeature\BILRG_LabOrderItem.sql" />
