@@ -96,7 +96,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, listKomp, request.UserId, occurredAt);
         var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
@@ -197,16 +197,17 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
 
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
-        NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
+        NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa,
+        IEnumerable<KomponenType> listKomponen, string userId,
         DateTime occurredAt)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, listKomponen, userId, occurredAt);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, listKomponen, tdk.AuditTrail, occurredAt
         );
     }
 

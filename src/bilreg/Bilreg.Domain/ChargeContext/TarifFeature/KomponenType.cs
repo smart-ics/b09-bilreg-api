@@ -41,6 +41,8 @@ public record KomponenType : IKomponenKey
     #region BEHAVIOR
     public KomponenReff ToReff() => new(KomponenId, KomponenName);
 
+    public bool RequiresPpa => _listSatTugas.Any();
+
     public bool IsValidPpa(PpaType ppa)
     {
         //  jika sat-tugas PPA dan Komponen ber-irisan, berarti valid

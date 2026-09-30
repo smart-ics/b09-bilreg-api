@@ -231,7 +231,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
                 .Where(x => x.ListSatTugas.Any())
                 .Select(x => new KomponenPpaView(x, dokter));
 
-            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
+            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, listKomp, userId, occurredAt);
             return tindakan;
         }
         return TindakanModel.Default;
