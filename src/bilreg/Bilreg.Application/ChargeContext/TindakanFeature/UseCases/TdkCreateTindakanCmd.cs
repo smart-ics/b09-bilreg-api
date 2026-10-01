@@ -92,7 +92,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, listKomp, request.UserId, occurredAt);
         var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tindakan == TindakanModel.Default

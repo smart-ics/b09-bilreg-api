@@ -36,12 +36,13 @@ public record TindakanModel : ITindakanKey
 
     public static TindakanModel Create(RegModel reg, 
         LayananType layanan, NilaiTarifType nilaiTarif,
-        IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        IEnumerable<KomponenPpaView> listKomponenPpaView,
+        IEnumerable<KomponenType> listKomponen,
         string userId, DateTime occurredAt = default)
     {
         var newId = NunaId.New(ID_PREFIX);
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, listKomponen);
         var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
@@ -54,9 +55,10 @@ public record TindakanModel : ITindakanKey
     public static TindakanModel Save(string tindakanId, RegModel reg,
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView,
+        IEnumerable<KomponenType> listKomponen,
         AuditTrailType auditTrail, DateTime occurredAt = default)
     {
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, listKomponen);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
 
         var result = new TindakanModel(tindakanId, occurredAt, "",
@@ -67,11 +69,12 @@ public record TindakanModel : ITindakanKey
 
     public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        IEnumerable<KomponenType> listKomponen,
         string userId, DateTime occurredAt = default)
     {
         var newId = NunaId.New(ID_PREFIX);
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, listKomponen);
         var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
@@ -82,22 +85,37 @@ public record TindakanModel : ITindakanKey
     }
 
     private static IEnumerable<TindakanKomponenBase> GenListKomponen(
-        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView)
+        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView,
+        IEnumerable<KomponenType> listKomponen)
     {
         var result = new List<TindakanKomponenBase>();
         var listKompPpaFetched = listKomponenPpaView.ToList();
+        var listKompDef = listKomponen.ToList();
         var index = 0;
         
         foreach (var item in nilaiTarif.ListKomponen)
         {
+            var kompDef = listKompDef
+                .FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
             var kompPPa = listKompPpaFetched
-                .FirstOrDefault(x => x.Komponen.ToReff() == item.Komponen);
-            
-            TindakanKomponenBase newItem = kompPPa is null 
-                ? new TindakanKomponenWithoutPpaType(item.Komponen,index++, item.Nilai, 1, item.Nilai) 
-                : TindakanKomponenWithPpaType.Create(kompPPa.Komponen, kompPPa.Ppa, 
-                    index++, item.Nilai, 1);
-            
+                .FirstOrDefault(x => x.Komponen.KomponenId == item.Komponen.KomponenId);
+
+            TindakanKomponenBase newItem;
+            if (kompPPa is null)
+            {
+                if (kompDef?.RequiresPpa == true)
+                    throw new ArgumentException($"Komponen '{item.Komponen.KomponenId}' membutuhkan PPA");
+                newItem = new TindakanKomponenWithoutPpaType(item.Komponen, index++, item.Nilai, 1, item.Nilai);
+            }
+            else
+            {
+                var kompForValidation = kompDef ?? kompPPa.Komponen;
+                if (!kompForValidation.RequiresPpa)
+                    throw new ArgumentException($"PPA tidak berlaku untuk komponen '{item.Komponen.KomponenId}'");
+                newItem = TindakanKomponenWithPpaType.Create(kompForValidation,
+                    kompPPa.Ppa, index++, item.Nilai, 1);
+            }
+
             result.Add(newItem);
         }
         
