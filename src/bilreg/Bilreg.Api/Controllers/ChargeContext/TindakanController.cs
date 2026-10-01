@@ -24,15 +24,29 @@ public class TindakanController : Controller
     [Route("create")]
     public async Task<IActionResult> Create(TdkCreateTindakanCmd cmd)
     {
-        var result = await _mediator.Send(cmd);
-        return Ok(new JSendOk(result));
+        try
+        {
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
     }
     [HttpPost]
     [Route("save")]
     public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
     {
-        var result = await _mediator.Send(cmd);
-        return Ok(new JSendOk(result));
+        try
+        {
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
     }
 
     [HttpGet]
