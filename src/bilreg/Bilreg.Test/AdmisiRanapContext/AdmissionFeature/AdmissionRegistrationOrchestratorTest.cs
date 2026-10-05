@@ -22,8 +22,12 @@ using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using FluentAssertions;
+using MassTransit;
+using Microsoft.Extensions.Logging;
 using Moq;
+using MyHospital.MsgContract.Billing.AdmisiEvents;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Test.AdmisiRanapContext.AdmissionFeature;
@@ -64,6 +68,9 @@ public class AdmissionRegistrationOrchestratorTest
             x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "RI1")),
             Times.Once);
         harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
     }
 
     [Fact]
@@ -89,6 +96,9 @@ public class AdmissionRegistrationOrchestratorTest
             Times.Once);
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
     }
 
     [Fact]
@@ -192,6 +202,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.RegAktifRepo.Verify(x => x.SaveChanges(It.IsAny<RegAktifModel>()), Times.Never);
         harness.OpnameRepo.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Never);
         harness.AuditRepo.Verify(x => x.SaveChanges(It.IsAny<Domain.Shared.AuditLogFeature.AuditLog>()), Times.Never);
+        harness.Publisher.Verify(x => x.PublishRanapCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -268,10 +279,108 @@ public class AdmissionRegistrationOrchestratorTest
             Times.Once);
     }
 
+    [Fact]
+    public async Task GivenOpnameRequest_WhenSucceeds_ThenPublishesRanapCreatedEventWithRegId()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenSucceeds_ThenPublishesRanapCreatedEventWithRegId()
+    {
+        var harness = CreateReservationHarness();
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenPersistenceFails_ThenDoesNotPublishRanapCreatedEvent()
+    {
+        var harness = CreateReservationHarness();
+        harness.RegInapRepo
+            .Setup(x => x.SaveChanges(It.IsAny<RegInapModel>()))
+            .Throws(new InvalidOperationException("forced reservation failure"));
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var act = () => harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WhenRabbitMqBrokerFails_ThenRegistrationStillSucceedsWithoutThrowing()
+    {
+        var failingBus = new Mock<IBus>();
+        failingBus.Setup(x => x.Publish(It.IsAny<RegRanapCreatedNotifEvent>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("RabbitMQ connection down"));
+        var mockLogger = new Mock<ILogger<AdmisiEventPublisher>>();
+        var realPublisher = new AdmisiEventPublisher(failingBus.Object, mockLogger.Object);
+
+        var harness = CreateOpnameHarness(realPublisher);
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        failingBus.Verify(x => x.Publish(It.IsAny<RegRanapCreatedNotifEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockLogger.Verify(x => x.Log(
+            LogLevel.Error,
+            It.IsAny<EventId>(),
+            It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenRabbitMqBrokerFails_ThenRegistrationStillSucceedsWithoutThrowing()
+    {
+        var failingBus = new Mock<IBus>();
+        failingBus.Setup(x => x.Publish(It.IsAny<RegRanapCreatedNotifEvent>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("RabbitMQ connection down"));
+        var mockLogger = new Mock<ILogger<AdmisiEventPublisher>>();
+        var realPublisher = new AdmisiEventPublisher(failingBus.Object, mockLogger.Object);
+
+        var harness = CreateReservationHarness(realPublisher);
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        failingBus.Verify(x => x.Publish(It.IsAny<RegRanapCreatedNotifEvent>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockLogger.Verify(x => x.Log(
+            LogLevel.Error,
+            It.IsAny<EventId>(),
+            It.IsAny<It.IsAnyType>(),
+            It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
+
     private static AdmissionRegistrationData RegistrationData() =>
         new("00000", CaraMasukDkType.DatangSendiri.CaraMasukDkId, "IGD", null, "-", "PESERTA1");
 
-    private static OpnameHarness CreateOpnameHarness()
+    private static OpnameHarness CreateOpnameHarness(IAdmisiEventPublisher? customPublisher = null)
     {
         var opname = OpnameRequestModel.Create(PasienModel.Default.ToReff(),
             PpaType.Default.ToReff(), DateTime.Today.AddDays(1), "test", "user1", "CH0001");
@@ -332,20 +441,23 @@ public class AdmissionRegistrationOrchestratorTest
         opnameRepo.Setup(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()))
             .Callback<OpnameRequestModel>(x => savedOpname = x);
 
+        var publisher = new Mock<IAdmisiEventPublisher>();
+        var effectivePublisher = customPublisher ?? publisher.Object;
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
-            regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance);
+            regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
+            effectivePublisher);
 
         return new OpnameHarness(
-            sut, opname, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
+            sut, opname, publisher, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
             auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname);
     }
 
-    private static ReservationHarness CreateReservationHarness()
+    private static ReservationHarness CreateReservationHarness(IAdmisiEventPublisher? customPublisher = null)
     {
         var reservation = ReservationModel.Create(
             PasienModel.Default.ToReff(),
@@ -405,15 +517,18 @@ public class AdmissionRegistrationOrchestratorTest
             .Callback<RegInapModel>(x => savedRegInap = x);
         regAktifRepo.Setup(x => x.SaveChanges(It.IsAny<RegAktifModel>()));
 
+        var publisher = new Mock<IAdmisiEventPublisher>();
+        var effectivePublisher = customPublisher ?? publisher.Object;
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
-            regAktifRepo.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
+            regAktifRepo.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance,
+            effectivePublisher);
 
         return new ReservationHarness(
-            sut, reservation, admissionRepo, prosedurRepo, regInapRepo, () => savedRegInap);
+            sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, () => savedRegInap);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -425,6 +540,7 @@ public class AdmissionRegistrationOrchestratorTest
     private sealed class OpnameHarness(
         AdmissionRegistrationOrchestrator sut,
         OpnameRequestModel opname,
+        Mock<IAdmisiEventPublisher> publisher,
         Mock<IAdmissionRepo> admissionRepo,
         Mock<IOpnameRequestRepo> opnameRepo,
         Mock<IRegRepo> regRepo,
@@ -444,6 +560,7 @@ public class AdmissionRegistrationOrchestratorTest
     {
         public AdmissionRegistrationOrchestrator Sut { get; } = sut;
         public OpnameRequestModel Opname { get; } = opname;
+        public Mock<IAdmisiEventPublisher> Publisher { get; } = publisher;
         public Mock<IAdmissionRepo> AdmissionRepo { get; } = admissionRepo;
         public Mock<IOpnameRequestRepo> OpnameRepo { get; } = opnameRepo;
         public Mock<IRegRepo> RegRepo { get; } = regRepo;
@@ -465,6 +582,7 @@ public class AdmissionRegistrationOrchestratorTest
     private sealed class ReservationHarness(
         AdmissionRegistrationOrchestrator sut,
         ReservationModel reservation,
+        Mock<IAdmisiEventPublisher> publisher,
         Mock<IAdmissionRepo> admissionRepo,
         Mock<IProsedureMasukInapRepo> prosedurRepo,
         Mock<IRegInapRepo> regInapRepo,
@@ -472,6 +590,7 @@ public class AdmissionRegistrationOrchestratorTest
     {
         public AdmissionRegistrationOrchestrator Sut { get; } = sut;
         public ReservationModel Reservation { get; } = reservation;
+        public Mock<IAdmisiEventPublisher> Publisher { get; } = publisher;
         public Mock<IAdmissionRepo> AdmissionRepo { get; } = admissionRepo;
         public Mock<IProsedureMasukInapRepo> ProsedurRepo { get; } = prosedurRepo;
         public Mock<IRegInapRepo> RegInapRepo { get; } = regInapRepo;

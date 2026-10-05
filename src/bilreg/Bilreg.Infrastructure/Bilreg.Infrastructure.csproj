@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -18,9 +18,11 @@
     <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpPpaDto.cs" />
     <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpRepo.cs" />
   </ItemGroup>
-
   <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.2.5" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.9" />
+    <PackageReference Include="MyHospital.MsgContract" Version="2.1.24" />
     <PackageReference Include="PDFsharp" Version="6.2.0" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />

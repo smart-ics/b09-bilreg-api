@@ -7,6 +7,7 @@ using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RemoteCetakFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
@@ -92,6 +93,7 @@ public class RegJalanByBookingHandler
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
+    private readonly IAdmisiEventPublisher _publisher;
     private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
     private readonly IAdmissionQueueRefreshPublisher? _admissionQueueRefreshPublisher;
 
@@ -129,6 +131,7 @@ public class RegJalanByBookingHandler
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider,
         IAdmissionServicePointResolver admissionServicePointResolver,
+        IAdmisiEventPublisher publisher,
         IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null,
         IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null)
     {
@@ -164,6 +167,7 @@ public class RegJalanByBookingHandler
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
         _admissionServicePointResolver = admissionServicePointResolver;
+        _publisher = publisher;
         _registrationOutcomeRepo = registrationOutcomeRepo;
         _admissionQueueRefreshPublisher = admissionQueueRefreshPublisher;
     }
@@ -342,6 +346,8 @@ public class RegJalanByBookingHandler
             trans.Complete();
             response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
         }
+
+        await _publisher.PublishRajalCreatedAsync(reg.RegId, cancellationToken);
 
         if (admissionContext is not null && _admissionQueueRefreshPublisher is not null)
             await _admissionQueueRefreshPublisher.PublishAsync(admissionContext.LoketKey, cancellationToken);
