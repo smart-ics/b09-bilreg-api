@@ -257,7 +257,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
-        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, listKomp, userId, occurredAt);
         return tindakan;
     }
     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,

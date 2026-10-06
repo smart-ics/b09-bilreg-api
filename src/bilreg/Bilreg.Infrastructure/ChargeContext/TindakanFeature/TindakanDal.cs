@@ -208,17 +208,15 @@ public class TindakanDal : ITindakanDal
                 BILRG_Tindakan aa
            WHERE
                 aa.RegId = @RegId
-                AND aa.VodDate = @VodDate
 
            --UNION ALL
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", regKey.RegId, SqlDbType.VarChar);
-        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TindakanJualDto>(sql, dp); ;
+        return conn.Read<TindakanJualDto>(sql, dp);
     }
 
     
