@@ -1,8 +1,6 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using MassTransit;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Bilreg.Api.Configurations;
 
