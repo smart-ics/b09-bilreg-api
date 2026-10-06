@@ -13,7 +13,8 @@ builder.Services
     .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
-    .AddPresentation(builder.Configuration);
+    .AddPresentation(builder.Configuration)
+    .AddMassTransitConfiguration(builder.Configuration);
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);

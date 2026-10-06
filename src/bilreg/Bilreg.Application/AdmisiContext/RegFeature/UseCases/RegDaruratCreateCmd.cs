@@ -71,6 +71,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
     private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmisiEventPublisher _publisher;
     private const string BAYAR_SENDIRI = "1";
     public RegDaruratCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
@@ -95,7 +96,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IAddAntrianEmrByRegService addAntrianEmrByRegService,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IAdmisiEventPublisher publisher)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -122,9 +124,10 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         _jurnalRepo = jurnalRepo;
         _addAntrianEmrByRegService = addAntrianEmrByRegService;
         _tglJamProvider = tglJamProvider;
+        _publisher = publisher;
     }
 
-    public Task<RegDaruratCreateResponse> Handle(RegDaruratCreateCmd request, CancellationToken cancellationToken)
+    public async Task<RegDaruratCreateResponse> Handle(RegDaruratCreateCmd request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         #region GUARD-LOAD
@@ -190,8 +193,10 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         AddAntrianEmr(reg);
         #endregion
 
+        await _publisher.PublishRajalCreatedAsync(reg.RegId, cancellationToken);
+
         var response = new RegDaruratCreateResponse(reg.RegId);
-        return Task.FromResult(response);
+        return response;
     }
 
     #region PRIVATE-HELPER
