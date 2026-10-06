@@ -69,6 +69,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmisiEventPublisher _publisher;
 
     public AdmissionRegistrationOrchestrator(
         IAdmissionRepo admissionRepo,
@@ -89,7 +90,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IRegInapRepo regInapRepo,
         IRegAktifRepo regAktifRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IAdmisiEventPublisher publisher)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
@@ -110,9 +112,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _regAktifRepo = regAktifRepo;
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
+        _publisher = publisher;
     }
 
-    public Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
+    public async Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
         AdmProcessOpnameRequestCmd request, CancellationToken cancellationToken)
     {
         ValidateRequest(request.OpnameRequestId, request.KelasDkId, request.BangsalId,
@@ -133,17 +136,21 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var fulfilled = opname.Fulfill(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(opname);
 
-        using var trans = TransHelper.NewScope();
-        SaveCommon(admission, reg, regInap);
-        _opnameRequestRepo.SaveChanges(fulfilled);
-        SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(OpnameRequestModel),
-            fulfilled.OpnameRequestId, snapshot);
-        trans.Complete();
+        using (var trans = TransHelper.NewScope())
+        {
+            SaveCommon(admission, reg, regInap);
+            _opnameRequestRepo.SaveChanges(fulfilled);
+            SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(OpnameRequestModel),
+                fulfilled.OpnameRequestId, snapshot);
+            trans.Complete();
+        }
 
-        return Task.FromResult(ToResponse(admission));
+        await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
+
+        return ToResponse(admission);
     }
 
-    public Task<AdmProcessAdmissionResponse> ProcessReservation(
+    public async Task<AdmProcessAdmissionResponse> ProcessReservation(
         AdmProcessReservationCmd request, CancellationToken cancellationToken)
     {
         ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
@@ -170,14 +177,18 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var realized = reservation.Realize(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(reservation);
 
-        using var trans = TransHelper.NewScope();
-        SaveCommon(admission, reg, regInap);
-        _reservationRepo.SaveChanges(realized);
-        SaveSourceAudit(realized.AuditTrail.Modified, nameof(ReservationModel),
-            realized.ReservationId, snapshot);
-        trans.Complete();
+        using (var trans = TransHelper.NewScope())
+        {
+            SaveCommon(admission, reg, regInap);
+            _reservationRepo.SaveChanges(realized);
+            SaveSourceAudit(realized.AuditTrail.Modified, nameof(ReservationModel),
+                realized.ReservationId, snapshot);
+            trans.Complete();
+        }
 
-        return Task.FromResult(ToResponse(admission));
+        await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
+
+        return ToResponse(admission);
     }
 
     private AdmissionModel CreateAdmission(PasienReff pasien, string kelasDkId, string bangsalId,

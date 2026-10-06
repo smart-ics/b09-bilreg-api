@@ -1,4 +1,4 @@
-﻿ //TODO: Refactor AntrianMap Model
+﻿//TODO: Refactor AntrianMap Model
 
 using Bilreg.Api.Helpers;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
@@ -8,7 +8,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
-using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
