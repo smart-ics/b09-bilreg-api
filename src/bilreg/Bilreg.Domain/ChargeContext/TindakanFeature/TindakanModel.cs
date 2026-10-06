@@ -170,4 +170,4 @@ public record TindakanView(string TindakanId, DateTime TindakanDate, string Orde
 
 public record TindakanJualView(string TransaksiId, DateTime TransaksiDate, string OrderTrasaksi, 
     RegReff Reg, LayananReff Layanan, string DiskripsiId, string DiskripsiName, 
-    int Qty, decimal Total, string Tipe);
+    int Qty, decimal Total, string Tipe, bool IsBatal = false);

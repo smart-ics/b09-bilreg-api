@@ -283,23 +283,24 @@ public sealed class AdmisiRajalPatientContextHandler :
             .ThenByDescending(x => x.VisitDate)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var bookings = request.Scope is PatientContextScope.Patient
-                or PatientContextScope.Registration
-            ? []
-            : bookingViews
+        var bookings = request.Scope switch
+        {
+            PatientContextScope.Patient or PatientContextScope.Registration => [],
+            _ => bookingViews
                 .Where(x => Real(x.Reg.RegId) is not { } registrationId
                     || !bookingSuccessorIds.Contains(registrationId))
-            .Select(x => ToBookingResult(
-                x,
-                businessDate,
-                keyword,
-                string.Equals(
-                    x.BookingId,
-                    request.SuggestedBookingId,
-                    StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(x => x.Rank)
-            .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+                .Select(x => ToBookingResult(
+                    x,
+                    businessDate,
+                    keyword,
+                    string.Equals(
+                        x.BookingId,
+                        request.SuggestedBookingId,
+                        StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(x => x.Rank)
+                .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        };
         var patients = directPatients
             .Concat(LoadPatients(bookingPatientIds, keyword, request.SuggestedPatientId))
             .DistinctBy(x => x.Id, StringComparer.OrdinalIgnoreCase)

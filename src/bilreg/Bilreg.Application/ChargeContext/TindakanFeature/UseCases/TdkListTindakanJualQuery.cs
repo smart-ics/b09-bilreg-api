@@ -7,7 +7,7 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TdkListTindakanJualQuery(string RegId) : IRequest<IEnumerable<TdkListTindakanJualResponse>>, IRegKey;
 public record TdkListTindakanJualResponse(string TransaksiId, string TransaksiDate, 
-    RegReff Reg, LayananReff Layanan, TdkListTdkJualDesc Diskripsi, decimal TotalNilai);
+    RegReff Reg, LayananReff Layanan, TdkListTdkJualDesc Diskripsi, decimal TotalNilai, bool IsBatal);
 
 public record TdkListTdkJualDesc(string DiskripsiId, string DiskripsiName, string Tipe);
 
@@ -27,7 +27,7 @@ public class TdkListTindakanJualHandler : IRequestHandler<TdkListTindakanJualQue
         var listTdkJual = _tdkRepo.ListDataTdkJual(request)?.ToList() ?? [];
         var result = listTdkJual.Select(x => new TdkListTindakanJualResponse(
             x.TransaksiId, x.TransaksiDate.ToString("yyyy-MM-dd HH:mm:ss"),
-            x.Reg, x.Layanan, new TdkListTdkJualDesc(x.DiskripsiId, x.DiskripsiName, x.Tipe), x.Total));
+            x.Reg, x.Layanan, new TdkListTdkJualDesc(x.DiskripsiId, x.DiskripsiName, x.Tipe), x.Total, x.IsBatal));
 
         return Task.FromResult(result);
     }

@@ -86,9 +86,10 @@ public record TindakanJualDto(
     {
         var regReff = new RegReff(RegId, PasienId, PasienName);
         var lyn = new LayananReff(LayananId, LayananName);
+        var isBatal = VodDate < new DateTime(3000, 1, 1) || !string.IsNullOrWhiteSpace(VodUser);
 
         var result = new TindakanJualView(TransaksiId, TransaksiDate, OrderTransaksiId, regReff, lyn,
-            DiskripsiId, DiskripsiName, Qty, Total, Tipe);
+            DiskripsiId, DiskripsiName, Qty, Total, Tipe, isBatal);
 
         return result;
     }

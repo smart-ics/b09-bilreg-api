@@ -95,4 +95,38 @@ public class TindakanControllerTest
         var jsend = badRequestResult.Value.Should().BeOfType<JSendFailed>().Subject;
         jsend.data.Should().Be(expectedExceptionMessage);
     }
+
+    [Fact]
+    public async Task ListTdkJual_WhenCalled_ReturnsOkWithJSendOkCarryingBatalStatus()
+    {
+        // Arrange
+        var regId = "REG01";
+        var query = new TdkListTindakanJualQuery(regId);
+        var expectedResponse = new List<TdkListTindakanJualResponse>
+        {
+            new("TDK01", "2026-10-03 10:00:00",
+                new Bilreg.Domain.AdmisiContext.RegFeature.RegReff("REG01", "PAS01", "Pasien 1"),
+                new Bilreg.Domain.AdmisiContext.LayananFeature.LayananReff("LAY01", "Poli 1"),
+                new TdkListTdkJualDesc("TAR01", "Tarif 1", "TINDAKAN"),
+                100000m,
+                false),
+            new("TDK02", "2026-10-03 10:15:00",
+                new Bilreg.Domain.AdmisiContext.RegFeature.RegReff("REG01", "PAS01", "Pasien 1"),
+                new Bilreg.Domain.AdmisiContext.LayananFeature.LayananReff("LAY01", "Poli 1"),
+                new TdkListTdkJualDesc("TAR02", "Tarif 2", "TINDAKAN"),
+                200000m,
+                true)
+        };
+        _mediatorMock
+            .Setup(x => x.Send(query, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var actionResult = await _sut.ListTdkJual(regId);
+
+        // Assert
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+    }
 }
