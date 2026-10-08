@@ -17,6 +17,7 @@ public interface IRanapDigitalSignDal :
     RanapDigitalSignDto? GetByExternalDoc(string regId, string dokumenId, string externalDocumentId);
     RanapDigitalSignDto? GetByOftaDocId(string oftaDocId);
     IEnumerable<RanapDigitalSignDto> ListByRegId(string regId);
+    IEnumerable<RanapDigitalSignDto> ListPendingArchive(int limit);
 }
 
 public class RanapDigitalSignDal : IRanapDigitalSignDal
@@ -204,6 +205,29 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<RanapDigitalSignDto>(sql, dp) ?? [];
+    }
+
+    public IEnumerable<RanapDigitalSignDto> ListPendingArchive(int limit)
+    {
+        var topClause = limit > 0 ? $"TOP ({limit})" : "TOP (50)";
+        var sql = $"""
+            SELECT {topClause}
+                {SELECT_COLUMNS}
+            FROM BILRG_AdmDigitalSign aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            WHERE
+                aa.IsArchived = 0
+                AND (aa.OftaSignState = 'Signed' OR aa.OftaSignState = 'SIGNED')
+                AND (aa.PatientSignState = 'Signed' OR aa.PatientSignState = 'SIGNED')
+                AND aa.VodDate = @VodDate
+            ORDER BY aa.CrtDate ASC
+            """;
+
+        var dp = new DynamicParameters();
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

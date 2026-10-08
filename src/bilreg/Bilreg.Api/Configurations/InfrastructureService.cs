@@ -201,6 +201,9 @@ public static class InfrastructureService
         services.AddScoped<IAdmissionConfigurationAuditReader, AdmissionConfigurationAuditReader>();
         services.AddScoped<IAdmissionQueueWorkstationResolver, AdmissionQueueWorkstationResolver>();
         services.AddScoped<IOftaGeneralConsentClient, OftaGeneralConsentClient>();
+        services.AddScoped<IPatientSignedDocumentRetrievalService, PatientSignedDocumentRetrievalService>();
+        services.AddScoped<GeneralConsentArchiveWorker>();
+        services.AddHostedService<GeneralConsentArchiveHostedService>();
         services.AddScoped<
             IBookingAssistanceRepo,
             BookingAssistanceRepo>();

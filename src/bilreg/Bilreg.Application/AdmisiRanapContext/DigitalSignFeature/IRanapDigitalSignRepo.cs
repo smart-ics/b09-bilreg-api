@@ -14,4 +14,5 @@ public interface IRanapDigitalSignRepo :
     MayBe<RanapDigitalSignModel> LoadByExternalDoc(string regId, string dokumenId, string externalDocumentId);
     MayBe<RanapDigitalSignModel> LoadByOftaDocId(string oftaDocId);
     IEnumerable<RanapDigitalSignModel> ListByRegId(string regId);
+    IEnumerable<RanapDigitalSignModel> ListPendingArchive(int limit = 50);
 }

@@ -55,4 +55,10 @@ public class RanapDigitalSignRepo : IRanapDigitalSignRepo
         var listDto = _dal.ListByRegId(regId)?.ToList() ?? [];
         return listDto.Select(x => x.ToModel()).ToList();
     }
+
+    public IEnumerable<RanapDigitalSignModel> ListPendingArchive(int limit = 50)
+    {
+        var listDto = _dal.ListPendingArchive(limit)?.ToList() ?? [];
+        return listDto.Select(x => x.ToModel()).ToList();
+    }
 }

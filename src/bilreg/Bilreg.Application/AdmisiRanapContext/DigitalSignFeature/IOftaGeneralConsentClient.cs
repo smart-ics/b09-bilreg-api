@@ -51,4 +51,13 @@ public interface IOftaGeneralConsentClient
     Task<byte[]> DownloadSignedDocAsync(
         string signedDocUrl,
         CancellationToken cancellationToken = default);
+
+    Task<string> ArchiveDocAsync(
+        string oftaDocId,
+        byte[] pdfBytes,
+        string fileName,
+        string regId,
+        string dokumenId,
+        string externalDocumentId,
+        CancellationToken cancellationToken = default);
 }

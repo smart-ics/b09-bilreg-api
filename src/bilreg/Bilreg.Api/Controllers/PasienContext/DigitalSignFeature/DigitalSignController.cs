@@ -191,6 +191,37 @@ public class DigitalSignController : Controller
         }
     }
 
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent/archive")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> TriggerGeneralConsentArchive([FromBody] GeneralConsentArchiveTriggerRequest body)
+    {
+        try
+        {
+            var userId = !string.IsNullOrWhiteSpace(body.UserId)
+                ? body.UserId
+                : User?.Identity?.Name ?? "system";
+
+            var cmd = new GeneralConsentArchiveTriggerCmd(
+                SigningRequestId: body.SigningRequestId,
+                RegId: body.RegId,
+                DokumenId: body.DokumenId,
+                BatchSize: body.BatchSize > 0 ? body.BatchSize : 50,
+                TriggerType: "ON_DEMAND",
+                UserId: userId);
+
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new JSendFailed(ex));
+        }
+    }
+
     private static JSendModel FailedResult(ResolvePatientSignerResponse result, string code)
     {
         object data;
@@ -238,6 +269,15 @@ public class AdmGeneralConsentOftaProxyForm
     public string? PatientSignerId { get; set; }
     public string? SigningRequestId { get; set; }
     public string? HisReference { get; set; }
+    public string? UserId { get; set; }
+}
+
+public class GeneralConsentArchiveTriggerRequest
+{
+    public string? SigningRequestId { get; set; }
+    public string? RegId { get; set; }
+    public string? DokumenId { get; set; }
+    public int BatchSize { get; set; } = 50;
     public string? UserId { get; set; }
 }
 

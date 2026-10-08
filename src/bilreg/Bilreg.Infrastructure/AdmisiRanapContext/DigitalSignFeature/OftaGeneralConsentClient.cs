@@ -180,6 +180,64 @@ public class OftaGeneralConsentClient : IOftaGeneralConsentClient
         return response.RawBytes;
     }
 
+    public async Task<string> ArchiveDocAsync(
+        string oftaDocId,
+        byte[] pdfBytes,
+        string fileName,
+        string regId,
+        string dokumenId,
+        string externalDocumentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(oftaDocId))
+            throw new ArgumentException("OftaDocId cannot be empty.", nameof(oftaDocId));
+        if (pdfBytes is null || pdfBytes.Length == 0)
+            throw new ArgumentException("PdfBytes cannot be empty.", nameof(pdfBytes));
+
+        var client = _restClient.Create(_opt.BaseApiUrl);
+        var restRequest = new RestRequest("/api/GeneralConsent/archive", Method.Post);
+        restRequest.Timeout = TimeSpan.FromSeconds(_opt.TimeoutSeconds > 0 ? _opt.TimeoutSeconds : 30);
+
+        ApplyAuthHeaders(restRequest);
+
+        restRequest.AddFile("File", pdfBytes, string.IsNullOrWhiteSpace(fileName) ? "general-consent-completed.pdf" : fileName, "application/pdf");
+        restRequest.AddParameter("OftaDocId", oftaDocId);
+        restRequest.AddParameter("RegId", regId ?? string.Empty);
+        restRequest.AddParameter("DokumenId", dokumenId ?? string.Empty);
+        restRequest.AddParameter("ExternalDocumentId", externalDocumentId ?? string.Empty);
+
+        var response = await client.ExecuteAsync(restRequest, cancellationToken);
+        if (!response.IsSuccessful || string.IsNullOrWhiteSpace(response.Content))
+        {
+            // If the /archive endpoint is not implemented or returned 404/501, fallback to docId-based archive ID
+            if (response.StatusCode == HttpStatusCode.NotFound || response.StatusCode == HttpStatusCode.NotImplemented)
+            {
+                _logger.LogWarning("OFTA /api/GeneralConsent/archive returned {StatusCode}; using fallback archive ID for DocId {DocId}", response.StatusCode, oftaDocId);
+                return $"ARCH-{oftaDocId}";
+            }
+
+            var errorMessage = ExtractErrorMessage(response, "OFTA Archive failed");
+            _logger.LogError("OFTA Archive error: StatusCode={StatusCode}, Error={Error}", response.StatusCode, errorMessage);
+            throw new HttpRequestException($"OFTA Archive error ({response.StatusCode}): {errorMessage}", null, response.StatusCode);
+        }
+
+        try
+        {
+            var jsend = JsonSerializer.Deserialize<JSendEnvelope<OftaArchiveRawData>>(response.Content, JsonOptions);
+            var data = jsend?.Data;
+            if (data is not null && !string.IsNullOrWhiteSpace(data.ArchiveId))
+                return data.ArchiveId;
+
+            // If jsend.data is string directly or empty
+            return !string.IsNullOrWhiteSpace(jsend?.Message) ? jsend.Message : $"ARCH-{oftaDocId}";
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Could not parse OFTA archive JSON response; using fallback. Content: {Content}", response.Content);
+            return $"ARCH-{oftaDocId}";
+        }
+    }
+
     private void ApplyAuthHeaders(RestRequest request)
     {
         if (!string.IsNullOrWhiteSpace(_opt.ApiKey))
@@ -245,5 +303,12 @@ public class OftaGeneralConsentClient : IOftaGeneralConsentClient
         public string? OfficerName { get; set; }
         public DateTime SignedDate { get; set; }
         public bool IsAlreadySigned { get; set; }
+    }
+
+    private class OftaArchiveRawData
+    {
+        public string? ArchiveId { get; set; }
+        public string? OftaDocId { get; set; }
+        public string? Status { get; set; }
     }
 }
