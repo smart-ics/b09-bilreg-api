@@ -1,3 +1,5 @@
+using Bilreg.Application.AdmisiRanapContext.DigitalSignFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.DigitalSignFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
@@ -175,6 +177,7 @@ public static class InfrastructureService
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME))
+            .Configure<OftaOptions>(configuration.GetSection(OftaOptions.SECTION_NAME))
             .Configure<SmassOptions>(configuration.GetSection(SmassOptions.SECTION_NAME))
             .Configure<IgdVisitOptions>(configuration.GetSection(IgdVisitOptions.SECTION_NAME))
             .Configure<StockLedgerCoexistenceOptions>(
@@ -197,6 +200,7 @@ public static class InfrastructureService
         services.AddScoped<IAdmissionQueueKioskRepo, AdmissionQueueKioskRepo>();
         services.AddScoped<IAdmissionConfigurationAuditReader, AdmissionConfigurationAuditReader>();
         services.AddScoped<IAdmissionQueueWorkstationResolver, AdmissionQueueWorkstationResolver>();
+        services.AddScoped<IOftaGeneralConsentClient, OftaGeneralConsentClient>();
         services.AddScoped<
             IBookingAssistanceRepo,
             BookingAssistanceRepo>();

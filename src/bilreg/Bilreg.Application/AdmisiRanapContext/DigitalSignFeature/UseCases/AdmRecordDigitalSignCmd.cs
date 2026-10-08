@@ -20,7 +20,9 @@ public record AdmRecordDigitalSignCmd(
     string SigningRequestId,
     string SignerId,
     string FileName,
-    string UserId) : IRequest<AdmRecordDigitalSignResponse>, IRegKey;
+    string UserId,
+    string? ExternalDocumentId = null,
+    string? PatientSignState = null) : IRequest<AdmRecordDigitalSignResponse>, IRegKey;
 
 public record AdmRecordDigitalSignResponse(string SigningRequestId);
 
@@ -62,6 +64,51 @@ public class AdmRecordDigitalSignHandler : IRequestHandler<AdmRecordDigitalSignC
         var admission = _admissionRepo.LoadEntity(AdmissionModel.Key(regId))
             .GetValueOrThrow($"Admission '{regId}' tidak ditemukan.");
 
+        var existingByDoc = _digitalSignRepo.LoadByRegDokumen(regId, dokumenId);
+        if (existingByDoc.HasValue)
+        {
+            var existing = existingByDoc.Value;
+            if (!string.IsNullOrWhiteSpace(request.ExternalDocumentId) &&
+                !string.IsNullOrWhiteSpace(existing.ExternalDocumentId) &&
+                !string.Equals(existing.ExternalDocumentId, request.ExternalDocumentId.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Active General Consent for RegId '{regId}' and DokumenId '{dokumenId}' already exists with a different external correlation '{existing.ExternalDocumentId}'.");
+            }
+
+            if (!string.Equals(existing.SigningRequestId, signingRequestId, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"RegId '{regId}' DokumenId '{dokumenId}' sudah tercatat dengan SigningRequestId berbeda.");
+
+            var requestedSignerId = request.SignerId?.Trim() ?? string.Empty;
+            var requestedFileName = request.FileName?.Trim() ?? string.Empty;
+            var requestedSignState = request.PatientSignState?.Trim() ?? existing.PatientSignState;
+
+            if (string.Equals(existing.SignerId, requestedSignerId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.FileName, requestedFileName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.PatientSignState, requestedSignState, StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new AdmRecordDigitalSignResponse(existing.SigningRequestId));
+            }
+
+            var updated = existing.UpdatePatientSigning(
+                signerId: requestedSignerId,
+                fileName: requestedFileName,
+                patientSignState: requestedSignState,
+                userId: request.UserId.Trim(),
+                timestamp: _tglJamProvider.Now);
+
+            _digitalSignRepo.SaveChanges(updated);
+
+            _auditRepo.SaveChanges(AuditLog.Create(
+                updated.AuditTrail.Modified,
+                "UPDATE_PATIENT_SIGN",
+                nameof(RanapDigitalSignModel),
+                updated.SigningRequestId));
+
+            return Task.FromResult(new AdmRecordDigitalSignResponse(updated.SigningRequestId));
+        }
+
         var existingById = _digitalSignRepo.LoadEntity(RanapDigitalSignModel.Key(signingRequestId));
         if (existingById.HasValue)
         {
@@ -70,17 +117,34 @@ public class AdmRecordDigitalSignHandler : IRequestHandler<AdmRecordDigitalSignC
                 || !string.Equals(existing.DokumenId, dokumenId, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
                     $"SigningRequestId '{signingRequestId}' sudah tercatat untuk RegId '{existing.RegId}' DokumenId '{existing.DokumenId}'.");
-            return Task.FromResult(new AdmRecordDigitalSignResponse(existing.SigningRequestId));
-        }
 
-        var existingByDoc = _digitalSignRepo.LoadByRegDokumen(regId, dokumenId);
-        if (existingByDoc.HasValue)
-        {
-            var existing = existingByDoc.Value;
-            if (!string.Equals(existing.SigningRequestId, signingRequestId, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    $"RegId '{regId}' DokumenId '{dokumenId}' sudah tercatat dengan SigningRequestId berbeda.");
-            return Task.FromResult(new AdmRecordDigitalSignResponse(existing.SigningRequestId));
+            var requestedSignerId = request.SignerId?.Trim() ?? string.Empty;
+            var requestedFileName = request.FileName?.Trim() ?? string.Empty;
+            var requestedSignState = request.PatientSignState?.Trim() ?? existing.PatientSignState;
+
+            if (string.Equals(existing.SignerId, requestedSignerId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.FileName, requestedFileName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.PatientSignState, requestedSignState, StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(new AdmRecordDigitalSignResponse(existing.SigningRequestId));
+            }
+
+            var updated = existing.UpdatePatientSigning(
+                signerId: requestedSignerId,
+                fileName: requestedFileName,
+                patientSignState: requestedSignState,
+                userId: request.UserId.Trim(),
+                timestamp: _tglJamProvider.Now);
+
+            _digitalSignRepo.SaveChanges(updated);
+
+            _auditRepo.SaveChanges(AuditLog.Create(
+                updated.AuditTrail.Modified,
+                "UPDATE_PATIENT_SIGN",
+                nameof(RanapDigitalSignModel),
+                updated.SigningRequestId));
+
+            return Task.FromResult(new AdmRecordDigitalSignResponse(updated.SigningRequestId));
         }
 
         var pasien = admission.Pasien ?? new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-");
@@ -94,7 +158,8 @@ public class AdmRecordDigitalSignHandler : IRequestHandler<AdmRecordDigitalSignC
             request.SignerId ?? string.Empty,
             request.FileName ?? string.Empty,
             request.UserId.Trim(),
-            occurredAt);
+            occurredAt,
+            request.PatientSignState ?? string.Empty);
 
         _digitalSignRepo.SaveChanges(model);
 
