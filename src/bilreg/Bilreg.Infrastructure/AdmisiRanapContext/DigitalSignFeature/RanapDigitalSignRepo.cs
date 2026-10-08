@@ -34,6 +34,22 @@ public class RanapDigitalSignRepo : IRanapDigitalSignRepo
         return MayBe.From(dto.ToModel());
     }
 
+    public MayBe<RanapDigitalSignModel> LoadByExternalDoc(string regId, string dokumenId, string externalDocumentId)
+    {
+        var dto = _dal.GetByExternalDoc(regId, dokumenId, externalDocumentId);
+        if (dto is null)
+            return MayBe<RanapDigitalSignModel>.None;
+        return MayBe.From(dto.ToModel());
+    }
+
+    public MayBe<RanapDigitalSignModel> LoadByOftaDocId(string oftaDocId)
+    {
+        var dto = _dal.GetByOftaDocId(oftaDocId);
+        if (dto is null)
+            return MayBe<RanapDigitalSignModel>.None;
+        return MayBe.From(dto.ToModel());
+    }
+
     public IEnumerable<RanapDigitalSignModel> ListByRegId(string regId)
     {
         var listDto = _dal.ListByRegId(regId)?.ToList() ?? [];
