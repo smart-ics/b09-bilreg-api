@@ -222,6 +222,21 @@ public class DigitalSignController : Controller
         }
     }
 
+    [HttpGet("~/api/admisi-ranap/digital-sign/general-consent/cutover-preflight")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> GetGeneralConsentCutoverPreflight(
+        [FromQuery] string? docTypeId,
+        [FromQuery] string? officerRef)
+    {
+        var officerRefs = string.IsNullOrWhiteSpace(officerRef)
+            ? null
+            : officerRef.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var qry = new GeneralConsentCutoverPreflightQry(docTypeId, officerRefs);
+        var result = await _mediator.Send(qry);
+        return Ok(new JSendOk(result));
+    }
+
     private static JSendModel FailedResult(ResolvePatientSignerResponse result, string code)
     {
         object data;

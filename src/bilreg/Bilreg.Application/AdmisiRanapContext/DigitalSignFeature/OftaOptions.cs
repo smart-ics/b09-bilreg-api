@@ -1,4 +1,4 @@
-namespace Bilreg.Infrastructure.AdmisiRanapContext.DigitalSignFeature;
+namespace Bilreg.Application.AdmisiRanapContext.DigitalSignFeature;
 
 public class OftaOptions
 {
