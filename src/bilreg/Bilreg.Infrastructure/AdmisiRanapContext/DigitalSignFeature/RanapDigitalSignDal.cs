@@ -14,6 +14,8 @@ public interface IRanapDigitalSignDal :
     IGetData<RanapDigitalSignDto, IRanapDigitalSignKey>
 {
     RanapDigitalSignDto? GetByRegDokumen(string regId, string dokumenId);
+    RanapDigitalSignDto? GetByExternalDoc(string regId, string dokumenId, string externalDocumentId);
+    RanapDigitalSignDto? GetByOftaDocId(string oftaDocId);
     IEnumerable<RanapDigitalSignDto> ListByRegId(string regId);
 }
 
@@ -28,6 +30,10 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.SignerId, aa.FileName,
+        aa.OftaDocId, aa.OftaDocState, aa.OftaSignState,
+        aa.OfficerRef, aa.OfficerEmail, aa.OfficerName,
+        aa.ExternalDocumentId, aa.SignedDocUrl,
+        aa.IsArchived, aa.ArchiveId, aa.ArchiveDate,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
         """;
 
@@ -42,11 +48,19 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
                 SigningRequestId, RegId, HisReference, DokumenId,
                 PasienId,
                 SignerId, FileName,
+                OftaDocId, OftaDocState, OftaSignState,
+                OfficerRef, OfficerEmail, OfficerName,
+                ExternalDocumentId, SignedDocUrl,
+                IsArchived, ArchiveId, ArchiveDate,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @SigningRequestId, @RegId, @HisReference, @DokumenId,
                 @PasienId,
                 @SignerId, @FileName,
+                @OftaDocId, @OftaDocState, @OftaSignState,
+                @OfficerRef, @OfficerEmail, @OfficerName,
+                @ExternalDocumentId, @SignedDocUrl,
+                @IsArchived, @ArchiveId, @ArchiveDate,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -65,6 +79,17 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
                 PasienId = @PasienId,
                 SignerId = @SignerId,
                 FileName = @FileName,
+                OftaDocId = @OftaDocId,
+                OftaDocState = @OftaDocState,
+                OftaSignState = @OftaSignState,
+                OfficerRef = @OfficerRef,
+                OfficerEmail = @OfficerEmail,
+                OfficerName = @OfficerName,
+                ExternalDocumentId = @ExternalDocumentId,
+                SignedDocUrl = @SignedDocUrl,
+                IsArchived = @IsArchived,
+                ArchiveId = @ArchiveId,
+                ArchiveDate = @ArchiveDate,
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
@@ -117,6 +142,52 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
         return conn.ReadSingle<RanapDigitalSignDto>(sql, dp);
     }
 
+    public RanapDigitalSignDto? GetByExternalDoc(string regId, string dokumenId, string externalDocumentId)
+    {
+        var sql = $"""
+            SELECT TOP 1
+                {SELECT_COLUMNS}
+            FROM BILRG_AdmDigitalSign aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            WHERE
+                aa.RegId = @RegId
+                AND aa.DokumenId = @DokumenId
+                AND aa.ExternalDocumentId = @ExternalDocumentId
+                AND aa.VodDate = @VodDate
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+        dp.AddParam("@DokumenId", dokumenId, SqlDbType.VarChar);
+        dp.AddParam("@ExternalDocumentId", externalDocumentId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<RanapDigitalSignDto>(sql, dp);
+    }
+
+    public RanapDigitalSignDto? GetByOftaDocId(string oftaDocId)
+    {
+        var sql = $"""
+            SELECT TOP 1
+                {SELECT_COLUMNS}
+            FROM BILRG_AdmDigitalSign aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            WHERE
+                aa.OftaDocId = @OftaDocId
+                AND aa.VodDate = @VodDate
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@OftaDocId", oftaDocId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<RanapDigitalSignDto>(sql, dp);
+    }
+
     public IEnumerable<RanapDigitalSignDto> ListByRegId(string regId)
     {
         var sql = $"""
@@ -148,6 +219,17 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@SignerId", dto.SignerId, SqlDbType.VarChar);
         dp.AddParam("@FileName", dto.FileName, SqlDbType.VarChar);
+        dp.AddParam("@OftaDocId", dto.OftaDocId, SqlDbType.VarChar);
+        dp.AddParam("@OftaDocState", dto.OftaDocState, SqlDbType.VarChar);
+        dp.AddParam("@OftaSignState", dto.OftaSignState, SqlDbType.VarChar);
+        dp.AddParam("@OfficerRef", dto.OfficerRef, SqlDbType.VarChar);
+        dp.AddParam("@OfficerEmail", dto.OfficerEmail, SqlDbType.VarChar);
+        dp.AddParam("@OfficerName", dto.OfficerName, SqlDbType.VarChar);
+        dp.AddParam("@ExternalDocumentId", dto.ExternalDocumentId, SqlDbType.VarChar);
+        dp.AddParam("@SignedDocUrl", dto.SignedDocUrl, SqlDbType.VarChar);
+        dp.AddParam("@IsArchived", dto.IsArchived, SqlDbType.Bit);
+        dp.AddParam("@ArchiveId", dto.ArchiveId, SqlDbType.VarChar);
+        dp.AddParam("@ArchiveDate", dto.ArchiveDate, SqlDbType.DateTime);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

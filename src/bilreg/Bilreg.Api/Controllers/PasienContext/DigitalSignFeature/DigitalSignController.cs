@@ -127,6 +127,68 @@ public class DigitalSignController : Controller
         }
     }
 
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent/ofta-proxy")]
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent")]
+    [Consumes("multipart/form-data")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> ProcessGeneralConsentOftaProxy([FromForm] AdmGeneralConsentOftaProxyForm form)
+    {
+        if (form.File == null || form.File.Length == 0)
+            return BadRequest(new JSendFailed(new ArgumentException("PDF file is required.")));
+
+        try
+        {
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                await form.File.CopyToAsync(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
+
+            var userId = !string.IsNullOrWhiteSpace(form.UserId)
+                ? form.UserId
+                : User?.Identity?.Name ?? "system";
+
+            var cmd = new AdmGeneralConsentOftaProxyCmd(
+                RegId: form.RegId,
+                DokumenId: form.DokumenId,
+                ExternalDocumentId: form.ExternalDocumentId,
+                OfficerRef: form.OfficerRef,
+                SignPositionDesc: form.SignPositionDesc,
+                FileBytes: fileBytes,
+                FileName: form.File.FileName,
+                SignTag: form.SignTag,
+                SignPosition: form.SignPosition,
+                DocTypeId: form.DocTypeId,
+                DocName: form.DocName,
+                Passphrase: form.Passphrase,
+                Otp: form.Otp,
+                PatientSignerId: form.PatientSignerId,
+                SigningRequestId: form.SigningRequestId,
+                HisReference: form.HisReference,
+                UserId: userId);
+
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(new Exception(ex.Message)));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new JSendFailed(ex));
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new JSendFailed(ex));
+        }
+    }
+
     private static JSendModel FailedResult(ResolvePatientSignerResponse result, string code)
     {
         object data;
@@ -156,6 +218,26 @@ public class DigitalSignController : Controller
 }
 
 public record ResolvePatientSignerResultDto(string UserrId, string SignerId);
+
+public class AdmGeneralConsentOftaProxyForm
+{
+    public IFormFile File { get; set; } = null!;
+    public string RegId { get; set; } = string.Empty;
+    public string DokumenId { get; set; } = string.Empty;
+    public string ExternalDocumentId { get; set; } = string.Empty;
+    public string OfficerRef { get; set; } = string.Empty;
+    public string SignPositionDesc { get; set; } = string.Empty;
+    public string? SignTag { get; set; }
+    public int? SignPosition { get; set; }
+    public string? DocTypeId { get; set; }
+    public string? DocName { get; set; }
+    public string? Passphrase { get; set; }
+    public string? Otp { get; set; }
+    public string? PatientSignerId { get; set; }
+    public string? SigningRequestId { get; set; }
+    public string? HisReference { get; set; }
+    public string? UserId { get; set; }
+}
 
 public record AdmRecordDigitalSignBody(
     string RegId,
