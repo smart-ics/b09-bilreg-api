@@ -55,6 +55,7 @@ using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
+using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
@@ -151,6 +152,7 @@ public static class InfrastructureService
             .AddScoped<ISmassTokenService, SmassTokenService>()
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
+            .AddScoped<IPasienSasetDal, PasienSasetDal>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

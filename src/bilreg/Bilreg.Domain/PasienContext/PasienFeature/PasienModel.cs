@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
@@ -45,6 +45,7 @@ public class PasienModel : IPasienKey
         IsAktif = isAktif;
 
         _listContact = listContact.ToList();
+        PasienSaset = PasienSasetModel.Default(pasienId);
     }
 
     public static PasienModel Default => new PasienModel("-",
@@ -91,6 +92,9 @@ public class PasienModel : IPasienKey
     //      olah berkas
     public DateTime TglMedRec { get; private set; } 
     public bool IsAktif { get; private set; }
+
+    //      satu sehat
+    public PasienSasetModel PasienSaset { get; private set; }
     #endregion
     
     #region BEHAVIOR
@@ -246,6 +250,17 @@ public class PasienModel : IPasienKey
     }
     public PasienReff ToReff() => new PasienReff(PasienId, Person.PersonName, 
         Person.TglLahir, Person.Gender);
+
+    public void SetSaset(PasienSasetModel saset)
+    {
+        PasienSaset = saset ?? PasienSasetModel.Default(PasienId);
+    }
+
+    public void ApproveUploadSaset(DateTime approvedAt)
+    {
+        PasienSaset ??= PasienSasetModel.Default(PasienId);
+        PasienSaset.ApproveUpload(approvedAt);
+    }
     
     #endregion
 }

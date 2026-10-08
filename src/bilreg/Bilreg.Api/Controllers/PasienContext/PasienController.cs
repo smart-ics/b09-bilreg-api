@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PasienContext.PasienFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -91,4 +91,10 @@ public class PasienController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPatch("approveUploadSaset")]
+    public async Task<IActionResult> ApproveUploadSaset(PasienApproveUploadSasetCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

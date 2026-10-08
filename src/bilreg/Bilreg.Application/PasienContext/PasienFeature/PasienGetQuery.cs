@@ -10,6 +10,16 @@ namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienGetQuery(string PasienId) : IRequest<PasienGetResponse>, IPasienKey;
 
+public record PasienSasetResponse(
+    string SasetId,
+    bool IsApprovedUpload,
+    string TglJamApprovedUpload,
+    string FileGeneralConcentUpload,
+    bool IsApprovedView,
+    string TglJamApprovedView,
+    string FileGeneralConcentView
+);
+
 public record PasienGetResponse(
     string PasienId,
     string NomorMedrec,
@@ -33,7 +43,8 @@ public record PasienGetResponse(
     AgamaType Agama,
     SukuType Suku,
     PekerjaanDkType Pekerjaan,
-    PendidikanDkType Pendidikan
+    PendidikanDkType Pendidikan,
+    PasienSasetResponse PasienSaset
 );
 
 public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetResponse>
@@ -82,7 +93,17 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
 
     private static PasienGetResponse BuildPasienResponse(PasienModel pasien, DateOnly businessDate)
     {
-        
+        var saset = pasien.PasienSaset ?? PasienSasetModel.Default(pasien.PasienId);
+        var sasetResponse = new PasienSasetResponse(
+            saset.SasetId,
+            saset.IsApprovedUpload,
+            FormatDateTime(saset.TglJamApprovedUpload),
+            saset.FileGeneralConcentUpload,
+            saset.IsApprovedView,
+            FormatDateTime(saset.TglJamApprovedView),
+            saset.FileGeneralConcentView
+        );
+
         return new PasienGetResponse(
             pasien.PasienId,
             pasien.GetNomorMedrec(),
@@ -94,7 +115,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
             pasien.Person.Gender,
             pasien.NamaIbuKandung,
             pasien.GolDarah.ToString(),
-            pasien.ListContact.Where(x => x.JenisContact == JenisContactEnum.Email).First().ContactDetail,
+            pasien.ListContact.FirstOrDefault(x => x.JenisContact == JenisContactEnum.Email)?.ContactDetail ?? string.Empty,
             pasien.Person.Contact.ContactDetail,
             pasien.IsAktif,
             pasien.Person.Alamat,
@@ -106,7 +127,16 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
             pasien.Agama,
             pasien.Suku,
             pasien.PekerjaanDk,
-            pasien.PendidikanDk
+            pasien.PendidikanDk,
+            sasetResponse
         );
+    }
+
+    private static string FormatDateTime(DateTime dateTime)
+    {
+        if (dateTime == default || dateTime == DateTime.MinValue || dateTime.Year >= 3000)
+            return string.Empty;
+
+        return dateTime.ToString("yyyy-MM-dd HH:mm:ss");
     }
 }

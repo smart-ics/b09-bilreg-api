@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -19,17 +19,21 @@ public class PasienRepo : IPasienRepo
     private readonly IGetKodeRsService _getKodeRsSvc;
     private readonly IPasienIdDal _pasienIdDal;
     private readonly IPasienTelpDal _pasienTelpDal;
+    private readonly IPasienSasetDal _pasienSasetDal;
+
     public PasienRepo(IPasienDal pasienDal,
         IPasienKtpDal pasienKtpDal,
         IGetKodeRsService getKodeRsSvc,
         IPasienIdDal pasienIdDal,
-        IPasienTelpDal pasienTelpDal)
+        IPasienTelpDal pasienTelpDal,
+        IPasienSasetDal pasienSasetDal)
     {
         _pasienDal = pasienDal;
         _pasienKtpDal = pasienKtpDal;
         _getKodeRsSvc = getKodeRsSvc;
         _pasienIdDal = pasienIdDal;
         _pasienTelpDal = pasienTelpDal;
+        _pasienSasetDal = pasienSasetDal;
     }
 
     public Result<IPasienKey> SaveChanges(PasienModel model)
@@ -67,6 +71,14 @@ public class PasienRepo : IPasienRepo
             _pasienIdDal.Update(PasienIdDto.FromModel(model));
         else
             _pasienIdDal.Insert(PasienIdDto.FromModel(model));
+
+        // tc_mr_saset
+        var sasetDb = _pasienSasetDal.GetData(PasienModel.Key(model.PasienId));
+        var sasetModel = model.PasienSaset ?? PasienSasetModel.Default(model.PasienId);
+        if (sasetDb is not null)
+            _pasienSasetDal.Update(PasienSasetDto.FromModel(sasetModel));
+        else
+            _pasienSasetDal.Insert(PasienSasetDto.FromModel(sasetModel));
 
         trans.Complete();
         return Result<IPasienKey>.Success(model);
@@ -159,6 +171,13 @@ public class PasienRepo : IPasienRepo
             pendidikan, pekerjaan, 
             dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif);
 
+        //  fetch saset-dto
+        var sasetDto = _pasienSasetDal.GetData(key);
+        var sasetModel = sasetDto is not null
+            ? sasetDto.ToModel()
+            : PasienSasetModel.Default(key.PasienId);
+        pasien.SetSaset(sasetModel);
+
         return MayBe.From(pasien);
     }
 
@@ -167,6 +186,7 @@ public class PasienRepo : IPasienRepo
         using var trans = TransHelper.NewScope();
         _pasienDal.Delete(PasienModel.Key(key.PasienId));
         _pasienKtpDal.Delete(PasienModel.Key(key.PasienId));
+        _pasienSasetDal.Delete(key);
         trans.Complete();
     }
     
