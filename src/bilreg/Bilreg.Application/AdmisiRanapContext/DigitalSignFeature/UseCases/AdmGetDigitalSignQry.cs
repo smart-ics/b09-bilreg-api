@@ -11,7 +11,19 @@ public record AdmGetDigitalSignResponse(
     string RegId,
     string HisReference,
     string DokumenId,
-    string FileName);
+    string FileName,
+    string SignerId = "",
+    string PatientSignState = "",
+    string OfficerSignState = "",
+    string OfficerRef = "",
+    string OfficerEmail = "",
+    string OfficerName = "",
+    string OftaDocId = "",
+    string ExternalDocumentId = "",
+    string CombinedStatus = "Sebagian",
+    bool IsArchived = false,
+    string ArchiveId = "",
+    DateTime? ArchiveDate = null);
 
 public record AdmGetDigitalSignListResponse(IEnumerable<AdmGetDigitalSignResponse> Items);
 
@@ -54,9 +66,21 @@ public class AdmGetDigitalSignHandler
 
     private static AdmGetDigitalSignResponse Map(Domain.AdmisiRanapContext.DigitalSignFeature.RanapDigitalSignModel m) =>
         new(
-            m.SigningRequestId,
-            m.RegId,
-            m.HisReference,
-            m.DokumenId,
-            m.FileName);
+            SigningRequestId: m.SigningRequestId,
+            RegId: m.RegId,
+            HisReference: m.HisReference,
+            DokumenId: m.DokumenId,
+            FileName: m.FileName,
+            SignerId: m.SignerId,
+            PatientSignState: m.PatientSignState,
+            OfficerSignState: m.OftaSignState,
+            OfficerRef: m.OfficerRef,
+            OfficerEmail: m.OfficerEmail,
+            OfficerName: m.OfficerName,
+            OftaDocId: m.OftaDocId,
+            ExternalDocumentId: m.ExternalDocumentId,
+            CombinedStatus: m.CombinedStatus,
+            IsArchived: m.IsArchived,
+            ArchiveId: m.ArchiveId,
+            ArchiveDate: m.ArchiveDate);
 }

@@ -104,4 +104,45 @@ public class RanapDigitalSignModelOftaTest
         updated.AuditTrail.Modified.UserId.Should().Be("petugas1");
         updated.AuditTrail.Modified.Timestamp.Should().Be(execTime);
     }
+
+    [Theory]
+    [InlineData("SIGNED", "SIGNED", "Lengkap")]
+    [InlineData("Signed", "signed", "Lengkap")]
+    [InlineData("SIGNED", "PENDING", "Sebagian")]
+    [InlineData("SIGNED", "", "Sebagian")]
+    [InlineData("IN_PROGRESS", "SIGNED", "Sebagian")]
+    [InlineData("", "SIGNED", "Sebagian")]
+    [InlineData("", "", "Sebagian")]
+    [InlineData("SIGNED", "REJECTED", "Sebagian")]
+    [InlineData("REJECTED", "SIGNED", "Sebagian")]
+    public void GivenVariousSignStates_WhenComputeCombinedStatus_ThenReturnsExpected(
+        string officerSignState, string patientSignState, string expected)
+    {
+        var result = RanapDigitalSignModel.ComputeCombinedStatus(officerSignState, patientSignState);
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public void GivenOftaProxyModel_WhenUpdatePatientSigning_ThenUpdatesSignerAndPatientState()
+    {
+        var now = new DateTime(2026, 10, 8, 10, 0, 0);
+        var signId = Guid.NewGuid().ToString("D");
+        var model = RanapDigitalSignModel.CatatOftaProxy(
+            "RG202610080001", "RG202610080001", "GC-20261008-001", signId,
+            SamplePasien(), "", "general-consent.pdf",
+            "OFTA-12345", "COMPLETED", "SIGNED", "OFF-1", "officer@mail.com", "Officer", "EXT-001", "http://ofta/signed/1.pdf", "petugas1", now);
+
+        model.CombinedStatus.Should().Be("Sebagian");
+
+        var updateTime = now.AddMinutes(2);
+        var updated = model.UpdatePatientSigning("SIGNER-PATIENT-1", "signed-gc.pdf", "SIGNED", "petugas1", updateTime);
+
+        updated.SignerId.Should().Be("SIGNER-PATIENT-1");
+        updated.FileName.Should().Be("signed-gc.pdf");
+        updated.PatientSignState.Should().Be("SIGNED");
+        updated.OftaSignState.Should().Be("SIGNED");
+        updated.CombinedStatus.Should().Be("Lengkap");
+        updated.AuditTrail.Modified.UserId.Should().Be("petugas1");
+        updated.AuditTrail.Modified.Timestamp.Should().Be(updateTime);
+    }
 }

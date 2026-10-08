@@ -65,7 +65,9 @@ public class DigitalSignController : Controller
                 body.SigningRequestId,
                 body.SignerId ?? string.Empty,
                 body.FileName ?? string.Empty,
-                body.UserId);
+                body.UserId,
+                body.ExternalDocumentId,
+                body.PatientSignState);
             var result = await _mediator.Send(cmd);
             return Ok(new JSendOk(result));
         }
@@ -246,7 +248,9 @@ public record AdmRecordDigitalSignBody(
     string SigningRequestId,
     string? SignerId,
     string? FileName,
-    string UserId);
+    string UserId,
+    string? ExternalDocumentId = null,
+    string? PatientSignState = null);
 
 public record ResolvePatientSignerPatientDto(
     [property: JsonPropertyName("UserrID")] string UserrId,

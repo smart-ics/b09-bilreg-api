@@ -9,6 +9,7 @@ BEGIN
         PasienId            VARCHAR(15)  NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_PasienId DEFAULT('-'),
         SignerId            VARCHAR(36)  NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_SignerId DEFAULT(''),
         FileName            VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_FileName DEFAULT(''),
+        PatientSignState    VARCHAR(30)  NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_PatientSignState DEFAULT(''),
 
         OftaDocId           VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_OftaDocId DEFAULT(''),
         OftaDocState        VARCHAR(30)  NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_OftaDocState DEFAULT(''),
@@ -36,6 +37,8 @@ GO
 
 IF OBJECT_ID('BILRG_AdmDigitalSign', 'U') IS NOT NULL
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AdmDigitalSign') AND name = 'PatientSignState')
+        ALTER TABLE BILRG_AdmDigitalSign ADD PatientSignState VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_PatientSignState DEFAULT('');
     IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AdmDigitalSign') AND name = 'OftaDocId')
         ALTER TABLE BILRG_AdmDigitalSign ADD OftaDocId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AdmDigitalSign_OftaDocId DEFAULT('');
     IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AdmDigitalSign') AND name = 'OftaDocState')

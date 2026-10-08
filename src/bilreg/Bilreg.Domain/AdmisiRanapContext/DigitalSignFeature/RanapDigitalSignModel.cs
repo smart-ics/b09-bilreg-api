@@ -18,6 +18,7 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
         string signerId,
         string fileName,
         AuditTrailType auditTrail,
+        string patientSignState = "",
         string oftaDocId = "",
         string oftaDocState = "",
         string oftaSignState = "",
@@ -38,6 +39,7 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
         SignerId = signerId;
         FileName = fileName;
         AuditTrail = auditTrail;
+        PatientSignState = patientSignState;
         OftaDocId = oftaDocId;
         OftaDocState = oftaDocState;
         OftaSignState = oftaSignState;
@@ -62,7 +64,8 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
         string signerId,
         string fileName,
         string auditUserId,
-        DateTime createdAt = default)
+        DateTime createdAt = default,
+        string patientSignState = "")
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.NullOrWhiteSpace(dokumenId);
@@ -94,7 +97,8 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
             pasien,
             string.IsNullOrWhiteSpace(signerId) ? string.Empty : signerId.Trim(),
             fileName?.Trim() ?? string.Empty,
-            AuditTrailType.Create(auditUserId.Trim(), createdAt == default ? DateTime.Now : createdAt));
+            AuditTrailType.Create(auditUserId.Trim(), createdAt == default ? DateTime.Now : createdAt),
+            patientSignState: patientSignState?.Trim() ?? string.Empty);
     }
 
     public static RanapDigitalSignModel CatatOftaProxy(
@@ -114,7 +118,8 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
         string externalDocumentId,
         string signedDocUrl,
         string auditUserId,
-        DateTime createdAt = default)
+        DateTime createdAt = default,
+        string patientSignState = "")
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.NullOrWhiteSpace(dokumenId);
@@ -147,6 +152,7 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
             string.IsNullOrWhiteSpace(signerId) ? string.Empty : signerId.Trim(),
             fileName?.Trim() ?? string.Empty,
             AuditTrailType.Create(auditUserId.Trim(), createdAt == default ? DateTime.Now : createdAt),
+            patientSignState: patientSignState?.Trim() ?? string.Empty,
             oftaDocId: oftaDocId?.Trim() ?? string.Empty,
             oftaDocState: oftaDocState?.Trim() ?? string.Empty,
             oftaSignState: oftaSignState?.Trim() ?? string.Empty,
@@ -183,6 +189,7 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
     public PasienReff Pasien { get; init; }
     public string SignerId { get; init; }
     public string FileName { get; init; }
+    public string PatientSignState { get; init; }
     public string OftaDocId { get; init; }
     public string OftaDocState { get; init; }
     public string OftaSignState { get; init; }
@@ -196,9 +203,68 @@ public record RanapDigitalSignModel : IRanapDigitalSignKey
     public DateTime ArchiveDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
 
+    public string CombinedStatus => ComputeCombinedStatus(OftaSignState, PatientSignState, OftaDocId);
+
     #endregion
 
     #region BEHAVIOUR
+
+    public static string ComputeCombinedStatus(string? oftaSignState, string? patientSignState, string? oftaDocId = null)
+    {
+        var isOfficerSigned = string.Equals(oftaSignState?.Trim(), "SIGNED", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(oftaSignState?.Trim(), "Signed", StringComparison.OrdinalIgnoreCase);
+        var isPatientSigned = string.Equals(patientSignState?.Trim(), "SIGNED", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(patientSignState?.Trim(), "Signed", StringComparison.OrdinalIgnoreCase);
+
+        if (isOfficerSigned && isPatientSigned)
+            return "Lengkap";
+
+        return "Sebagian";
+    }
+
+    public RanapDigitalSignModel UpdatePatientSigning(
+        string signerId,
+        string fileName,
+        string patientSignState,
+        string userId,
+        DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+
+        return this with
+        {
+            SignerId = string.IsNullOrWhiteSpace(signerId) ? SignerId : signerId.Trim(),
+            FileName = string.IsNullOrWhiteSpace(fileName) ? FileName : fileName.Trim(),
+            PatientSignState = string.IsNullOrWhiteSpace(patientSignState) ? PatientSignState : patientSignState.Trim(),
+            AuditTrail = audit
+        };
+    }
+
+    public RanapDigitalSignModel UpdatePatientSignState(
+        string patientSignState,
+        string userId,
+        DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+
+        return this with
+        {
+            PatientSignState = string.IsNullOrWhiteSpace(patientSignState) ? PatientSignState : patientSignState.Trim(),
+            AuditTrail = audit
+        };
+    }
 
     public RanapDigitalSignModel UpdateOftaExecution(
         string oftaDocId,

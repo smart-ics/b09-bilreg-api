@@ -29,7 +29,7 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
         ISNULL(bb.fs_nm_pasien, '') AS PasienName,
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-        aa.SignerId, aa.FileName,
+        aa.SignerId, aa.FileName, aa.PatientSignState,
         aa.OftaDocId, aa.OftaDocState, aa.OftaSignState,
         aa.OfficerRef, aa.OfficerEmail, aa.OfficerName,
         aa.ExternalDocumentId, aa.SignedDocUrl,
@@ -47,7 +47,7 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
             INSERT INTO BILRG_AdmDigitalSign (
                 SigningRequestId, RegId, HisReference, DokumenId,
                 PasienId,
-                SignerId, FileName,
+                SignerId, FileName, PatientSignState,
                 OftaDocId, OftaDocState, OftaSignState,
                 OfficerRef, OfficerEmail, OfficerName,
                 ExternalDocumentId, SignedDocUrl,
@@ -56,7 +56,7 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
             VALUES (
                 @SigningRequestId, @RegId, @HisReference, @DokumenId,
                 @PasienId,
-                @SignerId, @FileName,
+                @SignerId, @FileName, @PatientSignState,
                 @OftaDocId, @OftaDocState, @OftaSignState,
                 @OfficerRef, @OfficerEmail, @OfficerName,
                 @ExternalDocumentId, @SignedDocUrl,
@@ -79,6 +79,7 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
                 PasienId = @PasienId,
                 SignerId = @SignerId,
                 FileName = @FileName,
+                PatientSignState = @PatientSignState,
                 OftaDocId = @OftaDocId,
                 OftaDocState = @OftaDocState,
                 OftaSignState = @OftaSignState,
@@ -219,6 +220,7 @@ public class RanapDigitalSignDal : IRanapDigitalSignDal
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@SignerId", dto.SignerId, SqlDbType.VarChar);
         dp.AddParam("@FileName", dto.FileName, SqlDbType.VarChar);
+        dp.AddParam("@PatientSignState", dto.PatientSignState, SqlDbType.VarChar);
         dp.AddParam("@OftaDocId", dto.OftaDocId, SqlDbType.VarChar);
         dp.AddParam("@OftaDocState", dto.OftaDocState, SqlDbType.VarChar);
         dp.AddParam("@OftaSignState", dto.OftaSignState, SqlDbType.VarChar);
