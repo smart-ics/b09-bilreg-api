@@ -65,7 +65,9 @@ public class DigitalSignController : Controller
                 body.SigningRequestId,
                 body.SignerId ?? string.Empty,
                 body.FileName ?? string.Empty,
-                body.UserId);
+                body.UserId,
+                body.ExternalDocumentId,
+                body.PatientSignState);
             var result = await _mediator.Send(cmd);
             return Ok(new JSendOk(result));
         }
@@ -127,6 +129,114 @@ public class DigitalSignController : Controller
         }
     }
 
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent/ofta-proxy")]
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent")]
+    [Consumes("multipart/form-data")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> ProcessGeneralConsentOftaProxy([FromForm] AdmGeneralConsentOftaProxyForm form)
+    {
+        if (form.File == null || form.File.Length == 0)
+            return BadRequest(new JSendFailed(new ArgumentException("PDF file is required.")));
+
+        try
+        {
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                await form.File.CopyToAsync(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
+
+            var userId = !string.IsNullOrWhiteSpace(form.UserId)
+                ? form.UserId
+                : User?.Identity?.Name ?? "system";
+
+            var cmd = new AdmGeneralConsentOftaProxyCmd(
+                RegId: form.RegId,
+                DokumenId: form.DokumenId,
+                ExternalDocumentId: form.ExternalDocumentId,
+                OfficerRef: form.OfficerRef,
+                SignPositionDesc: form.SignPositionDesc,
+                FileBytes: fileBytes,
+                FileName: form.File.FileName,
+                SignTag: form.SignTag,
+                SignPosition: form.SignPosition,
+                DocTypeId: form.DocTypeId,
+                DocName: form.DocName,
+                Passphrase: form.Passphrase,
+                Otp: form.Otp,
+                PatientSignerId: form.PatientSignerId,
+                SigningRequestId: form.SigningRequestId,
+                HisReference: form.HisReference,
+                UserId: userId);
+
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(new Exception(ex.Message)));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new JSendFailed(ex));
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new JSendFailed(ex));
+        }
+    }
+
+    [HttpPost("~/api/admisi-ranap/digital-sign/general-consent/archive")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> TriggerGeneralConsentArchive([FromBody] GeneralConsentArchiveTriggerRequest body)
+    {
+        try
+        {
+            var userId = !string.IsNullOrWhiteSpace(body.UserId)
+                ? body.UserId
+                : User?.Identity?.Name ?? "system";
+
+            var cmd = new GeneralConsentArchiveTriggerCmd(
+                SigningRequestId: body.SigningRequestId,
+                RegId: body.RegId,
+                DokumenId: body.DokumenId,
+                BatchSize: body.BatchSize > 0 ? body.BatchSize : 50,
+                TriggerType: "ON_DEMAND",
+                UserId: userId);
+
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new JSendFailed(ex));
+        }
+    }
+
+    [HttpGet("~/api/admisi-ranap/digital-sign/general-consent/cutover-preflight")]
+    [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
+    public async Task<IActionResult> GetGeneralConsentCutoverPreflight(
+        [FromQuery] string? docTypeId,
+        [FromQuery] string? officerRef)
+    {
+        var officerRefs = string.IsNullOrWhiteSpace(officerRef)
+            ? null
+            : officerRef.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var qry = new GeneralConsentCutoverPreflightQry(docTypeId, officerRefs);
+        var result = await _mediator.Send(qry);
+        return Ok(new JSendOk(result));
+    }
+
     private static JSendModel FailedResult(ResolvePatientSignerResponse result, string code)
     {
         object data;
@@ -157,6 +267,35 @@ public class DigitalSignController : Controller
 
 public record ResolvePatientSignerResultDto(string UserrId, string SignerId);
 
+public class AdmGeneralConsentOftaProxyForm
+{
+    public IFormFile File { get; set; } = null!;
+    public string RegId { get; set; } = string.Empty;
+    public string DokumenId { get; set; } = string.Empty;
+    public string ExternalDocumentId { get; set; } = string.Empty;
+    public string OfficerRef { get; set; } = string.Empty;
+    public string SignPositionDesc { get; set; } = string.Empty;
+    public string? SignTag { get; set; }
+    public int? SignPosition { get; set; }
+    public string? DocTypeId { get; set; }
+    public string? DocName { get; set; }
+    public string? Passphrase { get; set; }
+    public string? Otp { get; set; }
+    public string? PatientSignerId { get; set; }
+    public string? SigningRequestId { get; set; }
+    public string? HisReference { get; set; }
+    public string? UserId { get; set; }
+}
+
+public class GeneralConsentArchiveTriggerRequest
+{
+    public string? SigningRequestId { get; set; }
+    public string? RegId { get; set; }
+    public string? DokumenId { get; set; }
+    public int BatchSize { get; set; } = 50;
+    public string? UserId { get; set; }
+}
+
 public record AdmRecordDigitalSignBody(
     string RegId,
     string? HisReference,
@@ -164,7 +303,9 @@ public record AdmRecordDigitalSignBody(
     string SigningRequestId,
     string? SignerId,
     string? FileName,
-    string UserId);
+    string UserId,
+    string? ExternalDocumentId = null,
+    string? PatientSignState = null);
 
 public record ResolvePatientSignerPatientDto(
     [property: JsonPropertyName("UserrID")] string UserrId,

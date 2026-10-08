@@ -161,4 +161,105 @@ public class AdmRecordDigitalSignHandlerTest
             .WithMessage("*hisReference*");
         _repoMock.Verify(x => x.SaveChanges(It.IsAny<RanapDigitalSignModel>()), Times.Never);
     }
+
+    [Fact]
+    public async Task GivenExistingOftaRecord_WhenPatientPublishHandoff_ThenUpdatesSignerAndPreservesOftaCorrelation()
+    {
+        SetupAdmission();
+        var signingId = Guid.NewGuid().ToString("D");
+        var oftaRecord = RanapDigitalSignModel.CatatOftaProxy(
+            regId: "RG00000001",
+            hisReference: "RG00000001",
+            dokumenId: "GC-001",
+            signingRequestId: signingId,
+            pasien: new PasienReff("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
+            signerId: "",
+            fileName: "general-consent.pdf",
+            oftaDocId: "DOC-OFTA-001",
+            oftaDocState: "COMPLETED",
+            oftaSignState: "SIGNED",
+            officerRef: "OFF-1",
+            officerEmail: "officer@mail.com",
+            officerName: "Officer Name",
+            externalDocumentId: "EXT-DOC-001",
+            signedDocUrl: "http://ofta/signed/1.pdf",
+            auditUserId: "petugas1");
+
+        _repoMock
+            .Setup(x => x.LoadByRegDokumen("RG00000001", "GC-001"))
+            .Returns(MayBe.From(oftaRecord));
+
+        RanapDigitalSignModel? saved = null;
+        _repoMock.Setup(x => x.SaveChanges(It.IsAny<RanapDigitalSignModel>()))
+            .Callback<RanapDigitalSignModel>(m => saved = m);
+
+        var cmd = new AdmRecordDigitalSignCmd(
+            RegId: "RG00000001",
+            HisReference: "RG00000001",
+            DokumenId: "GC-001",
+            SigningRequestId: signingId,
+            SignerId: "SIGNER-PATIENT-123",
+            FileName: "gc-signed-officer.pdf",
+            UserId: "petugas1",
+            ExternalDocumentId: "EXT-DOC-001",
+            PatientSignState: "PENDING");
+
+        var result = await CreateHandler().Handle(cmd, CancellationToken.None);
+
+        result.SigningRequestId.Should().Be(signingId);
+        saved.Should().NotBeNull();
+        saved!.OftaDocId.Should().Be("DOC-OFTA-001");
+        saved.OftaSignState.Should().Be("SIGNED");
+        saved.OfficerEmail.Should().Be("officer@mail.com");
+        saved.ExternalDocumentId.Should().Be("EXT-DOC-001");
+        saved.SignerId.Should().Be("SIGNER-PATIENT-123");
+        saved.FileName.Should().Be("gc-signed-officer.pdf");
+        saved.PatientSignState.Should().Be("PENDING");
+        saved.CombinedStatus.Should().Be("Sebagian");
+
+        _auditMock.Verify(x => x.SaveChanges(It.Is<AuditLog>(a => a.ActionType == "UPDATE_PATIENT_SIGN")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenConflictingExternalDocumentId_WhenRecord_ThenThrowsConflict()
+    {
+        SetupAdmission();
+        var signingId = Guid.NewGuid().ToString("D");
+        var oftaRecord = RanapDigitalSignModel.CatatOftaProxy(
+            regId: "RG00000001",
+            hisReference: "RG00000001",
+            dokumenId: "GC-001",
+            signingRequestId: signingId,
+            pasien: new PasienReff("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
+            signerId: "",
+            fileName: "general-consent.pdf",
+            oftaDocId: "DOC-OFTA-001",
+            oftaDocState: "COMPLETED",
+            oftaSignState: "SIGNED",
+            officerRef: "OFF-1",
+            officerEmail: "officer@mail.com",
+            officerName: "Officer Name",
+            externalDocumentId: "EXT-DOC-ORIGINAL",
+            signedDocUrl: "http://ofta/signed/1.pdf",
+            auditUserId: "petugas1");
+
+        _repoMock
+            .Setup(x => x.LoadByRegDokumen("RG00000001", "GC-001"))
+            .Returns(MayBe.From(oftaRecord));
+
+        var cmd = new AdmRecordDigitalSignCmd(
+            RegId: "RG00000001",
+            HisReference: "RG00000001",
+            DokumenId: "GC-001",
+            SigningRequestId: signingId,
+            SignerId: "SIGNER-PATIENT-123",
+            FileName: "gc.pdf",
+            UserId: "petugas1",
+            ExternalDocumentId: "EXT-DOC-DIFFERENT");
+
+        var act = () => CreateHandler().Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*different external correlation*");
+    }
 }
