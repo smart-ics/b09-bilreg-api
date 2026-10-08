@@ -285,7 +285,7 @@ public sealed class AdmisiRajalPatientContextHandler :
             .ToList();
         var bookings = request.Scope is PatientContextScope.Patient
                 or PatientContextScope.Registration
-            ? []
+            ? new List<AdmisiRajalPatientContextResult>()
             : bookingViews
                 .Where(x => Real(x.Reg.RegId) is not { } registrationId
                     || !bookingSuccessorIds.Contains(registrationId))

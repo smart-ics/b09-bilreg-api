@@ -31,11 +31,20 @@ public class RanapDigitalSignActionTest
             .Setup(x => x.Send(It.IsAny<AdmRecordDigitalSignCmd>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AdmRecordDigitalSignResponse(signingId));
 
-        var result = await _controller.RecordRanapDigitalSign(SampleBody() with { SigningRequestId = signingId });
+        var result = await _controller.RecordRanapDigitalSign(SampleBody() with
+        {
+            SigningRequestId = signingId,
+            ExternalDocumentId = "EXT-DOC-001",
+            PatientSignState = "PENDING"
+        });
 
         result.Should().BeOfType<OkObjectResult>();
         _mediatorMock.Verify(x => x.Send(
-            It.Is<AdmRecordDigitalSignCmd>(c => c.RegId == "RG00000001" && c.HisReference == "RG00000001"),
+            It.Is<AdmRecordDigitalSignCmd>(c =>
+                c.RegId == "RG00000001" &&
+                c.HisReference == "RG00000001" &&
+                c.ExternalDocumentId == "EXT-DOC-001" &&
+                c.PatientSignState == "PENDING"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

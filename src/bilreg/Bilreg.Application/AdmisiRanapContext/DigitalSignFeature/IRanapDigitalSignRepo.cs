@@ -11,5 +11,8 @@ public interface IRanapDigitalSignRepo :
     ILoadEntity<RanapDigitalSignModel, IRanapDigitalSignKey>
 {
     MayBe<RanapDigitalSignModel> LoadByRegDokumen(string regId, string dokumenId);
+    MayBe<RanapDigitalSignModel> LoadByExternalDoc(string regId, string dokumenId, string externalDocumentId);
+    MayBe<RanapDigitalSignModel> LoadByOftaDocId(string oftaDocId);
     IEnumerable<RanapDigitalSignModel> ListByRegId(string regId);
+    IEnumerable<RanapDigitalSignModel> ListPendingArchive(int limit = 50);
 }
