@@ -3,6 +3,7 @@ using Bilreg.Domain.BrgContext.StandardFeature;
 
 namespace Bilreg.Domain.BrgContext.BrgFeature;
 
+[Obsolete("Deprecated in favor of BarangModel")]
 public record BrgObatType : IBrg, IKlasifikasiUmum, IPabrik, IFarmakologi
 {
     private readonly List<BrgSatuanType> _listSatuan;
@@ -65,8 +66,12 @@ public record BrgObatType : IBrg, IKlasifikasiUmum, IPabrik, IFarmakologi
     public GolTerapiType GolTerapi { get; init; }
     public OriginalType Original { get; init; }
 
-
     public IEnumerable<BrgSatuanType> ListSatuan => _listSatuan;
+
+    PabrikReff IBrg.Pabrik => Pabrik?.ToReff() ?? new PabrikReff("-", "-");
+    SatuanType IBrg.SatuanKecil => _listSatuan.FirstOrDefault()?.Satuan ?? SatuanType.Default;
+    SatuanType IBrg.SatuanBesar => _listSatuan.LastOrDefault()?.Satuan ?? SatuanType.Default;
+    int IBrg.Konversi => _listSatuan.LastOrDefault()?.Konversi ?? 1;
     #endregion
     
     #region BEHAVIOUR
