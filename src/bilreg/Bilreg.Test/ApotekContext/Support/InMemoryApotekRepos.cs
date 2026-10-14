@@ -47,14 +47,45 @@ public class InMemoryJualBebasRepo : IJualBebasRepo
 public class InMemoryTelaahRepo : ITelaahResepRepo
 {
     public Dictionary<string, TelaahResepModel> Store { get; } = new();
-    public void SaveChanges(TelaahResepModel model) => Store[model.TelaahResepId] = model;
+    public Dictionary<string, List<TelaahResepKajianModel>> KajianStore { get; } = new();
+
+    public void SaveChanges(TelaahResepModel model)
+    {
+        Store[model.TelaahResepId] = model;
+        KajianStore[model.TelaahResepId] = model.KajianItems.ToList();
+    }
+
     public MayBe<TelaahResepModel> LoadEntity(ITelaahResepKey key)
-        => Store.TryGetValue(key.TelaahResepId, out var m) ? MayBe.From(m) : MayBe<TelaahResepModel>.None;
+    {
+        if (!Store.TryGetValue(key.TelaahResepId, out var m))
+            return MayBe<TelaahResepModel>.None;
+
+        var kajian = KajianStore.TryGetValue(key.TelaahResepId, out var k) && k.Count > 0
+            ? k
+            : (m.KajianItems.Count > 0 ? m.KajianItems : TelaahResepKajianModel.DefaultCatalog());
+
+        var rehydrated = TelaahResepModel.Rehydrate(
+            m.TelaahResepId, m.ResepKerjaId, m.RegId, m.TelaahStatus, m.PharmacistId,
+            m.StartedAt, m.CompletedAt, m.Version, m.Items, kajian);
+
+        return MayBe.From(rehydrated);
+    }
+
     public MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId)
     {
         var m = Store.Values.FirstOrDefault(x => x.ResepKerjaId == resepKerjaId);
-        return m is null ? MayBe<TelaahResepModel>.None : MayBe.From(m);
+        if (m is null) return MayBe<TelaahResepModel>.None;
+        return LoadEntity(TelaahResepModel.Key(m.TelaahResepId));
     }
+}
+
+public class InMemoryTelaahResepRepo : InMemoryTelaahRepo
+{
+}
+
+public class FakeKemkesKajianResepCatalogPort : IKemkesKajianResepCatalogPort
+{
+    public IReadOnlyList<TelaahResepKajianModel> GetAll() => TelaahResepKajianModel.DefaultCatalog();
 }
 
 public class InMemorySalesOrderRepo : ISalesOrderRepo

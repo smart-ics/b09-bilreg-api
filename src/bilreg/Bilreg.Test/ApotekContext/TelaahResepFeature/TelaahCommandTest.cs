@@ -1,5 +1,6 @@
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
+using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
 using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
@@ -112,6 +113,129 @@ public class TelaahCommandTest
         _telaah.Store.Values.Single().Items[0].Disposition.Should().Be(TelaahDispositionEnum.Pending);
     }
 
+    [Fact]
+    public async Task TelaahStart_initializes_13_kajian_items_with_default_safe_answers()
+    {
+        var resep = SeedResep(items: [Item(1, "A")]);
+        var fakeCatalog = new FakeKemkesKajianResepCatalogPort();
+        var handler = new TelaahStartHandler(_telaah, _resep, _auth, fakeCatalog);
+        var res = await handler.Handle(new TelaahStartCmd("pharm", resep.ResepKerjaId, 0), default);
+
+        var stored = _telaah.LoadEntity(TelaahResepModel.Key(res.TelaahResepId)).Value;
+        stored.KajianItems.Should().HaveCount(13);
+        stored.KajianItems.All(x => x.IsCompliant).Should().BeTrue();
+        stored.KajianItems.First(x => x.KajianResepId == "1.1").IsYes.Should().BeTrue();
+        stored.KajianItems.First(x => x.KajianResepId == "3.5").IsYes.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TelaahStart_copies_PrescribedBrg_from_ResepKerjaItems()
+    {
+        var resep = SeedResep(items: [Item(1, "MED-A")]);
+        var start = await Start(resep.ResepKerjaId);
+
+        var stored = _telaah.LoadEntity(TelaahResepModel.Key(start.TelaahResepId)).Value;
+        stored.Items.Should().ContainSingle();
+        var item = stored.Items[0];
+        item.PrescribedBrgId.Should().Be("MED-A");
+        item.PrescribedBrgName.Should().Be("MED-A");
+        item.PrescribedQty.Should().Be(10m);
+    }
+
+    [Fact]
+    public async Task TelaahUpdateKajian_handler_updates_kajian_and_bumps_version()
+    {
+        var resep = SeedResep(items: [Item(1, "A")]);
+        var start = await Start(resep.ResepKerjaId);
+
+        var handler = new TelaahUpdateKajianHandler(_telaah, _auth);
+        var updateRes = await handler.Handle(new TelaahUpdateKajianCmd(
+            "pharm",
+            start.TelaahResepId,
+            start.Version,
+            [new TelaahKajianUpdate("3.5", true, "Interaksi potensial dimonitor")]), default);
+
+        updateRes.Version.Should().Be(start.Version + 1);
+
+        var stored = _telaah.LoadEntity(TelaahResepModel.Key(start.TelaahResepId)).Value;
+        stored.Version.Should().Be(start.Version + 1);
+        var item35 = stored.KajianItems.First(x => x.KajianResepId == "3.5");
+        item35.IsYes.Should().BeTrue();
+        item35.CatatanKajian.Should().Be("Interaksi potensial dimonitor");
+        item35.RequiresNote.Should().BeTrue();
+        item35.HasRequiredNote.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TelaahUpdateKajian_with_stale_version_conflicts()
+    {
+        var resep = SeedResep(items: [Item(1, "A")]);
+        var start = await Start(resep.ResepKerjaId);
+
+        var handler = new TelaahUpdateKajianHandler(_telaah, _auth);
+        var act = () => handler.Handle(new TelaahUpdateKajianCmd(
+            "pharm",
+            start.TelaahResepId,
+            99,
+            [new TelaahKajianUpdate("3.5", true, "Interaksi")]), default);
+
+        await act.Should().ThrowAsync<ApotekConcurrencyException>();
+    }
+
+    [Fact]
+    public async Task TelaahComplete_handler_rejects_if_kajian_polarity_violation_without_note()
+    {
+        var resep = SeedResep(items: [Item(1, "A")]);
+        var start = await Start(resep.ResepKerjaId);
+        var afterItem = await Update(start, 1, TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", 10, "");
+
+        // Violate negative polarity kajian (3.5 answered Yes without note)
+        var updateKajianHandler = new TelaahUpdateKajianHandler(_telaah, _auth);
+        var afterKajian = await updateKajianHandler.Handle(new TelaahUpdateKajianCmd(
+            "pharm", afterItem.TelaahResepId, afterItem.Version,
+            [new TelaahKajianUpdate("3.5", true, "")]), default);
+
+        var completeHandler = new TelaahCompleteHandler(_telaah, _resep, _auth);
+        var act = () => completeHandler.Handle(
+            new TelaahCompleteCmd("pharm", afterKajian.TelaahResepId, afterKajian.Version), default);
+
+        await act.Should().ThrowAsync<ApotekDomainException>()
+            .WithMessage("*3.5*");
+    }
+
+    [Fact]
+    public async Task TelaahUpdateItem_preserves_PrescribedBrg_when_substituting_or_rejecting()
+    {
+        var resep = SeedResep(items: [Item(1, "ORIG-BRG-1"), Item(2, "ORIG-BRG-2")]);
+        var start = await Start(resep.ResepKerjaId);
+
+        // Substitute item 1: Accepted item is SUB-BRG-1, but PrescribedBrg must remain ORIG-BRG-1
+        var after1 = await Update(start, 1, TelaahDispositionEnum.AcceptedSubstitute, "SUB-BRG-1", "Substitute Drug 1", 5m, "Doctor agreed to brand substitute");
+
+        // Reject item 2: Accepted qty becomes 0, but PrescribedBrg must remain ORIG-BRG-2 and PrescribedQty unchanged
+        var after2 = await Update(after1, 2, TelaahDispositionEnum.Rejected, "ORIG-BRG-2", "Original Drug 2", 0m, "Patient allergy confirmed");
+
+        var stored = _telaah.LoadEntity(TelaahResepModel.Key(after2.TelaahResepId)).Value;
+
+        var item1 = stored.Items.First(x => x.ItemNo == 1);
+        item1.Disposition.Should().Be(TelaahDispositionEnum.AcceptedSubstitute);
+        item1.AcceptedBrgId.Should().Be("SUB-BRG-1");
+        item1.AcceptedBrgName.Should().Be("Substitute Drug 1");
+        item1.AcceptedQty.Should().Be(5m);
+        item1.Reason.Should().Be("Doctor agreed to brand substitute");
+        item1.PrescribedBrgId.Should().Be("ORIG-BRG-1");
+        item1.PrescribedBrgName.Should().Be("ORIG-BRG-1");
+        item1.PrescribedQty.Should().Be(10m);
+
+        var item2 = stored.Items.First(x => x.ItemNo == 2);
+        item2.Disposition.Should().Be(TelaahDispositionEnum.Rejected);
+        item2.AcceptedQty.Should().Be(0m);
+        item2.Reason.Should().Be("Patient allergy confirmed");
+        item2.PrescribedBrgId.Should().Be("ORIG-BRG-2");
+        item2.PrescribedBrgName.Should().Be("ORIG-BRG-2");
+        item2.PrescribedQty.Should().Be(5m);
+    }
+
     private ResepKerjaModel SeedResep(IEnumerable<ResepKerjaItemModel> items)
     {
         var resep = ResepKerjaModel.IntakeElectronic(
@@ -146,4 +270,9 @@ public class TelaahCommandTest
 
     private static ResepKerjaItemModel Item(int no, string brg)
         => new(no, no, brg, brg, "TAB", "Tab", no == 1 ? 10m : 5m, 0, "3x1", "", "", false);
+
+    private class FakeKemkesKajianResepCatalogPort : IKemkesKajianResepCatalogPort
+    {
+        public IReadOnlyList<TelaahResepKajianModel> GetAll() => TelaahResepKajianModel.DefaultCatalog();
+    }
 }

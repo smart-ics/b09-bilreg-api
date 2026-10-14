@@ -21,7 +21,7 @@ public class AptWorklistDalTest
     {
         var opt = ConnStringHelper.GetTestEnv();
         _resepRepo = new(new ResepKerjaDal(opt), new ResepKerjaItemDal(opt), new ResepKerjaComponentDal(opt));
-        _telaahRepo = new(new TelaahDal(opt), new TelaahItemDal(opt));
+        _telaahRepo = new(new TelaahDal(opt), new TelaahItemDal(opt), new TelaahKajianDal(opt));
         _sut = new(opt);
     }
 
@@ -104,6 +104,7 @@ public class AptWorklistDalTest
     {
         var opt = ConnStringHelper.GetTestEnv().Value;
         using var conn = new SqlConnection(ConnStringHelper.Get(opt));
+        conn.Execute("DELETE FROM BILRG_AptTelaahResepKajian WHERE TelaahResepId=@id", new { id = telaahResepId });
         conn.Execute("DELETE FROM BILRG_AptTelaahResepItem WHERE TelaahResepId=@id", new { id = telaahResepId });
         conn.Execute("DELETE FROM BILRG_AptTelaahResep WHERE TelaahResepId=@id", new { id = telaahResepId });
     }

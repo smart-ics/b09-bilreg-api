@@ -59,6 +59,10 @@ public class ApotekController : ControllerBase
     public async Task<IActionResult> TelaahStart(TelaahStartCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
+    [HttpPost("telaah/kajian")]
+    public async Task<IActionResult> TelaahKajian(TelaahUpdateKajianCmd cmd)
+        => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
     [HttpPost("telaah/item")]
     public async Task<IActionResult> TelaahItem(TelaahUpdateItemCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
@@ -66,6 +70,14 @@ public class ApotekController : ControllerBase
     [HttpPost("telaah/complete")]
     public async Task<IActionResult> TelaahComplete(TelaahCompleteCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
+    [HttpGet("telaah/by-resep-kerja/{resepKerjaId}")]
+    public async Task<IActionResult> TelaahGetByResepKerja(string resepKerjaId)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahGetByResepKerjaQuery(resepKerjaId))));
+
+    [HttpGet("telaah/{telaahResepId}")]
+    public async Task<IActionResult> TelaahGet(string telaahResepId)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahGetQuery(telaahResepId))));
 
     [HttpPost("sales-order/establish")]
     public async Task<IActionResult> EstablishSalesOrder(SalesOrderEstablishCmd cmd)

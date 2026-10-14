@@ -22,15 +22,18 @@ public sealed class ApotekApiTestHarness
     public InMemoryCopyResepRepo CopyResepRepo { get; } = new();
     public FakePrescriptionPort PrescriptionPort { get; } = new();
     public IAvailableStockPort AvailableStockPort { get; set; } = new FailClosedAvailableStockPort();
+    public IKemkesKajianResepCatalogPort KemkesKajianCatalogPort { get; set; } = new FakeKemkesKajianResepCatalogPort();
 
     public void Reset()
     {
         ResepKerjaRepo.Store.Clear();
         TelaahRepo.Store.Clear();
+        TelaahRepo.KajianStore.Clear();
         SalesOrderRepo.Store.Clear();
         CopyResepRepo.Store.Clear();
         PrescriptionPort.Contract = null!;
         AvailableStockPort = new FailClosedAvailableStockPort();
+        KemkesKajianCatalogPort = new FakeKemkesKajianResepCatalogPort();
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -52,6 +55,9 @@ public sealed class ApotekApiTestHarness
 
         services.RemoveAll<IPrescriptionContractPort>();
         services.AddScoped<IPrescriptionContractPort>(_ => PrescriptionPort);
+
+        services.RemoveAll<IKemkesKajianResepCatalogPort>();
+        services.AddScoped<IKemkesKajianResepCatalogPort>(_ => KemkesKajianCatalogPort);
 
         // Keep the REAL claims-based user context so the actor id stamped by
         // AptActor.Require comes from the authenticated principal, not a test double.

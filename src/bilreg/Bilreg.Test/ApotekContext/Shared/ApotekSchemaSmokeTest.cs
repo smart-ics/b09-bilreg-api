@@ -36,6 +36,7 @@ public class ApotekSchemaSmokeTest
         "BILRG_AptSalesOrderItemComponent.sql",
         "BILRG_AptTelaahResep.sql",
         "BILRG_AptTelaahResepItem.sql",
+        "BILRG_AptTelaahResepKajian.sql",
         "BILRG_AptUnfulfilledOutcome.sql",
     ];
 

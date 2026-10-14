@@ -40,12 +40,13 @@ public class ApotekApiContractTest
       .OrderBy(t => t)
       .ToArray();
 
-    postMethods.Should().HaveCount(31);
+    postMethods.Should().HaveCount(32);
     postMethods.Should().Contain([
       "resep-kerja/intake-electronic",
       "resep-kerja/intake-physical",
       "jual-bebas/accept",
       "telaah/start",
+      "telaah/kajian",
       "sales-order/establish",
       "queue/map",
       "invoice/establish",

@@ -186,6 +186,42 @@
         ]
       }
     },
+    "/api/v1/apotek/telaah/kajian": {
+      "post": {
+        "tags": [
+          "Apotek"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelaahUpdateKajianCmd"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelaahUpdateKajianCmd"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/TelaahUpdateKajianCmd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/apotek/telaah/item": {
       "post": {
         "tags": [
@@ -256,6 +292,54 @@
             "Bearer": []
           }
         ]
+      }
+    },
+    "/api/v1/apotek/telaah/by-resep-kerja/{resepKerjaId}": {
+      "get": {
+        "tags": [
+          "Apotek"
+        ],
+        "parameters": [
+          {
+            "name": "resepKerjaId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/apotek/telaah/{telaahResepId}": {
+      "get": {
+        "tags": [
+          "Apotek"
+        ],
+        "parameters": [
+          {
+            "name": "telaahResepId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
       }
     },
     "/api/v1/apotek/sales-order/establish": {

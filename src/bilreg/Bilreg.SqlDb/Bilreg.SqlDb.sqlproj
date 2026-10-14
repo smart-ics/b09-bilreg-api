@@ -172,6 +172,11 @@
     <None Include="ApotekContext\BILRG_AptJualBebasItem.sql" />
     <None Include="ApotekContext\BILRG_AptTelaahResep.sql" />
     <None Include="ApotekContext\BILRG_AptTelaahResepItem.sql" />
+    <None Include="ApotekContext\BILRG_AptTelaahResepKajian.sql" />
+    <None Include="ApotekContext\STD_KemkesGrupKajianResep.sql" />
+    <None Include="ApotekContext\STD_KemkesGrupKajianResep.dataseed.sql" />
+    <None Include="ApotekContext\STD_KemkesKajianResep.sql" />
+    <None Include="ApotekContext\STD_KemkesKajianResep.dataseed.sql" />
     <None Include="ApotekContext\BILRG_AptSalesOrder.sql" />
     <None Include="ApotekContext\BILRG_AptSalesOrderItem.sql" />
     <None Include="ApotekContext\BILRG_AptSalesOrderItemComponent.sql" />

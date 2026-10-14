@@ -133,6 +133,152 @@ public class TelaahResepApiTest
         }
     }
 
+    [Fact]
+    public async Task POST_telaah_kajian_updates_answers_and_returns_new_version()
+    {
+        var resep = SeedResep();
+        var client = _factory.CreateAuthenticatedClient();
+
+        var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
+            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+        start.StatusCode.Should().Be(HttpStatusCode.OK);
+        var startData = await Data(start);
+        var telaahId = startData.GetProperty("telaahResepId").GetString()!;
+        var version = startData.GetProperty("version").GetInt32();
+
+        var response = await client.PostAsJsonAsync("/api/v1/apotek/telaah/kajian", new
+        {
+            userId = "SPOOFED",
+            telaahResepId = telaahId,
+            expectedVersion = version,
+            items = new[]
+            {
+                new { kajianResepId = "1.1", isYes = false, catatanKajian = "Klarifikasi nama pasien" },
+                new { kajianResepId = "3.5", isYes = true, catatanKajian = "Interaksi terpantau" }
+            }
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await Data(response);
+        var newVersion = data.GetProperty("version").GetInt32();
+        newVersion.Should().Be(version + 1);
+
+        var stored = _factory.Harness.TelaahRepo.LoadEntity(TelaahResepModel.Key(telaahId)).Value;
+        var item11 = stored.KajianItems.Single(x => x.KajianResepId == "1.1");
+        item11.IsYes.Should().BeFalse();
+        item11.CatatanKajian.Should().Be("Klarifikasi nama pasien");
+        var item35 = stored.KajianItems.Single(x => x.KajianResepId == "3.5");
+        item35.IsYes.Should().BeTrue();
+        item35.CatatanKajian.Should().Be("Interaksi terpantau");
+    }
+
+    [Fact]
+    public async Task GET_telaah_by_id_returns_full_detail_with_13_kajian()
+    {
+        var resep = SeedResep();
+        var client = _factory.CreateAuthenticatedClient();
+
+        var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
+            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+        var startData = await Data(start);
+        var telaahId = startData.GetProperty("telaahResepId").GetString()!;
+
+        var response = await client.GetAsync($"/api/v1/apotek/telaah/{telaahId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data = await Data(response);
+        data.GetProperty("telaahResepId").GetString().Should().Be(telaahId);
+        data.GetProperty("resepKerjaId").GetString().Should().Be(resep.ResepKerjaId);
+        data.GetProperty("regId").GetString().Should().Be("R1");
+
+        var kajianItems = data.GetProperty("kajianItems");
+        kajianItems.GetArrayLength().Should().Be(13);
+
+        var firstKajian = kajianItems[0];
+        firstKajian.GetProperty("noUrut").GetInt32().Should().Be(1);
+        firstKajian.GetProperty("kajianResepId").GetString().Should().Be("1.1");
+        firstKajian.GetProperty("grupKajianResepName").GetString().Should().NotBeNullOrWhiteSpace();
+        firstKajian.GetProperty("isYes").GetBoolean().Should().BeTrue();
+
+        var items = data.GetProperty("items");
+        items.GetArrayLength().Should().Be(1);
+        var firstItem = items[0];
+        firstItem.GetProperty("prescribedBrgId").GetString().Should().Be("BRG1");
+        firstItem.GetProperty("prescribedBrgName").GetString().Should().Be("BRG1");
+        firstItem.GetProperty("prescribedQty").GetDecimal().Should().Be(10m);
+    }
+
+    [Fact]
+    public async Task GET_telaah_by_resep_kerja_returns_full_detail()
+    {
+        var resep = SeedResep();
+        var client = _factory.CreateAuthenticatedClient();
+
+        var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
+            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+        var startData = await Data(start);
+        var telaahId = startData.GetProperty("telaahResepId").GetString()!;
+
+        var response = await client.GetAsync($"/api/v1/apotek/telaah/by-resep-kerja/{resep.ResepKerjaId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var data = await Data(response);
+        data.GetProperty("telaahResepId").GetString().Should().Be(telaahId);
+        data.GetProperty("resepKerjaId").GetString().Should().Be(resep.ResepKerjaId);
+        data.GetProperty("kajianItems").GetArrayLength().Should().Be(13);
+    }
+
+    [Fact]
+    public async Task POST_telaah_complete_rejected_when_kajian_polarity_violated()
+    {
+        var resep = SeedResep();
+        var client = _factory.CreateAuthenticatedClient();
+
+        var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
+            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+        var startData = await Data(start);
+        var telaahId = startData.GetProperty("telaahResepId").GetString()!;
+        var version = startData.GetProperty("version").GetInt32();
+
+        // Accept the item
+        var item = await client.PostAsJsonAsync("/api/v1/apotek/telaah/item", new
+        {
+            userId = "SPOOFED",
+            telaahResepId = telaahId,
+            expectedVersion = version,
+            itemNo = 1,
+            disposition = (int)TelaahDispositionEnum.AcceptedAsPrescribed,
+            acceptedBrgId = "BRG1",
+            acceptedBrgName = "BRG1",
+            acceptedQty = 10m,
+            reason = ""
+        });
+        version = (await Data(item)).GetProperty("version").GetInt32();
+
+        // Update kajian with polarity violation (3.5 answered Yes without note)
+        var kajian = await client.PostAsJsonAsync("/api/v1/apotek/telaah/kajian", new
+        {
+            userId = "SPOOFED",
+            telaahResepId = telaahId,
+            expectedVersion = version,
+            items = new[]
+            {
+                new { kajianResepId = "3.5", isYes = true, catatanKajian = "" }
+            }
+        });
+        version = (await Data(kajian)).GetProperty("version").GetInt32();
+
+        // Attempt complete -> must fail with 400 and DOMAIN
+        var complete = await client.PostAsJsonAsync("/api/v1/apotek/telaah/complete",
+            new { userId = "SPOOFED", telaahResepId = telaahId, expectedVersion = version });
+
+        complete.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await complete.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(body);
+        document.RootElement.GetProperty("status").GetString().Should().Be("fail");
+        document.RootElement.GetProperty("code").GetString().Should().Be("DOMAIN");
+    }
+
     private ResepKerjaModel SeedResep()
     {
         var resep = ResepKerjaModel.IntakeElectronic(
