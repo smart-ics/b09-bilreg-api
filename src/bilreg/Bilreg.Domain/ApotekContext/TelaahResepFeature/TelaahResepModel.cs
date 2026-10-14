@@ -7,6 +7,23 @@ namespace Bilreg.Domain.ApotekContext.TelaahResepFeature;
 public class TelaahResepModel : ITelaahResepKey
 {
     public const string IdPrefix = "ATR";
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
+
     private static readonly HashSet<string> CanonicalKajianCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         "1.1", "1.2", "1.3", "1.4",
@@ -19,7 +36,7 @@ public class TelaahResepModel : ITelaahResepKey
 
     private TelaahResepModel(
         string telaahResepId,
-        string resepKerjaId,
+        string resepId,
         string regId,
         TelaahStatusEnum telaahStatus,
         string pharmacistId,
@@ -30,7 +47,7 @@ public class TelaahResepModel : ITelaahResepKey
         IEnumerable<TelaahResepKajianModel>? kajianItems = null)
     {
         TelaahResepId = telaahResepId;
-        ResepKerjaId = resepKerjaId;
+        ResepId = resepId;
         RegId = regId;
         TelaahStatus = telaahStatus;
         PharmacistId = pharmacistId;
@@ -44,20 +61,20 @@ public class TelaahResepModel : ITelaahResepKey
     public static ITelaahResepKey Key(string telaahResepId) => new TelaahResepKey(telaahResepId);
 
     public static TelaahResepModel Open(
-        string resepKerjaId,
+        string resepId,
         string regId,
         IEnumerable<TelaahResepItemModel> pendingItems,
         IEnumerable<TelaahResepKajianModel>? kajianItems = null)
     {
-        Guard.Against.NullOrWhiteSpace(resepKerjaId, nameof(resepKerjaId));
+        Guard.Against.NullOrWhiteSpace(resepId, nameof(resepId));
         Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
         var items = pendingItems.ToList();
         if (items.Count == 0)
             throw new ApotekDomainException("Telaah requires review items.");
 
         return new TelaahResepModel(
-            NunaId.New(IdPrefix),
-            resepKerjaId,
+            GenerateUniqueId(),
+            resepId,
             regId,
             TelaahStatusEnum.Available,
             pharmacistId: "",
@@ -70,7 +87,7 @@ public class TelaahResepModel : ITelaahResepKey
 
     public static TelaahResepModel Rehydrate(
         string telaahResepId,
-        string resepKerjaId,
+        string resepId,
         string regId,
         TelaahStatusEnum telaahStatus,
         string pharmacistId,
@@ -79,7 +96,7 @@ public class TelaahResepModel : ITelaahResepKey
         int version,
         IEnumerable<TelaahResepItemModel> items,
         IEnumerable<TelaahResepKajianModel>? kajianItems = null)
-        => new(telaahResepId, resepKerjaId, regId, telaahStatus, pharmacistId, startedAt, completedAt, version, items,
+        => new(telaahResepId, resepId, regId, telaahStatus, pharmacistId, startedAt, completedAt, version, items,
             kajianItems ?? TelaahResepKajianModel.DefaultCatalog());
 
     public bool IsTerminal =>
@@ -179,7 +196,9 @@ public class TelaahResepModel : ITelaahResepKey
     }
 
     public string TelaahResepId { get; }
-    public string ResepKerjaId { get; }
+    public string ResepId { get; }
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId => ResepId;
     public string RegId { get; }
     public TelaahStatusEnum TelaahStatus { get; private set; }
     public string PharmacistId { get; private set; }

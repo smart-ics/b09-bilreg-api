@@ -2,6 +2,7 @@ namespace Bilreg.Domain.ApotekContext.SalesOrderFeature;
 
 public enum SalesOrderSourceKindEnum
 {
+    Resep = 0,
     ResepKerja = 0,
     JualBebas = 1
 }

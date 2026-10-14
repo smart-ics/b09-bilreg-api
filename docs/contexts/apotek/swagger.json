@@ -6,78 +6,6 @@
     "version": "1.0"
   },
   "paths": {
-    "/api/v1/apotek/resep-kerja/intake-electronic": {
-      "post": {
-        "tags": [
-          "Apotek"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakeElectronicCmd"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakeElectronicCmd"
-              }
-            },
-            "application/*\u002Bjson": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakeElectronicCmd"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success"
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/apotek/resep-kerja/intake-physical": {
-      "post": {
-        "tags": [
-          "Apotek"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakePhysicalCmd"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakePhysicalCmd"
-              }
-            },
-            "application/*\u002Bjson": {
-              "schema": {
-                "$ref": "#/components/schemas/ResepKerjaIntakePhysicalCmd"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success"
-          }
-        },
-        "security": [
-          {
-            "Bearer": []
-          }
-        ]
-      }
-    },
     "/api/v1/apotek/jual-bebas/accept": {
       "post": {
         "tags": [
@@ -294,14 +222,38 @@
         ]
       }
     },
-    "/api/v1/apotek/telaah/by-resep-kerja/{resepKerjaId}": {
+    "/api/v1/apotek/telaah/by-resep/{resepId}": {
       "get": {
         "tags": [
           "Apotek"
         ],
         "parameters": [
           {
-            "name": "resepKerjaId",
+            "name": "resepId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/apotek/telaah/by-resep-kerja/{resepId}": {
+      "get": {
+        "tags": [
+          "Apotek"
+        ],
+        "parameters": [
+          {
+            "name": "resepId",
             "in": "path",
             "required": true,
             "style": "simple",
@@ -528,6 +480,14 @@
           "Apotek"
         ],
         "parameters": [
+          {
+            "name": "resepId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "resepKerjaId",
             "in": "query",

@@ -1,7 +1,8 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -9,8 +10,28 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
 
-public record TelaahStartCmd(string UserId, string ResepKerjaId, int ExpectedVersion)
-    : IRequest<TelaahResponse>;
+public record TelaahStartCmd : IRequest<TelaahResponse>
+{
+    public string UserId { get; init; } = string.Empty;
+    public string ResepId { get; init; } = string.Empty;
+    public int ExpectedVersion { get; init; }
+
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId
+    {
+        get => ResepId;
+        init => ResepId = string.IsNullOrWhiteSpace(ResepId) ? value : ResepId;
+    }
+
+    public TelaahStartCmd() { }
+
+    public TelaahStartCmd(string userId, string resepId, int expectedVersion)
+    {
+        UserId = userId;
+        ResepId = resepId;
+        ExpectedVersion = expectedVersion;
+    }
+}
 
 public record TelaahKajianUpdate(string KajianResepId, bool IsYes, string CatatanKajian);
 
@@ -41,13 +62,13 @@ public record TelaahResponse(string TelaahResepId, TelaahStatusEnum Status, int 
 public class TelaahStartHandler : IRequestHandler<TelaahStartCmd, TelaahResponse>
 {
     private readonly ITelaahResepRepo _telaahRepo;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepRepo _resepRepo;
     private readonly IAptAuthorizationPolicy _auth;
     private readonly IKemkesKajianResepCatalogPort? _catalogPort;
 
     public TelaahStartHandler(
         ITelaahResepRepo telaahRepo,
-        IResepKerjaRepo resepRepo,
+        IResepRepo resepRepo,
         IAptAuthorizationPolicy auth,
         IKemkesKajianResepCatalogPort? catalogPort = null)
     {
@@ -60,10 +81,10 @@ public class TelaahStartHandler : IRequestHandler<TelaahStartCmd, TelaahResponse
     public Task<TelaahResponse> Handle(TelaahStartCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(TelaahStartCmd), request.UserId);
-        Guard.Against.NullOrWhiteSpace(request.ResepKerjaId, nameof(request.ResepKerjaId));
-        var resep = _resepRepo.LoadEntity(Bilreg.Domain.ApotekContext.ResepKerjaFeature.ResepKerjaModel.Key(request.ResepKerjaId))
-            .GetValueOrThrow($"Resep Kerja '{request.ResepKerjaId}' not found");
-        var existing = _telaahRepo.LoadByResepKerja(request.ResepKerjaId);
+        Guard.Against.NullOrWhiteSpace(request.ResepId, nameof(request.ResepId));
+        var resep = _resepRepo.LoadEntity(ResepModel.Key(request.ResepId))
+            .GetValueOrThrow($"Resep '{request.ResepId}' not found");
+        var existing = _telaahRepo.LoadByResep(request.ResepId);
         TelaahResepModel telaah;
         if (existing.HasValue)
         {
@@ -78,10 +99,14 @@ public class TelaahStartHandler : IRequestHandler<TelaahStartCmd, TelaahResponse
                 ? catalog.Select(x => TelaahResepKajianModel.Create(x.NoUrut, x.KajianResepId, x.KajianResepName, x.GrupKajianResepId, x.GrupKajianResepName)).ToList()
                 : TelaahResepKajianModel.DefaultCatalog();
 
+            var itemNo = 1;
+            var pendingItems = resep.ListObat.Select(x =>
+                TelaahResepItemModel.Pending(itemNo++, x.NoUrut, x.Brg.BrgId, x.Brg.BrgName, x.Qty));
+
             telaah = TelaahResepModel.Open(
-                resep.ResepKerjaId,
-                resep.RegId,
-                resep.Items.Select(x => TelaahResepItemModel.Pending(x.ItemNo, x.ItemNo, x.BrgId, x.BrgName, x.Qty)),
+                resep.ResepId,
+                resep.Register.RegId,
+                pendingItems,
                 kajianItems);
         }
 
@@ -153,13 +178,13 @@ public class TelaahUpdateItemHandler : IRequestHandler<TelaahUpdateItemCmd, Tela
 public class TelaahCompleteHandler : IRequestHandler<TelaahCompleteCmd, TelaahResponse>
 {
     private readonly ITelaahResepRepo _telaahRepo;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepDal _resepDal;
     private readonly IAptAuthorizationPolicy _auth;
 
-    public TelaahCompleteHandler(ITelaahResepRepo telaahRepo, IResepKerjaRepo resepRepo, IAptAuthorizationPolicy auth)
+    public TelaahCompleteHandler(ITelaahResepRepo telaahRepo, IResepDal resepDal, IAptAuthorizationPolicy auth)
     {
         _telaahRepo = telaahRepo;
-        _resepRepo = resepRepo;
+        _resepDal = resepDal;
         _auth = auth;
     }
 
@@ -170,13 +195,13 @@ public class TelaahCompleteHandler : IRequestHandler<TelaahCompleteCmd, TelaahRe
             .GetValueOrThrow($"Telaah '{request.TelaahResepId}' not found");
         telaah.AssertExpectedVersion(request.ExpectedVersion);
         telaah.Complete(DateTime.Now);
-        var resep = _resepRepo.LoadEntity(
-            Bilreg.Domain.ApotekContext.ResepKerjaFeature.ResepKerjaModel.Key(telaah.ResepKerjaId))
-            .GetValueOrThrow($"Resep Kerja '{telaah.ResepKerjaId}' not found");
-        resep.FreezeItems();
+
         using var trans = TransHelper.NewScope();
         _telaahRepo.SaveChanges(telaah);
-        _resepRepo.SaveChanges(resep);
+        if (telaah.TelaahStatus is TelaahStatusEnum.Approved or TelaahStatusEnum.PartiallyApproved)
+        {
+            _resepDal.LockPrescription(telaah.ResepId);
+        }
         trans.Complete();
         return Task.FromResult(new TelaahResponse(telaah.TelaahResepId, telaah.TelaahStatus, telaah.Version));
     }

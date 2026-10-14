@@ -20,7 +20,7 @@ public class TelaahQueryTest
 
         result.Should().NotBeNull();
         result.TelaahResepId.Should().Be(model.TelaahResepId);
-        result.ResepKerjaId.Should().Be(model.ResepKerjaId);
+        result.ResepId.Should().Be(model.ResepId);
         result.RegId.Should().Be(model.RegId);
         result.TelaahStatus.Should().Be("UnderReview");
         result.PharmacistId.Should().Be("pharm-1");
@@ -29,6 +29,7 @@ public class TelaahQueryTest
         result.KajianItems.First(x => x.KajianResepId == "1.1").IsYes.Should().BeTrue();
         result.KajianItems.First(x => x.KajianResepId == "1.1").RequiresNote.Should().BeFalse();
         result.Items.Should().HaveCount(1);
+        result.Items[0].ResepItemNo.Should().Be(1);
         result.Items[0].PrescribedBrgId.Should().Be("BRG-01");
         result.Items[0].PrescribedBrgName.Should().Be("Amoxicillin 500mg");
         result.Items[0].PrescribedQty.Should().Be(10m);
@@ -45,25 +46,25 @@ public class TelaahQueryTest
     }
 
     [Fact]
-    public async Task TelaahGetByResepKerjaHandler_returns_complete_detail()
+    public async Task TelaahGetByResepHandler_returns_complete_detail()
     {
         var model = SeedTelaah();
-        var handler = new TelaahGetByResepKerjaHandler(_telaah);
+        var handler = new TelaahGetByResepHandler(_telaah);
 
-        var result = await handler.Handle(new TelaahGetByResepKerjaQuery(model.ResepKerjaId), default);
+        var result = await handler.Handle(new TelaahGetByResepQuery(model.ResepId), default);
 
         result.Should().NotBeNull();
         result.TelaahResepId.Should().Be(model.TelaahResepId);
-        result.ResepKerjaId.Should().Be(model.ResepKerjaId);
+        result.ResepId.Should().Be(model.ResepId);
         result.KajianItems.Should().HaveCount(13);
         result.Items.Should().HaveCount(1);
     }
 
     [Fact]
-    public async Task TelaahGetByResepKerjaHandler_throws_when_not_found()
+    public async Task TelaahGetByResepHandler_throws_when_not_found()
     {
-        var handler = new TelaahGetByResepKerjaHandler(_telaah);
-        var act = () => handler.Handle(new TelaahGetByResepKerjaQuery("NON-EXISTENT-RK"), default);
+        var handler = new TelaahGetByResepHandler(_telaah);
+        var act = () => handler.Handle(new TelaahGetByResepQuery("NON-EXISTENT-RK"), default);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }

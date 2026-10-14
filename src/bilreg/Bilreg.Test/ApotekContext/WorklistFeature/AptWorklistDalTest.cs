@@ -7,6 +7,7 @@ using FluentAssertions;
 
 namespace Bilreg.Test.ApotekContext.WorklistFeature;
 
+[Collection("ResepDatabaseTests")]
 public class AptWorklistDalTest
 {
     private readonly AptWorklistDal _sut;

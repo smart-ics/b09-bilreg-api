@@ -14,6 +14,21 @@ public class TelaahResepDalTest
     private readonly TelaahKajianDal _kajianDal;
     private readonly TelaahResepRepo _repo;
 
+    static TelaahResepDalTest()
+    {
+        var opt = ConnStringHelper.GetTestEnv();
+        using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+        conn.Execute(@"
+IF COL_LENGTH('BILRG_AptTelaahResepItem', 'ResepItemNo') IS NULL
+BEGIN
+    IF COL_LENGTH('BILRG_AptTelaahResepItem', 'ResepKerjaItemNo') IS NOT NULL
+        EXEC sp_rename 'BILRG_AptTelaahResepItem.ResepKerjaItemNo', 'ResepItemNo', 'COLUMN';
+    ELSE
+        ALTER TABLE BILRG_AptTelaahResepItem
+            ADD ResepItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_ResepItemNo DEFAULT(0);
+END");
+    }
+
     public TelaahResepDalTest()
     {
         var opt = ConnStringHelper.GetTestEnv();
@@ -36,7 +51,7 @@ public class TelaahResepDalTest
         _repo.SaveChanges(model);
 
         var loaded = _repo.LoadEntity(TelaahResepModel.Key(model.TelaahResepId)).Value;
-        loaded.ResepKerjaId.Should().Be($"ARX{run}");
+        loaded.ResepId.Should().Be($"RX{run}");
         loaded.RegId.Should().Be("R1");
         loaded.TelaahStatus.Should().Be(TelaahStatusEnum.UnderReview);
         loaded.PharmacistId.Should().Be("pharm");
@@ -233,7 +248,7 @@ public class TelaahResepDalTest
         var pending = Enumerable.Range(1, itemCount)
             .Select(i => TelaahResepItemModel.Pending(i, i, $"BRG{run}{(char)('A' + i - 1)}",
                 ((char)('A' + i - 1)).ToString(), i == 1 ? 10m : 5m));
-        var model = TelaahResepModel.Open($"ARX{run}", "R1", pending);
+        var model = TelaahResepModel.Open($"RX{run}", "R1", pending);
         // Force a stable id for cleanup by rehydrating after open would generate ATR id —
         // Open already assigns ATR via NunaId; keep that id.
         model.Start("pharm", DateTime.Now);

@@ -92,7 +92,9 @@ public record ResepBrgDto(
     public ResepObatType ToObatModel()
     {
         var brg = new BrgReff(BrgId, BrgName.Trim());
-        var satuan = SatuanType.Create(SatuanId, SatuanName);
+        var safeSatuanId = string.IsNullOrWhiteSpace(SatuanId) ? "-" : SatuanId;
+        var safeSatuanName = string.IsNullOrWhiteSpace(SatuanName) ? safeSatuanId : SatuanName;
+        var satuan = SatuanType.Create(safeSatuanId, safeSatuanName);
         var etiket = EtiketType.Load(Signa, Etiket, (int)Frequency, UnitDose, Route, MealRelation, UddTime, AppConst.DASH);
         return new ResepObatType((int)NoUrut, brg, satuan, Qty, (int)Iter, etiket, IsRacik);
     }

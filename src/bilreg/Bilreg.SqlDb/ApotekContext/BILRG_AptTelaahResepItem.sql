@@ -36,3 +36,13 @@ BEGIN
         ADD PrescribedQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_PrescribedQty DEFAULT(0);
 END
 GO
+
+IF COL_LENGTH('BILRG_AptTelaahResepItem', 'ResepItemNo') IS NULL
+BEGIN
+    IF COL_LENGTH('BILRG_AptTelaahResepItem', 'ResepKerjaItemNo') IS NOT NULL
+        EXEC sp_rename 'BILRG_AptTelaahResepItem.ResepKerjaItemNo', 'ResepItemNo', 'COLUMN';
+    ELSE
+        ALTER TABLE BILRG_AptTelaahResepItem
+            ADD ResepItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_ResepItemNo DEFAULT(0);
+END
+GO

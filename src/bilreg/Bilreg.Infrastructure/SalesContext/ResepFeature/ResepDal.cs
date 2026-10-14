@@ -12,6 +12,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Infrastructure.SalesContext.ResepFeature;
 
 public interface IResepDal :
+    Bilreg.Application.SalesContext.ResepFeature.IResepDal,
     IResepVoidDal,
     IResepCreateDal,
     IInsert<ResepDto>,
@@ -21,7 +22,6 @@ public interface IResepDal :
     IListData<ResepDto, IRegKey>
 {
     new IEnumerable<ResepDto> FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds);
-    void LockPrescription(string resepId);
 }
 
 public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal

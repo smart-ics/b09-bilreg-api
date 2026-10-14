@@ -46,7 +46,7 @@ public class AptWorklistJourneyDalTest
         var run = Guid.NewGuid().ToString("N")[..8];
         var antrianId = $"ANT-J-{run}";
         const int noUrut = 1;
-        var resepId = $"ARX{run}";
+        var resepId = $"RX{run}";
         var jualBebasId = $"ADQ{run}";
         var telaahId = $"ATR{run}";
         var regId = "R" + run[..3];

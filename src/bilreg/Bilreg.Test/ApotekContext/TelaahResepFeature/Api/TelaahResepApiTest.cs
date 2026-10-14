@@ -1,11 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
+using TipeBrgType = Bilreg.Domain.BrgContext.PricingPolicyFeature.TipeBrgType;
 
 namespace Bilreg.Test.ApotekContext.TelaahResepFeature.Api;
 
@@ -29,7 +33,7 @@ public class TelaahResepApiTest
         var client = _factory.CreateAuthenticatedClient();
 
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         start.StatusCode.Should().Be(HttpStatusCode.OK);
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
@@ -59,7 +63,7 @@ public class TelaahResepApiTest
         var stored = _factory.Harness.TelaahRepo.Store.Values.Single();
         stored.PharmacistId.Should().Be("TEST-USER");
         stored.Items.Single().PharmacistId.Should().Be("TEST-USER");
-        _factory.Harness.ResepKerjaRepo.Store.Values.Single().ItemsFrozen.Should().BeTrue();
+        _factory.Harness.ResepDal.LockedPrescriptions.Should().Contain(resep.ResepId);
     }
 
     [Fact]
@@ -68,7 +72,7 @@ public class TelaahResepApiTest
         var resep = SeedResep();
         var client = _factory.CreateAuthenticatedClient();
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         var startData = await Data(start);
 
         var response = await client.PostAsJsonAsync("/api/v1/apotek/telaah/complete", new
@@ -91,7 +95,7 @@ public class TelaahResepApiTest
         var resep = SeedResep();
         var client = _factory.CreateAuthenticatedClient();
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         var startData = await Data(start);
 
         var response = await client.PostAsJsonAsync("/api/v1/apotek/telaah/item", new
@@ -123,7 +127,7 @@ public class TelaahResepApiTest
             var client = _factory.CreateUnauthenticatedClient();
 
             var response = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-                new { userId = "SPOOFED", resepKerjaId = "ARX-NONE", expectedVersion = 0 });
+                new { userId = "SPOOFED", resepId = "KP-NONE", expectedVersion = 0 });
 
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
@@ -140,7 +144,7 @@ public class TelaahResepApiTest
         var client = _factory.CreateAuthenticatedClient();
 
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         start.StatusCode.Should().Be(HttpStatusCode.OK);
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
@@ -179,7 +183,7 @@ public class TelaahResepApiTest
         var client = _factory.CreateAuthenticatedClient();
 
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
 
@@ -188,8 +192,8 @@ public class TelaahResepApiTest
 
         var data = await Data(response);
         data.GetProperty("telaahResepId").GetString().Should().Be(telaahId);
-        data.GetProperty("resepKerjaId").GetString().Should().Be(resep.ResepKerjaId);
-        data.GetProperty("regId").GetString().Should().Be("R1");
+        data.GetProperty("resepId").GetString().Should().Be(resep.ResepId);
+        data.GetProperty("regId").GetString().Should().Be(resep.Register.RegId);
 
         var kajianItems = data.GetProperty("kajianItems");
         kajianItems.GetArrayLength().Should().Be(13);
@@ -209,22 +213,22 @@ public class TelaahResepApiTest
     }
 
     [Fact]
-    public async Task GET_telaah_by_resep_kerja_returns_full_detail()
+    public async Task GET_telaah_by_resep_returns_full_detail()
     {
         var resep = SeedResep();
         var client = _factory.CreateAuthenticatedClient();
 
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
 
-        var response = await client.GetAsync($"/api/v1/apotek/telaah/by-resep-kerja/{resep.ResepKerjaId}");
+        var response = await client.GetAsync($"/api/v1/apotek/telaah/by-resep/{resep.ResepId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var data = await Data(response);
         data.GetProperty("telaahResepId").GetString().Should().Be(telaahId);
-        data.GetProperty("resepKerjaId").GetString().Should().Be(resep.ResepKerjaId);
+        data.GetProperty("resepId").GetString().Should().Be(resep.ResepId);
         data.GetProperty("kajianItems").GetArrayLength().Should().Be(13);
     }
 
@@ -235,7 +239,7 @@ public class TelaahResepApiTest
         var client = _factory.CreateAuthenticatedClient();
 
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId = resep.ResepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId = resep.ResepId, expectedVersion = 0 });
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
         var version = startData.GetProperty("version").GetInt32();
@@ -279,16 +283,21 @@ public class TelaahResepApiTest
         document.RootElement.GetProperty("code").GetString().Should().Be("DOMAIN");
     }
 
-    private ResepKerjaModel SeedResep()
+    private ResepModel SeedResep()
     {
-        var resep = ResepKerjaModel.IntakeElectronic(
-            ResepKerjaSourceKindEnum.LegacyResep, "RS-API-" + Guid.NewGuid().ToString("N")[..6],
-            "R1", "P1", "Pasien", "D1", "Dokter", "LY01",
-            0, 0,
-            [new ResepKerjaItemModel(1, 1, "BRG1", "BRG1", "TAB", "Tab", 10, 0, "3x1", "", "", false)],
-            [],
-            AuditTrailType.Create("u", DateTime.Now));
-        _factory.Harness.ResepKerjaRepo.SaveChanges(resep);
+        var resep = ResepModel.Create(
+            RegModel.Default,
+            BodyMetricType.Default(),
+            DokterType.Default,
+            LayananType.Default,
+            UrgenitasType.Default,
+            TipeBrgType.Default,
+            0, "desc", "u");
+
+        var brg = BrgObatType.Default with { BrgId = "BRG1", BrgName = "BRG1" };
+        resep.AddObat(brg, SatuanType.Default, 10m, 0, "3x1", "", "");
+        _factory.Harness.ResepRepo.SaveChanges(resep);
+
         return resep;
     }
 

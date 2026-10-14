@@ -9,16 +9,55 @@ using System.Data.SqlClient;
 
 namespace Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 
-public record TelaahDto(
-    string TelaahResepId, string ResepKerjaId, string RegId, int TelaahStatus, string PharmacistId,
-    DateTime StartedAt, DateTime CompletedAt, int Version,
-    string CrtUser, DateTime CrtDate, string UpdUser, DateTime UpdDate, string VodUser, DateTime VodDate);
+public record TelaahDto
+{
+    public string TelaahResepId { get; init; } = string.Empty;
+    public string ResepId { get; init; } = string.Empty;
+    public string ResepKerjaId { get; init; } = string.Empty;
+    public string RegId { get; init; } = string.Empty;
+    public int TelaahStatus { get; init; }
+    public string PharmacistId { get; init; } = string.Empty;
+    public DateTime StartedAt { get; init; }
+    public DateTime CompletedAt { get; init; }
+    public int Version { get; init; }
+    public string CrtUser { get; init; } = string.Empty;
+    public DateTime CrtDate { get; init; }
+    public string UpdUser { get; init; } = string.Empty;
+    public DateTime UpdDate { get; init; }
+    public string VodUser { get; init; } = string.Empty;
+    public DateTime VodDate { get; init; }
+
+    public TelaahDto() { }
+
+    public TelaahDto(
+        string telaahResepId, string resepId, string regId, int telaahStatus, string pharmacistId,
+        DateTime startedAt, DateTime completedAt, int version,
+        string crtUser, DateTime crtDate, string updUser, DateTime updDate, string vodUser, DateTime vodDate)
+    {
+        TelaahResepId = telaahResepId;
+        ResepId = resepId;
+        ResepKerjaId = resepId;
+        RegId = regId;
+        TelaahStatus = telaahStatus;
+        PharmacistId = pharmacistId;
+        StartedAt = startedAt;
+        CompletedAt = completedAt;
+        Version = version;
+        CrtUser = crtUser;
+        CrtDate = crtDate;
+        UpdUser = updUser;
+        UpdDate = updDate;
+        VodUser = vodUser;
+        VodDate = vodDate;
+    }
+}
 
 public record TelaahItemDto
 {
     public string TelaahResepId { get; init; } = string.Empty;
     public int ItemNo { get; init; }
-    public int ResepKerjaItemNo { get; init; }
+    public int ResepItemNo { get; init; }
+    public int ResepKerjaItemNo { get => ResepItemNo; init => ResepItemNo = value; }
     public string PrescribedBrgId { get; init; } = string.Empty;
     public string PrescribedBrgName { get; init; } = string.Empty;
     public decimal PrescribedQty { get; init; }
@@ -34,7 +73,7 @@ public record TelaahItemDto
     public TelaahItemDto(
         string telaahResepId,
         int itemNo,
-        int resepKerjaItemNo,
+        int resepItemNo,
         int disposition,
         string acceptedBrgId,
         string acceptedBrgName,
@@ -47,7 +86,7 @@ public record TelaahItemDto
     {
         TelaahResepId = telaahResepId;
         ItemNo = itemNo;
-        ResepKerjaItemNo = resepKerjaItemNo;
+        ResepItemNo = resepItemNo;
         Disposition = disposition;
         AcceptedBrgId = acceptedBrgId;
         AcceptedBrgName = acceptedBrgName;
@@ -62,7 +101,7 @@ public record TelaahItemDto
     public TelaahItemDto(
         string telaahResepId,
         int itemNo,
-        int resepKerjaItemNo,
+        int resepItemNo,
         string prescribedBrgId,
         string prescribedBrgName,
         decimal prescribedQty,
@@ -75,7 +114,7 @@ public record TelaahItemDto
     {
         TelaahResepId = telaahResepId;
         ItemNo = itemNo;
-        ResepKerjaItemNo = resepKerjaItemNo;
+        ResepItemNo = resepItemNo;
         PrescribedBrgId = prescribedBrgId;
         PrescribedBrgName = prescribedBrgName;
         PrescribedQty = prescribedQty;
@@ -124,6 +163,7 @@ public record TelaahKajianDto
 
 public interface ITelaahDal : IInsert<TelaahDto>, IUpdate<TelaahDto>, IGetData<TelaahDto, ITelaahResepKey>
 {
+    TelaahDto? GetByResep(string resepId);
     TelaahDto? GetByResepKerja(string resepKerjaId);
 }
 public interface ITelaahItemDal : IInsertBulk<TelaahItemDto>, IDelete<ITelaahResepKey>, IListData<TelaahItemDto, ITelaahResepKey> { }
@@ -137,9 +177,9 @@ public class TelaahDal : ITelaahDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
-            INSERT INTO BILRG_AptTelaahResep (TelaahResepId, ResepKerjaId, RegId, TelaahStatus, PharmacistId, StartedAt, CompletedAt, Version,
+            INSERT INTO BILRG_AptTelaahResep (TelaahResepId, ResepId, RegId, TelaahStatus, PharmacistId, StartedAt, CompletedAt, Version,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
-            VALUES (@TelaahResepId, @ResepKerjaId, @RegId, @TelaahStatus, @PharmacistId, @StartedAt, @CompletedAt, @Version,
+            VALUES (@TelaahResepId, @ResepId, @RegId, @TelaahStatus, @PharmacistId, @StartedAt, @CompletedAt, @Version,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """, model);
     }
@@ -147,7 +187,7 @@ public class TelaahDal : ITelaahDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
-            UPDATE BILRG_AptTelaahResep SET TelaahStatus=@TelaahStatus, PharmacistId=@PharmacistId, StartedAt=@StartedAt,
+            UPDATE BILRG_AptTelaahResep SET ResepId=@ResepId, TelaahStatus=@TelaahStatus, PharmacistId=@PharmacistId, StartedAt=@StartedAt,
                 CompletedAt=@CompletedAt, Version=@Version, UpdUser=@UpdUser, UpdDate=@UpdDate
             WHERE TelaahResepId=@TelaahResepId
             """, model);
@@ -157,11 +197,12 @@ public class TelaahDal : ITelaahDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.QueryFirstOrDefault<TelaahDto>("SELECT * FROM BILRG_AptTelaahResep WHERE TelaahResepId=@TelaahResepId", new { key.TelaahResepId })!;
     }
-    public TelaahDto? GetByResepKerja(string resepKerjaId)
+    public TelaahDto? GetByResep(string resepId)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.QueryFirstOrDefault<TelaahDto>("SELECT * FROM BILRG_AptTelaahResep WHERE ResepKerjaId=@resepKerjaId AND VodDate='3000-01-01'", new { resepKerjaId });
+        return conn.QueryFirstOrDefault<TelaahDto>("SELECT * FROM BILRG_AptTelaahResep WHERE ResepId=@resepId AND VodDate='3000-01-01'", new { resepId });
     }
+    public TelaahDto? GetByResepKerja(string resepKerjaId) => GetByResep(resepKerjaId);
 }
 
 public class TelaahItemDal : ITelaahItemDal
@@ -173,12 +214,12 @@ public class TelaahItemDal : ITelaahItemDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
             INSERT INTO BILRG_AptTelaahResepItem (
-                TelaahResepId, ItemNo, ResepKerjaItemNo,
+                TelaahResepId, ItemNo, ResepItemNo,
                 PrescribedBrgId, PrescribedBrgName, PrescribedQty,
                 Disposition, AcceptedBrgId, AcceptedBrgName, AcceptedQty,
                 Reason, PharmacistId)
             VALUES (
-                @TelaahResepId, @ItemNo, @ResepKerjaItemNo,
+                @TelaahResepId, @ItemNo, @ResepItemNo,
                 @PrescribedBrgId, @PrescribedBrgName, @PrescribedQty,
                 @Disposition, @AcceptedBrgId, @AcceptedBrgName, @AcceptedQty,
                 @Reason, @PharmacistId)
@@ -246,7 +287,7 @@ public class TelaahResepRepo : ITelaahResepRepo
     {
         var dto = new TelaahDto(
             model.TelaahResepId,
-            model.ResepKerjaId,
+            model.ResepId,
             model.RegId,
             (int)model.TelaahStatus,
             model.PharmacistId,
@@ -273,7 +314,7 @@ public class TelaahResepRepo : ITelaahResepRepo
             _itemDal.Insert(model.Items.Select(x => new TelaahItemDto(
                 model.TelaahResepId,
                 x.ItemNo,
-                x.ResepKerjaItemNo,
+                x.ResepItemNo,
                 x.PrescribedBrgId,
                 x.PrescribedBrgName,
                 x.PrescribedQty,
@@ -308,11 +349,13 @@ public class TelaahResepRepo : ITelaahResepRepo
         return dto is null ? MayBe<TelaahResepModel>.None : MayBe.From(ToModel(dto));
     }
 
-    public MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId)
+    public MayBe<TelaahResepModel> LoadByResep(string resepId)
     {
-        var dto = _dal.GetByResepKerja(resepKerjaId);
+        var dto = _dal.GetByResep(resepId);
         return dto is null ? MayBe<TelaahResepModel>.None : MayBe.From(ToModel(dto));
     }
+
+    public MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId) => LoadByResep(resepKerjaId);
 
     private TelaahResepModel ToModel(TelaahDto dto)
     {
@@ -333,7 +376,7 @@ public class TelaahResepRepo : ITelaahResepRepo
         var itemDtos = _itemDal.ListData(key);
         var items = itemDtos.Select(x => new TelaahResepItemModel(
             x.ItemNo,
-            x.ResepKerjaItemNo,
+            x.ResepItemNo,
             x.PrescribedBrgId,
             x.PrescribedBrgName,
             x.PrescribedQty,
@@ -344,9 +387,11 @@ public class TelaahResepRepo : ITelaahResepRepo
             x.Reason,
             x.PharmacistId));
 
+        var resepId = !string.IsNullOrEmpty(dto.ResepId) ? dto.ResepId : dto.ResepKerjaId;
+
         return TelaahResepModel.Rehydrate(
             dto.TelaahResepId,
-            dto.ResepKerjaId,
+            resepId,
             dto.RegId,
             (TelaahStatusEnum)dto.TelaahStatus,
             dto.PharmacistId,

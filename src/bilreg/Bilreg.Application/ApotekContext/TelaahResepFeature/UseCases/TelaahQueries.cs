@@ -17,7 +17,7 @@ public record TelaahKajianItemResponse(
 
 public record TelaahItemDetailResponse(
     int ItemNo,
-    int ResepKerjaItemNo,
+    int ResepItemNo,
     string PrescribedBrgId,
     string PrescribedBrgName,
     decimal PrescribedQty,
@@ -26,11 +26,15 @@ public record TelaahItemDetailResponse(
     string AcceptedBrgName,
     decimal AcceptedQty,
     string Reason,
-    string PharmacistId);
+    string PharmacistId)
+{
+    [Obsolete("Use ResepItemNo")]
+    public int ResepKerjaItemNo => ResepItemNo;
+}
 
 public record TelaahDetailResponse(
     string TelaahResepId,
-    string ResepKerjaId,
+    string ResepId,
     string RegId,
     string TelaahStatus,
     string PharmacistId,
@@ -38,10 +42,17 @@ public record TelaahDetailResponse(
     DateTime CompletedAt,
     int Version,
     IReadOnlyList<TelaahKajianItemResponse> KajianItems,
-    IReadOnlyList<TelaahItemDetailResponse> Items);
+    IReadOnlyList<TelaahItemDetailResponse> Items)
+{
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId => ResepId;
+}
 
 public record TelaahGetQuery(string TelaahResepId) : IRequest<TelaahDetailResponse>;
 
+public record TelaahGetByResepQuery(string ResepId) : IRequest<TelaahDetailResponse>;
+
+[Obsolete("Use TelaahGetByResepQuery")]
 public record TelaahGetByResepKerjaQuery(string ResepKerjaId) : IRequest<TelaahDetailResponse>;
 
 public class TelaahGetHandler : IRequestHandler<TelaahGetQuery, TelaahDetailResponse>
@@ -76,7 +87,7 @@ public class TelaahGetHandler : IRequestHandler<TelaahGetQuery, TelaahDetailResp
 
         var items = telaah.Items.Select(i => new TelaahItemDetailResponse(
             i.ItemNo,
-            i.ResepKerjaItemNo,
+            i.ResepItemNo,
             i.PrescribedBrgId,
             i.PrescribedBrgName,
             i.PrescribedQty,
@@ -90,7 +101,7 @@ public class TelaahGetHandler : IRequestHandler<TelaahGetQuery, TelaahDetailResp
 
         return new TelaahDetailResponse(
             telaah.TelaahResepId,
-            telaah.ResepKerjaId,
+            telaah.ResepId,
             telaah.RegId,
             telaah.TelaahStatus.ToString(),
             telaah.PharmacistId,
@@ -103,6 +114,25 @@ public class TelaahGetHandler : IRequestHandler<TelaahGetQuery, TelaahDetailResp
     }
 }
 
+public class TelaahGetByResepHandler : IRequestHandler<TelaahGetByResepQuery, TelaahDetailResponse>
+{
+    private readonly ITelaahResepRepo _repo;
+
+    public TelaahGetByResepHandler(ITelaahResepRepo repo)
+    {
+        _repo = repo;
+    }
+
+    public Task<TelaahDetailResponse> Handle(TelaahGetByResepQuery request, CancellationToken cancellationToken)
+    {
+        Guard.Against.NullOrWhiteSpace(request.ResepId, nameof(request.ResepId));
+        var telaah = _repo.LoadByResep(request.ResepId)
+            .GetValueOrThrow($"Telaah for Resep '{request.ResepId}' not found");
+        return Task.FromResult(TelaahGetHandler.MapToDetail(telaah));
+    }
+}
+
+[Obsolete("Use TelaahGetByResepHandler")]
 public class TelaahGetByResepKerjaHandler : IRequestHandler<TelaahGetByResepKerjaQuery, TelaahDetailResponse>
 {
     private readonly ITelaahResepRepo _repo;

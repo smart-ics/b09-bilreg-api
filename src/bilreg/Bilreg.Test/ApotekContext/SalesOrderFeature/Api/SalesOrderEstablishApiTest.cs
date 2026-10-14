@@ -2,10 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
@@ -30,13 +34,13 @@ public class SalesOrderEstablishApiTest
     {
         var resep = SeedResep();
         var client = _factory.CreateAuthenticatedClient();
-        var telaahId = await CompleteTelaah(client, resep.ResepKerjaId);
+        var telaahId = await CompleteTelaah(client, resep.ResepId);
 
         var response = await client.PostAsJsonAsync("/api/v1/apotek/sales-order/establish", new
         {
             userId = "SPOOFED",
-            sourceKind = (int)SalesOrderSourceKindEnum.ResepKerja,
-            sourceId = resep.ResepKerjaId,
+            sourceKind = (int)SalesOrderSourceKindEnum.Resep,
+            sourceId = resep.ResepId,
             payerPath = (int)PayerPathEnum.GeneralPatientPay,
             partialReason = (int)PartialReasonEnum.None,
             qtyOverrides = (object?)null
@@ -60,13 +64,13 @@ public class SalesOrderEstablishApiTest
         _factory.Harness.AvailableStockPort = DeterministicAvailableStockPort.Partial(4);
         var resep = SeedResep();
         var client = _factory.CreateAuthenticatedClient();
-        await CompleteTelaah(client, resep.ResepKerjaId);
+        await CompleteTelaah(client, resep.ResepId);
 
         var response = await client.PostAsJsonAsync("/api/v1/apotek/sales-order/establish", new
         {
             userId = "SPOOFED",
-            sourceKind = (int)SalesOrderSourceKindEnum.ResepKerja,
-            sourceId = resep.ResepKerjaId,
+            sourceKind = (int)SalesOrderSourceKindEnum.Resep,
+            sourceId = resep.ResepId,
             payerPath = (int)PayerPathEnum.GeneralPatientPay,
             partialReason = (int)PartialReasonEnum.None,
             qtyOverrides = (object?)null
@@ -88,10 +92,10 @@ public class SalesOrderEstablishApiTest
         _factory.Harness.CopyResepRepo.Store[copyResepId!].Items[0].Qty.Should().Be(6m);
     }
 
-    private static async Task<string> CompleteTelaah(HttpClient client, string resepKerjaId)
+    private static async Task<string> CompleteTelaah(HttpClient client, string resepId)
     {
         var start = await client.PostAsJsonAsync("/api/v1/apotek/telaah/start",
-            new { userId = "SPOOFED", resepKerjaId, expectedVersion = 0 });
+            new { userId = "SPOOFED", resepId, expectedVersion = 0 });
         start.StatusCode.Should().Be(HttpStatusCode.OK);
         var startData = await Data(start);
         var telaahId = startData.GetProperty("telaahResepId").GetString()!;
@@ -118,16 +122,18 @@ public class SalesOrderEstablishApiTest
         return telaahId;
     }
 
-    private ResepKerjaModel SeedResep()
+    private ResepModel SeedResep()
     {
-        var resep = ResepKerjaModel.IntakeElectronic(
-            ResepKerjaSourceKindEnum.LegacyResep, "RS-SO-API-" + Guid.NewGuid().ToString("N")[..6],
-            "R1", "P1", "Pasien", "D1", "Dokter", "LY01",
-            0, 0,
-            [new ResepKerjaItemModel(1, 1, "BRG1", "BRG1", "TAB", "Tab", 10, 0, "3x1", "", "", false)],
-            [],
-            AuditTrailType.Create("u", DateTime.Now));
-        _factory.Harness.ResepKerjaRepo.SaveChanges(resep);
+        var id = "RS-SO-API-" + Guid.NewGuid().ToString("N")[..6];
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            id, regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), 0, "desc",
+            DateTime.Today, AppConst.DASH, AppConst.DASH, AuditTrailType.Default, []);
+        var brg = BrgObatType.Default with { BrgId = "BRG1", BrgName = "BRG1" };
+        resep.AddObat(brg, SatuanType.Default, 10, 0, "3x1", "", "");
+        _factory.Harness.ResepRepo.SaveChanges(resep);
         return resep;
     }
 

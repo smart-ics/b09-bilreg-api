@@ -5,17 +5,17 @@ using Bilreg.Application.ApotekContext.DispensingFeature;
 using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.JualBebasFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.JualBebasFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -62,7 +62,7 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
 {
     private readonly ISalesOrderRepo _salesOrderRepo;
     private readonly ITelaahResepRepo _telaahRepo;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepRepo _resepRepo;
     private readonly IJualBebasRepo _jualBebasRepo;
     private readonly IAvailableStockPort _availableStock;
     private readonly ICopyResepRepo _copyResepRepo;
@@ -72,7 +72,7 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
     public SalesOrderEstablishHandler(
         ISalesOrderRepo salesOrderRepo,
         ITelaahResepRepo telaahRepo,
-        IResepKerjaRepo resepRepo,
+        IResepRepo resepRepo,
         IJualBebasRepo jualBebasRepo,
         IAvailableStockPort availableStock,
         ICopyResepRepo copyResepRepo,
@@ -98,7 +98,7 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
         string pasienId;
         string pasienName;
         string telaahId = "";
-        string resepKerjaId = "";
+        string resepId = "";
         int iterEntitled = 0;
         string sourceResepId = "";
         var proposed = new List<SalesOrderItemModel>();
@@ -107,38 +107,38 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
         var hasPatientRequestExclusion = false;
         var hasStockShortageExclusion = false;
 
-        if (request.SourceKind == SalesOrderSourceKindEnum.ResepKerja)
+        if (request.SourceKind == SalesOrderSourceKindEnum.Resep || request.SourceKind == SalesOrderSourceKindEnum.ResepKerja)
         {
-            var resep = _resepRepo.LoadEntity(ResepKerjaModel.Key(request.SourceId))
-                .GetValueOrThrow($"Resep Kerja '{request.SourceId}' not found");
-            var telaah = _telaahRepo.LoadByResepKerja(resep.ResepKerjaId)
+            var resep = _resepRepo.LoadEntity(ResepModel.Key(request.SourceId))
+                .GetValueOrThrow($"Resep '{request.SourceId}' not found");
+            var telaah = _telaahRepo.LoadByResep(resep.ResepId)
                 .GetValueOrThrow($"Telaah for '{request.SourceId}' not found");
             if (!telaah.CanEstablishSalesOrder)
                 throw new ApotekDomainException("Rejected or incomplete Telaah cannot establish a Sales Order.");
-            regId = resep.RegId;
-            pasienId = resep.PasienId;
-            pasienName = resep.PasienName;
+            regId = resep.Register.RegId;
+            pasienId = resep.Register.PasienId;
+            pasienName = resep.Register.PasienName;
             telaahId = telaah.TelaahResepId;
-            resepKerjaId = resep.ResepKerjaId;
-            iterEntitled = resep.IterEntitled;
-            sourceResepId = resep.SourceResepId;
+            resepId = resep.ResepId;
+            iterEntitled = resep.Iter;
+            sourceResepId = resep.ResepAsalReffId;
             foreach (var line in telaah.AcceptedItems())
             {
-                var qty = request.QtyOverrides?.FirstOrDefault(x => x.SourceItemNo == line.ResepKerjaItemNo)?.AcceptedQty
+                var qty = request.QtyOverrides?.FirstOrDefault(x => x.SourceItemNo == line.ResepItemNo)?.AcceptedQty
                           ?? line.AcceptedQty;
                 if (qty <= 0)
                 {
                     hasPatientRequestExclusion = true;
-                    excluded.Add((line.ResepKerjaItemNo, line.AcceptedBrgId, line.AcceptedQty));
+                    excluded.Add((line.ResepItemNo, line.AcceptedBrgId, line.AcceptedQty));
                     continue;
                 }
                 proposed.Add(SalesOrderItemModel.Establish(
-                    proposed.Count + 1, line.ResepKerjaItemNo, line.AcceptedBrgId, line.AcceptedBrgName,
+                    proposed.Count + 1, line.ResepItemNo, line.AcceptedBrgId, line.AcceptedBrgName,
                     "", qty, FornasCoverageEnum.Unknown, "", false));
             }
 
             foreach (var telaahItem in telaah.Items.Where(x => !x.IsAccepted))
-                excluded.Add((telaahItem.ResepKerjaItemNo, telaahItem.AcceptedBrgId, telaahItem.AcceptedQty == 0 ? 1 : telaahItem.AcceptedQty));
+                excluded.Add((telaahItem.ResepItemNo, telaahItem.AcceptedBrgId, telaahItem.AcceptedQty == 0 ? 1 : telaahItem.AcceptedQty));
         }
         else
         {
@@ -193,15 +193,19 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
         var partial = SalesOrderPartialReasonResolver.ResolvePartialReason(
             excluded.Count, hasPatientRequestExclusion, hasStockShortageExclusion, request.PartialReason);
 
-        var order = SalesOrderModel.Establish(
-            request.SourceKind, request.SourceId, telaahId, regId, pasienId, pasienName,
-            request.PayerPath, partial, accepted, components);
+        SalesOrderModel order;
+        do
+        {
+            order = SalesOrderModel.Establish(
+                request.SourceKind, request.SourceId, telaahId, regId, pasienId, pasienName,
+                request.PayerPath, partial, accepted, components);
+        } while (_salesOrderRepo.LoadEntity(SalesOrderModel.Key(order.SalesOrderId)).HasValue);
 
         Domain.ApotekContext.CopyResepFeature.CopyResepModel? copy = null;
         if (excluded.Count > 0)
         {
             copy = Domain.ApotekContext.CopyResepFeature.CopyResepModel.Issue(
-                resepKerjaId,
+                resepId,
                 order.SalesOrderId,
                 (int)partial,
                 request.UserId,
@@ -228,7 +232,7 @@ public class SalesOrderEstablishHandler : IRequestHandler<SalesOrderEstablishCmd
             _salesOrderRepo.SaveChanges(order);
             if (copy is not null)
                 _copyResepRepo.SaveChanges(copy);
-            if (iterEntitled > 0 && !string.IsNullOrWhiteSpace(sourceResepId))
+            if (iterEntitled > 0 && !string.IsNullOrWhiteSpace(sourceResepId) && sourceResepId != "-")
             {
                 AptIntegrationTaskEnqueue.InsertIfAbsent(_taskRepo, AptIntegrationTaskModel.CreatePending(
                     AptIntegrationTaskTypeEnum.IterConsume,
@@ -277,7 +281,7 @@ public class SalesOrderAppendUnfulfilledHandler : IRequestHandler<SalesOrderAppe
         order.AssertExpectedVersion(request.ExpectedVersion);
         var item = order.Item(request.ItemNo);
         var copy = Domain.ApotekContext.CopyResepFeature.CopyResepModel.Issue(
-            order.SourceKind == SalesOrderSourceKindEnum.ResepKerja ? order.SourceId : "",
+            (order.SourceKind == SalesOrderSourceKindEnum.Resep || order.SourceKind == SalesOrderSourceKindEnum.ResepKerja) ? order.SourceId : "",
             order.SalesOrderId,
             (int)PartialReasonEnum.StockShortage,
             request.UserId,

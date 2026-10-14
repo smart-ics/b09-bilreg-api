@@ -3,7 +3,6 @@ using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
 using Bilreg.Application.ApotekContext.InvoiceFeature.UseCases;
 using Bilreg.Application.ApotekContext.JualBebasFeature.UseCases;
 using Bilreg.Application.ApotekContext.QueueFeature.UseCases;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
 using Bilreg.Application.ApotekContext.WorklistFeature;
@@ -28,20 +27,6 @@ public class ApotekController : ControllerBase
     {
         _mediator = mediator;
         _user = user;
-    }
-
-    [HttpPost("resep-kerja/intake-electronic")]
-    public async Task<IActionResult> IntakeElectronic(ResepKerjaIntakeElectronicCmd cmd)
-    {
-        Response.Headers["X-Release-Gate"] = "prescription-contract-adapter";
-        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
-    }
-
-    [HttpPost("resep-kerja/intake-physical")]
-    public async Task<IActionResult> IntakePhysical(ResepKerjaIntakePhysicalCmd cmd)
-    {
-        Response.Headers["X-Release-Gate"] = "BC-13";
-        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
     }
 
     [HttpPost("jual-bebas/accept")]
@@ -71,9 +56,10 @@ public class ApotekController : ControllerBase
     public async Task<IActionResult> TelaahComplete(TelaahCompleteCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
-    [HttpGet("telaah/by-resep-kerja/{resepKerjaId}")]
-    public async Task<IActionResult> TelaahGetByResepKerja(string resepKerjaId)
-        => Ok(new JSendOk(await _mediator.Send(new TelaahGetByResepKerjaQuery(resepKerjaId))));
+    [HttpGet("telaah/by-resep/{resepId}")]
+    [HttpGet("telaah/by-resep-kerja/{resepId}")]
+    public async Task<IActionResult> TelaahGetByResep(string resepId)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahGetByResepQuery(resepId))));
 
     [HttpGet("telaah/{telaahResepId}")]
     public async Task<IActionResult> TelaahGet(string telaahResepId)
@@ -106,8 +92,8 @@ public class ApotekController : ControllerBase
     }
 
     [HttpGet("sales-order/mixed-coverage")]
-    public async Task<IActionResult> MixedCoverage([FromQuery] string resepKerjaId)
-        => Ok(new JSendOk(await _mediator.Send(new MixedCoverageReadQuery(resepKerjaId))));
+    public async Task<IActionResult> MixedCoverage([FromQuery] string? resepId, [FromQuery] string? resepKerjaId)
+        => Ok(new JSendOk(await _mediator.Send(new MixedCoverageReadQuery(resepId ?? resepKerjaId ?? ""))));
 
     [HttpPost("queue/map")]
     public async Task<IActionResult> Map(QueueMapCmd cmd)
