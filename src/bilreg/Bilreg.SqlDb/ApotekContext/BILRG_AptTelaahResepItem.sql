@@ -2,7 +2,7 @@ IF OBJECT_ID('BILRG_AptTelaahResepItem') IS NULL
 CREATE TABLE BILRG_AptTelaahResepItem (
     TelaahResepId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_TelaahResepId DEFAULT(''),
     ItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_ItemNo DEFAULT(0),
-    ResepKerjaItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_ResepKerjaItemNo DEFAULT(0),
+    ResepItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_ResepItemNo DEFAULT(0),
     PrescribedBrgId VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_PrescribedBrgId DEFAULT(''),
     PrescribedBrgName VARCHAR(80) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_PrescribedBrgName DEFAULT(''),
     PrescribedQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResepItem_PrescribedQty DEFAULT(0),

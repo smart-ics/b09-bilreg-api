@@ -165,9 +165,6 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M3_ReffIdWiden_Alter.sql" />
     <None Include="AdmisiContext\EmrAntrianOutboundFeature\BILRG_EmrAntrianOutboundQueue.sql" />
     <None Include="ApotekContext\BILRG_AptIntegrationTask.sql" />
-    <None Include="ApotekContext\BILRG_AptResepKerja.sql" />
-    <None Include="ApotekContext\BILRG_AptResepKerjaItem.sql" />
-    <None Include="ApotekContext\BILRG_AptResepKerjaComponent.sql" />
     <None Include="ApotekContext\BILRG_AptJualBebas.sql" />
     <None Include="ApotekContext\BILRG_AptJualBebasItem.sql" />
     <None Include="ApotekContext\BILRG_AptTelaahResep.sql" />

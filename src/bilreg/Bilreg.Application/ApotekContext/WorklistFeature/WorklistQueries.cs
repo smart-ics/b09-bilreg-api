@@ -11,11 +11,22 @@ namespace Bilreg.Application.ApotekContext.WorklistFeature;
 public record TelaahWorklistQuery : IRequest<IReadOnlyList<TelaahWorklistItem>>;
 
 public record TelaahWorklistItem(
+    string ResepId,
     string TelaahResepId,
-    string ResepKerjaId,
     string PasienName,
-    TelaahStatusEnum Status,
-    DateTime StartedAt);
+    string NoRm,
+    string DokterName,
+    string PoliName,
+    decimal Bb,
+    decimal Tb,
+    decimal Lpb,
+    bool Cito,
+    string CatatanResep,
+    int Status,
+    DateTime StartedAt)
+{
+    public TelaahWorklistItem() : this("", "", "", "", "", "", 0, 0, 0, false, "", 0, default) { }
+}
 
 public record PelayananWorklistQuery(string AntrianId, int? NoUrut, DateOnly BusinessDate)
     : IRequest<IReadOnlyList<PelayananWorklistItem>>;

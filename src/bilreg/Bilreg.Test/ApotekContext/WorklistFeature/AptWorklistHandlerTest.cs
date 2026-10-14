@@ -20,7 +20,7 @@ public class AptWorklistHandlerTest
     {
         var expected = new List<TelaahWorklistItem>
         {
-            new("", "ARX1", "Pasien A", TelaahStatusEnum.Available, DateTime.Now)
+            new("KP01", "TR01", "Pasien A", "RM01", "Dr A", "Poli A", 60m, 160m, 70m, false, "Catatan", (int)TelaahStatusEnum.Available, DateTime.Now)
         };
         _dal.Setup(x => x.ListTelaah()).Returns(expected);
         var sut = new TelaahWorklistHandler(_dal.Object);
