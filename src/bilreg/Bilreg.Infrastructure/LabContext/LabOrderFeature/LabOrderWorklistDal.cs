@@ -26,6 +26,7 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
                 aa.OrderId, aa.OrderNo, aa.LabOrderStatus, aa.OrderSource,
                 aa.PatientId, aa.PatientName, aa.Gender, aa.AgeAtOrder,
                 aa.LastBillingReleaseStatus, aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
+                aa.Urgency, aa.DokterPerujukName, aa.LayananPerujukName, aa.DeferredReason,
                 (SELECT COUNT(*) FROM BILRG_LabOrderItem bb WHERE bb.OrderId = aa.OrderId) AS ItemCount,
                 (
                     SELECT STRING_AGG(bb.LabTestName, ', ') WITHIN GROUP (ORDER BY bb.ItemNo)
@@ -38,6 +39,9 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
 
         if (filter.LabOrderStatus.HasValue)
             sql += " AND aa.LabOrderStatus = @LabOrderStatus";
+
+        if (filter.IsCitoOnly == true)
+            sql += " AND aa.Urgency = 1";
 
         if (filter.Date1.HasValue && filter.Date2.HasValue)
             sql += " AND aa.CrtDate >= @Date1 AND aa.CrtDate < @Date2End";
@@ -93,6 +97,10 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
             row.OwareStatus,
             row.CrtDate,
             row.BillingTindakanId,
+            row.Urgency == 1,
+            row.DokterPerujukName ?? string.Empty,
+            row.LayananPerujukName ?? string.Empty,
+            row.DeferredReason ?? string.Empty,
             testNames);
     }
 
@@ -109,11 +117,15 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
         int OwareStatus,
         DateTime CrtDate,
         string BillingTindakanId,
+        int Urgency,
+        string DokterPerujukName,
+        string LayananPerujukName,
+        string DeferredReason,
         int ItemCount,
         string? TestNamesCsv)
     {
         public static LabOrderWorklistRowDto Default() => new LabOrderWorklistRowDto(
             string.Empty, string.Empty, 0, 0, string.Empty, string.Empty, string.Empty, 
-            0, 0, 0, VoidSentinel, string.Empty, 0, string.Empty);
+            0, 0, 0, VoidSentinel, string.Empty, 0, string.Empty, string.Empty, string.Empty, 0, string.Empty);
     };
 }

@@ -8,6 +8,15 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
+public record LabOrderActiveTestDto(
+    string OrderId,
+    string OrderNo,
+    string TestDefinitionId,
+    string LabTestCode,
+    string LabTestName,
+    DateTime OrderDate,
+    int LabOrderStatus);
+
 public interface ILabOrderDal :
     IInsert<LabOrderDto>,
     IUpdate<LabOrderDto>,
@@ -16,6 +25,7 @@ public interface ILabOrderDal :
 {
     LabOrderDto? GetByEmrOrderId(string emrOrderId);
     IEnumerable<LabOrderDto> ListByRegId(string regId);
+    IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours);
 }
 
 public class LabOrderDal : ILabOrderDal
@@ -31,7 +41,9 @@ public class LabOrderDal : ILabOrderDal
         aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
         aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
         aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
-        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+        aa.DokterPerujukId, aa.DokterPerujukName, aa.LayananPerujukId, aa.LayananPerujukName,
+        aa.ClinicalNote, aa.Urgency
         """;
 
     private readonly DatabaseOptions _opt;
@@ -54,7 +66,9 @@ public class LabOrderDal : ILabOrderDal
                 ReleasedDate, ReleasedUserId, ReleaseNote,
                 CancelledReason, CancelledDate, CancelledUserId,
                 TerminationReason, TerminationDate, TerminationUserId,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
+                DokterPerujukId, DokterPerujukName, LayananPerujukId, LayananPerujukName,
+                ClinicalNote, Urgency)
             VALUES (
                 @OrderId, @EmrOrderId, @OrderNo, @OrderSource, @LabOrderStatus, @LastBillingReleaseStatus, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
@@ -65,7 +79,9 @@ public class LabOrderDal : ILabOrderDal
                 @ReleasedDate, @ReleasedUserId, @ReleaseNote,
                 @CancelledReason, @CancelledDate, @CancelledUserId,
                 @TerminationReason, @TerminationDate, @TerminationUserId,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
+                @DokterPerujukId, @DokterPerujukName, @LayananPerujukId, @LayananPerujukName,
+                @ClinicalNote, @Urgency)
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -110,7 +126,13 @@ public class LabOrderDal : ILabOrderDal
                 TerminationUserId = @TerminationUserId,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
-                VodUser = @VodUser, VodDate = @VodDate
+                VodUser = @VodUser, VodDate = @VodDate,
+                DokterPerujukId = @DokterPerujukId,
+                DokterPerujukName = @DokterPerujukName,
+                LayananPerujukId = @LayananPerujukId,
+                LayananPerujukName = @LayananPerujukName,
+                ClinicalNote = @ClinicalNote,
+                Urgency = @Urgency
             WHERE OrderId = @OrderId
             """;
 
@@ -176,6 +198,38 @@ public class LabOrderDal : ILabOrderDal
         return conn.Read<LabOrderDto>(sql, dp);
     }
 
+    public IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours)
+    {
+        if (string.IsNullOrWhiteSpace(patientId))
+            return Enumerable.Empty<LabOrderActiveTestDto>();
+
+        const string sql = """
+            SELECT
+                aa.OrderId,
+                aa.OrderNo,
+                bb.TestDefinitionId,
+                bb.LabTestCode,
+                bb.LabTestName,
+                aa.CrtDate AS OrderDate,
+                aa.LabOrderStatus
+            FROM BILRG_LabOrder aa
+            INNER JOIN BILRG_LabOrderItem bb ON aa.OrderId = bb.OrderId
+            WHERE aa.PatientId = @PatientId
+              AND aa.LabOrderStatus IN (1, 2, 3, 4)
+              AND aa.CrtDate >= DATEADD(HOUR, -@Hours, GETDATE())
+              AND aa.VodDate = @VodSentinel
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@PatientId", patientId, SqlDbType.VarChar);
+        dp.AddParam("@Hours", hours, SqlDbType.Int);
+        dp.AddParam("@VodSentinel", new DateTime(3000, 1, 1), SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<LabOrderActiveTestDto>(sql, dp);
+    }
+
     private static DynamicParameters BuildParams(LabOrderDto dto)
     {
         var dp = new DynamicParameters();
@@ -218,6 +272,12 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@DokterPerujukId", dto.DokterPerujukId, SqlDbType.VarChar);
+        dp.AddParam("@DokterPerujukName", dto.DokterPerujukName, SqlDbType.VarChar);
+        dp.AddParam("@LayananPerujukId", dto.LayananPerujukId, SqlDbType.VarChar);
+        dp.AddParam("@LayananPerujukName", dto.LayananPerujukName, SqlDbType.VarChar);
+        dp.AddParam("@ClinicalNote", dto.ClinicalNote, SqlDbType.VarChar);
+        dp.AddParam("@Urgency", dto.Urgency, SqlDbType.Int);
         return dp;
     }
 }

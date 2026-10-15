@@ -35,7 +35,7 @@ public class LabOrderWorklistHandlerTest
                 0,
                 new DateTime(2026, 5, 18, 10, 0, 0),
                 "",
-                ["Hemoglobin"])
+                TestNames: ["Hemoglobin"])
         };
 
         LabOrderWorklistFilter? captured = null;

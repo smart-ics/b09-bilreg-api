@@ -94,7 +94,7 @@ Slice dependency rules:
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
 | P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | GO | 0/2 |
-| P2 - Infrastructure & Data Access Layer | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P2 - Infrastructure & Data Access Layer | NOT-STARTED | GO | 0/1 |
 | P3 - Core Application Intake Handlers | NOT-STARTED | NOT-REVIEWED | 0/2 |
 | P4 - Cancellation & Query Enhancement | NOT-STARTED | NOT-REVIEWED | 0/2 |
 | P5 - Web API Endpoints & Contract Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
@@ -172,12 +172,12 @@ Changed Files:
 ## P2 - Infrastructure & Data Access Layer
 
 Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 ### P2-S03
 Title: DTO Mapping, DAL Query Updates, and 24-Hour Duplicate Detection
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui DTO `LabOrderDto` dan `LabOrderItemDto`, memperbarui kueri Dapper pada `LabOrderDal`, `LabOrderItemDal`, dan `LabOrderRepo`, menambahkan kueri deteksi order duplikat 24 jam, serta memperbarui `LabOrderWorklistDal` untuk mendukung penyajian dan filter prioritas Cito.
 Depends On: P1-S02
 Repository: `b09-bilreg-api`
@@ -189,6 +189,30 @@ Completion Criteria:
 5. `ILabOrderWorklistDal` dan `LabOrderWorklistDal` memperbarui `LabOrderWorklistView` dengan `IsCito`, `DokterPerujukName`, `LayananPerujukName`, dan `DeferredReason`, serta mendukung parameter `IsCitoOnly` pada `LabOrderWorklistFilter`.
 6. Unit test DAL di `Bilreg.Test/LabContext/LabOrderFeature` lulus pengujian.
 Notes: Menggunakan Dapper parameter binding yang aman dari SQL injection.
+Implementation Notes:
+- Updated `LabOrderDto` and `LabOrderItemDto` to include `DokterPerujukId`, `DokterPerujukName`, `LayananPerujukId`, `LayananPerujukName`, `ClinicalNote`, and `Urgency` (with model-to-dto and dto-to-model bidirectional mappings).
+- Updated `LabOrderDal`:
+  - Enriched `SelectColumns`, `Insert`, `Update`, and `BuildParams` to persist and retrieve the 6 new clinical context & urgency columns.
+  - Added `LabOrderActiveTestDto` record and implemented `ListActiveTestsByPatientWithinHours(string patientId, int hours)` on `ILabOrderDal` and `LabOrderDal` for 24-hour duplicate active test detection across non-cancelled lab orders.
+- Updated `LabOrderItemDal`:
+  - Added `Urgency` column mapping to SqlBulkCopy (`bcp.AddMap("Urgency", "Urgency")`) and `Urgency` projection in `ListData`.
+- Updated `LabOrderRepo`:
+  - Preserved full mapping between `LabOrderModel` (with `LabOrderUrgencyEnum`) and `LabOrderDto`/`LabOrderItemDto`.
+  - Added unit tests in `LabOrderRepoTest` verifying bidirectional mapping of clinical context and urgency fields for both Rutin and Cito.
+- Updated `ILabOrderWorklistDal` & `LabOrderWorklistDal`:
+  - Added `IsCitoOnly` optional filter to `LabOrderWorklistFilter`.
+  - Added `IsCito`, `DokterPerujukName`, `LayananPerujukName`, and `DeferredReason` to `LabOrderWorklistView` and query mapping with `aa.Urgency = 1` conditional filtering.
+- Updated `LabOrderWorklistHandlerTest` for the new `LabOrderWorklistView` signature.
+- Build verified with 0 errors (`dotnet build src/bilreg/b09-bilreg-api.sln`), and 105 domain, repo, and handler unit tests passing cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/ILabOrderWorklistDal.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderDto.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderItemDto.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderDal.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderItemDal.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderWorklistDal.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderRepoTest.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderWorklistHandlerTest.cs`
 
 ---
 
