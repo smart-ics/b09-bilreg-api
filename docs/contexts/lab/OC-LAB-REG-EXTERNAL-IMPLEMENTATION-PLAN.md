@@ -4,7 +4,7 @@ Code: OC-LAB-REG-EXTERNAL
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-10-14
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -86,11 +86,11 @@ Slice dependency rules:
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| P2 - Data Access & Infrastructure Layer | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P3 - Core Application Commands & Queries | NOT-STARTED | NOT-REVIEWED | 0/3 |
-| P4 - LabOrder Integration & Dual-Path Charging Refactor | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P5 - Web API Endpoints & Contract Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P1 - Foundation (Database DDL & Domain Model) | COMPLETED | GO | 2/2 |
+| P2 - Data Access & Infrastructure Layer | COMPLETED | GO | 1/1 |
+| P3 - Core Application Commands & Queries | COMPLETED | GO | 3/3 |
+| P4 - LabOrder Integration & Dual-Path Charging Refactor | COMPLETED | GO | 1/1 |
+| P5 - Web API Endpoints & Contract Verification | COMPLETED | GO | 1/1 |
 
 ---
 
@@ -98,8 +98,8 @@ Slice dependency rules:
 
 ## P1 - Foundation (Database DDL & Domain Model)
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: COMPLETED  
+Review Status: GO
 
 ### P1-S01
 
@@ -168,8 +168,8 @@ Notes:
 
 ## P2 - Data Access & Infrastructure Layer
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: COMPLETED  
+Review Status: GO
 
 ### P2-S03
 
@@ -209,8 +209,8 @@ Notes:
 
 ## P3 - Core Application Commands & Queries
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: COMPLETED  
+Review Status: GO
 
 ### P3-S04
 
@@ -334,8 +334,8 @@ Notes:
 
 ## P4 - LabOrder Integration & Dual-Path Charging Refactor
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: COMPLETED  
+Review Status: GO
 
 ### P4-S07
 
@@ -383,15 +383,15 @@ Notes:
 
 ## P5 - Web API Endpoints & Contract Verification
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: COMPLETED  
+Review Status: GO
 
 ### P5-S08
 
 Title: Web API Controller LabExternalController & Endpoint Integration Tests
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Mengekspos seluruh fungsionalitas pendaftaran eksternal melalui controller REST HTTP ASP.NET Core `LabExternalController` dengan routing `api/LabContext/LabExternalFeature`, wrapper respon standar `JSendOk`, dan pengujian integrasi endpoint.
@@ -412,6 +412,18 @@ Completion Criteria:
 
 Notes:
 - Mengikuti pola standar controller Bilreg yang konsisten (`MediatR` dispatcher, `JSendOk`).
+- Implementation completed:
+  - Controller `LabExternalController.cs` dibuat di `src/bilreg/Bilreg.Api/Controllers/LabContext/LabExternalFeature/` dengan atribut `[Route("api/LabContext/LabExternalFeature")]`, `[ApiController]`, dan `[Authorize]`.
+  - Injeksi `IMediator` dan penyediaan 4 endpoint:
+    - `POST /api/LabContext/LabExternalFeature` (dan alias `/create`): menerima `LabExternalCreateCmd`, mendelegasikan ke `_mediator.Send`, mengembalikan `Ok(new JSendOk(response))`.
+    - `POST /api/LabContext/LabExternalFeature/cancel`: menerima `LabExternalCancelCmd`, mendelegasikan ke `_mediator.Send`, mengembalikan `Ok(new JSendOk(response))`.
+    - `GET /api/LabContext/LabExternalFeature/{regExternalId}`: menerima `regExternalId` dari route, mengeksekusi `LabExternalGetQuery`, mengembalikan `Ok(new JSendOk(response))`.
+    - `GET /api/LabContext/LabExternalFeature/search`: menerima parameter query `searchTerm`, `date1`, `date2`, `status`, mengeksekusi `LabExternalListQuery`, mengembalikan `Ok(new JSendOk(response))`.
+  - Suite pengujian `LabExternalControllerTest.cs` dibuat di `src/bilreg/Bilreg.Test/LabContext/LabExternalFeature/` (16 pengujian) memvalidasi deklarasi atribut & routing endpoint, pemanggilan mediator untuk seluruh command/query, pembungkusan respon `JSendOk`, serta propagasi exception bisnis dan validasi (`InvalidOperationException` guard EX-01 & EX-02, `ArgumentException`, `KeyNotFoundException`).
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternalControllerTest"` lulus 100% (16 passed, 0 failed).
+  - Verifikasi seluruh rangkaian pengujian fitur eksternal `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (136 passed, 0 failed).
+  - Verifikasi pengujian integrasi terkait `LabOrderChargeHandlerTest` (7 passed) dan `LabOrderCreateExternalPatientHandlerTest` (5 passed) lulus 100%.
+  - Verifikasi build solusi `dotnet build src/bilreg/b09-bilreg-api.sln` sukses (0 errors, 0 warnings pada kode baru).
 
 ---
 
