@@ -1,9 +1,13 @@
+using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Domain.LabContext.LabExternalFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.PatternHelper;
 using Xunit;
 
 namespace Bilreg.Test.LabContext.LabOrderFeature;
@@ -13,6 +17,8 @@ public class LabOrderCreateExternalPatientHandlerTest
     private readonly Mock<ILabOrderRepo> _repo = new();
     private readonly Mock<ISequencer> _sequencer = new();
     private readonly Mock<ILabTestResolutionService> _resolution = new();
+    private readonly Mock<ILabExternalRepo> _labExternalRepo = new();
+    private readonly Mock<ILabOrderDal> _labOrderDal = new();
     private readonly LabOrderCreateExternalPatientHandler _sut;
 
     public LabOrderCreateExternalPatientHandlerTest()
@@ -21,11 +27,57 @@ public class LabOrderCreateExternalPatientHandlerTest
         _resolution
             .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
             .Returns([new ResolvedLabOrderLine(LabOrderTestSupport.SampleItem(), [])]);
+
+        // Default: active external registration
+        _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
+            .Returns(MayBe.From(CreateActiveExternal()));
+
+        // Default: no duplicate active tests
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>()))
+            .Returns([]);
+
         _sut = new LabOrderCreateExternalPatientHandler(
             _repo.Object,
             _sequencer.Object,
             _resolution.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            _labExternalRepo.Object,
+            _labOrderDal.Object);
+    }
+
+    private static LabExternalModel CreateActiveExternal(
+        string regExternalId = "LEX26A14B8C1D",
+        string externalMrNo = "EXT-202610-00001",
+        string doctor = "dr. Luar",
+        string origin = "Klinik Pratama",
+        string notes = "Cek rutin",
+        LabExternalStatusEnum status = LabExternalStatusEnum.Active)
+    {
+        var demographics = new LabExternalDemographicsType(
+            "Budi Pasien Luar",
+            "3171012345670001",
+            new DateTime(1988, 12, 5),
+            "L",
+            "08123456789",
+            "Jl. Sudirman No. 1");
+
+        var referralInfo = new LabExternalReferralInfoType(
+            LabReferralTypeEnum.FaskesLuar,
+            doctor,
+            origin,
+            notes);
+
+        var auditTrail = AuditTrailType.Create("U1", DateTime.Now);
+
+        return LabExternalModel.Load(
+            regExternalId,
+            externalMrNo,
+            demographics,
+            referralInfo,
+            regExternalId,
+            status,
+            LabExternalCancelInfoType.Default,
+            auditTrail);
     }
 
     private static LabOrderCreateExternalPatientCmd ValidCmdWithRegExternalId() =>
@@ -39,7 +91,8 @@ public class LabOrderCreateExternalPatientHandlerTest
             Gender: "L",
             Items: [new LabOrderTarifItemInput("TR1", "Tarif Hemoglobin")],
             RegExternalId: "LEX26A14B8C1D",
-            ExternalMrNo: "EXT-202610-00001");
+            ExternalMrNo: "EXT-202610-00001",
+            Urgency: 1);
 
     private static LabOrderCreateExternalPatientCmd ValidCmdWithRegId() =>
         new(
@@ -53,7 +106,7 @@ public class LabOrderCreateExternalPatientHandlerTest
             Items: [new LabOrderTarifItemInput("TR1", "Tarif Hemoglobin")]);
 
     [Fact]
-    public async Task Handle_WithRegExternalIdAndExternalMrNo_MapsToSnapshotAndSavesOrder()
+    public async Task Handle_WithRegExternalId_AutoPopulatesFromReferralInfo_SavesOrder()
     {
         LabOrderModel? persisted = null;
         _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
@@ -69,8 +122,65 @@ public class LabOrderCreateExternalPatientHandlerTest
         persisted.Patient.RegId.Should().Be("LEX26A14B8C1D");
         persisted.Patient.PatientId.Should().Be("EXT-202610-00001");
         persisted.Patient.PatientName.Should().Be("Budi Pasien Luar");
+        persisted.DokterPerujukName.Should().Be("dr. Luar");
+        persisted.LayananPerujukName.Should().Be("Klinik Pratama");
+        persisted.ClinicalNote.Should().Be("Cek rutin");
+        persisted.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        persisted.IsCito.Should().BeTrue();
         persisted.Items.Should().HaveCount(1);
+        persisted.Items.First().Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithEmptyReferralInfo_DefaultsToAps()
+    {
+        var externalModel = CreateActiveExternal(doctor: "", origin: "", notes: "");
+        _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
+            .Returns(MayBe.From(externalModel));
+
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = ValidCmdWithRegExternalId() with
+        {
+            DokterPerujukName = "",
+            LayananPerujukName = "",
+            ClinicalNote = ""
+        };
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.DokterPerujukName.Should().Be("APS");
+        persisted.LayananPerujukName.Should().Be("APS");
+        persisted.ClinicalNote.Should().Be("APS");
+    }
+
+    [Fact]
+    public async Task Handle_ExplicitPerujukOverridesAutoPopulation()
+    {
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = ValidCmdWithRegExternalId() with
+        {
+            DokterPerujukName = "dr. Spesifik",
+            LayananPerujukName = "RS Luar Kota",
+            ClinicalNote = "Catatan Khusus Dokter"
+        };
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.DokterPerujukName.Should().Be("dr. Spesifik");
+        persisted.LayananPerujukName.Should().Be("RS Luar Kota");
+        persisted.ClinicalNote.Should().Be("Catatan Khusus Dokter");
     }
 
     [Fact]
@@ -89,6 +199,79 @@ public class LabOrderCreateExternalPatientHandlerTest
         persisted.Patient.RegId.Should().Be("LEX26A14B8C1D");
         persisted.Patient.PatientId.Should().Be("EXT-202610-00001");
         persisted.Patient.PatientName.Should().Be("Budi Pasien Luar");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ExternalRegNotFound_ThrowsException()
+    {
+        _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
+            .Returns(MayBe<LabExternalModel>.None);
+
+        var act = async () => await _sut.Handle(ValidCmdWithRegExternalId(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("*tidak ditemukan*");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ExternalRegInactive_ThrowsException()
+    {
+        var inactiveExternal = CreateActiveExternal(status: LabExternalStatusEnum.Cancelled);
+        _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
+            .Returns(MayBe.From(inactiveExternal));
+
+        var act = async () => await _sut.Handle(ValidCmdWithRegExternalId(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("*tidak aktif*");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateTestWithin24Hours_WithoutConfirmation_ThrowsEX05()
+    {
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24))
+            .Returns([
+                new LabOrderActiveTestDto(
+                    "ORD-PREV-01",
+                    "LAB00000001",
+                    "LTD0001",
+                    "HB",
+                    "Hemoglobin",
+                    DateTime.Now.AddHours(-3),
+                    (int)LabOrderStatusEnum.Ordered)
+            ]);
+
+        var cmd = ValidCmdWithRegExternalId() with { AllowDuplicateConfirmation = false };
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<DuplicateLabOrderWarningException>();
+        ex.WithMessage("*EX-05*");
+        ex.Which.DuplicateTestNames.Should().Contain("Hemoglobin");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateTestWithin24Hours_WithConfirmation_SavesSuccessfully()
+    {
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24))
+            .Returns([
+                new LabOrderActiveTestDto(
+                    "ORD-PREV-01",
+                    "LAB00000001",
+                    "LTD0001",
+                    "HB",
+                    "Hemoglobin",
+                    DateTime.Now.AddHours(-3),
+                    (int)LabOrderStatusEnum.Ordered)
+            ]);
+
+        var cmd = ValidCmdWithRegExternalId() with { AllowDuplicateConfirmation = true };
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
     }
 

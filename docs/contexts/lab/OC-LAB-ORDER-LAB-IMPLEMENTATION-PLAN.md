@@ -95,7 +95,7 @@ Slice dependency rules:
 |---|---|---|---|
 | P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | GO | 0/2 |
 | P2 - Infrastructure & Data Access Layer | NOT-STARTED | GO | 0/1 |
-| P3 - Core Application Intake Handlers | NOT-STARTED | NOT-REVIEWED | 0/2 |
+| P3 - Core Application Intake Handlers | NOT-STARTED | GO | 0/2 |
 | P4 - Cancellation & Query Enhancement | NOT-STARTED | NOT-REVIEWED | 0/2 |
 | P5 - Web API Endpoints & Contract Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
 
@@ -219,7 +219,7 @@ Changed Files:
 ## P3 - Core Application Intake Handlers
 
 Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 ### P3-S04
 Title: EMR Intake Command Handler with ADM-REG & ORG-PPA Validation & 24h Duplicate Check
@@ -265,8 +265,8 @@ Changed Files:
 
 ### P3-S05
 Title: External Patient Intake Command Handler with Auto-population & Isolation
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui command `LabOrderCreateExternalPatientCmd` dan `LabOrderCreateExternalPatientHandler` untuk menerima data perujuk, `ClinicalNote`, dan `Urgency`, memvalidasi keaktifan `RegExternalId` ke `LAB-EXTERNAL` (`_labExternalRepo`), melakukan auto-populasi data perujuk dan catatan klinis dari `ReferralInfo`, melakukan bypass validasi master internal RS, dan memeriksa duplikasi 24 jam.
 Depends On: P2-S03
 Repository: `b09-bilreg-api`
@@ -278,6 +278,20 @@ Completion Criteria:
 5. Handler melakukan pemeriksaan duplikasi 24 jam.
 6. Unit test di `Bilreg.Test/LabContext/LabOrderFeature/LabOrderCreateExternalPatientHandlerTest.cs` lulus pengujian.
 Notes: Menjamin interoperabilitas mulus dengan `OC-LAB-REG-EXTERNAL`.
+Implementation Notes:
+- Updated `LabOrderCreateExternalPatientCmd` record to support: `DokterPerujukId`, `DokterPerujukName`, `LayananPerujukId`, `LayananPerujukName`, `ClinicalNote`, `Urgency` (default 0), and `AllowDuplicateConfirmation` (default false).
+- Updated `LabOrderCreateExternalPatientHandler`:
+  - Injected `ILabExternalRepo` and `ILabOrderDal`.
+  - Enforced external registration validation against `_labExternalRepo`: ensuring `regId` exists and has `Status == LabExternalStatusEnum.Active`.
+  - Implemented auto-population of `DokterPerujukName`, `LayananPerujukName`, and `ClinicalNote` from `LabExternalModel.ReferralInfo` (with fallback to "APS" if empty/unspecified).
+  - Maintained complete master data isolation by intentionally omitting any query/validation to `_regRepo` or `_ppaRepo`.
+  - Added 24-hour duplicate active test detection via `_labOrderDal.ListActiveTestsByPatientWithinHours(patientId, 24)` throwing `DuplicateLabOrderWarningException` (`EX-05`) when duplicates are detected and `AllowDuplicateConfirmation == false`.
+  - Persisted the lab order via `LabOrderModel.CreateExternal` inside a transaction scope (`TransHelper.NewScope()`).
+- Updated `LabOrderCreateExternalPatientHandlerTest` covering: auto-population from referral info, fallback to APS on empty referral, explicit parameter overrides, non-existent external registration, inactive external registration, 24h duplicate warnings (`EX-05`), confirmation overrides, master isolation, and argument validations (11 passing tests).
+- Build verified with 0 errors (`dotnet build src/bilreg/b09-bilreg-api.sln`), and 118 unit tests passing cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCreateExternalPatientCmd.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCreateExternalPatientHandlerTest.cs`
 
 ---
 
