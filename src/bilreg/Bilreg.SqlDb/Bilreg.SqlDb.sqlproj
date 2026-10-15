@@ -125,6 +125,7 @@
     <Folder Include="LabContext\LabOrderFeature\" />
     <Folder Include="LabContext\LabComponentMasterFeature\" />
     <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
+    <Folder Include="LabContext\LabExternalFeature\" />
     <Folder Include="LabContext\LabTestDefinitionFeature\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
   </ItemGroup>
@@ -340,6 +341,7 @@
     <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster.sql" />
     <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster_M11_Alter.sql" />
     <Build Include="LabContext\LabComponentMasterFeature\Data\BILRG_LabComponentMaster.dataseed.sql" />
+    <Build Include="LabContext\LabExternalFeature\BILRG_LabExternal.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItemComponent.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_M10_Alter.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M10_Alter.sql" />
