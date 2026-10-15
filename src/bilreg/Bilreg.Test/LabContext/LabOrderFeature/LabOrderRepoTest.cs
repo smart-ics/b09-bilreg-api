@@ -86,4 +86,22 @@ public class LabOrderRepoTest
 
         result.HasValue.Should().BeFalse();
     }
+
+    [Fact]
+    public void ListByRegId_ReturnsOrdersMatchingRegId()
+    {
+        var model = CreateTestModel();
+        var dto = CreateTestDto(model);
+        var itemDto = LabOrderItemDto.FromModel(model.OrderId, model.Items.First());
+
+        _orderDal.Setup(x => x.ListByRegId("REG001")).Returns([dto]);
+        _itemDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([itemDto]);
+        _itemComponentDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([]);
+
+        var results = _sut.ListByRegId("REG001").ToList();
+
+        results.Should().HaveCount(1);
+        results[0].OrderId.Should().Be(model.OrderId);
+        results[0].Patient.RegId.Should().Be("REG001");
+    }
 }

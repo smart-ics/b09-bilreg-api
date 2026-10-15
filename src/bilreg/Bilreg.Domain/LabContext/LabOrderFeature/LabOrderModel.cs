@@ -7,7 +7,7 @@ namespace Bilreg.Domain.LabContext.LabOrderFeature;
 public class LabOrderModel : ILabOrderKey
 {
     private const string IdPrefix = "LBO";
-    private static readonly DateTime EmptyDate = new(3000, 1, 1);
+    public static readonly DateTime EmptyDate = new(3000, 1, 1);
     private readonly List<LabOrderItemModel> _items;
     private readonly List<LabOrderItemComponentModel> _itemComponents;
 

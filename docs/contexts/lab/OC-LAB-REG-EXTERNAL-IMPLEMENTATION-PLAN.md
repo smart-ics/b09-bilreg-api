@@ -289,8 +289,8 @@ Notes:
 
 Title: LabExternalCancelCmd Handler with Financial & Specimen Guard Checks (EX-01 & EX-02)
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Mengimplementasikan use case pembatalan pendaftaran eksternal `LabExternalCancelCmd` yang memverifikasi pra-kondisi ketiadaan transaksi pembayaran kasir di `TataRekening` (`EX-01`) dan ketiadaan spesimen yang telah diambil pada order lab (`EX-02`) sebelum memicu domain method `Cancel(...)`.
@@ -314,6 +314,21 @@ Completion Criteria:
 
 Notes:
 - Menutup celah `GAP-005`, `EX-01`, dan `EX-02`.
+- Implementation completed:
+  - Command `LabExternalCancelCmd(string RegExternalId, string Reason, string UserId) : IRequest<LabExternalCancelResponse>, ILabExternalKey` dan response DTO `LabExternalCancelResponse(bool Success, string Message)` dibuat di `src/bilreg/Bilreg.Application/LabContext/LabExternalFeature/LabExternalCancelCmd.cs`.
+  - Handler `LabExternalCancelHandler` mengorkestrasikan:
+    - Validasi fail-fast parameter masukan via `Ardalis.GuardClauses`.
+    - Pembacaan agregat `LabExternalModel` via `_labExternalRepo.LoadEntity`, melempar `KeyNotFoundException` jika registrasi tidak ditemukan.
+    - Pengecekan guard pembayaran kasir `EX-01` via `_tataRekeningRepo.LoadEntity(RegModel.Key(billingId))`: menandai `hasPaidCashier = true` jika `ListPayment.Any()` atau status bukan `Opened`.
+    - Pengecekan guard pengambilan spesimen laboratorium `EX-02` via `_labOrderRepo.ListByRegId(RegExternalId)`: menandai `hasCollectedSpecimen = true` jika `CollectionInfo.CollectedDate != LabOrderModel.EmptyDate` atau status order $\ge$ `Collected`.
+    - Memanggil domain method `labExternal.Cancel(...)` yang melempar `InvalidOperationException` bertanda `EX-01` atau `EX-02` jika terdapat pelanggaran guard.
+    - Menyimpan mutasi status pendaftaran dan membatalkan order laboratorium terkait yang belum diambil spesimennya secara atomik dalam `TransHelper.NewScope()`.
+  - Port `ILabOrderRepo` diperluas dengan metode query `ListByRegId(string regId)` dan diimplementasikan pada `LabOrderRepo`, `ILabOrderDal`, serta `LabOrderDal`.
+  - Konstanta `LabOrderModel.EmptyDate` diekspos secara publik untuk standardisasi pengecekan tanggal kosong.
+  - Suite unit test `LabExternalCancelHandlerTest.cs` dibuat di `src/bilreg/Bilreg.Test/LabContext/LabExternalFeature/` (27 pengujian) memvalidasi input guards, status invariants, guard kasir EX-01, guard spesimen EX-02, pembatalan order terkait, dan skenario pembatalan sukses.
+  - Ditambahkan unit test `ListByRegId_ReturnsOrdersMatchingRegId` pada `LabOrderRepoTest.cs`.
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (119 passed, 0 failed).
+  - Verifikasi build solusi `dotnet build src/bilreg/b09-bilreg-api.sln` sukses (0 errors, 0 warnings).
 
 ---
 
@@ -326,7 +341,7 @@ Review Status: NOT-REVIEWED
 
 Title: LabOrder Integration Refactoring & Dual-Path Charging (Fix GAP-002)
 
-Implementation Status: NOT-STARTED  
+Implementation Status: IN-PROGRESS  
 Review Status: NOT-REVIEWED
 
 Objective:

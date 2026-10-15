@@ -15,6 +15,7 @@ public interface ILabOrderDal :
     IGetData<LabOrderDto, ILabOrderKey>
 {
     LabOrderDto? GetByEmrOrderId(string emrOrderId);
+    IEnumerable<LabOrderDto> ListByRegId(string regId);
 }
 
 public class LabOrderDal : ILabOrderDal
@@ -157,6 +158,22 @@ public class LabOrderDal : ILabOrderDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<LabOrderDto>(sql, dp).FirstOrDefault();
+    }
+
+    public IEnumerable<LabOrderDto> ListByRegId(string regId)
+    {
+        var sql = $"""
+            SELECT {SelectColumns}
+            FROM BILRG_LabOrder aa
+            WHERE aa.RegId = @RegId
+            ORDER BY aa.CrtDate
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<LabOrderDto>(sql, dp);
     }
 
     private static DynamicParameters BuildParams(LabOrderDto dto)

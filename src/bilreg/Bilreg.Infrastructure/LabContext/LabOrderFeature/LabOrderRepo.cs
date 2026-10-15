@@ -64,6 +64,12 @@ public class LabOrderRepo : ILabOrderRepo
         _orderDal.Delete(key);
     }
 
+    public IEnumerable<LabOrderModel> ListByRegId(string regId)
+    {
+        var dtoList = _orderDal.ListByRegId(regId);
+        return dtoList?.Select(BuildModel).ToList() ?? [];
+    }
+
     private LabOrderModel BuildModel(LabOrderDto dto)
     {
         var key = LabOrderModel.Key(dto.OrderId);
