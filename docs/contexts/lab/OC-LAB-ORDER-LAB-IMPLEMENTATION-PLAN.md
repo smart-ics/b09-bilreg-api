@@ -302,8 +302,8 @@ Review Status: NOT-REVIEWED
 
 ### P4-S06
 Title: Cancellation Handler with Financial Coordination & Specimen Guard
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui command `LabOrderCancelCmd` dan `LabOrderCancelHandler` untuk menegakkan guard pencegahan pembatalan pasca-spesimen (`>= Collected`), serta menyinkronkan pelepasan beban biaya tagihan ke domain Tata Rekening (`TRK-BILLING`) jika order telah berstatus `Charged`.
 Depends On: P1-S02, P2-S03
 Repository: `b09-bilreg-api`
@@ -316,6 +316,23 @@ Completion Criteria:
 3. Jejak audit pembatalan (`CancelledReason`, `CancelledDate`, `CancelledUserId`) tersimpan dengan benar.
 4. Unit test pembatalan mencakup skenario: pembatalan order reguler, pembatalan order charged dengan billing terbuka, penolakan pembatalan order charged dengan billing final/lunas, dan penolakan pembatalan pasca-spesimen.
 Notes: Memenuhi Exception EX-03 dan menjaga konsistensi keuangan antar-domain.
+Implementation Notes:
+- Updated `LabOrderCancelCmd` and `LabOrderCancelHandler`:
+  - Injected `ITataRekeningRepo` alongside `ILabOrderRepo` and `ITglJamProvider`.
+  - Enforced specimen guard (`EX-03`): immediately rejects cancellation with `InvalidOperationException` if `order.LabOrderStatus` is `Collected`, `Recorded`, `Verified`, or `Released`.
+  - Added financial coordination with `TRK-BILLING` (`ITataRekeningRepo`) when order is in `Charged` status:
+    - Queries `_tataRekeningRepo.LoadEntity(RegModel.Key(order.Patient.RegId))`.
+    - If billing status is `Finalized` or `Lunas` (or contains recorded payments), rejects cancellation with `InvalidOperationException("Order laboratorium tidak dapat dibatalkan karena transaksi penagihan kasir telah Final/Lunas.")`.
+    - If billing status is `Opened` and contains `BillingTindakanId`, deletes the charge via `tataRekening.DeleteBill(order.BillingTindakanId)` and persists via `_tataRekeningRepo.SaveChanges`.
+  - Ensured atomic persistence using `TransHelper.NewScope()`.
+  - Preserved audit trail fields (`CancelledReason`, `CancelledDate`, `CancelledUserId`, and `AuditTrail.Modif`).
+- Updated existing test suite `LabOrderM9HandlersTest.cs` to mock `ITataRekeningRepo`.
+- Created comprehensive unit test suite `LabOrderCancelHandlerTest.cs` covering argument validations, regular order cancellation (`Ordered` / `Deferred`), charged order with open billing voiding, rejection of charged order with finalized/lunas/paid billing, and specimen collection rejection (`Collected` / `Recorded` / `Verified`).
+- Solution build verified with 0 errors (`dotnet build src/bilreg/b09-bilreg-api.sln`), and 139 unit tests in `LabOrderFeature` passing cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCancelCmd.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderM9HandlersTest.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCancelHandlerTest.cs`
 
 ---
 
