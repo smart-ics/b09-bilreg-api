@@ -216,7 +216,7 @@ Review Status: NOT-REVIEWED
 
 Title: Number Sequencer Helper & LabExternalCreateCmd with Atomic TataRekening Integration
 
-Implementation Status: NOT-STARTED  
+Implementation Status: IMPLEMENTED  
 Review Status: NOT-REVIEWED
 
 Objective:
@@ -239,6 +239,13 @@ Completion Criteria:
 
 Notes:
 - Memenuhi prinsip *Cash-First* dan menutup celah `OQ-002`.
+- Implementation completed:
+  - Helper `LabExternalNumberHelper.cs` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/` mengimplementasikan `GenerateExternalMrNo(ISequencer sequencer, DateTime timestamp)` berformat `EXT-{yyyyMM}-{00000}` dan `GenerateRegExternalId()` via `NunaId.New(LabExternalModel.IdPrefix)`.
+  - Command `LabExternalCreateCmd` dan DTO respon `LabExternalCreateResponse(string RegExternalId, string ExternalMrNo, string BillingAccountId)` dibuat.
+  - Handler `LabExternalCreateHandler` mengorkestrasikan input guard validation, penomoran sequence, pembuatan dan persistensi akun `TataRekeningModel.Create(regExternalId)` via `ITataRekeningRepo.SaveChanges(...)`, pembuatan dan persistensi `LabExternalModel` via `ILabExternalRepo.SaveChanges(...)`, yang dibungkus atomik dalam `using var trans = TransHelper.NewScope()`.
+  - Suite unit test `LabExternalCreateHandlerTest.cs` dibuat di `Bilreg.Test/LabContext/LabExternalFeature/` dengan 22 pengujian komprehensif memvalidasi registrasi atomik, mapping field opsional, padding format sequencer, validasi guard, dan transaction rollback.
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (92 passed, 0 failed).
+  - Verifikasi build solusi `dotnet build src/bilreg/b09-bilreg-api.sln` sukses (0 errors, 0 warnings).
 
 ---
 
@@ -246,8 +253,8 @@ Notes:
 
 Title: Query Handlers LabExternalGetQuery & LabExternalListQuery (Omni-Search)
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Mengimplementasikan use case pembacaan data pendaftaran eksternal: `LabExternalGetQuery` untuk mendapatkan detail pendaftaran berdasarkan ID, dan `LabExternalListQuery` untuk mendukung fitur omni-search riwayat pasien luar berdasarkan nama, nomor telepon, NIK, atau nomor eksternal.
@@ -265,6 +272,16 @@ Completion Criteria:
 
 Notes:
 - Search query mengoptimalkan indeks `IX_BILRG_LabExternal_Search` dan `IX_BILRG_LabExternal_StatusDate`.
+- Implementation completed:
+  - Query `LabExternalGetQuery(string RegExternalId) : IRequest<LabExternalDetailResponse>, ILabExternalKey` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/LabExternalGetQuery.cs`.
+  - Response DTO `LabExternalDetailResponse` memuat 20 atribut lengkap (`RegExternalId`, `ExternalMrNo`, `PatientName`, `Nik`, `BirthDate`, `Age`, `Gender`, `Phone`, `Address`, `ReferralType`, `ReferralDoctor`, `ReferralOrigin`, `ClinicalNotes`, `BillingAccountId`, `Status`, `CancelReason`, `CancelledUserId`, `CancelledDate`, `CreatedDate`, `CreatedUserId`).
+  - Handler `LabExternalGetHandler` mengorkestrasikan validasi Guard masukan, pembacaan agregat via `_labExternalRepo.LoadEntity(request)`, melempar `KeyNotFoundException` jika data tidak ditemukan, dan pemetaan ke `LabExternalDetailResponse`.
+  - Query `LabExternalListQuery(string? SearchTerm, DateTime? Date1, DateTime? Date2, int? Status) : IRequest<List<LabExternalListItemResponse>>` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/LabExternalListQuery.cs`.
+  - Response DTO `LabExternalListItemResponse` memuat 13 atribut (`RegExternalId`, `ExternalMrNo`, `PatientName`, `Nik`, `BirthDate`, `Age`, `Gender`, `Phone`, `ReferralType`, `ReferralOrigin`, `BillingAccountId`, `Status`, `CreatedDate`).
+  - Handler `LabExternalListHandler` mendelegasikan kueri ke `_labExternalRepo.ListData(...)` dan memetakan hasilnya ke list item response DTO.
+  - Unit test `LabExternalQueryHandlersTest.cs` dibuat di `Bilreg.Test/LabContext/LabExternalFeature/` mencakup 12 pengujian komprehensif memvalidasi GetHandler (skenario sukses, agregat dibatalkan, not found KeyNotFoundException, validasi ID null/empty/whitespace) dan ListHandler (filter SearchTerm, filter DateRange/Status, list kosong, list null, validasi request null).
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (92 passed, 0 failed).
+
 
 ---
 
