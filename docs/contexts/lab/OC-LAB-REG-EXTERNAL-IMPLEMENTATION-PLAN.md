@@ -175,8 +175,8 @@ Review Status: NOT-REVIEWED
 
 Title: Infrastructure DAL, DTO, Repository Implementation & DI Wiring
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Mengimplementasikan lapisan Data Access Layer (DAL) berbasis Dapper, DTO mapping, dan repositori `LabExternalRepo` yang mengimplementasikan antarmuka `ILabExternalRepo` di Application layer, serta mendaftarkannya pada kontainer dependensi di `InfrastructureService.cs`.
@@ -195,6 +195,15 @@ Completion Criteria:
 
 Notes:
 - Menggunakan konvensi Dapper yang sudah ada di `Bilreg.Infrastructure` (`ISqlDatabase`, parameterized queries).
+- Implementation completed:
+  - Antarmuka `ILabExternalRepo.cs` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/` mewarisi `ISaveChange<LabExternalModel>`, `ILoadEntity<LabExternalModel, ILabExternalKey>`, dengan metode query `LoadByExternalMrNo` dan `ListData`.
+  - DTO `LabExternalDto.cs` dibuat di `Bilreg.Infrastructure/LabContext/LabExternalFeature/` memetakan 23 kolom tabel `BILRG_LabExternal` dengan metode `FromModel` dan `ToModel`.
+  - Interface DAL `ILabExternalDal.cs` dan implementasi `LabExternalDal.cs` dibuat berbasis Dapper parameterized SQL (`Insert`, `Update`, `Delete`, `GetData`, `GetByExternalMrNo`, `ListData`).
+  - Repositori `LabExternalRepo.cs` dibuat mengimplementasikan `ILabExternalRepo` dengan delegasi ke DAL dan rehidrasi DTO/Model.
+  - Pendaftaran Scoped `ILabExternalDal`, `LabExternalDal`, `ILabExternalRepo`, dan `LabExternalRepo` ditambahkan ke `InfrastructureService.cs` (`Bilreg.Api/Configurations/InfrastructureService.cs`).
+  - Unit test `LabExternalRepoTest.cs` (8 pengujian via Moq) dan `LabExternalDalTest.cs` (7 pengujian mapping & DTO) dibuat di `Bilreg.Test/LabContext/LabExternalFeature/`.
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (58 passed, 0 failed).
+  - Verifikasi build solusi `dotnet build src/bilreg/b09-bilreg-api.sln` sukses (0 errors, 0 warnings).
 
 ---
 

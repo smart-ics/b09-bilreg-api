@@ -8,6 +8,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
@@ -48,6 +49,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
+using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
@@ -218,6 +220,8 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+        services.AddScoped<ILabExternalDal, LabExternalDal>();
+        services.AddScoped<ILabExternalRepo, LabExternalRepo>();
 
         services.AddBrgFeature();
 
