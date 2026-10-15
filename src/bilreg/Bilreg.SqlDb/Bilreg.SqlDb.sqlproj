@@ -345,6 +345,7 @@
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItemComponent.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_M10_Alter.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M11_Alter.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_BillingReleaseTrace_Alter.sql" />
     <Build Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />

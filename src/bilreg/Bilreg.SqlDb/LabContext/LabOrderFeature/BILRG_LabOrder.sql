@@ -20,6 +20,13 @@ CREATE TABLE BILRG_LabOrder (
     BillingTindakanId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingTindakanId DEFAULT(''),
     BillingLastError VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingLastError DEFAULT(''),
 
+    DokterPerujukId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DokterPerujukId DEFAULT(''),
+    DokterPerujukName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DokterPerujukName DEFAULT(''),
+    LayananPerujukId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LayananPerujukId DEFAULT(''),
+    LayananPerujukName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LayananPerujukName DEFAULT(''),
+    ClinicalNote VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ClinicalNote DEFAULT(''),
+    Urgency INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_Urgency DEFAULT(0),
+
     CollectedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedDate DEFAULT('3000-01-01'),
     CollectedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedUserId DEFAULT(''),
     CollectionNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectionNote DEFAULT(''),
@@ -56,4 +63,8 @@ GO
 CREATE INDEX IX_BILRG_LabOrder_OrderNo ON BILRG_LabOrder(OrderNo);
 GO
 CREATE INDEX IX_BILRG_LabOrder_EmrOrderId ON BILRG_LabOrder(EmrOrderId) WHERE EmrOrderId <> '';
+GO
+CREATE INDEX IX_BILRG_LabOrder_Urgency ON BILRG_LabOrder(Urgency, LabOrderStatus, CrtDate);
+GO
+CREATE INDEX IX_BILRG_LabOrder_Perujuk ON BILRG_LabOrder(DokterPerujukId, LayananPerujukId) WHERE DokterPerujukId <> '';
 GO
