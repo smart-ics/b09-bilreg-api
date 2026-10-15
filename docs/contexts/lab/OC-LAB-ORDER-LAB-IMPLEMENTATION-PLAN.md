@@ -96,7 +96,7 @@ Slice dependency rules:
 | P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | GO | 0/2 |
 | P2 - Infrastructure & Data Access Layer | NOT-STARTED | GO | 0/1 |
 | P3 - Core Application Intake Handlers | NOT-STARTED | GO | 0/2 |
-| P4 - Cancellation & Query Enhancement | NOT-STARTED | NOT-REVIEWED | 0/2 |
+| P4 - Cancellation & Query Enhancement | NOT-STARTED | GO | 0/2 |
 | P5 - Web API Endpoints & Contract Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
 
 ---
@@ -298,7 +298,7 @@ Changed Files:
 ## P4 - Cancellation & Query Enhancement
 
 Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 ### P4-S06
 Title: Cancellation Handler with Financial Coordination & Specimen Guard
@@ -338,8 +338,8 @@ Changed Files:
 
 ### P4-S07
 Title: Detail & Worklist Query Handlers Enhancement
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui use case `LabOrderGetQuery` dan `LabOrderWorklistQuery` untuk menyajikan data perujuk, `ClinicalNote`, dan `Urgency`, serta memfasilitasi penyaringan khusus order darurat (Cito) pada worklist operasional laboratorium.
 Depends On: P2-S03
 Repository: `b09-bilreg-api`
@@ -350,6 +350,23 @@ Completion Criteria:
 4. `LabOrderWorklistView` menyajikan `IsCito`, `DokterPerujukName`, `LayananPerujukName`, dan `DeferredReason`.
 5. Unit test kueri detail dan worklist di `Bilreg.Test/LabContext/LabOrderFeature` lulus pengujian.
 Notes: Memenuhi kriteria AC-04 dan AC-08.
+Implementation Notes:
+- Updated `LabOrderGetQuery.cs`:
+  - Enriched `LabOrderGetResponse` to return `DokterPerujukId`, `DokterPerujukName`, `LayananPerujukId`, `LayananPerujukName`, `ClinicalNote`, `Urgency` (int), and `IsCito` (bool).
+  - Enriched `LabOrderItemResponse` to return `Urgency` (int) and `IsCito` (bool) per item.
+  - Aligned `LabOrderGetHandler` mapping to populate all referring doctor, service, clinical note, and Cito priority fields from domain model.
+- Updated `LabOrderWorklistQuery.cs`:
+  - Added optional `bool? IsCitoOnly = null` parameter to `LabOrderWorklistQuery` record.
+  - Passed `request.IsCitoOnly` through to `LabOrderWorklistFilter`.
+- Updated test suite:
+  - Updated `LabOrderWorklistHandlerTest.cs` with test cases verifying filter pass-through for default (null) and explicit `IsCitoOnly: true`, and verified presentation of `IsCito`, `DokterPerujukName`, `LayananPerujukName`, and `DeferredReason`.
+  - Added dedicated unit test suite `LabOrderGetHandlerTest.cs` covering empty argument validation, order not found, Cito order retrieval (header & item level context and flags), and Rutin order retrieval.
+- Build verified with 0 warnings and 0 errors (`dotnet build src/bilreg/b09-bilreg-api.sln`), and 145 unit tests in `LabOrderFeature` passing cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderGetQuery.cs`
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderWorklistQuery.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderWorklistHandlerTest.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderGetHandlerTest.cs`
 
 ---
 

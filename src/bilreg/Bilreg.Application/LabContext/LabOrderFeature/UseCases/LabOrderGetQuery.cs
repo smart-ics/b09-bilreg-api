@@ -43,7 +43,14 @@ public record LabOrderGetResponse(
     string TerminationUserId,
     bool IsVoided,
     IEnumerable<LabOrderItemResponse> Items,
-    IEnumerable<LabOrderItemComponentResponse> ItemComponents);
+    IEnumerable<LabOrderItemComponentResponse> ItemComponents,
+    string DokterPerujukId = "",
+    string DokterPerujukName = "",
+    string LayananPerujukId = "",
+    string LayananPerujukName = "",
+    string ClinicalNote = "",
+    int Urgency = 1,
+    bool IsCito = false);
 
 public record LabOrderItemResponse(
     int ItemNo,
@@ -55,7 +62,9 @@ public record LabOrderItemResponse(
     string TarifName,
     int TubeType,
     string SpecimenType,
-    int RequiredTubeCount);
+    int RequiredTubeCount,
+    int Urgency = 1,
+    bool IsCito = false);
 
 public record LabOrderItemComponentResponse(
     int ItemNo,
@@ -94,7 +103,9 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             x.TarifName,
             (int)x.TubeType,
             x.SpecimenType,
-            x.RequiredTubeCount)).ToList();
+            x.RequiredTubeCount,
+            (int)x.Urgency,
+            x.IsCito)).ToList();
 
         var components = order.ItemComponents.Select(x => new LabOrderItemComponentResponse(
             x.ItemNo,
@@ -144,7 +155,14 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             TerminationUserId: order.TerminationUserId,
             IsVoided: order.AuditTrail.IsVoided,
             Items: items,
-            ItemComponents: components);
+            ItemComponents: components,
+            DokterPerujukId: order.DokterPerujukId,
+            DokterPerujukName: order.DokterPerujukName,
+            LayananPerujukId: order.LayananPerujukId,
+            LayananPerujukName: order.LayananPerujukName,
+            ClinicalNote: order.ClinicalNote,
+            Urgency: (int)order.Urgency,
+            IsCito: order.IsCito);
 
         return Task.FromResult(response);
     }
