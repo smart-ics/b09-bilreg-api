@@ -341,8 +341,8 @@ Review Status: NOT-REVIEWED
 
 Title: LabOrder Integration Refactoring & Dual-Path Charging (Fix GAP-002)
 
-Implementation Status: IN-PROGRESS  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Memperbarui use case pembuatan order eksternal `LabOrderCreateExternalPatientCmd` agar mengonsumsi `RegExternalId` dan `ExternalMrNo` yang valid, serta merefaktorisasi `LabOrderChargeHandler` (`GAP-002`) agar memproses charging pasien eksternal langsung ke akun `TataRekening` tanpa mencari ke `_regRepo` (mencegah `KeyNotFoundException`).
@@ -361,6 +361,23 @@ Completion Criteria:
 
 Notes:
 - Menyelesaikan celah kritis `GAP-002` yang sebelumnya menyebabkan kegagalan sistem saat charging order pasien luar.
+- Implementation completed:
+  - Command `LabOrderCreateExternalPatientCmd` diperbarui dengan dukungan parameter opsional `RegExternalId` dan `ExternalMrNo` (dengan fallback helper `EffectiveRegId` dan `EffectivePatientId` ke `RegId`/`PatientId`).
+  - Handler `LabOrderCreateExternalPatientHandler` ditambahkan fail-fast validation via `Guard.Against.Null(request)` dan `Guard.Against.NullOrWhiteSpace(request.PatientName)`, serta memastikan `PatientSnapshotType` dibangun menggunakan identifier eksternal yang sah.
+  - Handler `LabOrderChargeHandler` direfaktorisasi dengan arsitektur *dual-path charging*:
+    - Menginjeksi `ILabExternalRepo` pada constructor handler.
+    - Menambahkan cabang `ChargeExternalPatient`: memverifikasi keberadaan pendaftaran eksternal via `_labExternalRepo.LoadEntity`, melempar `KeyNotFoundException` jika tidak ditemukan, menggunakan skema tarif umum (`tipeTarifKey = "UMUM"`, `kelasKey = "III"`, `jaminanKey = "000"` dengan fallback ke `JaminanType.Umum`), dan membebankan item order langsung ke akun billing `TataRekeningModel` pasien eksternal via `_addBillAppService.FromLabOrderItem` tanpa pernah menyentuh `_regRepo`.
+    - Memisahkan cabang `ChargeAdmisiPatient` untuk order non-eksternal (EMR / Rawat Jalan / Inap) agar alur registrasi admisi RS eksisting tetap berjalan 100% tanpa regresi.
+  - Suite unit test `LabOrderCreateExternalPatientHandlerTest.cs` dibuat di `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/` (5 pengujian) memverifikasi pemetaan snapshot `RegExternalId`/`ExternalMrNo` dan `RegId`/`PatientId`, status order `ExternalPatient`, penerbitan nomor sequence `OrderNo`, serta validasi guard masukan (`UserId`, `PatientName`, `Items`).
+  - Suite unit test `LabOrderChargeHandlerTest.cs` diperbarui dan diperluas (7 pengujian):
+    - Menyediakan mock baseline untuk resolusi admisi (`_regRepo`, `_jaminanRepo`, `_tarifRepo`, `_nilaiTarifRepo`, `_komponenRepo`, `_labExternalRepo`).
+    - Menambahkan pengujian `Handle_ExternalPatient_ChargedAndSaved_WithoutRegRepoQuery` yang secara eksplisit memverifikasi `_regRepo.LoadEntity` tidak pernah dipanggil (`Times.Never`), `_labExternalRepo.LoadEntity` dipanggil, dan status order berubah menjadi `Charged`.
+    - Menambahkan pengujian `Handle_ExternalPatient_LabExternalNotFound_ThrowsKeyNotFoundException` dan `Handle_ExternalPatient_BillingFailure_RecordsErrorWithoutAdvancingState`.
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabOrderChargeHandlerTest"` lulus 100% (7 passed, 0 failed).
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabOrderCreateExternalPatientHandlerTest"` lulus 100% (5 passed, 0 failed).
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabOrderCreate"` lulus 100% (8 passed, 0 failed).
+  - Verifikasi pengujian `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (120 passed, 0 failed).
+  - Verifikasi build solusi `dotnet build src/bilreg/b09-bilreg-api.sln` sukses (0 errors, 0 warnings).
 
 ---
 

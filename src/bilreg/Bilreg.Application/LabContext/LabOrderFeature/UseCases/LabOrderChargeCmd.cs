@@ -3,13 +3,20 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.LabContext.LabExternalFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.TransactionHelper;
@@ -36,10 +43,19 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
     private readonly IAddBillAppService _addBillAppService;
     private readonly ILabBillingIntegration _labBillingIntegration;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly ILabExternalRepo _labExternalRepo;
     
-    public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, IRegRepo regRepo, ITarifRepo tarifRepo,
-        INilaiTarifRepo nilaiTarifRepo, IKomponenRepo komponenRepo, IJaminanRepo jaminanRepo,
-        IAddBillAppService addBillAppService, ILabBillingIntegration labBillingIntegration, ITglJamProvider tglJamProvider)
+    public LabOrderChargeHandler(
+        ILabOrderRepo labOrderRepo,
+        IRegRepo regRepo,
+        ITarifRepo tarifRepo,
+        INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo,
+        IJaminanRepo jaminanRepo,
+        IAddBillAppService addBillAppService,
+        ILabBillingIntegration labBillingIntegration,
+        ITglJamProvider tglJamProvider,
+        ILabExternalRepo labExternalRepo)
     {
         _labOrderRepo = labOrderRepo;
         _regRepo = regRepo;
@@ -50,11 +66,13 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         _addBillAppService = addBillAppService;
         _labBillingIntegration = labBillingIntegration;
         _tglJamProvider = tglJamProvider;
+        _labExternalRepo = labExternalRepo;
     }
 
     public Task<LabOrderChargeResponse> Handle(LabOrderChargeCmd request, CancellationToken cancellationToken)
     {
         // GUARD
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.OrderId, nameof(request.OrderId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
@@ -62,23 +80,15 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         var occurredAt = _tglJamProvider.Now;
         order.Charge(request.UserId);
 
-        // BUILD
-        var regKey = RegModel.Key(order.Patient.RegId);
-        var reg = LoadReg(regKey);
-
-        var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
-        var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
-
-        order.Items.ForEach(item =>
+        // BUILD: Dual-path charging resolution
+        if (order.OrderSource == LabOrderSourceEnum.ExternalPatient)
         {
-            var tarifKey = TarifType.Key(item.TarifId);
-            var tarif = LoadTarif(tarifKey);
-            var tipeTarifKey = ResolveTipe(reg.JenisReg, jaminan);
-            var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
-            var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
-            var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
-            _ = _addBillAppService.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
-        });
+            ChargeExternalPatient(order, request.UserId, occurredAt);
+        }
+        else
+        {
+            ChargeAdmisiPatient(order, occurredAt);
+        }
 
         var success = false;
         try
@@ -110,6 +120,71 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         return Task.FromResult(response);
     }
 
+    private void ChargeExternalPatient(LabOrderModel order, string userId, DateTime occurredAt)
+    {
+        var externalKey = LabExternalModel.Key(order.Patient.RegId);
+        _ = _labExternalRepo.LoadEntity(externalKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"LabExternal '{order.Patient.RegId}' not found")
+            );
+
+        var tipeTarifKey = TipeTarifType.Key("UMUM");
+        var kelasKey = KelasType.Key("III");
+        var jaminanKey = JaminanType.Key("000");
+        var jaminan = LoadJaminan(jaminanKey);
+
+        var externalReg = new RegModel(
+            order.Patient.RegId,
+            DateOnly.FromDateTime(occurredAt),
+            new AuditInfoType(userId, occurredAt),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            new PasienReff(order.Patient.PatientId, order.Patient.PatientName, DateOnly.FromDateTime(order.Patient.BirthDate), order.Patient.Gender),
+            new TipeJaminanReff("00000", "Umum"),
+            PolisModel.Default.ToReff(),
+            new KelasReff("III", "Kelas III"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+
+        order.Items.ForEach(item =>
+        {
+            var tarifKey = TarifType.Key(item.TarifId);
+            var tarif = LoadTarif(tarifKey);
+            var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, kelasKey);
+            var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
+            var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
+            _ = _addBillAppService.FromLabOrderItem(order, item, externalReg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
+        });
+    }
+
+    private void ChargeAdmisiPatient(LabOrderModel order, DateTime occurredAt)
+    {
+        var regKey = RegModel.Key(order.Patient.RegId);
+        var reg = LoadReg(regKey);
+
+        var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
+        var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
+
+        order.Items.ForEach(item =>
+        {
+            var tarifKey = TarifType.Key(item.TarifId);
+            var tarif = LoadTarif(tarifKey);
+            var tipeTarifKey = ResolveTipe(reg.JenisReg, jaminan);
+            var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
+            var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
+            var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
+            _ = _addBillAppService.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
+        });
+    }
+
     private RegModel LoadReg(IRegKey key)
     {
         var result = _regRepo.LoadEntity(key)
@@ -128,7 +203,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         var jmn = _jaminanRepo.LoadEntity(jaminan)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Jaminan invalid")
+                onNone: () => jaminan.JaminanId == "000" ? JaminanType.Umum : throw new KeyNotFoundException($"Jaminan invalid")
             );
         return jmn;
     }

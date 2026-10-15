@@ -16,8 +16,14 @@ public record LabOrderCreateExternalPatientCmd(
     string PatientName,
     string? BirthDateYmd,
     string? Gender,
-    List<LabOrderTarifItemInput> Items)
-    : IRequest<LabOrderCreateResponse>;
+    List<LabOrderTarifItemInput> Items,
+    string? RegExternalId = null,
+    string? ExternalMrNo = null)
+    : IRequest<LabOrderCreateResponse>
+{
+    public string EffectiveRegId => !string.IsNullOrWhiteSpace(RegExternalId) ? RegExternalId : (RegId ?? string.Empty);
+    public string EffectivePatientId => !string.IsNullOrWhiteSpace(ExternalMrNo) ? ExternalMrNo : (PatientId ?? string.Empty);
+}
 
 public record LabOrderCreateResponse(string OrderId, string OrderNo);
 
@@ -45,13 +51,18 @@ public class LabOrderCreateExternalPatientHandler
         LabOrderCreateExternalPatientCmd request,
         CancellationToken cancellationToken)
     {
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+        Guard.Against.NullOrWhiteSpace(request.PatientName, nameof(request.PatientName));
         Guard.Against.NullOrEmpty(request.Items, nameof(request.Items));
+
+        var regId = request.EffectiveRegId;
+        var patientId = request.EffectivePatientId;
 
         var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         var snapshot = LabOrderCreateHelper.BuildSnapshot(
-            request.RegId ?? "",
-            request.PatientId ?? "",
+            regId,
+            patientId,
             request.PatientName,
             request.BirthDateYmd ?? "",
             request.Gender ?? "",
