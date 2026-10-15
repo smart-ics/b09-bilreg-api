@@ -9,7 +9,7 @@ namespace Bilreg.Test.LabContext.LabOrderFeature;
 
 public class LabOrderRepoTest
 {
-    private readonly Mock<ILabOrderDal> _orderDal = new();
+    private readonly Mock<ILabOrderTableDal> _orderDal = new();
     private readonly Mock<ILabOrderItemDal> _itemDal = new();
     private readonly Mock<ILabOrderItemComponentDal> _itemComponentDal = new();
     private readonly LabOrderRepo _sut;

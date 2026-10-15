@@ -223,8 +223,8 @@ Review Status: NOT-REVIEWED
 
 ### P3-S04
 Title: EMR Intake Command Handler with ADM-REG & ORG-PPA Validation & 24h Duplicate Check
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui command `LabOrderCreateFromEmrCmd` dan `LabOrderCreateFromEmrHandler` untuk menerima data dokter perujuk, layanan perujuk, `ClinicalNote`, dan `Urgency`, melakukan validasi status kunjungan aktif ke `ADM-REG` (`_regRepo`), validasi dokter perujuk ke `ORG-PPA` (`_ppaRepo`), serta mengeksekusi pemeriksaan duplikasi 24 jam dengan opsi konfirmasi klinis (`AllowDuplicateConfirmation`).
 Depends On: P2-S03
 Repository: `b09-bilreg-api`
@@ -236,6 +236,30 @@ Completion Criteria:
 5. Transaksi berhasil menyimpan data order lengkap dengan perujuk dan urgensi Cito.
 6. Unit test di `Bilreg.Test/LabContext/LabOrderFeature/LabOrderCreateFromEmrHandlerTest.cs` mencakup skenario sukses, validasi EX-01, validasi PPA, dan peringatan EX-05.
 Notes: Memanfaatkan `TransHelper.NewScope()`.
+Implementation Notes:
+- Updated `LabOrderCreateFromEmrCmd` record to support: `DokterPerujukId`, `DokterPerujukName`, `LayananPerujukId`, `LayananPerujukName`, `ClinicalNote`, `Urgency` (default 0), and `AllowDuplicateConfirmation` (default false).
+- Updated `LabOrderTarifItemInput` record to accept item-level `Urgency` (default 0), and wired `LabTestResolutionService` to forward `(LabOrderUrgencyEnum)input.Urgency` into `LabOrderItemModel.Create`.
+- Created `DuplicateLabOrderWarningException` in `Bilreg.Application.LabContext.LabOrderFeature` containing `DuplicateTestNames` and `PreviousOrderIds`.
+- Declared port `ILabOrderDal` and DTO `LabOrderActiveTestDto` in `Bilreg.Application.LabContext.LabOrderFeature`, and aligned `ILabOrderTableDal` in `Bilreg.Infrastructure.LabContext.LabOrderFeature` to inherit `ILabOrderDal`.
+- Updated `LabOrderCreateFromEmrHandler`:
+  - Injected `IRegRepo`, `IPpaRepo`, and `ILabOrderDal`.
+  - Added visit validation against `_regRepo` throwing `InvalidOperationException` with `EX-01` if not found or inactive/discharged.
+  - Added medical staff validation against `_ppaRepo` if `DokterPerujukId` is provided, throwing `InvalidOperationException` if not found/inactive, and defaulting `DokterPerujukName` from PPA when omitted.
+  - Added 24-hour duplicate active test detection via `_labOrderDal.ListActiveTestsByPatientWithinHours(request.PatientId, 24)` throwing `DuplicateLabOrderWarningException` (`EX-05`) when duplicates exist and `AllowDuplicateConfirmation == false`.
+  - Persisted the lab order with complete clinical context and Cito urgency inside transaction scope.
+- Updated `LabOrderCreateFromEmrHandlerTest` covering valid creation with Cito and clinical context, EX-01 registration not found/discharged/voided, PPA validation, EX-05 duplicate warnings, confirmation overrides, and argument validations (10 passing tests).
+- Build verified with 0 errors (`dotnet build src/bilreg/b09-bilreg-api.sln`), and 112 unit tests passing cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/DuplicateLabOrderWarningException.cs`
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/ILabOrderDal.cs`
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/LabOrderTarifItemInput.cs`
+- `src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCreateFromEmrCmd.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderDal.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabOrderRepo.cs`
+- `src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabTestResolutionService.cs`
+- `src/bilreg/Bilreg.Api/Configurations/InfrastructureService.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderRepoTest.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCreateFromEmrHandlerTest.cs`
 
 ---
 

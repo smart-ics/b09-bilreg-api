@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -8,16 +9,8 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
-public record LabOrderActiveTestDto(
-    string OrderId,
-    string OrderNo,
-    string TestDefinitionId,
-    string LabTestCode,
-    string LabTestName,
-    DateTime OrderDate,
-    int LabOrderStatus);
-
-public interface ILabOrderDal :
+public interface ILabOrderTableDal :
+    ILabOrderDal,
     IInsert<LabOrderDto>,
     IUpdate<LabOrderDto>,
     IDelete<ILabOrderKey>,
@@ -25,10 +18,9 @@ public interface ILabOrderDal :
 {
     LabOrderDto? GetByEmrOrderId(string emrOrderId);
     IEnumerable<LabOrderDto> ListByRegId(string regId);
-    IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours);
 }
 
-public class LabOrderDal : ILabOrderDal
+public class LabOrderDal : ILabOrderTableDal
 {
     private const string SelectColumns = """
         aa.OrderId, aa.EmrOrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,

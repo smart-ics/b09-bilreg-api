@@ -85,6 +85,8 @@ public static class InfrastructureService
             .AddScoped<IBusinessDateStatus>(sp => sp.GetRequiredService<TglJamProvider>())
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
+            .AddScoped<ILabOrderDal, LabOrderDal>()
+            .AddScoped<ILabOrderTableDal, LabOrderDal>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
             .AddScoped<ILabOrderReleaseWorklistDal, LabOrderReleaseWorklistDal>()
             .AddScoped<ILabResultVerificationWorklistDal, LabResultVerificationWorklistDal>()

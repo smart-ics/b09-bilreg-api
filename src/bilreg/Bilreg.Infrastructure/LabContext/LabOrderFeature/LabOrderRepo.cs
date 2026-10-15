@@ -6,12 +6,12 @@ namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
 public class LabOrderRepo : ILabOrderRepo
 {
-    private readonly ILabOrderDal _orderDal;
+    private readonly ILabOrderTableDal _orderDal;
     private readonly ILabOrderItemDal _itemDal;
     private readonly ILabOrderItemComponentDal _itemComponentDal;
 
     public LabOrderRepo(
-        ILabOrderDal orderDal,
+        ILabOrderTableDal orderDal,
         ILabOrderItemDal itemDal,
         ILabOrderItemComponentDal itemComponentDal)
     {
