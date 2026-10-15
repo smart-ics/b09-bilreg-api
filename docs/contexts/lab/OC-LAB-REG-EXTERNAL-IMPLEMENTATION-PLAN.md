@@ -105,8 +105,8 @@ Review Status: NOT-REVIEWED
 
 Title: Database DDL BILRG_LabExternal & SqlProj Registration
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Membuat skrip DDL SQL Server untuk tabel fisik `BILRG_LabExternal` lengkap dengan default constraints, clustered primary key, dan non-clustered indexes untuk keunikan `ExternalMrNo` serta pencarian omni-search, dan mendaftarkannya ke dalam `Bilreg.SqlDb.sqlproj`.
@@ -124,6 +124,9 @@ Completion Criteria:
 
 Notes:
 - Mengikuti pola default constraints yang konsisten di `Bilreg.SqlDb` (`DEFAULT('')`, `DEFAULT('3000-01-01')`, `DEFAULT(0)` / `DEFAULT(1)`).
+- Implementation completed: DDL file `BILRG_LabExternal.sql` telah dibuat di `src/bilreg/Bilreg.SqlDb/LabContext/LabExternalFeature/BILRG_LabExternal.sql` dengan 23 kolom lengkap, clustered primary key `PK_BILRG_LabExternal`, unique index `IX_BILRG_LabExternal_ExternalMrNo`, omni-search index `IX_BILRG_LabExternal_Search`, dan composite status-date index `IX_BILRG_LabExternal_StatusDate`.
+- File didaftarkan ke `<Build Include="...">` dan folder `<Folder Include="...">` pada `Bilreg.SqlDb.sqlproj`.
+- Verifikasi build solusi `src/bilreg/b09-bilreg-api.sln` berhasil sukses (0 errors).
 
 ---
 
@@ -131,8 +134,8 @@ Notes:
 
 Title: Domain Aggregate LabExternalModel, Value Objects, Enums & Invariant Tests
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Membangun agregat root domain `LabExternalModel`, antarmuka identitas `ILabExternalKey`, value objects pendukung, enumerasi domain, serta unit test lengkap yang memvalidasi domain invariants (validasi demografi minimal, state transitions `Active` $\rightarrow$ `Completed` / `Cancelled`, penegakan guard `EX-01` pembayaran kasir dan `EX-02` pengambilan spesimen).
@@ -152,6 +155,14 @@ Completion Criteria:
 
 Notes:
 - Murni domain logic, tanpa dependensi infrastruktur atau framework luar.
+- Implementation completed:
+  - Antarmuka identitas `ILabExternalKey.cs` dibuat dengan `RegExternalId { get; }`.
+  - Enumerasi `LabReferralTypeEnum.cs` (`Aps = 1`, `FaskesLuar = 2`) dan `LabExternalStatusEnum.cs` (`Active = 1`, `Completed = 2`, `Cancelled = 3`) dibuat.
+  - Value objects `LabExternalDemographicsType.cs` (lengkap dengan `CalculateAge`), `LabExternalReferralInfoType.cs`, dan `LabExternalCancelInfoType.cs` dibuat.
+  - Agregat domain `LabExternalModel.cs` dibuat mengimplementasikan `ILabExternalKey`, factory methods `Create`, `Load`, `Key`, serta invariant `Cancel` (dengan guard `EX-01` tagihan kasir dan `EX-02` spesimen laboratorium) dan `MarkCompleted`.
+  - Metode `Update` ditambahkan pada `AuditTrailType.cs` untuk mendukung mutasi audit yang chaining / fluent.
+  - Suite unit test `LabExternalModelTest.cs` dibuat di `Bilreg.Test/LabContext/LabExternalFeature/` mencakup 43 pengujian komprehensif memvalidasi create, load, validasi demografi (nama, gender, birthdate valid/sentinel/future), guard EX-01, EX-02, transisi status pembatalan dan penyelesaian.
+  - Verifikasi `dotnet test src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabExternal"` lulus 100% (43 passed, 0 failed).
 
 ---
 

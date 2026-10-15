@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 public class AuditTrailType
 {
@@ -28,6 +28,12 @@ public class AuditTrailType
             throw new ArgumentException("ModifDate-UserId invalid");
 
         Modified = new AuditInfoType(userId, timestamp);
+    }
+
+    public AuditTrailType Update(string userId, DateTime timestamp)
+    {
+        Modif(userId, timestamp);
+        return this;
     }
     
     public static AuditTrailType Default 
