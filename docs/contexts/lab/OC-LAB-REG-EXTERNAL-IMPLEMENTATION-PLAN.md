@@ -217,7 +217,7 @@ Review Status: NOT-REVIEWED
 Title: Number Sequencer Helper & LabExternalCreateCmd with Atomic TataRekening Integration
 
 Implementation Status: IMPLEMENTED  
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 Objective:
 Mengimplementasikan helper generator nomor operasional (`ExternalMrNo` dan `RegExternalId`), command `LabExternalCreateCmd`, dan handler `LabExternalCreateHandler` yang secara atomik membuat entitas pendaftaran eksternal dan akun penagihan `TataRekeningModel` dalam satu transaksi `TransHelper.NewScope()`.
