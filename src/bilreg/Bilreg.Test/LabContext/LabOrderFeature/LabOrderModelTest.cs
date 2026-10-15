@@ -540,7 +540,7 @@ public class LabOrderModelTest
 
         var act = () => order.Cancel("U99", "x");
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Ordered, Deferred, atau Charged*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak dapat dibatalkan karena spesimen telah diambil*");
     }
 
     [Fact]
@@ -738,5 +738,165 @@ public class LabOrderModelTest
         var order = ChargedOrderForOware();
         order.MarkOwareFailed("U1");
         order.OwareStatus.Should().Be(OwareStatusEnum.Failed);
+    }
+
+    [Fact]
+    public void CreateFromEmr_WithClinicalContextAndUrgency_SetsProperties()
+    {
+        var order = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-123",
+            snapshot: EmrSnapshot(),
+            lines: [LabOrderTestSupport.ResolvedLine()],
+            orderNo: "LAB-001",
+            audit: TestAudit(),
+            dokterPerujukId: "DOC01",
+            dokterPerujukName: "dr. SpPK",
+            layananPerujukId: "LAY01",
+            layananPerujukName: "Poli Penyakit Dalam",
+            clinicalNote: "Suspek DHF",
+            urgency: LabOrderUrgencyEnum.Cito);
+
+        order.DokterPerujukId.Should().Be("DOC01");
+        order.DokterPerujukName.Should().Be("dr. SpPK");
+        order.LayananPerujukId.Should().Be("LAY01");
+        order.LayananPerujukName.Should().Be("Poli Penyakit Dalam");
+        order.ClinicalNote.Should().Be("Suspek DHF");
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        order.IsCito.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateExternal_WithClinicalContextAndUrgency_SetsProperties()
+    {
+        var order = LabOrderModel.CreateExternal(
+            emrOrderId: null,
+            snapshot: ExternalSnapshot(),
+            lines: [LabOrderTestSupport.ResolvedLine()],
+            orderNo: "LAB-EXT-001",
+            audit: TestAudit(),
+            dokterPerujukId: "",
+            dokterPerujukName: "dr. Pengirim Luar",
+            layananPerujukId: "",
+            layananPerujukName: "Klinik Pratama Sehat",
+            clinicalNote: "Cek Rutin Pasien Luar",
+            urgency: LabOrderUrgencyEnum.Rutin);
+
+        order.OrderSource.Should().Be(LabOrderSourceEnum.ExternalPatient);
+        order.DokterPerujukName.Should().Be("dr. Pengirim Luar");
+        order.LayananPerujukName.Should().Be("Klinik Pratama Sehat");
+        order.ClinicalNote.Should().Be("Cek Rutin Pasien Luar");
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Rutin);
+        order.IsCito.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_HierarchicalCito_WhenAnyItemIsCito_HeaderBecomesCito()
+    {
+        var itemRutin = TestItem() with { TestDefinitionId = "LTD0001", Urgency = LabOrderUrgencyEnum.Rutin };
+        var itemCito = TestItem() with { TestDefinitionId = "LTD0002", LabTestName = "Troponin I", Urgency = LabOrderUrgencyEnum.Cito };
+
+        var order = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-CITO-01",
+            snapshot: EmrSnapshot(),
+            lines: [LabOrderTestSupport.ResolvedLine(itemRutin), LabOrderTestSupport.ResolvedLine(itemCito)],
+            orderNo: "LAB-CITO-01",
+            audit: TestAudit(),
+            urgency: LabOrderUrgencyEnum.Rutin);
+
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        order.IsCito.Should().BeTrue();
+        order.Items.First(x => x.TestDefinitionId == "LTD0001").IsCito.Should().BeFalse();
+        order.Items.First(x => x.TestDefinitionId == "LTD0002").IsCito.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Create_HierarchicalCito_WhenHeaderIsCito_AllItemsBecomeCito()
+    {
+        var itemRutin1 = TestItem() with { TestDefinitionId = "LTD0001", Urgency = LabOrderUrgencyEnum.Rutin };
+        var itemRutin2 = TestItem() with { TestDefinitionId = "LTD0002", LabTestName = "Glucose", Urgency = LabOrderUrgencyEnum.Rutin };
+
+        var order = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-CITO-02",
+            snapshot: EmrSnapshot(),
+            lines: [LabOrderTestSupport.ResolvedLine(itemRutin1), LabOrderTestSupport.ResolvedLine(itemRutin2)],
+            orderNo: "LAB-CITO-02",
+            audit: TestAudit(),
+            urgency: LabOrderUrgencyEnum.Cito);
+
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        order.IsCito.Should().BeTrue();
+        order.Items.Should().AllSatisfy(x => x.IsCito.Should().BeTrue());
+    }
+
+    [Fact]
+    public void Create_HierarchicalCito_WhenAllRutin_HeaderAndItemsAreRutin()
+    {
+        var itemRutin1 = TestItem() with { TestDefinitionId = "LTD0001", Urgency = LabOrderUrgencyEnum.Rutin };
+        var itemRutin2 = TestItem() with { TestDefinitionId = "LTD0002", LabTestName = "Glucose", Urgency = LabOrderUrgencyEnum.Rutin };
+
+        var order = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RUTIN-01",
+            snapshot: EmrSnapshot(),
+            lines: [LabOrderTestSupport.ResolvedLine(itemRutin1), LabOrderTestSupport.ResolvedLine(itemRutin2)],
+            orderNo: "LAB-RUTIN-01",
+            audit: TestAudit(),
+            urgency: LabOrderUrgencyEnum.Rutin);
+
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Rutin);
+        order.IsCito.Should().BeFalse();
+        order.Items.Should().AllSatisfy(x => x.IsCito.Should().BeFalse());
+    }
+
+    [Fact]
+    public void LabOrderItemModel_IsCito_ReflectsUrgency()
+    {
+        var rutinItem = LabOrderItemModel.Create(
+            "LTD0001", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif HB",
+            VacutainerTypeEnum.Edta, "Blood", 1, LabOrderUrgencyEnum.Rutin);
+        rutinItem.IsCito.Should().BeFalse();
+
+        var citoItem = LabOrderItemModel.Create(
+            "LTD0002", "TROP", "Troponin", "TR2", "T-TROP", "Tarif Troponin",
+            VacutainerTypeEnum.Serum, "Serum", 1, LabOrderUrgencyEnum.Cito);
+        citoItem.IsCito.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cancel_FromRecorded_ThrowsSpecimenGuardException()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("U1");
+
+        var act = () => order.Cancel("U99", "Pembatalan setelah rekaman");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak dapat dibatalkan karena spesimen telah diambil (status Recorded)*");
+    }
+
+    [Fact]
+    public void Cancel_FromVerified_ThrowsSpecimenGuardException()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("U1");
+        order.MarkVerified("U2");
+
+        var act = () => order.Cancel("U99", "Pembatalan setelah verifikasi");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak dapat dibatalkan karena spesimen telah diambil (status Verified)*");
+    }
+
+    [Fact]
+    public void Cancel_FromReleased_ThrowsSpecimenGuardException()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("U1");
+        order.MarkVerified("U2");
+        order.Release("U3", "Hasil lengkap");
+
+        var act = () => order.Cancel("U99", "Pembatalan setelah rilis");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak dapat dibatalkan karena spesimen telah diambil (status Released)*");
     }
 }

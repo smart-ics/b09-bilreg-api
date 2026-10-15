@@ -93,7 +93,7 @@ Slice dependency rules:
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | NOT-REVIEWED | 0/2 |
+| P1 - Foundation (Database DDL & Domain Model) | NOT-STARTED | GO | 0/2 |
 | P2 - Infrastructure & Data Access Layer | NOT-STARTED | NOT-REVIEWED | 0/1 |
 | P3 - Core Application Intake Handlers | NOT-STARTED | NOT-REVIEWED | 0/2 |
 | P4 - Cancellation & Query Enhancement | NOT-STARTED | NOT-REVIEWED | 0/2 |
@@ -106,7 +106,7 @@ Slice dependency rules:
 ## P1 - Foundation (Database DDL & Domain Model)
 
 Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 ### P1-S01
 Title: Database DDL Migration Script for Clinical Context & Urgency
@@ -139,8 +139,8 @@ Changed Files:
 
 ### P1-S02
 Title: Domain Model Enrichment & Urgency Enum Definition
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Membuat enumerasi `LabOrderUrgencyEnum` (`Rutin = 0`, `Cito = 1`), memperkaya agregat `LabOrderModel` dan item `LabOrderItemModel` dengan atribut perujuk, catatan klinis, dan urgensi Cito, memperbarui factory method, menambahkan guard pembatalan pasca-spesimen (`>= Collected`), serta memperbarui domain test suite.
 Depends On: P1-S01
 Repository: `b09-bilreg-api`
@@ -152,6 +152,20 @@ Completion Criteria:
 5. Metode `Cancel(...)` melempar `InvalidOperationException` jika status order sudah `Collected` ke atas.
 6. Seluruh unit test domain di `Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs` lulus pengujian.
 Notes: Menjaga factory method yang ada tetap kompatibel via default value atau overloading.
+Implementation Notes:
+- Membuat enum `LabOrderUrgencyEnum` (`Rutin = 0`, `Cito = 1`) di `Bilreg.Domain/LabContext/LabOrderFeature/LabOrderUrgencyEnum.cs`.
+- Memperkaya `LabOrderItemModel` dengan properti `Urgency` (default `Rutin`) dan properti turunan `IsCito`.
+- Memperkaya agregat root `LabOrderModel` dengan `DokterPerujukId`, `DokterPerujukName`, `LayananPerujukId`, `LayananPerujukName`, `ClinicalNote`, `Urgency`, dan getter `IsCito`.
+- Memperbarui factory method `CreateFromEmr` dan `CreateExternal` dengan parameter opsional ber-default value untuk menjaga *backward compatibility*, menerapkan resolusi Cito hierarkis (Architecture AD-03): order otomatis menjadi Cito jika ada item Cito atau header Cito, dan mempropagasi status Cito ke item saat header diorder Cito.
+- Menambahkan invariant guard pembatalan spesimen pada `Cancel(...)`: menolak pembatalan dan melempar `InvalidOperationException` bertanda status jika order sudah `Collected` ke atas (`Collected`, `Recorded`, `Verified`, `Released`).
+- Memperbaiki penanganan default timestamp pada `Cancel(...)` dan `Terminate(...)`.
+- Menambahkan 9 test case baru di `Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs` mencakup pengujian konteks perujuk, catatan klinis, hierarki Cito order & item, dan guard pembatalan pasca-spesimen. Seluruh 62 unit test di `LabOrderModelTest` lulus 100%.
+- Solusi berhasil dibangun bersih tanpa error (`dotnet build src/bilreg/b09-bilreg-api.sln`).
+Changed Files:
+- `src/bilreg/Bilreg.Domain/LabContext/LabOrderFeature/LabOrderUrgencyEnum.cs`
+- `src/bilreg/Bilreg.Domain/LabContext/LabOrderFeature/LabOrderItemModel.cs`
+- `src/bilreg/Bilreg.Domain/LabContext/LabOrderFeature/LabOrderModel.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs`
 
 ---
 

@@ -41,7 +41,13 @@ public class LabOrderModel : ILabOrderKey
         string terminationUserId,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items,
-        IEnumerable<LabOrderItemComponentModel> itemComponents)
+        IEnumerable<LabOrderItemComponentModel> itemComponents,
+        string dokterPerujukId = "",
+        string dokterPerujukName = "",
+        string layananPerujukId = "",
+        string layananPerujukName = "",
+        string clinicalNote = "",
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
     {
         OrderId = orderId;
         EmrOrderId = emrOrderId ?? string.Empty;
@@ -69,6 +75,12 @@ public class LabOrderModel : ILabOrderKey
         TerminationDate = terminationDate;
         TerminationUserId = terminationUserId;
         AuditTrail = auditTrail;
+        DokterPerujukId = dokterPerujukId ?? string.Empty;
+        DokterPerujukName = dokterPerujukName ?? string.Empty;
+        LayananPerujukId = layananPerujukId ?? string.Empty;
+        LayananPerujukName = layananPerujukName ?? string.Empty;
+        ClinicalNote = clinicalNote ?? string.Empty;
+        Urgency = urgency;
         _items = items.ToList();
         _itemComponents = itemComponents.ToList();
     }
@@ -101,7 +113,13 @@ public class LabOrderModel : ILabOrderKey
         terminationUserId: "",
         auditTrail: AuditTrailType.Default,
         items: [],
-        itemComponents: []);
+        itemComponents: [],
+        dokterPerujukId: "",
+        dokterPerujukName: "",
+        layananPerujukId: "",
+        layananPerujukName: "",
+        clinicalNote: "",
+        urgency: LabOrderUrgencyEnum.Rutin);
 
     public static ILabOrderKey Key(string orderId) => new LabOrderModel(
         orderId,
@@ -131,7 +149,13 @@ public class LabOrderModel : ILabOrderKey
         "",
         AuditTrailType.Default,
         [],
-        []);
+        [],
+        "",
+        "",
+        "",
+        "",
+        "",
+        LabOrderUrgencyEnum.Rutin);
 
     public static LabOrderModel Load(
         string orderId,
@@ -161,7 +185,13 @@ public class LabOrderModel : ILabOrderKey
         string terminationUserId,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items,
-        IEnumerable<LabOrderItemComponentModel> itemComponents)
+        IEnumerable<LabOrderItemComponentModel> itemComponents,
+        string dokterPerujukId = "",
+        string dokterPerujukName = "",
+        string layananPerujukId = "",
+        string layananPerujukName = "",
+        string clinicalNote = "",
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
         => new(
             orderId,
             emrOrderId,
@@ -190,14 +220,26 @@ public class LabOrderModel : ILabOrderKey
             terminationUserId,
             auditTrail,
             items,
-            itemComponents);
+            itemComponents,
+            dokterPerujukId,
+            dokterPerujukName,
+            layananPerujukId,
+            layananPerujukName,
+            clinicalNote,
+            urgency);
 
     public static LabOrderModel CreateFromEmr(
         string emrOrderId,
         PatientSnapshotType snapshot,
         IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string dokterPerujukId = "",
+        string dokterPerujukName = "",
+        string layananPerujukId = "",
+        string layananPerujukName = "",
+        string clinicalNote = "",
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
     {
         Guard.Against.NullOrWhiteSpace(emrOrderId, nameof(emrOrderId));
         Guard.Against.Null(snapshot);
@@ -214,7 +256,13 @@ public class LabOrderModel : ILabOrderKey
             snapshot,
             lines,
             orderNo,
-            audit);
+            audit,
+            dokterPerujukId,
+            dokterPerujukName,
+            layananPerujukId,
+            layananPerujukName,
+            clinicalNote,
+            urgency);
     }
 
     public static LabOrderModel CreateExternal(
@@ -222,7 +270,13 @@ public class LabOrderModel : ILabOrderKey
         PatientSnapshotType snapshot,
         IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string dokterPerujukId = "",
+        string dokterPerujukName = "",
+        string layananPerujukId = "",
+        string layananPerujukName = "",
+        string clinicalNote = "",
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
     {
         Guard.Against.Null(snapshot);
         Guard.Against.NullOrWhiteSpace(orderNo, nameof(orderNo));
@@ -235,7 +289,13 @@ public class LabOrderModel : ILabOrderKey
             snapshot,
             lines,
             orderNo,
-            audit);
+            audit,
+            dokterPerujukId,
+            dokterPerujukName,
+            layananPerujukId,
+            layananPerujukName,
+            clinicalNote,
+            urgency);
     }
 
     private static LabOrderModel CreateInternal(
@@ -244,9 +304,27 @@ public class LabOrderModel : ILabOrderKey
         PatientSnapshotType snapshot,
         IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string dokterPerujukId,
+        string dokterPerujukName,
+        string layananPerujukId,
+        string layananPerujukName,
+        string clinicalNote,
+        LabOrderUrgencyEnum urgency)
     {
         var (itemList, componentList) = AssignLineNumbers(lines);
+
+        // Hierarchical Cito Resolution (Architecture AD-03)
+        var hasAnyCitoItem = itemList.Any(x => x.IsCito);
+        var effectiveUrgency = (urgency == LabOrderUrgencyEnum.Cito || hasAnyCitoItem)
+            ? LabOrderUrgencyEnum.Cito
+            : LabOrderUrgencyEnum.Rutin;
+
+        if (urgency == LabOrderUrgencyEnum.Cito)
+        {
+            itemList = itemList.Select(x => x with { Urgency = LabOrderUrgencyEnum.Cito }).ToList();
+        }
+
         var orderId = NunaId.New(IdPrefix);
         var auditTrail = AuditTrailType.Create(audit.UserId, audit.Timestamp);
 
@@ -278,7 +356,13 @@ public class LabOrderModel : ILabOrderKey
             terminationUserId: "",
             auditTrail,
             itemList,
-            componentList);
+            componentList,
+            dokterPerujukId,
+            dokterPerujukName,
+            layananPerujukId,
+            layananPerujukName,
+            clinicalNote,
+            effectiveUrgency);
     }
 
     private static (List<LabOrderItemModel> Items, List<LabOrderItemComponentModel> Components) AssignLineNumbers(
@@ -538,18 +622,26 @@ public class LabOrderModel : ILabOrderKey
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} sudah void; pembatalan tidak diperbolehkan.");
 
+        if (LabOrderStatus is LabOrderStatusEnum.Collected
+            or LabOrderStatusEnum.Recorded
+            or LabOrderStatusEnum.Verified
+            or LabOrderStatusEnum.Released)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} tidak dapat dibatalkan karena spesimen telah diambil (status {LabOrderStatus}).");
+
         if (LabOrderStatus != LabOrderStatusEnum.Ordered
             && LabOrderStatus != LabOrderStatusEnum.Deferred
             && LabOrderStatus != LabOrderStatusEnum.Charged)
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; pembatalan hanya diperbolehkan dari Ordered, Deferred, atau Charged.");
 
+        var at = cancelledAt == default ? DateTime.Now : cancelledAt;
         var r = reason.Length > 200 ? reason[..200] : reason;
         LabOrderStatus = LabOrderStatusEnum.Cancelled;
         CancelledReason = r;
-        CancelledDate = cancelledAt;
+        CancelledDate = at;
         CancelledUserId = userId;
-        AuditTrail.Modif(userId, cancelledAt);
+        AuditTrail.Modif(userId, at);
     }
 
     public void Terminate(string userId, string reason, DateTime terminatedAt = default)
@@ -566,12 +658,13 @@ public class LabOrderModel : ILabOrderKey
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; terminasi hanya diperbolehkan dari Collected atau Recorded.");
 
+        var at = terminatedAt == default ? DateTime.Now : terminatedAt;
         var r = reason.Length > 200 ? reason[..200] : reason;
         LabOrderStatus = LabOrderStatusEnum.Terminated;
         TerminationReason = r;
-        TerminationDate = terminatedAt;
+        TerminationDate = at;
         TerminationUserId = userId;
-        AuditTrail.Modif(userId, terminatedAt);
+        AuditTrail.Modif(userId, at);
     }
 
     public void EnsureCanEnqueueOware()
@@ -639,6 +732,13 @@ public class LabOrderModel : ILabOrderKey
     public DateTime TerminationDate { get; set; }
     public string TerminationUserId { get; set; }
     public AuditTrailType AuditTrail { get; init; }
+    public string DokterPerujukId { get; init; }
+    public string DokterPerujukName { get; init; }
+    public string LayananPerujukId { get; init; }
+    public string LayananPerujukName { get; init; }
+    public string ClinicalNote { get; init; }
+    public LabOrderUrgencyEnum Urgency { get; init; }
+    public bool IsCito => Urgency == LabOrderUrgencyEnum.Cito;
     public IReadOnlyList<LabOrderItemModel> Items => _items;
     public IReadOnlyList<LabOrderItemComponentModel> ItemComponents => _itemComponents;
 
