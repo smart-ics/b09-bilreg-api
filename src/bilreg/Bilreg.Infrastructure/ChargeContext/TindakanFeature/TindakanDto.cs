@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -13,12 +13,32 @@ public record TindakanDto(
     string LayananId, string LayananName,
     string KelasId, string KelasName,
     string TipeTarifId, string TipeTarifName,
-    string TarifId, string TarifName, decimal Total,
+    string TarifId, string TarifName, 
+    int Qty, decimal Total,
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
     string VodUser, DateTime VodDate)
 {
+    public TindakanDto(
+        string TindakanId, DateTime TindakanDate, string OrderTdkId,
+        string RegId, string PasienId, string PasienName,
+        string LayananId, string LayananName,
+        string KelasId, string KelasName,
+        string TipeTarifId, string TipeTarifName,
+        string TarifId, string TarifName, decimal Total,
+        string CrtUser, DateTime CrtDate,
+        string UpdUser, DateTime UpdDate,
+        string VodUser, DateTime VodDate)
+        : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
+               LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+               TarifId, TarifName, 1, Total, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+    {
+    }
+
     public static TindakanDto FromModel(TindakanModel model)
+        => FromModel(model, 1);
+
+    public static TindakanDto FromModel(TindakanModel model, int qty)
     {
         var result = new TindakanDto(
             model.TindakanId, model.TindakanDate, model.OrderTindakanId, 
@@ -26,7 +46,8 @@ public record TindakanDto(
             model.Layanan.LayananId, model.Layanan.LayananName,
             model.Kelas.KelasId, model.Kelas.KelasName,
             model.TipeTarif.TipeTarifId, model.TipeTarif.TipeTarifName,
-            model.Tarif.TarifId, model.Tarif.TarifName, model.Total,
+            model.Tarif.TarifId, model.Tarif.TarifName, 
+            qty, model.Total,
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp);
