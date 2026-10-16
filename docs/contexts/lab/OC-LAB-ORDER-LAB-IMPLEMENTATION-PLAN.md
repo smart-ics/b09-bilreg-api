@@ -3,8 +3,8 @@ Title: Order Pemeriksaan Laboratorium Backend Implementation Plan
 Code: OC-LAB-ORDER-LAB
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
-LastUpdated: 2026-10-15
-Status: NOT-STARTED
+LastUpdated: 2026-10-16
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -97,7 +97,7 @@ Slice dependency rules:
 | P2 - Infrastructure & Data Access Layer | NOT-STARTED | GO | 0/1 |
 | P3 - Core Application Intake Handlers | NOT-STARTED | GO | 0/2 |
 | P4 - Cancellation & Query Enhancement | NOT-STARTED | GO | 0/2 |
-| P5 - Web API Endpoints & Contract Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P5 - Web API Endpoints & Contract Verification | NOT-STARTED | GO | 0/1 |
 
 ---
 
@@ -373,12 +373,12 @@ Changed Files:
 ## P5 - Web API Endpoints & Contract Verification
 
 Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 ### P5-S08
 Title: Web API Controller Endpoints & Contract Integration Verification
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui endpoint pada `LabOrderController.cs` untuk menerima request model baru (perujuk, catatan klinis, urgensi, flag konfirmasi duplikasi) dan menyajikan respons terstandar `JSendOk` untuk order intake, detail kueri, dan worklist kueri.
 Depends On: P3-S04, P3-S05, P4-S06, P4-S07
 Repository: `b09-bilreg-api`
@@ -390,6 +390,19 @@ Completion Criteria:
 5. Endpoint `GET /api/LabContext/LabOrderFeature/worklist` mendukung parameter `isCitoOnly` dan menyajikan data perujuk serta status darurat Cito.
 6. Seluruh controller unit test dan integration test di `Bilreg.Test/LabContext/LabOrderFeature` lulus pengujian dengan nol warning/error.
 Notes: Seluruh endpoint membungkus payload menggunakan envelope `JSendOk`.
+Implementation Notes:
+- Updated `LabOrderController.cs` in `Bilreg.Api/Controllers/LabContext/LabOrderFeature`:
+  - Added kebab-case route mappings `[HttpPost("from-emr")]`, `[HttpPost("external-patient")]`, and `[HttpPost("cancel")]` alongside existing aliases for contract compliance and backward compatibility.
+  - Added `[FromQuery] bool? isCitoOnly = null` parameter to `Worklist` action, forwarding it to `LabOrderWorklistQuery`.
+  - All action endpoints return standardized `JSendOk` enveloped responses for commands and queries.
+- Created `LabOrderControllerTest.cs` in `Bilreg.Test/LabContext/LabOrderFeature`:
+  - Added comprehensive unit tests verifying controller attributes (`[ApiController]`, `[Authorize]`, route prefix), action routing attributes, and mediator dispatching with `JSendOk` payload wrapping for `CreateFromEmr`, `CreateExternal`, `Cancel`, `Get`, and `Worklist` (including `isCitoOnly` parameter handling).
+- Build and test verification:
+  - Full solution build succeeded with 0 warnings and 0 errors (`dotnet build b09-bilreg-api/src/bilreg/b09-bilreg-api.sln`).
+  - All 156 unit tests in `Bilreg.Test` for `LabOrderFeature` passed cleanly.
+Changed Files:
+- `src/bilreg/Bilreg.Api/Controllers/LabContext/LabOrderFeature/LabOrderController.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderControllerTest.cs`
 
 ---
 

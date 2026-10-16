@@ -18,6 +18,7 @@ public class LabOrderController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpPost("from-emr")]
     [HttpPost("fromEmr")]
     public async Task<IActionResult> CreateFromEmr(LabOrderCreateFromEmrCmd cmd)
     {
@@ -25,6 +26,7 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("external-patient")]
     [HttpPost("external")]
     public async Task<IActionResult> CreateExternal(LabOrderCreateExternalPatientCmd cmd)
     {
@@ -37,10 +39,11 @@ public class LabOrderController : ControllerBase
         [FromQuery] int? labOrderStatus,
         [FromQuery] string? searchTerm,
         [FromQuery] DateTime? date1,
-        [FromQuery] DateTime? date2)
+        [FromQuery] DateTime? date2,
+        [FromQuery] bool? isCitoOnly = null)
     {
         var response = await _mediator.Send(new LabOrderWorklistQuery(
-            labOrderStatus, searchTerm, date1, date2));
+            labOrderStatus, searchTerm, date1, date2, isCitoOnly));
         return Ok(new JSendOk(response));
     }
 
@@ -110,6 +113,7 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("cancel")]
     [HttpPatch("cancel")]
     public async Task<IActionResult> Cancel(LabOrderCancelCmd cmd)
     {
