@@ -20,7 +20,7 @@ public class AptWorklistDal : IAptWorklistDal
     private readonly DatabaseOptions _opt;
     public AptWorklistDal(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
 
-    public IReadOnlyList<TelaahWorklistItem> ListTelaah()
+    public IReadOnlyList<TelaahWorklistItem> ListTelaah(DateOnly businessDate)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<TelaahWorklistItem>("""
@@ -47,16 +47,19 @@ public class AptWorklistDal : IAptWorklistDal
             WHERE aa.fb_resep = 1
               AND (aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void = '' OR aa.fd_tgl_void IS NULL)
               AND aa.fn_status_dobill = 0
-              AND aa.fd_tgl_trs = @Today
+              AND aa.fd_tgl_trs = @businessDate
               AND (t.TelaahResepId IS NULL OR t.TelaahStatus IN (@availableStatus, @underReviewStatus))
             ORDER BY Cito DESC, StartedAt ASC
             """, new
             {
                 availableStatus = (int)TelaahStatusEnum.Available,
                 underReviewStatus = (int)TelaahStatusEnum.UnderReview,
-                Today = DateTime.Today.ToString("yyyy-MM-dd")
+                businessDate = businessDate.ToString("yyyy-MM-dd")
             }).ToList();
     }
+
+    public IReadOnlyList<TelaahWorklistItem> ListTelaah()
+        => ListTelaah(DateOnly.FromDateTime(DateTime.Today));
 
     public IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut, DateOnly businessDate)
     {

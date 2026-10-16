@@ -1145,6 +1145,16 @@
         "tags": [
           "Apotek"
         ],
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "$ref": "#/components/schemas/DateOnly"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success"

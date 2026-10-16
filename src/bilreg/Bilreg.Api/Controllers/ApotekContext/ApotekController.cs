@@ -11,6 +11,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Api.Controllers.ApotekContext;
 
@@ -22,11 +23,13 @@ public class ApotekController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ICurrentUserContext _user;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public ApotekController(IMediator mediator, ICurrentUserContext user)
+    public ApotekController(IMediator mediator, ICurrentUserContext user, ITglJamProvider tglJamProvider)
     {
         _mediator = mediator;
         _user = user;
+        _tglJamProvider = tglJamProvider;
     }
 
     [HttpPost("jual-bebas/accept")]
@@ -168,8 +171,9 @@ public class ApotekController : ControllerBase
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
     [HttpGet("worklist/telaah")]
-    public async Task<IActionResult> TelaahWorklist()
-        => Ok(new JSendOk(await _mediator.Send(new TelaahWorklistQuery())));
+    public async Task<IActionResult> TelaahWorklist([FromQuery] DateOnly? businessDate)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahWorklistQuery(
+            businessDate ?? DateOnly.FromDateTime(_tglJamProvider.Now)))));
 
     [HttpGet("worklist/pelayanan")]
     public async Task<IActionResult> Pelayanan(
@@ -179,7 +183,7 @@ public class ApotekController : ControllerBase
         => Ok(new JSendOk(await _mediator.Send(new PelayananWorklistQuery(
             antrianId ?? "",
             noUrut,
-            businessDate ?? DateOnly.FromDateTime(DateTime.Now)))));
+            businessDate ?? DateOnly.FromDateTime(_tglJamProvider.Now)))));
 
     [HttpGet("worklist/dispensing")]
     public async Task<IActionResult> DispensingWorklist()
@@ -187,7 +191,7 @@ public class ApotekController : ControllerBase
 
     [HttpGet("worklist/serah")]
     public async Task<IActionResult> Serah([FromQuery] DateTime? asOf)
-        => Ok(new JSendOk(await _mediator.Send(new SerahWorklistQuery(asOf ?? DateTime.Now))));
+        => Ok(new JSendOk(await _mediator.Send(new SerahWorklistQuery(asOf ?? _tglJamProvider.Now))));
 
     [HttpGet("journey")]
     public async Task<IActionResult> Journey([FromQuery] string antrianId, [FromQuery] int noUrut)
