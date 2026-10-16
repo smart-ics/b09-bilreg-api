@@ -22,6 +22,10 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -70,6 +74,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmisiEventPublisher _publisher;
+    private readonly IWaitingListRepo _waitingListRepo;
+    private readonly ILogger<AdmissionRegistrationOrchestrator> _logger;
 
     public AdmissionRegistrationOrchestrator(
         IAdmissionRepo admissionRepo,
@@ -91,7 +97,9 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IRegAktifRepo regAktifRepo,
         IAuditRepo auditRepo,
         ITglJamProvider tglJamProvider,
-        IAdmisiEventPublisher publisher)
+        IAdmisiEventPublisher publisher,
+        IWaitingListRepo waitingListRepo,
+        ILogger<AdmissionRegistrationOrchestrator>? logger = null)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
@@ -113,6 +121,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
         _publisher = publisher;
+        _waitingListRepo = waitingListRepo;
+        _logger = logger ?? NullLogger<AdmissionRegistrationOrchestrator>.Instance;
     }
 
     public async Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
@@ -147,7 +157,11 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-        return ToResponse(admission);
+        var waitingListId = PlaceWaitingListGracefully(
+            admission, request.KelasId, request.BangsalId, request.KelasDkId,
+            request.Priority, request.UserId, occurredAt);
+
+        return ToResponse(admission, waitingListId);
     }
 
     public async Task<AdmProcessAdmissionResponse> ProcessReservation(
@@ -188,7 +202,75 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-        return ToResponse(admission);
+        var waitingListId = PlaceWaitingListGracefully(
+            admission, request.KelasId, request.BangsalId, request.KelasDkId,
+            request.Priority, request.UserId, occurredAt, reservation.KelasRawat);
+
+        return ToResponse(admission, waitingListId);
+    }
+
+    private string? PlaceWaitingListGracefully(
+        AdmissionModel admission,
+        string? kelasId,
+        string bangsalId,
+        string kelasDkId,
+        int priority,
+        string userId,
+        DateTime occurredAt,
+        KelasReff? fallbackKelas = null)
+    {
+        try
+        {
+            var kelasRawat = ResolveKelasRawat(kelasId, bangsalId, kelasDkId, fallbackKelas);
+            var bangsal = admission.Bangsal ?? _wardGateway.ResolveBangsal(bangsalId);
+
+            var waitingList = WaitingListModel.Create(
+                admission.RegId,
+                admission.AdmissionStatus,
+                admission.Pasien,
+                kelasRawat,
+                bangsal,
+                priority,
+                userId,
+                occurredAt);
+
+            _waitingListRepo.SaveChanges(waitingList);
+
+            _auditRepo.SaveChanges(AuditLog.Create(
+                waitingList.AuditTrail.Created,
+                "CREATE",
+                nameof(WaitingListModel),
+                waitingList.WaitingListId));
+
+            _wardGateway.NotifyHandOver(new WardAccommodationHandOver(
+                waitingList.WaitingListId,
+                waitingList.RegId,
+                waitingList.Bangsal.BangsalId,
+                waitingList.KelasRawat.KelasId,
+                waitingList.WaitingListStatus));
+
+            return waitingList.WaitingListId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Registrasi ranap {RegId} berhasil dibuat, namun otomasi waiting list mengalami kendala: {ErrorMessage}",
+                admission.RegId, ex.Message);
+            return null;
+        }
+    }
+
+    private KelasReff ResolveKelasRawat(
+        string? kelasId,
+        string bangsalId,
+        string kelasDkId,
+        KelasReff? fallbackKelas = null)
+    {
+        if (!string.IsNullOrWhiteSpace(kelasId))
+            return _wardGateway.ResolveKelas(kelasId);
+        if (fallbackKelas is not null && !string.IsNullOrWhiteSpace(fallbackKelas.KelasId))
+            return fallbackKelas;
+        return _wardGateway.ResolveKelasForCareClass(bangsalId, kelasDkId);
     }
 
     private AdmissionModel CreateAdmission(PasienReff pasien, string kelasDkId, string bangsalId,
@@ -304,8 +386,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         => _auditRepo.SaveChanges(AuditLog.Create(
             audit, "UPDATE", entityName, entityId, originalDataJson: snapshot));
 
-    private static AdmProcessAdmissionResponse ToResponse(AdmissionModel admission)
-        => new(admission.RegId, admission.AdmissionStatus);
+    private static AdmProcessAdmissionResponse ToResponse(AdmissionModel admission, string? waitingListId = null)
+        => new(admission.RegId, admission.AdmissionStatus, waitingListId);
 
     private static void ValidateRequest(string sourceId, string kelasDkId, string bangsalId,
         string userId, AdmissionRegistrationData data)

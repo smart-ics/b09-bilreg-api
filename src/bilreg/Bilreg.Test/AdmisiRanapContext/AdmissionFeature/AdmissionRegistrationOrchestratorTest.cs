@@ -20,7 +20,10 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using FluentAssertions;
@@ -380,10 +383,140 @@ public class AdmissionRegistrationOrchestratorTest
     private static AdmissionRegistrationData RegistrationData() =>
         new("00000", CaraMasukDkType.DatangSendiri.CaraMasukDkId, "IGD", null, "-", "PESERTA1");
 
+    [Fact]
+    public async Task GivenOpnameRequest_WhenWaitingListPlacementSucceeds_ThenCreatesWaitingListAndReturnsId()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.WaitingListId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedWaitingList.Should().NotBeNull();
+        harness.SavedWaitingList!.WaitingListId.Should().Be(response.WaitingListId);
+        harness.SavedWaitingList.RegId.Should().Be(response.RegId);
+        harness.SavedWaitingList.WaitingListStatus.Should().Be(WaitingListStatusEnum.Waiting);
+        harness.SavedWaitingList.Priority.Should().Be(3);
+        harness.SavedWaitingList.KelasRawat.KelasId.Should().Be("K1");
+        harness.SavedWaitingList.Bangsal.BangsalId.Should().Be("B1");
+        harness.WaitingListRepo.Verify(x => x.SaveChanges(It.IsAny<WaitingListModel>()), Times.Once);
+        harness.AuditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
+            a.EntityName == nameof(WaitingListModel) && a.EntityId == response.WaitingListId)), Times.Once);
+        harness.WardGateway.Verify(x => x.NotifyHandOver(It.Is<WardAccommodationHandOver>(h =>
+            h.WaitingListId == response.WaitingListId &&
+            h.RegId == response.RegId &&
+            h.BangsalId == "B1" &&
+            h.KelasId == "K1" &&
+            h.Status == WaitingListStatusEnum.Waiting)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WithExplicitKelasAndPriority_ThenPropagatesToWaitingList()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData(),
+            KelasId: "VIP", Priority: 1);
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.WaitingListId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedWaitingList.Should().NotBeNull();
+        harness.SavedWaitingList!.Priority.Should().Be(1);
+        harness.SavedWaitingList.KelasRawat.KelasId.Should().Be("VIP");
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenWaitingListPlacementSucceeds_ThenCreatesWaitingListAndReturnsId()
+    {
+        var harness = CreateReservationHarness();
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.WaitingListId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedWaitingList.Should().NotBeNull();
+        harness.SavedWaitingList!.WaitingListId.Should().Be(response.WaitingListId);
+        harness.SavedWaitingList.RegId.Should().Be(response.RegId);
+        harness.SavedWaitingList.Priority.Should().Be(3);
+        harness.WaitingListRepo.Verify(x => x.SaveChanges(It.IsAny<WaitingListModel>()), Times.Once);
+        harness.AuditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
+            a.EntityName == nameof(WaitingListModel) && a.EntityId == response.WaitingListId)), Times.Once);
+        harness.WardGateway.Verify(x => x.NotifyHandOver(It.IsAny<WardAccommodationHandOver>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WhenWaitingListFails_ThenRegistrationSucceedsWithNullWaitingListId()
+    {
+        var harness = CreateOpnameHarness();
+        harness.WaitingListRepo
+            .Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Throws(new InvalidOperationException("forced waiting list db error"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        response.WaitingListId.Should().BeNull();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.SavedRegAktif.Should().NotBeNull();
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenWaitingListFails_ThenRegistrationSucceedsWithNullWaitingListId()
+    {
+        var harness = CreateReservationHarness();
+        harness.WaitingListRepo
+            .Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Throws(new InvalidOperationException("forced waiting list db error"));
+
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        response.WaitingListId.Should().BeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.Publisher.Verify(
+            x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WhenWardHandOverFails_ThenRegistrationSucceedsWithNullWaitingListId()
+    {
+        var harness = CreateOpnameHarness();
+        harness.WardGateway
+            .Setup(x => x.NotifyHandOver(It.IsAny<WardAccommodationHandOver>()))
+            .Throws(new InvalidOperationException("handover network error"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        response.WaitingListId.Should().BeNull();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+    }
+
     private static OpnameHarness CreateOpnameHarness(IAdmisiEventPublisher? customPublisher = null)
     {
         var opname = OpnameRequestModel.Create(PasienModel.Default.ToReff(),
             PpaType.Default.ToReff(), DateTime.Today.AddDays(1), "test", "user1", "CH0001");
+
         var admissionRepo = new Mock<IAdmissionRepo>();
         var opnameRepo = new Mock<IOpnameRequestRepo>();
         var reservationRepo = new Mock<IReservationRepo>();
@@ -422,6 +555,16 @@ public class AdmissionRegistrationOrchestratorTest
         ward.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas 1"));
         ward.Setup(x => x.ResolveBangsalForCareClass("B1", "1"))
             .Returns(new BangsalReff("B1", "Bangsal 1"));
+        ward.Setup(x => x.ResolveKelas("K1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveKelas("VIP")).Returns(new KelasReff("VIP", "Kelas VIP"));
+        ward.Setup(x => x.ResolveKelasForCareClass("B1", "1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveBangsal("B1")).Returns(new BangsalReff("B1", "Bangsal 1"));
+
+        var waitingListRepo = new Mock<IWaitingListRepo>();
+        WaitingListModel? savedWaitingList = null;
+        waitingListRepo.Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(x => savedWaitingList = x);
+
         var factory = new RegFactory(Mock.Of<ISequencerManual>(),
             Mock.Of<IGetKelasRajalService>(), Mock.Of<IGetKelasRadarService>());
 
@@ -449,12 +592,13 @@ public class AdmissionRegistrationOrchestratorTest
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
-            effectivePublisher);
+            effectivePublisher, waitingListRepo.Object);
 
         return new OpnameHarness(
             sut, opname, publisher, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
-            auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo,
-            () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname);
+            auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo,
+            () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname,
+            () => savedWaitingList);
     }
 
     private static ReservationHarness CreateReservationHarness(IAdmisiEventPublisher? customPublisher = null)
@@ -506,6 +650,17 @@ public class AdmissionRegistrationOrchestratorTest
         ward.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas 1"));
         ward.Setup(x => x.ResolveBangsalForCareClass("B1", "1"))
             .Returns(new BangsalReff("B1", "Bangsal 1"));
+        ward.Setup(x => x.ResolveKelas("K1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveKelas("VIP")).Returns(new KelasReff("VIP", "Kelas VIP"));
+        ward.Setup(x => x.ResolveKelasForCareClass("B1", "1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveBangsal("B1")).Returns(new BangsalReff("B1", "Bangsal 1"));
+
+        var waitingListRepo = new Mock<IWaitingListRepo>();
+        WaitingListModel? savedWaitingList = null;
+        waitingListRepo.Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(x => savedWaitingList = x);
+
+        var auditRepo = new Mock<IAuditRepo>();
         var factory = new RegFactory(Mock.Of<ISequencerManual>(),
             Mock.Of<IGetKelasRajalService>(), Mock.Of<IGetKelasRadarService>());
 
@@ -524,11 +679,12 @@ public class AdmissionRegistrationOrchestratorTest
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
-            regAktifRepo.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance,
-            effectivePublisher);
+            regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
+            effectivePublisher, waitingListRepo.Object);
 
         return new ReservationHarness(
-            sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, () => savedRegInap);
+            sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, auditRepo,
+            ward, waitingListRepo, () => savedRegInap, () => savedWaitingList);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -552,11 +708,14 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IRujukanRepo> rujukanRepo,
         Mock<IBangsalRepo> bangsalRepo,
         Mock<ILayananRepo> layananRepo,
+        Mock<IWardAccommodationGateway> wardGateway,
+        Mock<IWaitingListRepo> waitingListRepo,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
         Func<RegAktifModel?> savedRegAktif,
-        Func<OpnameRequestModel?> savedOpname)
+        Func<OpnameRequestModel?> savedOpname,
+        Func<WaitingListModel?> savedWaitingList)
     {
         public AdmissionRegistrationOrchestrator Sut { get; } = sut;
         public OpnameRequestModel Opname { get; } = opname;
@@ -572,11 +731,14 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IRujukanRepo> RujukanRepo { get; } = rujukanRepo;
         public Mock<IBangsalRepo> BangsalRepo { get; } = bangsalRepo;
         public Mock<ILayananRepo> LayananRepo { get; } = layananRepo;
+        public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
+        public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();
         public RegAktifModel? SavedRegAktif => savedRegAktif();
         public OpnameRequestModel? SavedOpname => savedOpname();
+        public WaitingListModel? SavedWaitingList => savedWaitingList();
     }
 
     private sealed class ReservationHarness(
@@ -586,7 +748,11 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IAdmissionRepo> admissionRepo,
         Mock<IProsedureMasukInapRepo> prosedurRepo,
         Mock<IRegInapRepo> regInapRepo,
-        Func<RegInapModel?> savedRegInap)
+        Mock<IAuditRepo> auditRepo,
+        Mock<IWardAccommodationGateway> wardGateway,
+        Mock<IWaitingListRepo> waitingListRepo,
+        Func<RegInapModel?> savedRegInap,
+        Func<WaitingListModel?> savedWaitingList)
     {
         public AdmissionRegistrationOrchestrator Sut { get; } = sut;
         public ReservationModel Reservation { get; } = reservation;
@@ -594,6 +760,10 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IAdmissionRepo> AdmissionRepo { get; } = admissionRepo;
         public Mock<IProsedureMasukInapRepo> ProsedurRepo { get; } = prosedurRepo;
         public Mock<IRegInapRepo> RegInapRepo { get; } = regInapRepo;
+        public Mock<IAuditRepo> AuditRepo { get; } = auditRepo;
+        public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
+        public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public RegInapModel? SavedRegInap => savedRegInap();
+        public WaitingListModel? SavedWaitingList => savedWaitingList();
     }
 }
