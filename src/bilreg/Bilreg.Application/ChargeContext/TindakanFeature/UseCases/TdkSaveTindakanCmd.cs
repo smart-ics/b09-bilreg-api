@@ -22,7 +22,8 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TdkSaveTindakanCmd(string TindakanId, string RegId,
     string LayananId, string NilaiTarifId, string UserId,
-    IEnumerable<TdkSaveTindakanPpaCmd> ListPpa)
+    IEnumerable<TdkSaveTindakanPpaCmd> ListPpa,
+    int Qty = 1)
     : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey;
 
 public record TdkSaveTindakanPpaCmd(string KomponenId, string PpaId);
@@ -96,7 +97,8 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var qty = request.Qty <= 0 ? 1 : request.Qty;
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty);
         var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
@@ -198,15 +200,15 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
         NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
-        DateTime occurredAt)
+        DateTime occurredAt, int qty = 1)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, qty);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, qty
         );
     }
 

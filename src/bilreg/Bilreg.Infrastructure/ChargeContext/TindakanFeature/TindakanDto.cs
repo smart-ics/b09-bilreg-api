@@ -36,7 +36,7 @@ public record TindakanDto(
     }
 
     public static TindakanDto FromModel(TindakanModel model)
-        => FromModel(model, 1);
+        => FromModel(model, model.Qty);
 
     public static TindakanDto FromModel(TindakanModel model, int qty)
     {
@@ -76,7 +76,8 @@ public record TindakanDto(
             tipeTarif,
             tarif,
             listKomponen,
-            auditTrail
+            auditTrail,
+            Qty <= 0 ? 1 : Qty
         );
         return result;
     }

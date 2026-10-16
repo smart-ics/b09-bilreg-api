@@ -34,11 +34,11 @@ public class TindakanDal : ITindakanDal
         const string sql = """
             INSERT INTO BILRG_Tindakan(
                 TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName, LayananId, LayananName, 
-                KelasId, KelasName, TipeTarifId, TipeTarifName, TarifId, TarifName, Qty, Total, 
+                KelasId, KelasName, TipeTarifId, TipeTarifName, TarifId, TarifName, Total, 
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
                 @TindakanId, @TindakanDate, @OrderTdkId, @RegId, @PasienId, @PasienName, @LayananId, @LayananName, 
-                @KelasId, @KelasName, @TipeTarifId, @TipeTarifName, @TarifId, @TarifName, @Qty, @Total, 
+                @KelasId, @KelasName, @TipeTarifId, @TipeTarifName, @TarifId, @TarifName, @Total, 
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -59,7 +59,6 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TipeTarifName", dto.TipeTarifName, SqlDbType.VarChar);
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
-        dp.AddParam("@Qty", dto.Qty, SqlDbType.Int);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
         
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
@@ -92,7 +91,6 @@ public class TindakanDal : ITindakanDal
               TipeTarifName = @TipeTarifName,
               TarifId = @TarifId, 
               TarifName = @TarifName, 
-              Qty = @Qty,
               Total = @Total, 
               CrtUser = @CrtUser, 
               CrtDate = @CrtDate,
@@ -121,7 +119,6 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TipeTarifName", dto.TipeTarifName, SqlDbType.VarChar);
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
-        dp.AddParam("@Qty", dto.Qty, SqlDbType.Int);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
         
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
@@ -158,7 +155,8 @@ public class TindakanDal : ITindakanDal
                aa.TindakanId, aa.TindakanDate, aa.OrderTdkId,  
                aa.RegId, aa.PasienId, aa.PasienName, aa.LayananId, aa.LayananName, 
                aa.KelasId, aa.KelasName, aa.TipeTarifId, aa.TipeTarifName, aa.TarifId, aa.TarifName, 
-               aa.Qty, aa.Total, 
+               ISNULL((SELECT TOP 1 CAST(tk.Qty AS INT) FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId), 1) AS Qty,
+               aa.Total, 
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
            FROM
                BILRG_Tindakan aa
@@ -181,7 +179,8 @@ public class TindakanDal : ITindakanDal
                aa.TindakanId, aa.TindakanDate, aa.OrderTdkId,  
                aa.RegId, aa.PasienId, aa.PasienName, aa.LayananId, aa.LayananName, 
                aa.KelasId, aa.KelasName, aa.TipeTarifId, aa.TipeTarifName, aa.TarifId, aa.TarifName, 
-               aa.Qty, aa.Total, 
+               ISNULL((SELECT TOP 1 CAST(tk.Qty AS INT) FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId), 1) AS Qty,
+               aa.Total, 
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
            FROM
                BILRG_Tindakan aa
@@ -207,7 +206,8 @@ public class TindakanDal : ITindakanDal
            	    aa.OrderTdkId AS OrderTransaksiId, aa.RegId, aa.PasienId, aa.PasienName, 
            	    aa.LayananId, aa.LayananName, 
                 aa.TarifId AS DiskripsiId, aa.TarifName AS DiskripsiName, 
-           	    aa.Qty, aa.Total, 'TINDAKAN' AS Tipe,
+           	    ISNULL((SELECT TOP 1 CAST(tk.Qty AS INT) FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId), 1) AS Qty,
+                aa.Total, 'TINDAKAN' AS Tipe,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
            FROM
                 BILRG_Tindakan aa
@@ -225,6 +225,4 @@ public class TindakanDal : ITindakanDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TindakanJualDto>(sql, dp);
     }
-
-    
 }

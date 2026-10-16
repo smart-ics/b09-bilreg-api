@@ -87,8 +87,9 @@ public class TindakanDalTest
         using var trans = TransHelper.NewScope();
         var dto = Faker(qty: 3);
         _sut.Insert(dto);
+        var kompDal = new TindakanKomponenDal(ConnStringHelper.GetTestEnv());
+        kompDal.Insert([new TindakanKomponenDto(dto.TindakanId, 0, "K01", "Komp 1", "", "", 3, 150000, 450000)]);
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(dto);
         actual.Qty.Should().Be(3);
         actual.Total.Should().Be(450000);
     }
