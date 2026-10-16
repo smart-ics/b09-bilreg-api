@@ -16,6 +16,13 @@ CREATE TABLE BILRG_RnaPakaiBedAlokasi
     StartedAt DATETIME NOT NULL,
     AssignedBy VARCHAR(50) NOT NULL,
     BedAssignabilityEvidenceId VARCHAR(50) NOT NULL,
+    PhysicalKelasId VARCHAR(3) NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_PhysicalKelasId DEFAULT(''),
+    BillingKelasId VARCHAR(3) NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_BillingKelasId DEFAULT(''),
+    TipeKamarId VARCHAR(1) NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_TipeKamarId DEFAULT(''),
+    Tarif DECIMAL(18, 0) NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_Tarif DEFAULT(0),
+    MotherPakaiBedId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_MotherPakaiBedId DEFAULT(''),
+    IsTitipKelas BIT NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_IsTitipKelas DEFAULT(0),
+    IsNaikKelas BIT NOT NULL CONSTRAINT DF_BILRG_RnaPakaiBedAlokasi_IsNaikKelas DEFAULT(0),
     CrtUser VARCHAR(50) NOT NULL,
     CrtDate DATETIME NOT NULL,
     UpdUser VARCHAR(50) NOT NULL,
@@ -41,4 +48,9 @@ GO
 CREATE INDEX IX_BILRG_RnaPakaiBedAlokasi_WaitingList
     ON BILRG_RnaPakaiBedAlokasi(WaitingListId)
     WHERE WaitingListId <> ''
+GO
+
+CREATE INDEX IX_BILRG_RnaPakaiBedAlokasi_MotherPakaiBedId
+    ON BILRG_RnaPakaiBedAlokasi(MotherPakaiBedId)
+    WHERE MotherPakaiBedId <> ''
 GO

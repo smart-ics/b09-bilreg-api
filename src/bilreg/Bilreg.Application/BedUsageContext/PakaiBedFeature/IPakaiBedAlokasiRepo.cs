@@ -7,4 +7,5 @@ public interface IPakaiBedAlokasiRepo :
     ILoadEntity<PakaiBedAlokasiModel, IPakaiBedAlokasiKey>
 {
     void SaveChanges(PakaiBedAlokasiModel alokasi, PakaiBedModel legacyPakaiBed);
+    void SaveChanges(PakaiBedAlokasiModel alokasi);
 }

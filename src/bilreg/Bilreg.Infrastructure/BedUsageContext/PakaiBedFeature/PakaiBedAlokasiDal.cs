@@ -24,6 +24,8 @@ public class PakaiBedAlokasiDal : IPakaiBedAlokasiDal
             aa.BangsalId, aa.KamarId, aa.BedId, aa.WaitingListId, aa.RequestId,
             aa.PakaiBedPurpose, aa.OccupantRole, aa.PakaiBedStatus,
             aa.ProposedAt, aa.StartedAt, aa.AssignedBy, aa.BedAssignabilityEvidenceId,
+            aa.PhysicalKelasId, aa.BillingKelasId, aa.TipeKamarId, aa.Tarif,
+            aa.MotherPakaiBedId, aa.IsTitipKelas, aa.IsNaikKelas,
             aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,
             aa.VodUser, aa.VodDate
         FROM BILRG_RnaPakaiBedAlokasi aa
@@ -39,11 +41,15 @@ public class PakaiBedAlokasiDal : IPakaiBedAlokasiDal
                 PakaiBedId, Version, RegId, PasienId, BangsalId, KamarId, BedId,
                 WaitingListId, RequestId, PakaiBedPurpose, OccupantRole, PakaiBedStatus,
                 ProposedAt, StartedAt, AssignedBy, BedAssignabilityEvidenceId,
+                PhysicalKelasId, BillingKelasId, TipeKamarId, Tarif,
+                MotherPakaiBedId, IsTitipKelas, IsNaikKelas,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
                 @PakaiBedId, @Version, @RegId, @PasienId, @BangsalId, @KamarId, @BedId,
                 @WaitingListId, @RequestId, @PakaiBedPurpose, @OccupantRole, @PakaiBedStatus,
                 @ProposedAt, @StartedAt, @AssignedBy, @BedAssignabilityEvidenceId,
+                @PhysicalKelasId, @BillingKelasId, @TipeKamarId, @Tarif,
+                @MotherPakaiBedId, @IsTitipKelas, @IsNaikKelas,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -61,6 +67,13 @@ public class PakaiBedAlokasiDal : IPakaiBedAlokasiDal
                 PakaiBedStatus = @PakaiBedStatus, ProposedAt = @ProposedAt,
                 StartedAt = @StartedAt, AssignedBy = @AssignedBy,
                 BedAssignabilityEvidenceId = @BedAssignabilityEvidenceId,
+                PhysicalKelasId = @PhysicalKelasId,
+                BillingKelasId = @BillingKelasId,
+                TipeKamarId = @TipeKamarId,
+                Tarif = @Tarif,
+                MotherPakaiBedId = @MotherPakaiBedId,
+                IsTitipKelas = @IsTitipKelas,
+                IsNaikKelas = @IsNaikKelas,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
             WHERE PakaiBedId = @PakaiBedId
@@ -80,6 +93,13 @@ public class PakaiBedAlokasiDal : IPakaiBedAlokasiDal
                 PakaiBedStatus = @PakaiBedStatus, ProposedAt = @ProposedAt,
                 StartedAt = @StartedAt, AssignedBy = @AssignedBy,
                 BedAssignabilityEvidenceId = @BedAssignabilityEvidenceId,
+                PhysicalKelasId = @PhysicalKelasId,
+                BillingKelasId = @BillingKelasId,
+                TipeKamarId = @TipeKamarId,
+                Tarif = @Tarif,
+                MotherPakaiBedId = @MotherPakaiBedId,
+                IsTitipKelas = @IsTitipKelas,
+                IsNaikKelas = @IsNaikKelas,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
             WHERE PakaiBedId = @PakaiBedId AND Version = @ExpectedVersion
@@ -118,6 +138,13 @@ public class PakaiBedAlokasiDal : IPakaiBedAlokasiDal
         dp.AddParam("@StartedAt", dto.StartedAt, SqlDbType.DateTime);
         dp.AddParam("@AssignedBy", dto.AssignedBy, SqlDbType.VarChar);
         dp.AddParam("@BedAssignabilityEvidenceId", dto.BedAssignabilityEvidenceId, SqlDbType.VarChar);
+        dp.AddParam("@PhysicalKelasId", dto.PhysicalKelasId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@BillingKelasId", dto.BillingKelasId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@TipeKamarId", dto.TipeKamarId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@Tarif", dto.Tarif, SqlDbType.Decimal);
+        dp.AddParam("@MotherPakaiBedId", dto.MotherPakaiBedId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@IsTitipKelas", dto.IsTitipKelas, SqlDbType.Bit);
+        dp.AddParam("@IsNaikKelas", dto.IsNaikKelas, SqlDbType.Bit);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

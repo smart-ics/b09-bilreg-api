@@ -29,7 +29,14 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         string assignedBy,
         string bedAssignabilityEvidenceId,
         IEnumerable<PakaiBedTransisiModel> listTransisi,
-        IEnumerable<PakaiBedKoreksiModel> listKoreksi)
+        IEnumerable<PakaiBedKoreksiModel> listKoreksi,
+        string physicalKelasId = "",
+        string billingKelasId = "",
+        string tipeKamarId = "",
+        decimal tarif = 0,
+        string motherPakaiBedId = "",
+        bool isTitipKelas = false,
+        bool isNaikKelas = false)
     {
         PakaiBedId = pakaiBedId;
         Version = version;
@@ -49,6 +56,13 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         BedAssignabilityEvidenceId = bedAssignabilityEvidenceId;
         _listTransisi = listTransisi?.ToList() ?? [];
         _listKoreksi = listKoreksi?.ToList() ?? [];
+        PhysicalKelasId = physicalKelasId ?? string.Empty;
+        BillingKelasId = billingKelasId ?? string.Empty;
+        TipeKamarId = tipeKamarId ?? string.Empty;
+        Tarif = tarif;
+        MotherPakaiBedId = motherPakaiBedId ?? string.Empty;
+        IsTitipKelas = isTitipKelas;
+        IsNaikKelas = isNaikKelas;
     }
 
     #region CREATION
@@ -66,7 +80,14 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         string actorId,
         DateTime occurredAt,
         DateTime recordedAt,
-        string reason)
+        string reason,
+        string physicalKelasId = "",
+        string billingKelasId = "",
+        string tipeKamarId = "",
+        decimal tarif = 0,
+        string motherPakaiBedId = "",
+        bool isTitipKelas = false,
+        bool isNaikKelas = false)
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.NullOrWhiteSpace(pasienId);
@@ -74,7 +95,7 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         Guard.Against.NullOrWhiteSpace(kamarId);
         Guard.Against.NullOrWhiteSpace(bedId);
         Guard.Against.NullOrWhiteSpace(requestId);
-        ValidatePurposeAndRole(pakaiBedPurpose, occupantRole, waitingListId);
+        ValidatePurposeAndRole(pakaiBedPurpose, occupantRole, waitingListId, motherPakaiBedId);
 
         var pakaiBedId = NunaId.New(ID_PREFIX);
         var transition = PakaiBedTransisiModel.Propose(
@@ -104,7 +125,14 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
             string.Empty,
             string.Empty,
             [transition],
-            []);
+            [],
+            physicalKelasId,
+            billingKelasId,
+            tipeKamarId,
+            tarif,
+            motherPakaiBedId,
+            isTitipKelas,
+            isNaikKelas);
     }
 
     public static PakaiBedAlokasiModel Default => new(
@@ -125,7 +153,14 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         string.Empty,
         string.Empty,
         [],
-        []);
+        [],
+        string.Empty,
+        string.Empty,
+        string.Empty,
+        0,
+        string.Empty,
+        false,
+        false);
 
     public static IPakaiBedAlokasiKey Key(string id)
     {
@@ -153,6 +188,13 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
     public DateTime? StartedAt { get; init; }
     public string AssignedBy { get; init; }
     public string BedAssignabilityEvidenceId { get; init; }
+    public string PhysicalKelasId { get; init; }
+    public string BillingKelasId { get; init; }
+    public string TipeKamarId { get; init; }
+    public decimal Tarif { get; init; }
+    public string MotherPakaiBedId { get; init; }
+    public bool IsTitipKelas { get; init; }
+    public bool IsNaikKelas { get; init; }
     public IEnumerable<PakaiBedTransisiModel> ListTransition => _listTransisi.AsReadOnly();
     public IEnumerable<PakaiBedKoreksiModel> ListCorrection => _listKoreksi.AsReadOnly();
 
@@ -164,6 +206,10 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
     public bool IsCompanionBed =>
         PakaiBedPurpose == PakaiBedPurposeEnum.Companion &&
         OccupantRole == OccupantRoleEnum.Companion;
+
+    public bool IsRoomingIn =>
+        PakaiBedPurpose == PakaiBedPurposeEnum.RoomingIn &&
+        !string.IsNullOrWhiteSpace(MotherPakaiBedId);
 
     #endregion
 
@@ -220,8 +266,165 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
             actorId,
             bedAssignabilityEvidenceId,
             transitions,
-            _listKoreksi);
+            _listKoreksi,
+            PhysicalKelasId,
+            BillingKelasId,
+            TipeKamarId,
+            Tarif,
+            MotherPakaiBedId,
+            IsTitipKelas,
+            IsNaikKelas);
     }
+
+    public PakaiBedAlokasiModel Release(
+        DateTime occurredAt,
+        string reason,
+        string actorId,
+        DateTime? recordedAt = null)
+    {
+        Guard.Against.NullOrWhiteSpace(actorId);
+        Guard.Against.NullOrWhiteSpace(reason);
+
+        if (PakaiBedStatus != PakaiBedStatusEnum.Active)
+            throw new InvalidOperationException(
+                $"PakaiBed {PakaiBedId} harus Active untuk dilepas (status saat ini: {PakaiBedStatus}).");
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        var recAt = recordedAt ?? occurredAt;
+        EnsureUtc(recAt, nameof(recordedAt));
+
+        if (recAt < occurredAt)
+            throw new ArgumentException(
+                $"RecordedAt ({recAt:O}) tidak boleh lebih awal dari OccurredAt ({occurredAt:O}).",
+                nameof(recordedAt));
+
+        if (StartedAt.HasValue && occurredAt < StartedAt.Value)
+            throw new ArgumentException(
+                $"Waktu release ({occurredAt:O}) tidak boleh lebih awal dari waktu mulai ({StartedAt.Value:O}).",
+                nameof(occurredAt));
+
+        var releaseTransition = new PakaiBedTransisiModel(
+            NunaId.New("ATR"),
+            PakaiBedId,
+            PakaiBedTransisiEnum.Released,
+            occurredAt,
+            recAt,
+            actorId,
+            reason,
+            RequestId,
+            WaitingListId,
+            BedAssignabilityEvidenceId);
+        var transitions = _listTransisi.Append(releaseTransition);
+
+        return new PakaiBedAlokasiModel(
+            PakaiBedId,
+            Version + 1,
+            RegId,
+            PasienId,
+            BangsalId,
+            KamarId,
+            BedId,
+            WaitingListId,
+            RequestId,
+            PakaiBedPurpose,
+            OccupantRole,
+            PakaiBedStatusEnum.Released,
+            ProposedAt,
+            StartedAt,
+            AssignedBy,
+            BedAssignabilityEvidenceId,
+            transitions,
+            _listKoreksi,
+            PhysicalKelasId,
+            BillingKelasId,
+            TipeKamarId,
+            Tarif,
+            MotherPakaiBedId,
+            IsTitipKelas,
+            IsNaikKelas);
+    }
+
+    public PakaiBedAlokasiModel Release(
+        string reason,
+        string actorId,
+        DateTime occurredAt,
+        DateTime? recordedAt = null)
+        => Release(occurredAt, reason, actorId, recordedAt);
+
+    public PakaiBedAlokasiModel Void(
+        DateTime voidAt,
+        string reason,
+        string actorId,
+        DateTime? recordedAt = null)
+    {
+        Guard.Against.NullOrWhiteSpace(actorId);
+        Guard.Against.NullOrWhiteSpace(reason);
+
+        if (PakaiBedStatus == PakaiBedStatusEnum.Cancelled)
+            throw new InvalidOperationException(
+                $"PakaiBed {PakaiBedId} sudah dibatalkan (Cancelled).");
+
+        EnsureUtc(voidAt, nameof(voidAt));
+        var recAt = recordedAt ?? voidAt;
+        EnsureUtc(recAt, nameof(recordedAt));
+
+        if (recAt < voidAt)
+            throw new ArgumentException(
+                $"RecordedAt ({recAt:O}) tidak boleh lebih awal dari VoidAt ({voidAt:O}).",
+                nameof(recordedAt));
+
+        if (voidAt < ProposedAt)
+            throw new ArgumentException(
+                $"Waktu pembatalan ({voidAt:O}) tidak boleh lebih awal dari waktu proposal ({ProposedAt:O}).",
+                nameof(voidAt));
+
+        var voidTransition = new PakaiBedTransisiModel(
+            NunaId.New("ATR"),
+            PakaiBedId,
+            PakaiBedTransisiEnum.Cancelled,
+            voidAt,
+            recAt,
+            actorId,
+            reason,
+            RequestId,
+            WaitingListId,
+            BedAssignabilityEvidenceId);
+        var transitions = _listTransisi.Append(voidTransition);
+
+        return new PakaiBedAlokasiModel(
+            PakaiBedId,
+            Version + 1,
+            RegId,
+            PasienId,
+            BangsalId,
+            KamarId,
+            BedId,
+            WaitingListId,
+            RequestId,
+            PakaiBedPurpose,
+            OccupantRole,
+            PakaiBedStatusEnum.Cancelled,
+            ProposedAt,
+            StartedAt,
+            AssignedBy,
+            BedAssignabilityEvidenceId,
+            transitions,
+            _listKoreksi,
+            PhysicalKelasId,
+            BillingKelasId,
+            TipeKamarId,
+            Tarif,
+            MotherPakaiBedId,
+            IsTitipKelas,
+            IsNaikKelas);
+    }
+
+    public PakaiBedAlokasiModel Void(
+        string reason,
+        string actorId,
+        DateTime voidAt,
+        DateTime? recordedAt = null)
+        => Void(voidAt, reason, actorId, recordedAt);
 
     #endregion
 
@@ -238,16 +441,19 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
     private static void ValidatePurposeAndRole(
         PakaiBedPurposeEnum pakaiBedPurpose,
         OccupantRoleEnum occupantRole,
-        string waitingListId)
+        string waitingListId,
+        string motherPakaiBedId = "")
     {
         var isClinical = pakaiBedPurpose == PakaiBedPurposeEnum.Clinical &&
                          occupantRole == OccupantRoleEnum.Primary;
         var isCompanion = pakaiBedPurpose == PakaiBedPurposeEnum.Companion &&
                           occupantRole == OccupantRoleEnum.Companion;
+        var isRoomingIn = pakaiBedPurpose == PakaiBedPurposeEnum.RoomingIn &&
+                          (occupantRole == OccupantRoleEnum.Associated || occupantRole == OccupantRoleEnum.Companion);
 
-        if (!isClinical && !isCompanion)
+        if (!isClinical && !isCompanion && !isRoomingIn)
             throw new InvalidOperationException(
-                $"P3 hanya mendukung Clinical/Primary atau Companion/Companion; " +
+                $"P3 hanya mendukung Clinical/Primary, Companion/Companion, atau RoomingIn (Associated/Companion); " +
                 $"kombinasi saat ini: {pakaiBedPurpose}/{occupantRole}.");
 
         if (isClinical)
@@ -256,6 +462,10 @@ public record PakaiBedAlokasiModel : IPakaiBedAlokasiKey
         if (isCompanion && !string.IsNullOrWhiteSpace(waitingListId))
             throw new InvalidOperationException(
                 "Companion PakaiBed tidak boleh menghasilkan konsekuensi Waiting List.");
+
+        if (isRoomingIn && string.IsNullOrWhiteSpace(motherPakaiBedId))
+            throw new InvalidOperationException(
+                "RoomingIn PakaiBed memerlukan MotherPakaiBedId.");
     }
 
     #endregion

@@ -142,6 +142,27 @@ public record BedOperationalModel : IBedOperationalKey
             OccupancyEpoch);
     }
 
+    public BedOperationalModel SetCleaningRequired(
+        string reason,
+        string responsibleActorId,
+        DateTime occurredAt,
+        DateTime recordedAt,
+        string sourceFactId = "",
+        string requestId = "")
+    {
+        var effectiveRequestId = string.IsNullOrWhiteSpace(requestId) ? "-" : requestId;
+        return RecordReadiness(
+            BedReadinessStatusEnum.CleaningRequired,
+            BedRestrictionTypeEnum.Cleaning,
+            reason,
+            string.Empty,
+            responsibleActorId,
+            occurredAt,
+            recordedAt,
+            sourceFactId ?? string.Empty,
+            effectiveRequestId);
+    }
+
     public BedOperationalModel VerifyReady(
         string reason,
         string evidenceReference,

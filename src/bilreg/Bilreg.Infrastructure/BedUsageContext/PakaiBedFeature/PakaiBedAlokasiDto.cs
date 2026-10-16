@@ -19,6 +19,13 @@ public record PakaiBedAlokasiDto(
     DateTime StartedAt,
     string AssignedBy,
     string BedAssignabilityEvidenceId,
+    string PhysicalKelasId,
+    string BillingKelasId,
+    string TipeKamarId,
+    decimal Tarif,
+    string MotherPakaiBedId,
+    bool IsTitipKelas,
+    bool IsNaikKelas,
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -45,6 +52,8 @@ public record PakaiBedAlokasiDto(
             (int)model.PakaiBedStatus, model.ProposedAt,
             model.StartedAt ?? EmptyDate, model.AssignedBy,
             model.BedAssignabilityEvidenceId,
+            model.PhysicalKelasId, model.BillingKelasId, model.TipeKamarId,
+            model.Tarif, model.MotherPakaiBedId, model.IsTitipKelas, model.IsNaikKelas,
             first.UserId, first.RecordedAt, last.UserId, last.RecordedAt,
             string.Empty, EmptyDate);
     }
@@ -57,7 +66,9 @@ public record PakaiBedAlokasiDto(
             WaitingListId, RequestId, (PakaiBedPurposeEnum)PakaiBedPurpose,
             (OccupantRoleEnum)OccupantRole, (PakaiBedStatusEnum)PakaiBedStatus,
             AsUtc(ProposedAt), StartedAt.Year == EmptyDate.Year ? null : AsUtc(StartedAt),
-            AssignedBy, BedAssignabilityEvidenceId, transitions, corrections);
+            AssignedBy, BedAssignabilityEvidenceId, transitions, corrections,
+            PhysicalKelasId, BillingKelasId, TipeKamarId, Tarif,
+            MotherPakaiBedId, IsTitipKelas, IsNaikKelas);
 
     private static DateTime AsUtc(DateTime value) =>
         DateTime.SpecifyKind(value, DateTimeKind.Utc);

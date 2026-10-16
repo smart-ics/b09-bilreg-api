@@ -280,6 +280,153 @@ public class BedOperationalModelTest
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dicatat*");
     }
 
+    [Fact]
+    public void SetCleaningRequired_TransitionsToCleaningRequiredAndProjectsBlocker()
+    {
+        var sut = CreateSut().SetCleaningRequired(
+            "Post-checkout cleaning",
+            "PEG-1",
+            OccurredAt,
+            RecordedAt,
+            "FACT-1",
+            "REQ-1");
+
+        sut.Version.Should().Be(1);
+        sut.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+        sut.HasUnresolvedBlocker.Should().BeTrue();
+        sut.IsReadinessVerified.Should().BeFalse();
+        sut.CurrentBlockerState.RestrictionType
+            .Should().Be(BedRestrictionTypeEnum.Cleaning);
+        sut.CurrentBlockerState.Reason.Should().Be("Post-checkout cleaning");
+        sut.CurrentBlockerState.OriginatingTransactionId
+            .Should().Be(sut.LatestReadinessTransactionId);
+        sut.ListReadinessTransaction.Should().ContainSingle();
+
+        var tx = sut.ListReadinessTransaction.Single();
+        tx.NewStatus.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+        tx.RestrictionType.Should().Be(BedRestrictionTypeEnum.Cleaning);
+        tx.Reason.Should().Be("Post-checkout cleaning");
+        tx.EvidenceReference.Should().BeEmpty();
+        tx.ResponsibleActorId.Should().Be("PEG-1");
+        tx.OccurredAt.Should().Be(OccurredAt);
+        tx.RecordedAt.Should().Be(RecordedAt);
+        tx.SourceFactId.Should().Be("FACT-1");
+        tx.RequestId.Should().Be("REQ-1");
+    }
+
+    [Fact]
+    public void SetCleaningRequired_DefaultOptionalParameters_DefaultsToDashAndSucceeds()
+    {
+        var sut = CreateSut().SetCleaningRequired(
+            "Default test",
+            "PEG-1",
+            OccurredAt,
+            RecordedAt);
+
+        sut.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+        var tx = sut.ListReadinessTransaction.Single();
+        tx.SourceFactId.Should().BeEmpty();
+        tx.RequestId.Should().Be("-");
+    }
+
+    [Fact]
+    public void SetCleaningRequired_FromReadyState_TransitionsSuccessfullyAndIncrementsVersion()
+    {
+        var readyBed = VerifyReady(CreateSut(), OccurredAt, "REQ-0");
+        readyBed.IsReadinessVerified.Should().BeTrue();
+        readyBed.CurrentReadiness.Should().Be(BedReadinessStatusEnum.Ready);
+
+        var dirtyBed = readyBed.SetCleaningRequired(
+            "Discharge release",
+            "PEG-NURSE",
+            OccurredAt.AddHours(2),
+            RecordedAt.AddHours(2),
+            "RELEASE-99");
+
+        dirtyBed.Version.Should().Be(readyBed.Version + 1);
+        dirtyBed.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+        dirtyBed.IsReadinessVerified.Should().BeFalse();
+        dirtyBed.HasUnresolvedBlocker.Should().BeTrue();
+        dirtyBed.CurrentBlockerState.RestrictionType
+            .Should().Be(BedRestrictionTypeEnum.Cleaning);
+        dirtyBed.CurrentBlockerState.Reason.Should().Be("Discharge release");
+        dirtyBed.ListReadinessTransaction.Should().HaveCount(2);
+
+        // Immutability: original instance is unchanged
+        readyBed.CurrentReadiness.Should().Be(BedReadinessStatusEnum.Ready);
+        readyBed.IsReadinessVerified.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SetCleaningRequired_DuplicateSourceFact_Throws()
+    {
+        var sut = CreateSut().SetCleaningRequired(
+            "First",
+            "PEG-1",
+            OccurredAt,
+            RecordedAt,
+            "SOURCE-DUPLICATE");
+
+        var act = () => sut.SetCleaningRequired(
+            "Second",
+            "PEG-2",
+            OccurredAt.AddMinutes(5),
+            RecordedAt.AddMinutes(5),
+            "SOURCE-DUPLICATE");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dicatat*");
+    }
+
+    [Fact]
+    public void SetCleaningRequired_WithNonUtcTime_Throws()
+    {
+        var localTime = DateTime.SpecifyKind(OccurredAt, DateTimeKind.Local);
+
+        var act = () => CreateSut().SetCleaningRequired(
+            "Cleaning",
+            "PEG-1",
+            localTime,
+            RecordedAt);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*DateTimeKind.Utc*");
+    }
+
+    [Fact]
+    public void SetCleaningRequired_WithRecordedAtBeforeOccurredAt_Throws()
+    {
+        var act = () => CreateSut().SetCleaningRequired(
+            "Cleaning",
+            "PEG-1",
+            OccurredAt,
+            OccurredAt.AddMinutes(-5));
+
+        act.Should().Throw<ArgumentException>().WithMessage("*RecordedAt*");
+    }
+
+    [Fact]
+    public void SetCleaningRequired_WithBlankReason_Throws()
+    {
+        var act = () => CreateSut().SetCleaningRequired(
+            "",
+            "PEG-1",
+            OccurredAt,
+            RecordedAt);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void SetCleaningRequired_WithBlankResponsibleActor_Throws()
+    {
+        var act = () => CreateSut().SetCleaningRequired(
+            "Cleaning required",
+            "",
+            OccurredAt,
+            RecordedAt);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
     private static BedOperationalModel CreateSut() =>
         BedOperationalModel.Create(
             "BED-1",

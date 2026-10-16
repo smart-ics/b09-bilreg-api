@@ -62,7 +62,7 @@ public class PakaiBedAlokasiModelTest
     [InlineData(PakaiBedPurposeEnum.Clinical, OccupantRoleEnum.Companion)]
     [InlineData(PakaiBedPurposeEnum.Companion, OccupantRoleEnum.Primary)]
     [InlineData(PakaiBedPurposeEnum.Retained, OccupantRoleEnum.Primary)]
-    [InlineData(PakaiBedPurposeEnum.RoomingIn, OccupantRoleEnum.Associated)]
+    [InlineData(PakaiBedPurposeEnum.RoomingIn, OccupantRoleEnum.Primary)]
     public void Propose_UnsupportedP3PurposeRole_Throws(
         PakaiBedPurposeEnum purpose,
         OccupantRoleEnum role)
@@ -182,6 +182,297 @@ public class PakaiBedAlokasiModelTest
             "Reason", "PEG-HEAD", AssignedAt, AssignedAt.AddMinutes(-1), string.Empty);
 
         act.Should().Throw<ArgumentException>().WithMessage("*tidak boleh lebih awal*");
+    }
+
+    [Fact]
+    public void Propose_WithDualClassAndClassificationFlags_PopulatesProperties()
+    {
+        var sut = PakaiBedAlokasiModel.Propose(
+            "REG-1", "P-1", "BGS-1", "KMR-1", "BED-1", "WTL-1", "REQ-1",
+            PakaiBedPurposeEnum.Clinical, OccupantRoleEnum.Primary,
+            "PEG-1", ProposedAt, RecordedAt, "Titip Kelas proposal",
+            physicalKelasId: "K2", billingKelasId: "K1", tipeKamarId: "B", tarif: 350000m,
+            isTitipKelas: true, isNaikKelas: false);
+
+        sut.PhysicalKelasId.Should().Be("K2");
+        sut.BillingKelasId.Should().Be("K1");
+        sut.TipeKamarId.Should().Be("B");
+        sut.Tarif.Should().Be(350000m);
+        sut.IsTitipKelas.Should().BeTrue();
+        sut.IsNaikKelas.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Assign_PreservesDualClassAndRoomingInProperties()
+    {
+        var proposed = PakaiBedAlokasiModel.Propose(
+            "REG-1", "P-1", "BGS-1", "KMR-1", "BED-1", "WTL-1", "REQ-1",
+            PakaiBedPurposeEnum.Clinical, OccupantRoleEnum.Primary,
+            "PEG-1", ProposedAt, RecordedAt, "Proposal",
+            physicalKelasId: "VIP", billingKelasId: "VVIP", tipeKamarId: "A", tarif: 1200000m,
+            motherPakaiBedId: "PKB-PARENT", isTitipKelas: false, isNaikKelas: true);
+
+        var active = proposed.Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+
+        active.PhysicalKelasId.Should().Be("VIP");
+        active.BillingKelasId.Should().Be("VVIP");
+        active.TipeKamarId.Should().Be("A");
+        active.Tarif.Should().Be(1200000m);
+        active.MotherPakaiBedId.Should().Be("PKB-PARENT");
+        active.IsTitipKelas.Should().BeFalse();
+        active.IsNaikKelas.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Propose_RoomingIn_WithAssociatedAndMotherPakaiBedId_CreatesProposedAggregate()
+    {
+        var sut = PakaiBedAlokasiModel.Propose(
+            "REG-BABY", "P-BABY", "BGS-1", "KMR-1", "BED-1", string.Empty, "REQ-BABY",
+            PakaiBedPurposeEnum.RoomingIn, OccupantRoleEnum.Associated,
+            "PEG-1", ProposedAt, RecordedAt, "Rooming-in proposal",
+            physicalKelasId: "K1", billingKelasId: "K1", tipeKamarId: "A", tarif: 0m,
+            motherPakaiBedId: "PKB-MOM");
+
+        sut.PakaiBedPurpose.Should().Be(PakaiBedPurposeEnum.RoomingIn);
+        sut.OccupantRole.Should().Be(OccupantRoleEnum.Associated);
+        sut.MotherPakaiBedId.Should().Be("PKB-MOM");
+        sut.IsRoomingIn.Should().BeTrue();
+        sut.Tarif.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Propose_RoomingIn_WithCompanionAndMotherPakaiBedId_CreatesProposedAggregate()
+    {
+        var sut = PakaiBedAlokasiModel.Propose(
+            "REG-BABY", "P-BABY", "BGS-1", "KMR-1", "BED-1", string.Empty, "REQ-BABY",
+            PakaiBedPurposeEnum.RoomingIn, OccupantRoleEnum.Companion,
+            "PEG-1", ProposedAt, RecordedAt, "Rooming-in companion proposal",
+            physicalKelasId: "K1", billingKelasId: "K1", tipeKamarId: "A", tarif: 0m,
+            motherPakaiBedId: "PKB-MOM");
+
+        sut.PakaiBedPurpose.Should().Be(PakaiBedPurposeEnum.RoomingIn);
+        sut.OccupantRole.Should().Be(OccupantRoleEnum.Companion);
+        sut.MotherPakaiBedId.Should().Be("PKB-MOM");
+        sut.IsRoomingIn.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Propose_RoomingIn_WithoutMotherPakaiBedId_ThrowsInvalidOperationException(string motherId)
+    {
+        var act = () => PakaiBedAlokasiModel.Propose(
+            "REG-BABY", "P-BABY", "BGS-1", "KMR-1", "BED-1", string.Empty, "REQ-BABY",
+            PakaiBedPurposeEnum.RoomingIn, OccupantRoleEnum.Associated,
+            "PEG-1", ProposedAt, RecordedAt, "Proposal",
+            motherPakaiBedId: motherId);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*RoomingIn*MotherPakaiBedId*");
+    }
+
+    [Fact]
+    public void Release_ActiveBed_TransitionsToReleasedAndRecordsTransition()
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+        var releasedAt = AssignedAt.AddDays(2);
+
+        var sut = active.Release(releasedAt, "Pasien KRS sembuh", "PEG-NURSE");
+
+        sut.PakaiBedStatus.Should().Be(PakaiBedStatusEnum.Released);
+        sut.Version.Should().Be(active.Version + 1);
+        sut.IsClinicalPakaiBed.Should().BeFalse();
+        sut.ListTransition.Should().HaveCount(3);
+        var transition = sut.ListTransition.Last();
+        transition.PakaiBedTransition.Should().Be(PakaiBedTransisiEnum.Released);
+        transition.ActorId.Should().Be("PEG-NURSE");
+        transition.Reason.Should().Be("Pasien KRS sembuh");
+        transition.OccurredAt.Should().Be(releasedAt);
+    }
+
+    [Fact]
+    public void Release_PreservesAllAggregateProperties()
+    {
+        var active = PakaiBedAlokasiModel.Propose(
+            "REG-1", "P-1", "BGS-1", "KMR-1", "BED-1", "WTL-1", "REQ-1",
+            PakaiBedPurposeEnum.Clinical, OccupantRoleEnum.Primary,
+            "PEG-1", ProposedAt, RecordedAt, "Proposal",
+            physicalKelasId: "K1", billingKelasId: "VIP", tipeKamarId: "A", tarif: 750000m,
+            motherPakaiBedId: "PKB-MOM", isTitipKelas: true, isNaikKelas: false)
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+
+        var released = active.Release(AssignedAt.AddDays(1), "Checkout", "PEG-NURSE");
+
+        released.PhysicalKelasId.Should().Be("K1");
+        released.BillingKelasId.Should().Be("VIP");
+        released.TipeKamarId.Should().Be("A");
+        released.Tarif.Should().Be(750000m);
+        released.MotherPakaiBedId.Should().Be("PKB-MOM");
+        released.IsTitipKelas.Should().BeTrue();
+        released.IsNaikKelas.Should().BeFalse();
+        released.RegId.Should().Be("REG-1");
+        released.PasienId.Should().Be("P-1");
+        released.BedId.Should().Be("BED-1");
+    }
+
+    [Fact]
+    public void Release_WhenProposed_ThrowsInvalidOperationException()
+    {
+        var proposed = ProposeClinical();
+        var act = () => proposed.Release(AssignedAt, "Checkout", "PEG-1");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Active untuk dilepas*");
+    }
+
+    [Fact]
+    public void Release_WhenAlreadyReleased_ThrowsInvalidOperationException()
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+        var released = active.Release(AssignedAt.AddDays(1), "Checkout", "PEG-NURSE");
+
+        var act = () => released.Release(AssignedAt.AddDays(2), "Checkout again", "PEG-NURSE");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Active untuk dilepas*");
+    }
+
+    [Fact]
+    public void Release_WithOccurredAtEarlierThanStartedAt_ThrowsArgumentException()
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+
+        var act = () => active.Release(AssignedAt.AddMinutes(-1), "Checkout", "PEG-NURSE");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*tidak boleh lebih awal dari waktu mulai*");
+    }
+
+    [Fact]
+    public void Release_WithNonUtcOccurredAt_ThrowsArgumentException()
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+        var localTime = DateTime.SpecifyKind(AssignedAt.AddDays(1), DateTimeKind.Local);
+
+        var act = () => active.Release(localTime, "Checkout", "PEG-NURSE");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*DateTimeKind.Utc*");
+    }
+
+    [Theory]
+    [InlineData("", "Valid Reason")]
+    [InlineData("   ", "Valid Reason")]
+    [InlineData("PEG-1", "")]
+    [InlineData("PEG-1", "   ")]
+    public void Release_WithNullOrWhitespaceArguments_Throws(string actorId, string reason)
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+
+        var act = () => active.Release(AssignedAt.AddDays(1), reason, actorId);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Void_ActiveBed_TransitionsToCancelledAndRecordsTransition()
+    {
+        var active = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1");
+        var voidAt = AssignedAt.AddHours(2);
+
+        var sut = active.Void(voidAt, "Salah kamar perawatan", "PEG-ADMIN");
+
+        sut.PakaiBedStatus.Should().Be(PakaiBedStatusEnum.Cancelled);
+        sut.Version.Should().Be(active.Version + 1);
+        sut.IsClinicalPakaiBed.Should().BeFalse();
+        sut.ListTransition.Should().HaveCount(3);
+        var transition = sut.ListTransition.Last();
+        transition.PakaiBedTransition.Should().Be(PakaiBedTransisiEnum.Cancelled);
+        transition.ActorId.Should().Be("PEG-ADMIN");
+        transition.Reason.Should().Be("Salah kamar perawatan");
+        transition.OccurredAt.Should().Be(voidAt);
+    }
+
+    [Fact]
+    public void Void_ProposedBed_TransitionsToCancelled()
+    {
+        var proposed = ProposeClinical();
+        var voidAt = ProposedAt.AddMinutes(30);
+
+        var sut = proposed.Void(voidAt, "Pasien menolak rawat inap", "PEG-ADMIN");
+
+        sut.PakaiBedStatus.Should().Be(PakaiBedStatusEnum.Cancelled);
+        sut.Version.Should().Be(1);
+        sut.ListTransition.Should().HaveCount(2);
+        sut.ListTransition.Last().PakaiBedTransition.Should().Be(PakaiBedTransisiEnum.Cancelled);
+    }
+
+    [Fact]
+    public void Void_ReleasedBed_TransitionsToCancelled()
+    {
+        var released = ProposeClinical()
+            .Assign("PEG-2", AssignedAt, AssignedAt.AddMinutes(1), "Assign", "EVD-1")
+            .Release(AssignedAt.AddDays(1), "Checkout", "PEG-NURSE");
+
+        var voidAt = AssignedAt.AddDays(1).AddMinutes(10);
+        var sut = released.Void(voidAt, "Release dibatalkan karena salah pasien", "PEG-ADMIN");
+
+        sut.PakaiBedStatus.Should().Be(PakaiBedStatusEnum.Cancelled);
+        sut.ListTransition.Last().PakaiBedTransition.Should().Be(PakaiBedTransisiEnum.Cancelled);
+    }
+
+    [Fact]
+    public void Void_WhenAlreadyCancelled_ThrowsInvalidOperationException()
+    {
+        var proposed = ProposeClinical();
+        var voided = proposed.Void(ProposedAt.AddMinutes(10), "Batal", "PEG-ADMIN");
+
+        var act = () => voided.Void(ProposedAt.AddMinutes(20), "Batal lagi", "PEG-ADMIN");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*sudah dibatalkan*");
+    }
+
+    [Fact]
+    public void Void_WithVoidAtEarlierThanProposedAt_ThrowsArgumentException()
+    {
+        var proposed = ProposeClinical();
+        var act = () => proposed.Void(ProposedAt.AddMinutes(-5), "Batal", "PEG-ADMIN");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*tidak boleh lebih awal dari waktu proposal*");
+    }
+
+    [Fact]
+    public void Void_WithNonUtcTime_ThrowsArgumentException()
+    {
+        var proposed = ProposeClinical();
+        var localTime = DateTime.SpecifyKind(ProposedAt.AddMinutes(10), DateTimeKind.Local);
+
+        var act = () => proposed.Void(localTime, "Batal", "PEG-ADMIN");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*DateTimeKind.Utc*");
+    }
+
+    [Theory]
+    [InlineData("", "Valid Reason")]
+    [InlineData("   ", "Valid Reason")]
+    [InlineData("PEG-1", "")]
+    [InlineData("PEG-1", "   ")]
+    public void Void_WithNullOrWhitespaceArguments_Throws(string actorId, string reason)
+    {
+        var proposed = ProposeClinical();
+
+        var act = () => proposed.Void(ProposedAt.AddMinutes(10), reason, actorId);
+
+        act.Should().Throw<ArgumentException>();
     }
 
     private static PakaiBedAlokasiModel ProposeClinical() =>

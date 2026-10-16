@@ -1,68 +1,88 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
-using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
 {
     public record PakaiBedVoidCommand(
-        string PakaiBedId, string UserId, string VoidReason, string UserAgent, string RemoteIpAddress)
+        string PakaiBedId,
+        string UserId,
+        string VoidReason,
+        string UserAgent,
+        string RemoteIpAddress)
         : IRequest, IPakaiBed;
 
-    public class PakaiBedDeleteCommandHandler : IRequestHandler<PakaiBedVoidCommand>
+    public class PakaiBedVoidCommandHandler : IRequestHandler<PakaiBedVoidCommand>
     {
-        private readonly IPakaiBedRepo _pakaiBedRepo;
+        private readonly IPakaiBedAlokasiRepo _pakaiBedAlokasiRepo;
+        private readonly IPakaiBedBillingLockChecker _billingLockChecker;
         private readonly IAuditRepo _auditRepo;
         private readonly ITglJamProvider _tglJamProvider;
 
-        public PakaiBedDeleteCommandHandler(IPakaiBedRepo pakaiBedRepo, 
-            IAuditRepo auditRepo, 
+        public PakaiBedVoidCommandHandler(
+            IPakaiBedAlokasiRepo pakaiBedAlokasiRepo,
+            IPakaiBedBillingLockChecker billingLockChecker,
+            IAuditRepo auditRepo,
             ITglJamProvider tglJamProvider)
         {
-            _pakaiBedRepo = pakaiBedRepo;
+            _pakaiBedAlokasiRepo = pakaiBedAlokasiRepo;
+            _billingLockChecker = billingLockChecker;
             _auditRepo = auditRepo;
             _tglJamProvider = tglJamProvider;
         }
 
-        public Task Handle(PakaiBedVoidCommand request, CancellationToken cancellationToken)
+        public async Task Handle(PakaiBedVoidCommand request, CancellationToken cancellationToken)
         {
             Guard.Against.NullOrWhiteSpace(request.PakaiBedId);
             Guard.Against.NullOrWhiteSpace(request.UserId);
             Guard.Against.NullOrWhiteSpace(request.VoidReason);
 
-            var saved = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(request.PakaiBedId))
+            var alokasi = _pakaiBedAlokasiRepo.LoadEntity(PakaiBedAlokasiModel.Key(request.PakaiBedId))
                 .GetValueOrThrow($"Trs. Pakai Bed {request.PakaiBedId} not found");
 
-            var snapshotJson = AuditLogSnapshotJson.Serialize(saved);
+            var lockStatus = await _billingLockChecker.CheckLockStatusAsync(alokasi.PakaiBedId, alokasi.RegId, cancellationToken);
+            if (lockStatus is null || lockStatus.IsLocked)
+            {
+                var reason = lockStatus?.Reason ?? "Billing lock status could not be verified (Fail-Closed)";
+                throw new InvalidOperationException(
+                    $"Pembatalan penempatan tempat tidur {alokasi.PakaiBedId} ditolak karena tagihan terkunci: {reason}");
+            }
+
+            var snapshotJson = AuditLogSnapshotJson.Serialize(alokasi);
 
             var occurredAt = _tglJamProvider.Now;
+            var voidAt = occurredAt.Kind == DateTimeKind.Utc
+                ? occurredAt
+                : DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc);
 
-            saved.Void(request.UserId, occurredAt);
+            var voidAlokasi = alokasi.Void(voidAt, request.VoidReason, request.UserId, voidAt);
 
-            _pakaiBedRepo.SaveChanges(saved);
+            _pakaiBedAlokasiRepo.SaveChanges(voidAlokasi);
 
-            var audit = CreateAudit(saved, snapshotJson, request);
+            var audit = CreateAudit(voidAlokasi, snapshotJson, request, voidAt);
             _auditRepo.SaveChanges(audit);
-
-            return Task.CompletedTask;
         }
 
-        private AuditLog CreateAudit(PakaiBedModel pkb, string snapShotJson, PakaiBedVoidCommand cmd)
+        private static AuditLog CreateAudit(
+            PakaiBedAlokasiModel alokasi,
+            string snapshotJson,
+            PakaiBedVoidCommand cmd,
+            DateTime voidAt)
         {
             var result = AuditLog.Create(
-                pkb.AuditTrail.Voided,
+                new AuditInfoType(cmd.UserId, voidAt),
                 actionType: "VOID",
-                entityName: nameof(TindakanModel),
-                entityId: pkb.PakaiBedId,
+                entityName: nameof(PakaiBedModel),
+                entityId: alokasi.PakaiBedId,
                 reason: cmd.VoidReason,
-                originalDataJson: snapShotJson,
-                correlationId: pkb.Reg.RegId,
+                originalDataJson: snapshotJson,
+                correlationId: alokasi.RegId,
                 clientIpAddress: cmd.RemoteIpAddress,
-                userAgent: cmd.UserAgent
-                );
+                userAgent: cmd.UserAgent);
             return result;
         }
     }
