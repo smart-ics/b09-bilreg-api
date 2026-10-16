@@ -1,7 +1,9 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -12,10 +14,32 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
+public record OrderOpResourceRequest(
+    OrderOpResourceTypeEnum ResourceType,
+    string ItemName,
+    int Jumlah,
+    string Satuan,
+    string Keterangan = "");
+
 public record OkCreateOrderOpByRegCmd(
-    string RegId, string DiagCode, string JenisOperasiId, string NamaOperasi,
-    string DokterDpjpId, string TarifId, int EstimasiDurasiInMinutes, 
-    string PreferedDate, string SpecialEquipment, string UserId, bool IsForceCreate)
+    string RegId,
+    string DokterPengorderId,
+    string LayananPengorderId,
+    string DokterOperatorId,
+    string DiagCode,
+    string JenisOperasiId,
+    string NamaOperasi,
+    string ProsedurTambahan,
+    KlasifikasiOperasiEnum KlasifikasiOperasi,
+    AnestesiPlanEnum AnestesiPlan,
+    PostOpCareUnitEnum PostOpCareUnit,
+    string? TarifId,
+    int EstimasiDurasiInMinutes,
+    DateTime PreferedDate,
+    string SpecialEquipment,
+    string UserId,
+    bool IsForceCreate,
+    IEnumerable<OrderOpResourceRequest>? ListResource = null)
     : IRequest<OkCreateOrderOpByRegResponse>;
 
 public record OkCreateOrderOpByRegResponse(
@@ -35,9 +59,10 @@ public class OkCreateOrderOpByRegHandler
 {
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IRegRepo _regRepo;
+    private readonly ILayananRepo _layananRepo;
+    private readonly IPpaRepo _dokterRepo;
     private readonly IIcd10Repo _icdRepo;
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
-    private readonly IPpaRepo _dokterRepo;
     private readonly IOpCaseRepo _opCaseRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly ITglJamProvider _tglJamProvider;
@@ -45,18 +70,20 @@ public class OkCreateOrderOpByRegHandler
     public OkCreateOrderOpByRegHandler(
         IOrderOpRepo orderOpRepo,
         IRegRepo regRepo,
+        ILayananRepo layananRepo,
+        IPpaRepo dokterRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPpaRepo dokterRepo,
         IOpCaseRepo opCaseRepo,
         ITarifRepo tarifRepo,
         ITglJamProvider tglJamProvider)
     {
         _orderOpRepo = orderOpRepo;
         _regRepo = regRepo;
+        _layananRepo = layananRepo;
+        _dokterRepo = dokterRepo;
         _icdRepo = icdRepo;
         _jenisOperasiRepo = jenisOperasiRepo;
-        _dokterRepo = dokterRepo;
         _opCaseRepo = opCaseRepo;
         _tarifRepo = tarifRepo;
         _tglJamProvider = tglJamProvider;
@@ -67,12 +94,14 @@ public class OkCreateOrderOpByRegHandler
         CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
+
         //  GUARD
-        Guard.Against.NullOrEmpty(request.RegId);
-        Guard.Against.NullOrEmpty(request.DiagCode);
-        Guard.Against.NullOrEmpty(request.JenisOperasiId);
-        Guard.Against.NullOrEmpty(request.DokterDpjpId);
-        Guard.Against.NullOrEmpty(request.TarifId);
+        Guard.Against.NullOrEmpty(request.RegId, nameof(request.RegId));
+        Guard.Against.NullOrEmpty(request.DokterPengorderId, nameof(request.DokterPengorderId));
+        Guard.Against.NullOrEmpty(request.LayananPengorderId, nameof(request.LayananPengorderId));
+        Guard.Against.NullOrEmpty(request.DiagCode, nameof(request.DiagCode));
+        Guard.Against.NullOrEmpty(request.JenisOperasiId, nameof(request.JenisOperasiId));
+        Guard.Against.NullOrWhiteSpace(request.NamaOperasi, nameof(request.NamaOperasi));
 
         if (!request.IsForceCreate)
         {
@@ -83,11 +112,24 @@ public class OkCreateOrderOpByRegHandler
 
         //  BUILD
         var reg = LoadReg(request.RegId);
+        var layanan = LoadLayanan(request.LayananPengorderId);
+        var dokterPengorder = LoadDokter(request.DokterPengorderId, "Dokter Pengorder ID invalid");
         var icd = LoadIcd(request.DiagCode);
         var jenisOp = LoadJenisOperasi(request.JenisOperasiId);
-        var dokter = LoadDokter(request.DokterDpjpId);
-        var tarif = LoadTarif(request.TarifId);
-        var orderOp = CreateOrder(reg, icd, jenisOp, dokter, tarif, request, occurredAt);
+
+        PpaType? dokterOperator = null;
+        if (!string.IsNullOrWhiteSpace(request.DokterOperatorId) && request.DokterOperatorId != "-")
+        {
+            dokterOperator = LoadDokter(request.DokterOperatorId, "Dokter Operator ID invalid");
+        }
+
+        TarifType? tarif = null;
+        if (!string.IsNullOrWhiteSpace(request.TarifId) && request.TarifId != "-")
+        {
+            tarif = LoadTarif(request.TarifId);
+        }
+
+        var orderOp = CreateOrder(reg, layanan, dokterPengorder, icd, jenisOp, dokterOperator, tarif, request, occurredAt);
         var opCase = OpCaseModel.Create(orderOp, occurredAt);
 
         //  WRITE
@@ -95,12 +137,26 @@ public class OkCreateOrderOpByRegHandler
         _orderOpRepo.SaveChanges(orderOp);
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
+
         return Task.FromResult(RespondSuccess(orderOp));
     }
 
-    private RegModel LoadReg(string id) =>
-        _regRepo.LoadEntity(RegModel.Key(id))
+    private RegModel LoadReg(string id)
+    {
+        var reg = _regRepo.LoadEntity(RegModel.Key(id))
             .GetValueOrThrow("Reg ID invalid");
+        if (!reg.IsAktif)
+            throw new ArgumentException($"Registrasi '{id}' tidak aktif");
+        return reg;
+    }
+
+    private LayananType LoadLayanan(string id) =>
+        _layananRepo.LoadEntity(LayananType.Key(id))
+            .GetValueOrThrow("Layanan Pengorder ID invalid");
+
+    private PpaType LoadDokter(string id, string message = "Dokter ID invalid") =>
+        _dokterRepo.LoadEntity(PpaType.Key(id))
+            .GetValueOrThrow(message);
 
     private Icd10Type LoadIcd(string code) =>
         _icdRepo.LoadEntity(Icd10Type.Key(code))
@@ -109,10 +165,6 @@ public class OkCreateOrderOpByRegHandler
     private JenisOperasiType LoadJenisOperasi(string id) =>
         _jenisOperasiRepo.LoadEntity(JenisOperasiType.Key(id))
             .GetValueOrThrow("Jenis Operasi ID invalid");
-
-    private PpaType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PpaType.Key(id))
-            .GetValueOrThrow("Dokter DPJP ID invalid");
 
     private TarifType LoadTarif(string id) =>
         _tarifRepo.LoadEntity(TarifType.Key(id))
@@ -127,29 +179,64 @@ public class OkCreateOrderOpByRegHandler
     //  DOMAIN BUILDER
     private static OrderOpModel CreateOrder(
         RegModel reg,
+        LayananType layanan,
+        PpaType dokterPengorder,
         Icd10Type icd,
         JenisOperasiType jenisOp,
-        PpaType dokter,
-        TarifType tarif,
+        PpaType? dokterOperator,
+        TarifType? tarif,
         OkCreateOrderOpByRegCmd req,
         DateTime occurredAt)
     {
-        var orderOp = OrderOpModel.CreateByReg(reg, req.UserId, occurredAt);
+        var orderOp = OrderOpModel.CreateByReg(reg, layanan, dokterPengorder, req.UserId, occurredAt);
 
         orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
-        orderOp.OperationalRequest(
-            dokter,
-            req.EstimasiDurasiInMinutes,
-            req.PreferedDate.ToDate(DateFormatEnum.YMD),
-            req.SpecialEquipment,
-            occurredAt);
-        orderOp.SetTarif(tarif);
+        orderOp.SetProsedur(req.NamaOperasi, req.ProsedurTambahan, req.KlasifikasiOperasi);
+        orderOp.SetRencanaAnestesiDanPerawatan(req.AnestesiPlan, req.PostOpCareUnit);
+
+        var specialEquipment = string.IsNullOrWhiteSpace(req.SpecialEquipment) ? "-" : req.SpecialEquipment;
+
+        if (dokterOperator != null)
+        {
+            orderOp.SetDokterOperator(dokterOperator);
+            orderOp.OperationalRequest(
+                dokterOperator,
+                req.EstimasiDurasiInMinutes,
+                req.PreferedDate,
+                specialEquipment,
+                occurredAt);
+        }
+        else
+        {
+            orderOp.OperationalRequest(
+                req.EstimasiDurasiInMinutes,
+                req.PreferedDate,
+                specialEquipment,
+                occurredAt);
+        }
+
+        if (tarif != null)
+        {
+            orderOp.SetTarif(tarif);
+        }
+        else
+        {
+            orderOp.SetTarif(TarifReff.Default);
+        }
+
+        if (req.ListResource != null)
+        {
+            foreach (var item in req.ListResource)
+            {
+                orderOp.AddResource(item.ResourceType, item.ItemName, item.Jumlah, item.Satuan, item.Keterangan);
+            }
+        }
 
         return orderOp;
     }
 
     //  RESPONSE BUILDER
-    private OkCreateOrderOpByRegResponse RespondDuplicated(
+    private static OkCreateOrderOpByRegResponse RespondDuplicated(
         OkCreateOrderOpByRegCmd req, 
         OrderOpView existing)
     {
@@ -164,11 +251,11 @@ public class OkCreateOrderOpByRegHandler
             Requested: new OkCreateOrderOpByRegResponseContent(
                 req.RegId,
                 req.NamaOperasi,
-                req.PreferedDate)
+                req.PreferedDate.ToString("yyyy-MM-dd"))
         );
     }
 
-    private OkCreateOrderOpByRegResponse RespondSuccess(OrderOpModel orderOp)
+    private static OkCreateOrderOpByRegResponse RespondSuccess(OrderOpModel orderOp)
     {
         return new OkCreateOrderOpByRegResponse(
             OrderOpId: orderOp.OrderOpId,
