@@ -1,14 +1,18 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
 {
@@ -18,7 +22,8 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         string TipeKamarId,
         string BedId,
         string UserId,
-        DateTime TglJamIn) 
+        DateTime TglJamIn,
+        string? WaitingListId = null) 
         : IRequest<PakaiBedCreateResult>;
 
     public record PakaiBedCreateResult(
@@ -35,13 +40,15 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         private readonly ILayananRepo _layananRepo;
         private readonly IPakaiBedRepo _pakaiBedRepo;
         private readonly IPakaiBedAlokasiRepo _pakaiBedAlokasiRepo;
+        private readonly IWaitingListRepo _waitingListRepo;
 
         public PakaiBedCreateCommandHandler(IPakaiBedRepo pakaiBedRepo,
             IPakaiBedAlokasiRepo pakaiBedAlokasiRepo,
             IRegRepo regRepo, IBedRepo bedRepo,
             ILayananRepo layananRepo, IKamarRepo kamarRepo,
             ITipeKamarRepo tipeKamarRepo, IRoomRateRepo roomRateRepo, 
-            IKelasRepo kelasRepo)
+            IKelasRepo kelasRepo,
+            IWaitingListRepo waitingListRepo)
         {
             _pakaiBedRepo = pakaiBedRepo;
             _pakaiBedAlokasiRepo = pakaiBedAlokasiRepo;
@@ -52,8 +59,10 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             _tipeKamarRepo = tipeKamarRepo;
             _roomRateRepo = roomRateRepo;
             _kelasRepo = kelasRepo;
+            _waitingListRepo = waitingListRepo;
         }
-        public async Task<PakaiBedCreateResult> Handle(PakaiBedCreateCommand request, CancellationToken cancellationToken)
+
+        public Task<PakaiBedCreateResult> Handle(PakaiBedCreateCommand request, CancellationToken cancellationToken)
         {
             var reg = _regRepo.LoadEntity(RegModel.Key(request.RegId))
                 .GetValueOrThrow("Reg not found");
@@ -81,8 +90,20 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 .FirstOrDefault()
                 ?? throw new Exception("Room Rate for Tipe Kamar not found");
 
+            WaitingListModel? waitingList = null;
+            if (!string.IsNullOrWhiteSpace(request.WaitingListId))
+            {
+                waitingList = _waitingListRepo.LoadEntity(WaitingListModel.Key(request.WaitingListId))
+                    .Match(
+                        onSome: wl => wl,
+                        onNone: () => throw new KeyNotFoundException($"Waiting List with ID '{request.WaitingListId}' not found."));
+
+                if (!waitingList.IsActive)
+                    throw new InvalidOperationException($"Waiting List '{request.WaitingListId}' is not active (current status: {waitingList.WaitingListStatus}).");
+            }
+
             var periode = new PeriodePakaiBedType(
-                new AuditInfoType(request.UserId,request.TglJamIn),
+                new AuditInfoType(request.UserId, request.TglJamIn),
                 AuditInfoType.Default
                 );
 
@@ -95,9 +116,19 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 kelas,
                 rate.TotalNilai);
 
+            using var trans = TransHelper.NewScope();
+
             _pakaiBedRepo.SaveChanges(pakaiBed);
 
-            return new PakaiBedCreateResult(pakaiBed.PakaiBedId);
+            if (waitingList is not null)
+            {
+                waitingList = waitingList.Place(bed.BedId, pakaiBed.PakaiBedId, request.UserId, request.TglJamIn);
+                _waitingListRepo.SaveChanges(waitingList);
+            }
+
+            trans.Complete();
+
+            return Task.FromResult(new PakaiBedCreateResult(pakaiBed.PakaiBedId));
         }
     }
 }
