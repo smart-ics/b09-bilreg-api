@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
@@ -512,7 +513,85 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedRegInap.Should().NotBeNull();
     }
 
-    private static OpnameHarness CreateOpnameHarness(IAdmisiEventPublisher? customPublisher = null)
+    [Fact]
+    public async Task GivenOpnameRequest_WhenProcessed_ThenRecordsAdmissionRegisteredWithRegId()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.TrackerCoordinator.Verify(
+            x => x.RecordAdmissionRegistered(harness.Opname, response.RegId, TestTglJamProvider.Instance.Now),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenProcessed_ThenRecordsAdmissionRegisteredWithRegId()
+    {
+        var harness = CreateReservationHarness();
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.TrackerCoordinator.Verify(
+            x => x.RecordAdmissionRegistered(harness.Reservation, response.RegId, TestTglJamProvider.Instance.Now),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WhenTrackerCoordinatorThrows_ThenProcessStillSucceedsGracefully()
+    {
+        var trackerCoordinator = new Mock<IPasienTrackerInpatientCoordinator>();
+        trackerCoordinator
+            .Setup(x => x.RecordAdmissionRegistered(It.IsAny<OpnameRequestModel>(), It.IsAny<string>(), It.IsAny<DateTime>()))
+            .Throws(new InvalidOperationException("Tracker persistence failure"));
+
+        var harness = CreateOpnameHarness(customTrackerCoordinator: trackerCoordinator);
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.SavedOpname.Should().NotBeNull();
+        trackerCoordinator.Verify(
+            x => x.RecordAdmissionRegistered(harness.Opname, response.RegId, TestTglJamProvider.Instance.Now),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_WhenTrackerCoordinatorThrows_ThenProcessStillSucceedsGracefully()
+    {
+        var trackerCoordinator = new Mock<IPasienTrackerInpatientCoordinator>();
+        trackerCoordinator
+            .Setup(x => x.RecordAdmissionRegistered(It.IsAny<ReservationModel>(), It.IsAny<string>(), It.IsAny<DateTime>()))
+            .Throws(new InvalidOperationException("Tracker persistence failure"));
+
+        var harness = CreateReservationHarness(customTrackerCoordinator: trackerCoordinator);
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        trackerCoordinator.Verify(
+            x => x.RecordAdmissionRegistered(harness.Reservation, response.RegId, TestTglJamProvider.Instance.Now),
+            Times.Once);
+    }
+
+    private static OpnameHarness CreateOpnameHarness(
+        IAdmisiEventPublisher? customPublisher = null,
+        Mock<IPasienTrackerInpatientCoordinator>? customTrackerCoordinator = null)
     {
         var opname = OpnameRequestModel.Create(PasienModel.Default.ToReff(),
             PpaType.Default.ToReff(), DateTime.Today.AddDays(1), "test", "user1", "CH0001");
@@ -586,22 +665,25 @@ public class AdmissionRegistrationOrchestratorTest
 
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
+        var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
-            effectivePublisher, waitingListRepo.Object);
+            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object);
 
         return new OpnameHarness(
             sut, opname, publisher, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
-            auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo,
+            auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo, trackerCoordinator,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname,
             () => savedWaitingList);
     }
 
-    private static ReservationHarness CreateReservationHarness(IAdmisiEventPublisher? customPublisher = null)
+    private static ReservationHarness CreateReservationHarness(
+        IAdmisiEventPublisher? customPublisher = null,
+        Mock<IPasienTrackerInpatientCoordinator>? customTrackerCoordinator = null)
     {
         var reservation = ReservationModel.Create(
             PasienModel.Default.ToReff(),
@@ -674,17 +756,18 @@ public class AdmissionRegistrationOrchestratorTest
 
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
+        var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
-            effectivePublisher, waitingListRepo.Object);
+            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object);
 
         return new ReservationHarness(
             sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, auditRepo,
-            ward, waitingListRepo, () => savedRegInap, () => savedWaitingList);
+            ward, waitingListRepo, trackerCoordinator, () => savedRegInap, () => savedWaitingList);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -710,6 +793,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<ILayananRepo> layananRepo,
         Mock<IWardAccommodationGateway> wardGateway,
         Mock<IWaitingListRepo> waitingListRepo,
+        Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -733,6 +817,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<ILayananRepo> LayananRepo { get; } = layananRepo;
         public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
+        public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();
@@ -751,6 +836,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IAuditRepo> auditRepo,
         Mock<IWardAccommodationGateway> wardGateway,
         Mock<IWaitingListRepo> waitingListRepo,
+        Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
         Func<RegInapModel?> savedRegInap,
         Func<WaitingListModel?> savedWaitingList)
     {
@@ -763,6 +849,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IAuditRepo> AuditRepo { get; } = auditRepo;
         public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
+        public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
         public RegInapModel? SavedRegInap => savedRegInap();
         public WaitingListModel? SavedWaitingList => savedWaitingList();
     }

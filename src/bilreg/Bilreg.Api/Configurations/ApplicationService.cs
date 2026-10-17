@@ -1,6 +1,7 @@
 using Bilreg.Api.SignalR;
 using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -29,6 +30,7 @@ public static class ApplicationService
             .AddScoped<ITriageMethodEngineResolver, TriageMethodEngineResolver>()
             .AddScoped<IAddBillAppService, AddBillAppService>()
             .AddScoped<IAdmissionRegistrationOrchestrator, AdmissionRegistrationOrchestrator>()
+            .AddScoped<IPasienTrackerInpatientCoordinator, PasienTrackerInpatientCoordinator>()
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();

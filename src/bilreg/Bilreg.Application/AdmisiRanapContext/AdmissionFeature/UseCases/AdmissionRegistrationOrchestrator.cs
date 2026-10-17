@@ -4,6 +4,7 @@ using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
@@ -75,6 +76,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmisiEventPublisher _publisher;
     private readonly IWaitingListRepo _waitingListRepo;
+    private readonly IPasienTrackerInpatientCoordinator _trackerCoordinator;
     private readonly ILogger<AdmissionRegistrationOrchestrator> _logger;
 
     public AdmissionRegistrationOrchestrator(
@@ -99,6 +101,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         ITglJamProvider tglJamProvider,
         IAdmisiEventPublisher publisher,
         IWaitingListRepo waitingListRepo,
+        IPasienTrackerInpatientCoordinator trackerCoordinator,
         ILogger<AdmissionRegistrationOrchestrator>? logger = null)
     {
         _admissionRepo = admissionRepo;
@@ -122,6 +125,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _tglJamProvider = tglJamProvider;
         _publisher = publisher;
         _waitingListRepo = waitingListRepo;
+        _trackerCoordinator = trackerCoordinator ?? throw new ArgumentNullException(nameof(trackerCoordinator));
         _logger = logger ?? NullLogger<AdmissionRegistrationOrchestrator>.Instance;
     }
 
@@ -154,6 +158,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 fulfilled.OpnameRequestId, snapshot);
             trans.Complete();
         }
+
+        RecordTrackerRegistrationGracefully(opname, admission.RegId, occurredAt);
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
@@ -199,6 +205,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 realized.ReservationId, snapshot);
             trans.Complete();
         }
+
+        RecordTrackerRegistrationGracefully(reservation, admission.RegId, occurredAt);
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
@@ -257,6 +265,40 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 "Registrasi ranap {RegId} berhasil dibuat, namun otomasi waiting list mengalami kendala: {ErrorMessage}",
                 admission.RegId, ex.Message);
             return null;
+        }
+    }
+
+    private void RecordTrackerRegistrationGracefully(
+        OpnameRequestModel opname,
+        string regId,
+        DateTime occurredAt)
+    {
+        try
+        {
+            _trackerCoordinator.RecordAdmissionRegistered(opname, regId, occurredAt);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Registrasi ranap {RegId} berhasil dibuat, namun pencatatan tracker pasien dari OpnameRequest {OpnameRequestId} mengalami kendala: {ErrorMessage}",
+                regId, opname.OpnameRequestId, ex.Message);
+        }
+    }
+
+    private void RecordTrackerRegistrationGracefully(
+        ReservationModel reservation,
+        string regId,
+        DateTime occurredAt)
+    {
+        try
+        {
+            _trackerCoordinator.RecordAdmissionRegistered(reservation, regId, occurredAt);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Registrasi ranap {RegId} berhasil dibuat, namun pencatatan tracker pasien dari Reservation {ReservationId} mengalami kendala: {ErrorMessage}",
+                regId, reservation.ReservationId, ex.Message);
         }
     }
 
