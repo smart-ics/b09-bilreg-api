@@ -4,7 +4,7 @@ Code: OC-LAB-SAMPLE-COLLECTION
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-10-16
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -69,8 +69,8 @@ Slice dependency rules:
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 - Domain Logic Enhancement | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P2 - Test Suite Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P1 - Domain Logic Enhancement | IMPLEMENTED | GO | 1/1 |
+| P2 - Test Suite Verification | IMPLEMENTED | GO | 1/1 |
 
 ---
 
@@ -78,8 +78,8 @@ Slice dependency rules:
 
 ## P1 - Domain Logic Enhancement
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P1-S01
 Title: Relax Eligibility Guard on LabOrderModel.CollectSpecimen
@@ -110,13 +110,13 @@ Changed Files:
 
 ## P2 - Test Suite Verification
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P2-S02
 Title: Unit Test Suite Alignment & Invariant Verification
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 Objective: Memperbarui dan melengkapi test case pada `LabOrderCollectSpecimenHandlerTest.cs` dan `LabOrderModelTest.cs` untuk memvalidasi seluruh kondisi status kelayakan order saat sampling (`Ordered -> Success`, `Charged -> Success`, `Deferred -> Throws`, `Cancelled -> Throws`, `Voided -> Throws`).
 Depends On: P1-S01
 Repository: `b09-bilreg-api`
@@ -128,6 +128,16 @@ Completion Criteria:
 5. Seluruh pengujian unit di `Bilreg.Test` yang relevan dengan `LabOrderFeature` lulus 100% (`dotnet test`).
 Notes:
 - Mengubah file `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCollectSpecimenHandlerTest.cs` dan/atau `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs`.
+Implementation Notes:
+- Memperbarui `LabOrderCollectSpecimenHandlerTest.cs` dengan menambahkan `Handle_OrderedOrder_PersistsCollected` untuk memverifikasi transisi order `Ordered` ke `Collected` dan pemanggilan `SaveChanges`.
+- Mempertahankan `Handle_ChargedOrder_PersistsCollected` untuk memverifikasi order `Charged`.
+- Menggantikan `Handle_NotCharged_ThrowsBeforeSave` dengan `Handle_DeferredOrder_ThrowsInvalidOperationException` dan `Handle_CancelledOrder_ThrowsInvalidOperationException` untuk memvalidasi penolakan sampling dan pencegahan persistensi saat order `Deferred` atau `Cancelled`.
+- Memperbarui `LabOrderModelTest.cs` dengan mengganti `CollectSpecimen_WhenOrdered_Throws` menjadi `CollectSpecimen_FromOrdered_SetsCollectedAndCollectionInfo`.
+- Menyelaraskan assertion pesan exception pada `CollectSpecimen_WhenDeferred_Throws` dan menambahkan `CollectSpecimen_WhenCancelled_Throws` serta `CollectSpecimen_WhenAlreadyCollected_Throws`.
+- Memverifikasi eksekusi pengujian unit `Bilreg.Test` untuk `LabOrderFeature` lulus 100% (160 passed).
+Changed Files:
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCollectSpecimenHandlerTest.cs`
+- `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs`
 
 ---
 

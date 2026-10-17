@@ -261,13 +261,19 @@ public class LabOrderModelTest
     }
 
     [Fact]
-    public void CollectSpecimen_WhenOrdered_Throws()
+    public void CollectSpecimen_FromOrdered_SetsCollectedAndCollectionInfo()
     {
         var order = OrderedOrder();
-        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+        var when = new DateTime(2026, 5, 18, 14, 30, 0);
+        var info = new CollectionInfoType(when, "U9", "Sampling Ranap");
 
-        var act = () => order.CollectSpecimen("U1", info);
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Charged*");
+        order.CollectSpecimen("U9", info);
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Collected);
+        order.CollectionInfo.CollectedDate.Should().Be(when);
+        order.CollectionInfo.CollectedUserId.Should().Be("U9");
+        order.CollectionInfo.CollectionNote.Should().Be("Sampling Ranap");
+        order.AuditTrail.Modified.UserId.Should().Be("U9");
     }
 
     [Fact]
@@ -278,7 +284,18 @@ public class LabOrderModelTest
         var info = new CollectionInfoType(DateTime.Now, "U1", "");
 
         var act = () => order.CollectSpecimen("U1", info);
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Charged*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Deferred*");
+    }
+
+    [Fact]
+    public void CollectSpecimen_WhenCancelled_Throws()
+    {
+        var order = OrderedOrder();
+        order.Cancel("U2", "Batal");
+        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*dibatalkan*");
     }
 
     [Fact]
@@ -349,6 +366,16 @@ public class LabOrderModelTest
         var when = new DateTime(2026, 5, 18, 12, 0, 0);
         order.CollectSpecimen("U9", new CollectionInfoType(when, "U9", ""));
         return order;
+    }
+
+    [Fact]
+    public void CollectSpecimen_WhenAlreadyCollected_Throws()
+    {
+        var order = CollectedOrder();
+        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Collected*");
     }
 
     [Fact]
