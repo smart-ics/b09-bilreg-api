@@ -152,6 +152,7 @@ public record TindakanModel : ITindakanKey
     public decimal Total => _listKomponen.Sum(t => t.SubTotal);
     public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;
     public AuditTrailType AuditTrail { get; init; }
+    public bool IsVoid => AuditTrail.IsVoided;
     #endregion
 
     #region BEHAVIOR

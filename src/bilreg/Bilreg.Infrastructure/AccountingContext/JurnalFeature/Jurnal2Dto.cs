@@ -1,11 +1,11 @@
-﻿using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 
 namespace Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 
 public record Jurnal2Dto(
     string fs_kd_jurnal,
-    int fn_urut,
+    decimal fn_urut,
     string fs_kd_rek,
     string fs_uraian,
     decimal fn_jurnald,
@@ -30,6 +30,16 @@ public record Jurnal2Dto(
     decimal fn_nilai_jasa,
     decimal fn_nilai_obat)
 {
+    public Jurnal2Dto() : this(
+        string.Empty, 0m, string.Empty, string.Empty, 0m, 0m,
+        string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty,
+        0m, 0m)
+    {
+    }
+
     public static Jurnal2Dto FromModel(Jurnal2Base model, string jurnalId)
     {
         Jurnal2Dto result = null;
