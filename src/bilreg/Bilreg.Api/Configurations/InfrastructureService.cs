@@ -58,6 +58,7 @@ using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
+using Bilreg.Infrastructure.BrmContext;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
 using Bilreg.Infrastructure.SalesContext.ResepFeature;
@@ -230,6 +231,7 @@ public static class InfrastructureService
         services.AddScoped<LegacyFreshnessGate>();
 
         services.AddBrgFeature();
+        services.AddBrmInfrastructure();
 
         services
             .Scan(selector => selector
