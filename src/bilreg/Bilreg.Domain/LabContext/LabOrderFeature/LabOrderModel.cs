@@ -478,9 +478,17 @@ public class LabOrderModel : ILabOrderKey
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} sudah void; pengambilan spesimen tidak diperbolehkan.");
 
-        if (LabOrderStatus != LabOrderStatusEnum.Charged)
+        if (LabOrderStatus == LabOrderStatusEnum.Deferred)
             throw new InvalidOperationException(
-                $"LabOrder {OrderId} berstatus {LabOrderStatus}; pengambilan spesimen hanya diperbolehkan dari Charged.");
+                $"LabOrder {OrderId} berstatus Deferred; pengambilan spesimen tidak diperbolehkan saat order ditunda.");
+
+        if (LabOrderStatus == LabOrderStatusEnum.Cancelled)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah dibatalkan; pengambilan spesimen tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Charged && LabOrderStatus != LabOrderStatusEnum.Ordered)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; pengambilan spesimen hanya diperbolehkan dari Charged atau Ordered.");
 
         var emptyCollected = CollectionInfoType.Default.CollectedDate;
         if (collectionInfo.CollectedDate == emptyCollected)
