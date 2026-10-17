@@ -1,0 +1,237 @@
+using System.Data;
+using System.Data.SqlClient;
+using Bilreg.Application.PurchaseContext.DeliveryFeature;
+using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
+using FluentAssertions;
+using Microsoft.Extensions.Options;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
+
+namespace Bilreg.Test.PurchaseContext.DeliveryFeature;
+
+public class PoDeliveryTrackingDalTest
+{
+    private readonly IOptions<DatabaseOptions> _dbOptions;
+    private readonly PoDeliveryTrackingDal _sut;
+
+    public PoDeliveryTrackingDalTest()
+    {
+        _dbOptions = Options.Create(new DatabaseOptions
+        {
+            ServerName = "dev.smart-ics.com",
+            DbName = "HOSPITAL_PKL"
+        });
+        _sut = new PoDeliveryTrackingDal(_dbOptions);
+    }
+
+    private static string NewTestPoId() => $"POT{Random.Shared.Next(1000000, 9999999)}";
+    private static string NewTestPmId() => $"PMT{Random.Shared.Next(1000000, 9999999)}";
+
+    private void InsertTestPo(string poId, string permintaanId = "", decimal statusDo = 0)
+    {
+        const string sql = """
+            INSERT INTO tb_trs_po (
+                fs_kd_trs, fd_tgl_trs, fs_jam_trs, fs_kd_petugas, fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
+                fs_kd_iii, fs_kd_permintaan, fs_keterangan, fs_keterangan2, fs_keterangan3, fs_no_spk,
+                fn_sub_total, fn_tax_rupiah, fn_total, fn_diskon_lain, fn_biaya_lain, fn_grand_total,
+                fn_status_do, fn_status_faktur, fs_kd_pabrik, fb_pembelian_bebas, fb_donasi, fb_closed,
+                FS_NO_DOKUMEN, FD_TGL_APPROVE, FS_JAM_APPROVE, FS_KD_PTG_APPROVE, FD_TGL_CETAK, FS_JAM_CETAK,
+                FS_KD_PTG_CETAK, FS_KD_GRUP_REK_DK, FS_KD_JENIS_BARANG, CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR,
+                UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR, fd_tgl_closed, fs_jam_closed, fs_kd_petugas_closed,
+                fd_tgl_open, fs_jam_open, fs_kd_petugas_open, fs_kd_jenis_beli
+            ) VALUES (
+                @PoId, '2026-10-15', '10:00:00', 'TEST', '3000-01-01', '00:00:00', '',
+                'SUP01', @PermintaanId, 'Test PO', '', '', '',
+                1000, 100, 1100, 0, 0, 1100,
+                @StatusDo, 0, '', 0, 0, 0,
+                '', '3000-01-01', '00:00:00', '', '3000-01-01', '00:00:00',
+                '', '', '', '2026-10-15', '10:00:00', '', '', 'TEST',
+                '3000-01-01', '00:00:00', '', '', '', '3000-01-01', '00:00:00', '',
+                '3000-01-01', '00:00:00', '', ''
+            );
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        conn.Execute(sql, new { PoId = poId, PermintaanId = permintaanId, StatusDo = statusDo });
+    }
+
+    private void InsertTestPoItem(string poId, int noUrut, string brgId, decimal qty, decimal qtyDo, bool isClosed, bool isVoid = false)
+    {
+        const string sql = """
+            INSERT INTO tb_trs_po2 (
+                fs_kd_trs, fn_no_urut, fs_kd_barang, fn_harga, fn_diskon_prosen, fn_diskon,
+                fn_qty, fn_qty_do, fn_qty_faktur, fn_qty_stok, fn_qty_stok_reff, fs_kd_satuan,
+                fn_sub_total, fn_tax_prosen, fn_tax_rupiah, fn_biaya_lain, fn_total, fb_void,
+                fn_nilai_akhir, fn_harga_last, fs_spek, fb_closed_po, fs_kd_nilai_reff, fn_biaya,
+                CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR,
+                fn_konversi, fs_ket_detil
+            ) VALUES (
+                @PoId, @NoUrut, @BrgId, 1000, 0, 0,
+                @Qty, @QtyDo, 0, 0, 0, 'BOK',
+                @Qty * 1000, 11, (@Qty * 1000) * 0.11, 0, (@Qty * 1000) * 1.11, @IsVoid,
+                0, 0, '', @IsClosed, '', 0,
+                '2026-10-15', '10:00:00', '', '', 'TEST', '3000-01-01', '00:00:00', '', '', '',
+                1, ''
+            );
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        conn.Execute(sql, new { PoId = poId, NoUrut = noUrut, BrgId = brgId, Qty = qty, QtyDo = qtyDo, IsClosed = isClosed, IsVoid = isVoid });
+    }
+
+    private void InsertTestPermintaan(string pmId, string layananId)
+    {
+        const string sql = """
+            INSERT INTO tb_trs_permintaan (
+                fs_kd_trs, fd_tgl_trs, fs_jam_trs, fs_kd_petugas, fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
+                fs_kd_layanan, fs_keterangan, fs_keterangan2, fs_keterangan3, fn_status_mutasi, fs_kd_peg_approved,
+                fb_closed, fs_kd_kelompok, fs_kd_grup_rek, fs_kd_layanan_tujuan, fb_cito, FD_PERIODE1, FD_PERIODE2,
+                FS_KD_GOLONGAN, fs_reff_getlist, fs_kd_trs_mr, fs_kd_bentuk, fn_qty_days, fs_kd_gol_obat_dk,
+                fs_kd_jenis_barang, CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
+            ) VALUES (
+                @PmId, '2026-10-15', '10:00:00', 'TEST', '3000-01-01', '00:00:00', '',
+                @LayananId, 'Test Permintaan', '', '', 0, '',
+                0, '', '', '', 0, '', '',
+                '', '', '', '', 0, '',
+                '', '2026-10-15', '10:00:00', '', '', 'TEST', '3000-01-01', '00:00:00', '', '', ''
+            );
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        conn.Execute(sql, new { PmId = pmId, LayananId = layananId });
+    }
+
+    [Fact]
+    public void GetRemainingQuota_WhenPoHasItems_ReturnsRemainingQuotaAndCalculatesSisaQty()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 3, isClosed: false);
+        InsertTestPoItem(poId, 2, "1.DUMI.2", qty: 5, qtyDo: 5, isClosed: true);
+
+        var actual = _sut.GetRemainingQuota(poId).ToList();
+
+        actual.Should().HaveCount(2);
+
+        var item1 = actual.First(x => x.NoUrut == 1);
+        item1.PoId.Should().Be(poId);
+        item1.BrgId.Should().Be("1.DUMI.2");
+        item1.QtyPo.Should().Be(10);
+        item1.QtyDo.Should().Be(3);
+        item1.SisaQty.Should().Be(7);
+        item1.IsClosed.Should().BeFalse();
+
+        var item2 = actual.First(x => x.NoUrut == 2);
+        item2.QtyPo.Should().Be(5);
+        item2.QtyDo.Should().Be(5);
+        item2.SisaQty.Should().Be(0);
+        item2.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetRemainingQuota_WhenPoHasPermintaan_ReturnsLayananId()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        var pmId = NewTestPmId();
+        InsertTestPermintaan(pmId, "4FM02");
+        InsertTestPo(poId, permintaanId: pmId);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 8, qtyDo: 0, isClosed: false);
+
+        var actual = _sut.GetRemainingQuota(poId).ToList();
+
+        actual.Should().HaveCount(1);
+        actual[0].LayananId.Should().Be("4FM02");
+    }
+
+    [Fact]
+    public void GetRemainingQuota_WhenPoDoesNotExist_ReturnsEmpty()
+    {
+        using var trans = TransHelper.NewScope();
+        var actual = _sut.GetRemainingQuota("NONEXISTENT_PO");
+        actual.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IncrementReceivedQty_WhenPartialReceipt_UpdatesQtyDoAndKeepsOpen()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 2, isClosed: false);
+
+        _sut.IncrementReceivedQty(poId, 1, 3m);
+
+        var actual = _sut.GetRemainingQuota(poId).First(x => x.NoUrut == 1);
+        actual.QtyDo.Should().Be(5);
+        actual.SisaQty.Should().Be(5);
+        actual.IsClosed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IncrementReceivedQty_WhenReceiptMeetsOrExceedsQty_UpdatesQtyDoAndSetsClosedPo()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 8, isClosed: false);
+
+        _sut.IncrementReceivedQty(poId, 1, 2m);
+
+        var actual = _sut.GetRemainingQuota(poId).First(x => x.NoUrut == 1);
+        actual.QtyDo.Should().Be(10);
+        actual.SisaQty.Should().Be(0);
+        actual.IsClosed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdatePoOverallStatus_WhenAllItemsClosed_SetsStatusDoTo2()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId, statusDo: 0);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 10, isClosed: true);
+        InsertTestPoItem(poId, 2, "1.DUMI.2", qty: 5, qtyDo: 5, isClosed: true);
+
+        _sut.UpdatePoOverallStatus(poId);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        var status = conn.ExecuteScalar<decimal>("SELECT fn_status_do FROM tb_trs_po WHERE fs_kd_trs = @PoId", new { PoId = poId });
+        status.Should().Be(2);
+    }
+
+    [Fact]
+    public void UpdatePoOverallStatus_WhenSomeItemsReceivedOrClosed_SetsStatusDoTo1()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId, statusDo: 0);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 5, isClosed: false);
+        InsertTestPoItem(poId, 2, "1.DUMI.2", qty: 5, qtyDo: 0, isClosed: false);
+
+        _sut.UpdatePoOverallStatus(poId);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        var status = conn.ExecuteScalar<decimal>("SELECT fn_status_do FROM tb_trs_po WHERE fs_kd_trs = @PoId", new { PoId = poId });
+        status.Should().Be(1);
+    }
+
+    [Fact]
+    public void UpdatePoOverallStatus_WhenNoItemsReceived_SetsStatusDoTo0()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        InsertTestPo(poId, statusDo: 1);
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+        InsertTestPoItem(poId, 2, "1.DUMI.2", qty: 5, qtyDo: 0, isClosed: false);
+
+        _sut.UpdatePoOverallStatus(poId);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        var status = conn.ExecuteScalar<decimal>("SELECT fn_status_do FROM tb_trs_po WHERE fs_kd_trs = @PoId", new { PoId = poId });
+        status.Should().Be(0);
+    }
+}
