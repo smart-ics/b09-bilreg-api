@@ -6,11 +6,10 @@ public class ApotekContextBoundaryTest
 {
     private static readonly string[] ForbiddenTokens =
     [
-        "PenjualanModel",
-        "IPenjualanDal",
+        "SalesContext.PenjualanFeature",
+        "SalesContext.PenjualanModel",
         "TelaahModel",
-        "IStokMutasiDal",
-        "ITrsBillingDal"
+        "IStokMutasiDal"
     ];
 
     [Fact]
@@ -54,7 +53,6 @@ public class ApotekContextBoundaryTest
         };
         var forbidden = new[]
         {
-            "INSERT INTO tb_trs_dobill_umum",
             "BILRG_AptCreditNote",
             "BILRG_AptDispenseAuthorized",
             "BILRG_AptBackorder",

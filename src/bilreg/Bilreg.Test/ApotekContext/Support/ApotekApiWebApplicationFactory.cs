@@ -1,10 +1,13 @@
 using Bilreg.Api.Authorization;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.CopyResepFeature;
+using Bilreg.Application.ApotekContext.PenjualanFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.Shared;
+using Bilreg.Test.ApotekContext.PenjualanFeature;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -23,6 +26,12 @@ public sealed class ApotekApiTestHarness
     public InMemoryCopyResepRepo CopyResepRepo { get; } = new();
     public IAvailableStockPort AvailableStockPort { get; set; } = new FailClosedAvailableStockPort();
     public IKemkesKajianResepCatalogPort KemkesKajianCatalogPort { get; set; } = new FakeKemkesKajianResepCatalogPort();
+    public InMemoryPenjualanRepo PenjualanRepo { get; } = new();
+    public FakeRegRepo RegRepo { get; } = new();
+    public FakeTrkTarifPricingPort PricingPort { get; } = new();
+    public FakeTrkBillingChargePort BillingChargePort { get; } = new();
+    public FakeTataRekeningPermissionPort TataRekeningPermissionPort { get; } = new();
+    public FakeFornasCheckPort FornasCheckPort { get; } = new();
 
     public void Reset()
     {
@@ -34,6 +43,14 @@ public sealed class ApotekApiTestHarness
         CopyResepRepo.Store.Clear();
         AvailableStockPort = new FailClosedAvailableStockPort();
         KemkesKajianCatalogPort = new FakeKemkesKajianResepCatalogPort();
+        PenjualanRepo.Store.Clear();
+        RegRepo.Store.Clear();
+        PricingPort.CustomPrices.Clear();
+        BillingChargePort.ChargedRequests.Clear();
+        BillingChargePort.CancelledCharges.Clear();
+        TataRekeningPermissionPort.AllowModificationResult = true;
+        TataRekeningPermissionPort.AllowVoidResult = true;
+        FornasCheckPort.NonFornasItemIds.Clear();
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -58,6 +75,24 @@ public sealed class ApotekApiTestHarness
 
         services.RemoveAll<IKemkesKajianResepCatalogPort>();
         services.AddScoped<IKemkesKajianResepCatalogPort>(_ => KemkesKajianCatalogPort);
+
+        services.RemoveAll<IPenjualanRepo>();
+        services.AddScoped<IPenjualanRepo>(_ => PenjualanRepo);
+
+        services.RemoveAll<IRegRepo>();
+        services.AddScoped<IRegRepo>(_ => RegRepo);
+
+        services.RemoveAll<ITrkTarifPricingPort>();
+        services.AddScoped<ITrkTarifPricingPort>(_ => PricingPort);
+
+        services.RemoveAll<ITrkBillingChargePort>();
+        services.AddScoped<ITrkBillingChargePort>(_ => BillingChargePort);
+
+        services.RemoveAll<ITataRekeningInvoicePermissionPort>();
+        services.AddScoped<ITataRekeningInvoicePermissionPort>(_ => TataRekeningPermissionPort);
+
+        services.RemoveAll<IFornasCheckPort>();
+        services.AddScoped<IFornasCheckPort>(_ => FornasCheckPort);
 
         // Keep the REAL claims-based user context so the actor id stamped by
         // AptActor.Require comes from the authenticated principal, not a test double.

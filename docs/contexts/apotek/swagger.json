@@ -1415,6 +1415,241 @@
           }
         ]
       }
+    },
+    "/api/v1/apotek/penjualan/from-telaah": {
+      "post": {
+        "tags": [
+          "Penjualan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateFromTelaahRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateFromTelaahRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateFromTelaahRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/apotek/penjualan/direct": {
+      "post": {
+        "tags": [
+          "Penjualan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateDirectRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateDirectRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateDirectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/apotek/penjualan/walk-in": {
+      "post": {
+        "tags": [
+          "Penjualan"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateWalkInRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateWalkInRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanCreateWalkInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/apotek/penjualan/{penjualanId}/void": {
+      "post": {
+        "tags": [
+          "Penjualan"
+        ],
+        "parameters": [
+          {
+            "name": "penjualanId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanVoidRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanVoidRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/PenjualanVoidRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/apotek/penjualan/{penjualanId}": {
+      "get": {
+        "tags": [
+          "Penjualan"
+        ],
+        "parameters": [
+          {
+            "name": "penjualanId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/apotek/penjualan/by-reg/{regId}": {
+      "get": {
+        "tags": [
+          "Penjualan"
+        ],
+        "parameters": [
+          {
+            "name": "regId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/apotek/penjualan/worklist": {
+      "get": {
+        "tags": [
+          "Penjualan"
+        ],
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "$ref": "#/components/schemas/DateOnly"
+            }
+          },
+          {
+            "name": "statusFilter",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
     }
   }
 }

@@ -26,6 +26,7 @@ using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.WorklistFeature;
 using Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
+using Bilreg.Infrastructure.ApotekContext.PenjualanFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
@@ -46,6 +47,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.ChargeContext.PricingBarangFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
@@ -230,6 +232,8 @@ public static class InfrastructureService
         services.AddScoped<LegacyFreshnessGate>();
 
         services.AddBrgFeature();
+        services.AddPricingBarangFeature();
+        services.AddApotekPenjualanFeature();
 
         services
             .Scan(selector => selector
