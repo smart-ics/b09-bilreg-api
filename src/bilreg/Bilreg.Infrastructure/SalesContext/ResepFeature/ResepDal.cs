@@ -22,6 +22,7 @@ public interface IResepDal :
     IListData<ResepDto, IRegKey>
 {
     new IEnumerable<ResepDto> FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds);
+    IEnumerable<ResepDto> SearchActiveUnbilled(string query, string dateYmd);
 }
 
 public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
@@ -294,6 +295,42 @@ public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
     IEnumerable<IResepKey> IResepCreateDal.FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds)
     {
         return FindPotentialDuplicate(pasienId, date, brgIds);
+    }
+
+    public IEnumerable<ResepDto> SearchActiveUnbilled(string query, string dateYmd)
+    {
+        var trimmedQuery = query?.Trim() ?? string.Empty;
+        var likeQuery = $"%{trimmedQuery}%";
+
+        var sql = $"""
+            {SelectClause()}
+            WHERE
+                aa.fb_resep = 1
+                AND (aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void = '' OR aa.fd_tgl_void IS NULL)
+                AND aa.fd_tgl_trs = @Date
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM tb_trs_dobill_umum du
+                    WHERE du.fs_kd_resep = aa.fs_kd_trs
+                      AND (du.fd_tgl_void = '3000-01-01' OR du.fd_tgl_void = '' OR du.fd_tgl_void IS NULL)
+                )
+                AND (
+                    @Query = ''
+                    OR aa.fs_kd_trs LIKE @LikeQuery
+                    OR aa.fs_kd_reg LIKE @LikeQuery
+                    OR cc.fs_mr LIKE @LikeQuery
+                    OR dd.fs_nm_pasien LIKE @LikeQuery
+                )
+            ORDER BY aa.fd_tgl_trs DESC, aa.fs_jam_trs DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@Date", dateYmd, SqlDbType.VarChar);
+        dp.AddParam("@Query", trimmedQuery, SqlDbType.VarChar);
+        dp.AddParam("@LikeQuery", likeQuery, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<ResepDto>(sql, dp) ?? [];
     }
 
     private static string SelectClause() => """

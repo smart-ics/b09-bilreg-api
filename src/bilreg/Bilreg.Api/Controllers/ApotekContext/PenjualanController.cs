@@ -253,4 +253,21 @@ public class PenjualanController : ControllerBase
         var result = await _mediator.Send(new PenjualanWorklistQry(date, statusFilter));
         return Ok(new JSendOk(result));
     }
+
+    /// <summary>
+    /// GET /api/v1/apotek/penjualan/search-resep: Pencarian universal e-resep aktif hari ini yang belum tertagih.
+    /// Multi-parameter: No RM, No Registrasi, Nama Pasien, No Resep.
+    /// </summary>
+    [HttpGet("search-resep")]
+    public async Task<IActionResult> SearchResep(
+        [FromQuery] string? q,
+        [FromQuery] string? query,
+        [FromQuery] DateOnly? date)
+    {
+        var searchQuery = !string.IsNullOrWhiteSpace(q) ? q : query ?? string.Empty;
+        var targetDate = date ?? DateOnly.FromDateTime(_tglJamProvider.Now);
+        var result = await _mediator.Send(new PenjualanSearchResepQry(searchQuery, targetDate));
+        return Ok(new JSendOk(result));
+    }
 }
+

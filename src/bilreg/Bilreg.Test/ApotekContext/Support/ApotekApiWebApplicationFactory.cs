@@ -2,6 +2,7 @@ using Bilreg.Api.Authorization;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.CopyResepFeature;
 using Bilreg.Application.ApotekContext.PenjualanFeature;
+using Bilreg.Application.ApotekContext.QueueFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
@@ -32,6 +33,7 @@ public sealed class ApotekApiTestHarness
     public FakeTrkBillingChargePort BillingChargePort { get; } = new();
     public FakeTataRekeningPermissionPort TataRekeningPermissionPort { get; } = new();
     public FakeFornasCheckPort FornasCheckPort { get; } = new();
+    public InMemoryQueueMappingRepo QueueMappingRepo { get; } = new();
 
     public void Reset()
     {
@@ -41,6 +43,7 @@ public sealed class ApotekApiTestHarness
         TelaahRepo.KajianStore.Clear();
         SalesOrderRepo.Store.Clear();
         CopyResepRepo.Store.Clear();
+        QueueMappingRepo.Store.Clear();
         AvailableStockPort = new FailClosedAvailableStockPort();
         KemkesKajianCatalogPort = new FakeKemkesKajianResepCatalogPort();
         PenjualanRepo.Store.Clear();
@@ -93,6 +96,12 @@ public sealed class ApotekApiTestHarness
 
         services.RemoveAll<IFornasCheckPort>();
         services.AddScoped<IFornasCheckPort>(_ => FornasCheckPort);
+
+        services.RemoveAll<IPharmacyQueueMappingRepo>();
+        services.AddScoped<IPharmacyQueueMappingRepo>(_ => QueueMappingRepo);
+
+        services.RemoveAll<IQueueMappingRepo>();
+        services.AddScoped<IQueueMappingRepo>(_ => QueueMappingRepo);
 
         // Keep the REAL claims-based user context so the actor id stamped by
         // AptActor.Require comes from the authenticated principal, not a test double.

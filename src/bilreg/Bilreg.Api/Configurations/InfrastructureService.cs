@@ -24,6 +24,8 @@ using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.WorklistFeature;
+using Bilreg.Api.Hubs;
+using Bilreg.Infrastructure.ApotekContext.QueueFeature;
 using Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
 using Bilreg.Infrastructure.ApotekContext.PenjualanFeature;
@@ -112,8 +114,9 @@ public static class InfrastructureService
             .AddScoped<IResepCreateDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<Bilreg.Infrastructure.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<Bilreg.Application.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
-            .AddScoped<IResepRepo, ResepRepo>()
-            .AddScoped<IPaymentClearancePort, FailClosedPaymentClearancePort>()
+            .AddScoped<Bilreg.Application.ApotekContext.InvoiceFeature.IPaymentClearancePort, Bilreg.Application.ApotekContext.Shared.FailClosedPaymentClearancePort>()
+            .AddScoped<Bilreg.Application.ApotekContext.QueueFeature.IPaymentClearancePort, FailClosedPharmacyPaymentClearancePort>()
+            .AddScoped<IPharmacyQueuePublisher, SignalRPharmacyQueuePublisher>()
             .AddScoped<ITataRekeningChargePort, FailClosedTataRekeningChargePort>()
             .AddScoped<ITataRekeningInvoicePermissionPort, DenyTataRekeningInvoicePermissionPort>()
             .AddScoped<ISepFornasPort, FailClosedSepFornasPort>()
@@ -234,6 +237,7 @@ public static class InfrastructureService
         services.AddBrgFeature();
         services.AddPricingBarangFeature();
         services.AddApotekPenjualanFeature();
+        services.AddApotekQueueFeature();
 
         services
             .Scan(selector => selector

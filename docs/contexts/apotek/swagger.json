@@ -1650,6 +1650,45 @@
         },
         "security": []
       }
+    },
+    "/api/v1/apotek/penjualan/search-resep": {
+      "get": {
+        "tags": [
+          "Penjualan"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "$ref": "#/components/schemas/DateOnly"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": []
+      }
     }
   }
 }

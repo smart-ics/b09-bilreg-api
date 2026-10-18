@@ -18,7 +18,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ApotekContext.DispensingFeature.UseCases;
 
-public record DispensingEstablishCmd(string UserId, string SalesOrderId, List<DispensingEstablishItem> Items)
+public record DispensingEstablishCmd(string UserId, string SalesOrderId, List<DispensingEstablishItem> Items, string? PenjualanId = null)
     : IRequest<DispensingResponse>;
 
 public record DispensingEstablishItem(int SalesOrderItemNo, decimal Qty);
@@ -27,6 +27,7 @@ public record DispensingReleaseCmd(string UserId, string DispensingId, int Expec
 public record DispensingStartCmd(string UserId, string DispensingId, int ExpectedVersion, string AntrianId, int NoUrut, string PasienTrackerId)
     : IRequest<DispensingResponse>;
 public record DispensingPrepareCmd(string UserId, string DispensingId, int ExpectedVersion) : IRequest<DispensingResponse>;
+public record DispensingPreparedNotification(string DispensingId, string SalesOrderId, DateTime PreparedAt) : INotification;
 public record DispensingPickupCallCmd(string UserId, string AntrianId, int NoUrut, string PasienTrackerId)
     : IRequest<DispensingPickupResponse>;
 public record DispensingFinalReviewCmd(string UserId, string DispensingId, int ExpectedVersion, FinalReviewOutcomeEnum Outcome, string Reason)
@@ -188,23 +189,35 @@ public class DispensingPrepareHandler : IRequestHandler<DispensingPrepareCmd, Di
 {
     private readonly IDispensingRepo _repo;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IMediator? _mediator;
 
-    public DispensingPrepareHandler(IDispensingRepo repo, IAptAuthorizationPolicy auth)
+    public DispensingPrepareHandler(
+        IDispensingRepo repo,
+        IAptAuthorizationPolicy auth,
+        IMediator? mediator = null)
     {
         _repo = repo;
         _auth = auth;
+        _mediator = mediator;
     }
 
-    public Task<DispensingResponse> Handle(DispensingPrepareCmd request, CancellationToken cancellationToken)
+    public async Task<DispensingResponse> Handle(DispensingPrepareCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(DispensingPrepareCmd), request.UserId);
         var d = _repo.LoadEntity(DispensingModel.Key(request.DispensingId)).GetValueOrThrow("Dispensing not found");
         d.AssertExpectedVersion(request.ExpectedVersion);
-        d.MarkPrepared(DateTime.Now);
+        var now = DateTime.Now;
+        d.MarkPrepared(now);
         using var trans = TransHelper.NewScope();
         _repo.SaveChanges(d);
         trans.Complete();
-        return Task.FromResult(new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version));
+
+        if (_mediator != null)
+        {
+            await _mediator.Publish(new DispensingPreparedNotification(d.DispensingId, d.SalesOrderId, now), cancellationToken);
+        }
+
+        return new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version);
     }
 }
 

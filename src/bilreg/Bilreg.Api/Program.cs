@@ -1,4 +1,5 @@
 using Bilreg.Api.Configurations;
+using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
 using Scalar.AspNetCore;
 using Serilog;
@@ -34,6 +35,7 @@ app
 
 app.MapControllers();
 app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath);
+app.MapHub<PharmacyQueueHub>(PharmacyQueueContracts.HubPath);
 
 app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 

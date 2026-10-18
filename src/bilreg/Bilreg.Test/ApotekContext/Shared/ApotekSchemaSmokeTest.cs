@@ -19,6 +19,7 @@ public class ApotekSchemaSmokeTest
         "BILRG_AptCopyResepItem.sql",
         "BILRG_AptDispensing.sql",
         "BILRG_AptDispensingItem.sql",
+        "BILRG_AptDisplayLoket.sql",
         "BILRG_AptFinalReview.sql",
         "BILRG_AptIntegrationTask.sql",
         "BILRG_AptInvoice.sql",
@@ -26,11 +27,14 @@ public class ApotekSchemaSmokeTest
         "BILRG_AptInvoiceItemCharge.sql",
         "BILRG_AptJualBebas.sql",
         "BILRG_AptJualBebasItem.sql",
+        "BILRG_AptLoketCurrentCall.sql",
         "BILRG_AptQueueClose.sql",
+        "BILRG_AptQueueEntry.sql",
         "BILRG_AptQueueMapping.sql",
         "BILRG_AptSalesOrder.sql",
         "BILRG_AptSalesOrderItem.sql",
         "BILRG_AptSalesOrderItemComponent.sql",
+        "BILRG_AptServicePoint.sql",
         "BILRG_AptTelaahResep.sql",
         "BILRG_AptTelaahResepItem.sql",
         "BILRG_AptTelaahResepKajian.sql",
@@ -74,6 +78,79 @@ public class ApotekSchemaSmokeTest
                         new { tableName })
                     .Should().Be(1, $"deploying {script} should create {tableName}");
             }
+        }
+    }
+
+    [Fact]
+    public void AptQueueMapping_alter_pasien_hadir_deploys_to_test_database()
+    {
+        lock (SchemaLock)
+        {
+            var opt = ConnStringHelper.GetTestEnv();
+            using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+            conn.Open();
+            var sqlRoot = FindSqlRoot();
+
+            var alterPath = Path.Combine(sqlRoot, "BILRG_AptQueueMapping_Alter_PasienHadir.sql");
+            File.Exists(alterPath).Should().BeTrue("BILRG_AptQueueMapping_Alter_PasienHadir.sql should exist");
+
+            ExecuteScript(conn, alterPath);
+
+            var colExists = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueMapping') AND name = 'PasienHadir'");
+            colExists.Should().Be(1, "PasienHadir column should exist in BILRG_AptQueueMapping");
+
+            var colAtExists = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueMapping') AND name = 'PasienHadirAt'");
+            colAtExists.Should().Be(1, "PasienHadirAt column should exist in BILRG_AptQueueMapping");
+        }
+    }
+
+    [Fact]
+    public void Pharmacy_queue_tables_are_deployed_identically_to_test_database()
+    {
+        lock (SchemaLock)
+        {
+            var opt = ConnStringHelper.GetTestEnv();
+            using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+            conn.Open();
+
+            var expectedTables = new[]
+            {
+                "BILRG_AptServicePoint",
+                "BILRG_AptQueueEntry",
+                "BILRG_AptLoketCurrentCall",
+                "BILRG_AptDisplayLoket"
+            };
+
+            foreach (var table in expectedTables)
+            {
+                var count = conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM sys.tables WHERE name = @table",
+                    new { table });
+                count.Should().Be(1, $"{table} should exist in test database");
+            }
+
+            var pasienHadirCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueMapping') AND name = 'PasienHadir'");
+            pasienHadirCount.Should().Be(1, "BILRG_AptQueueMapping must have PasienHadir column");
+
+            var pasienHadirAtCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueMapping') AND name = 'PasienHadirAt'");
+            pasienHadirAtCount.Should().Be(1, "BILRG_AptQueueMapping must have PasienHadirAt column");
+
+            var aptPhaseCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'ApotekPhase'");
+            aptPhaseCount.Should().Be(1, "BILRG_AptQueueEntry must have ApotekPhase column");
+
+            var rowVersionType = conn.ExecuteScalar<string>(
+                """
+                SELECT t.name 
+                FROM sys.columns c 
+                JOIN sys.types t ON c.user_type_id = t.user_type_id 
+                WHERE c.object_id = OBJECT_ID('BILRG_AptLoketCurrentCall') AND c.name = 'RowVersion'
+                """);
+            rowVersionType.Should().Be("timestamp", "BILRG_AptLoketCurrentCall must have RowVersion of type timestamp/rowversion");
         }
     }
 

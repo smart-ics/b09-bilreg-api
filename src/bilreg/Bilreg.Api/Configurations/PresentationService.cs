@@ -1,7 +1,8 @@
-﻿using System.Text;
+using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Controllers.ApotekContext;
 using Bilreg.Api.Filters;
+using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.Shared;
@@ -95,7 +96,8 @@ public static class PresentationService
                     var accessToken = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
                     if (!string.IsNullOrEmpty(accessToken) &&
-                        path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath))
+                        (path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath) ||
+                         path.StartsWithSegments(PharmacyQueueContracts.HubPath)))
                     {
                         context.Token = accessToken;
                     }

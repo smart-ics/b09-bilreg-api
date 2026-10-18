@@ -57,6 +57,13 @@ public record TelaahUpdateItemCmd(
 public record TelaahCompleteCmd(string UserId, string TelaahResepId, int ExpectedVersion)
     : IRequest<TelaahResponse>;
 
+public record TelaahCompletedNotification(
+    string ResepId,
+    string TelaahResepId,
+    TelaahStatusEnum TelaahStatus,
+    string UserId,
+    DateTime CompletedAt) : INotification;
+
 public record TelaahResponse(string TelaahResepId, TelaahStatusEnum Status, int Version);
 
 public class TelaahStartHandler : IRequestHandler<TelaahStartCmd, TelaahResponse>
@@ -189,15 +196,21 @@ public class TelaahCompleteHandler : IRequestHandler<TelaahCompleteCmd, TelaahRe
     private readonly ITelaahResepRepo _telaahRepo;
     private readonly IResepDal _resepDal;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IMediator? _mediator;
 
-    public TelaahCompleteHandler(ITelaahResepRepo telaahRepo, IResepDal resepDal, IAptAuthorizationPolicy auth)
+    public TelaahCompleteHandler(
+        ITelaahResepRepo telaahRepo,
+        IResepDal resepDal,
+        IAptAuthorizationPolicy auth,
+        IMediator? mediator = null)
     {
         _telaahRepo = telaahRepo;
         _resepDal = resepDal;
         _auth = auth;
+        _mediator = mediator;
     }
 
-    public Task<TelaahResponse> Handle(TelaahCompleteCmd request, CancellationToken cancellationToken)
+    public async Task<TelaahResponse> Handle(TelaahCompleteCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(TelaahCompleteCmd), request.UserId);
         var telaah = _telaahRepo.LoadEntity(TelaahResepModel.Key(request.TelaahResepId))
@@ -205,13 +218,26 @@ public class TelaahCompleteHandler : IRequestHandler<TelaahCompleteCmd, TelaahRe
         telaah.AssertExpectedVersion(request.ExpectedVersion);
         telaah.Complete(DateTime.Now);
 
-        using var trans = TransHelper.NewScope();
-        _telaahRepo.SaveChanges(telaah);
-        if (telaah.TelaahStatus is TelaahStatusEnum.Approved or TelaahStatusEnum.PartiallyApproved)
+        using (var trans = TransHelper.NewScope())
         {
-            _resepDal.LockPrescription(telaah.ResepId);
+            _telaahRepo.SaveChanges(telaah);
+            if (telaah.TelaahStatus is TelaahStatusEnum.Approved or TelaahStatusEnum.PartiallyApproved)
+            {
+                _resepDal.LockPrescription(telaah.ResepId);
+            }
+            trans.Complete();
         }
-        trans.Complete();
-        return Task.FromResult(new TelaahResponse(telaah.TelaahResepId, telaah.TelaahStatus, telaah.Version));
+
+        if (_mediator is not null && telaah.TelaahStatus is TelaahStatusEnum.Approved or TelaahStatusEnum.PartiallyApproved)
+        {
+            await _mediator.Publish(new TelaahCompletedNotification(
+                telaah.ResepId,
+                telaah.TelaahResepId,
+                telaah.TelaahStatus,
+                request.UserId,
+                DateTime.Now), cancellationToken);
+        }
+
+        return new TelaahResponse(telaah.TelaahResepId, telaah.TelaahStatus, telaah.Version);
     }
 }

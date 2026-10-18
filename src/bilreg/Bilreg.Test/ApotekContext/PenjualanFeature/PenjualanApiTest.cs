@@ -625,6 +625,30 @@ public class PenjualanApiTest
 
     #endregion
 
+    #region 9. GET /api/v1/apotek/penjualan/search-resep
+
+    [Fact]
+    public async Task API18_SearchResep_returns_unbilled_prescriptions_matching_query()
+    {
+        // Arrange
+        var reg = SeedReg("REG501", "00000", pasienName: "Pasien Uji Cari");
+        var resep = SeedResep("RSP501", reg, ("BRG01", "Paracetamol 500mg", 10m));
+
+        var client = _factory.CreateAuthenticatedClient();
+
+        // Act
+        var response = await client.GetAsync("/api/v1/apotek/penjualan/search-resep?q=RSP501");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await Data(response);
+        data.GetArrayLength().Should().Be(1);
+        data[0].GetProperty("resepId").GetString().Should().Be("RSP501");
+        data[0].GetProperty("pasienName").GetString().Should().Be("Pasien Uji Cari");
+    }
+
+    #endregion
+
     #region Private Fixtures
 
     private static PenjualanModel CreateSamplePenjualan(

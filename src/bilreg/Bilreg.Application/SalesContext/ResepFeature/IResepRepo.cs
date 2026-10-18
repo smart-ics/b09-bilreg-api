@@ -10,4 +10,5 @@ public interface IResepRepo :
     IDeleteEntity<IResepKey>,
     IListData<ResepModel, IRegKey>
 {
+    IEnumerable<ResepModel> SearchActiveUnbilled(string query, DateOnly date);
 }

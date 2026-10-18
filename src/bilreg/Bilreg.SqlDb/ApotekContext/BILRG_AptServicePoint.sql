@@ -1,0 +1,17 @@
+CREATE TABLE BILRG_AptServicePoint (
+    ServicePointId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_ServicePointId DEFAULT(''),
+    DepoFarmasiId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_DepoFarmasiId DEFAULT(''),
+    DisplayName VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_DisplayName DEFAULT(''),
+    QueuePrefix VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_QueuePrefix DEFAULT(''),
+    Active BIT NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_Active DEFAULT(1),
+    CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_CrtUser DEFAULT(''),
+    CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_CrtDate DEFAULT('3000-01-01'),
+    UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_UpdUser DEFAULT(''),
+    UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_UpdDate DEFAULT('3000-01-01'),
+    VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_VodUser DEFAULT(''),
+    VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptServicePoint_VodDate DEFAULT('3000-01-01'),
+    CONSTRAINT PK_BILRG_AptServicePoint PRIMARY KEY CLUSTERED (ServicePointId)
+);
+GO
+CREATE INDEX IX_BILRG_AptServicePoint_Depo ON BILRG_AptServicePoint(DepoFarmasiId, Active);
+GO

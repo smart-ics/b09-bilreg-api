@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Bilreg.Application.ApotekContext.Shared;
 
-public class FailClosedPaymentClearancePort : IPaymentClearancePort
+public class FailClosedPaymentClearancePort : Bilreg.Application.ApotekContext.InvoiceFeature.IPaymentClearancePort
 {
     public PaymentClearanceEvidence? Load(string paymentClearanceReff) => null;
 }

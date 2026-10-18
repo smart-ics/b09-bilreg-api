@@ -57,7 +57,10 @@ public class ApotekContextBoundaryTest
             "BILRG_AptDispenseAuthorized",
             "BILRG_AptBackorder",
             "BILRG_AptInvoiceCharge",
-            "BILRG_AptResepRevisionTask"
+            "BILRG_AptResepRevisionTask",
+            "BILRG_AdmLoketCurrentCall",
+            "BILRG_AdmDisplayLoket",
+            "BILRG_AdmServicePoint"
         };
         var hits = new List<string>();
         foreach (var root in roots)
@@ -73,6 +76,53 @@ public class ApotekContextBoundaryTest
             }
         }
         hits.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Apotek_pharmacy_queue_tables_must_be_registered_and_satisfy_adr_apt_001_boundaries()
+    {
+        var sqlRoot = Path.Combine(FindSrcRoot(), "Bilreg.SqlDb", "ApotekContext");
+        Directory.Exists(sqlRoot).Should().BeTrue("ApotekContext SQL schema directory must exist");
+
+        var registeredTables = new[]
+        {
+            "BILRG_AptServicePoint",
+            "BILRG_AptQueueEntry",
+            "BILRG_AptLoketCurrentCall",
+            "BILRG_AptDisplayLoket",
+            "BILRG_AptQueueMapping"
+        };
+
+        foreach (var table in registeredTables)
+        {
+            var ddlPath = Path.Combine(sqlRoot, $"{table}.sql");
+            File.Exists(ddlPath).Should().BeTrue($"DDL script for {table} must exist in ApotekContext schema");
+            var content = File.ReadAllText(ddlPath);
+            content.Should().Contain($"CREATE TABLE {table}", $"DDL script must define {table}");
+        }
+
+        // Alter script for PasienHadir
+        var alterScript = Path.Combine(sqlRoot, "BILRG_AptQueueMapping_Alter_PasienHadir.sql");
+        File.Exists(alterScript).Should().BeTrue("Alter script for PasienHadir must exist");
+        var alterContent = File.ReadAllText(alterScript);
+        alterContent.Should().Contain("PasienHadir");
+        alterContent.Should().Contain("PasienHadirAt");
+
+        // ADR-APT-001 Boundary Guards:
+        // 1. AntrianStatusEnum must remain purely generic (Waiting, InService, Done, Withdrawn).
+        var enumNames = Enum.GetNames<Bilreg.Domain.AdmisiContext.AntrianFeature.AntrianStatusEnum>();
+        enumNames.Should().BeEquivalentTo(["Waiting", "InService", "Done", "Withdrawn"],
+            "ADR-APT-001 mandates that AntrianStatusEnum must not be polluted with pharmacy operational states");
+
+        // 2. Pharmacy operational progress is isolated in BILRG_AptQueueEntry via ApotekPhase
+        var queueEntryDdl = File.ReadAllText(Path.Combine(sqlRoot, "BILRG_AptQueueEntry.sql"));
+        queueEntryDdl.Should().Contain("ApotekPhase", "BILRG_AptQueueEntry must own pharmacy operational phase per ADR-APT-001");
+        queueEntryDdl.Should().Contain("CallCountPenerimaan");
+        queueEntryDdl.Should().Contain("CallCountSerah");
+
+        // 3. Concurrency protection on BILRG_AptLoketCurrentCall
+        var loketDdl = File.ReadAllText(Path.Combine(sqlRoot, "BILRG_AptLoketCurrentCall.sql"));
+        loketDdl.Should().Contain("RowVersion ROWVERSION NOT NULL", "BILRG_AptLoketCurrentCall must protect loket claims with ROWVERSION");
     }
 
     [Fact]
