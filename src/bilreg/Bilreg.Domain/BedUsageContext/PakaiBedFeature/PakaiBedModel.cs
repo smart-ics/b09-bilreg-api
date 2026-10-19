@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
@@ -44,6 +45,18 @@ public class PakaiBedModel : IPakaiBed
     public void Void(string userId, DateTime voidDateTime)
     {
         AuditTrail.Batal(userId, voidDateTime);
+    }
+
+    public void Release(string userId, DateTime keluarDateTime)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        if (keluarDateTime == default)
+            throw new ArgumentException("Checkout time must be valid.", nameof(keluarDateTime));
+
+        Periode = new PeriodePakaiBedType(
+            Periode.Masuk,
+            new AuditInfoType(userId, keluarDateTime));
+        AuditTrail.Modif(userId, keluarDateTime);
     }
 
 public string PakaiBedId { get; init; }

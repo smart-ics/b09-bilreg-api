@@ -166,6 +166,13 @@ public static class InfrastructureService
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
             .AddScoped<IPasienSasetDal, PasienSasetDal>()
+            .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeRepo, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeRepo>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeKomponenDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeKomponenDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeLegacyDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeLegacyDal>()
+            .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBillingLockChecker, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BillingLockChecker>()
+            .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBedOccupancyQuery, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BedOccupancyQuery>()
+            .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeTarifService, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeTarifService>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

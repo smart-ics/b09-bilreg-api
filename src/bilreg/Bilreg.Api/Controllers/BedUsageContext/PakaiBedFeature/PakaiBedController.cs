@@ -1,4 +1,5 @@
 using Bilreg.Api.Helpers;
+using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +23,14 @@ public class PakaiBedController : ControllerBase
     [HttpPost]
     [Route("Create")]
     public async Task<IActionResult> Create(PakaiBedCreateCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPost]
+    [Route("release")]
+    public async Task<IActionResult> Release(PakaiBedReleaseCommand cmd)
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
