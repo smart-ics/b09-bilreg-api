@@ -307,3 +307,11 @@ LWF tetap menjadi:
 
 * official result owner,
 * dan verification authority.
+
+---
+
+## Rule 5
+
+Pengambilan spesimen (`CollectSpecimen`) untuk order berkategori Rutin wajib berstatus `Charged`.
+Order berkategori Cito (`IsCito == true`) diizinkan langsung diambil spesimennya dari status `Ordered` demi keselamatan pasien.
+
