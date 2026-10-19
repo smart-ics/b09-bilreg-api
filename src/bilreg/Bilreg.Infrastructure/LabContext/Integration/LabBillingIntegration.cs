@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 
 namespace Bilreg.Infrastructure.LabContext.Integration;
 
@@ -15,6 +16,29 @@ public class LabBillingIntegration : ILabBillingIntegration
 
         var seq = Interlocked.Increment(ref _fakeSequence);
         return $"TDK-FAKE-{seq:D4}";
+    }
+
+    public string ChargeOrder(LabOrderModel order, string userId, DateTime occurredAt)
+    {
+        Guard.Against.Null(order);
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        var seq = Interlocked.Increment(ref _fakeSequence);
+        return $"TDK-FAKE-{seq:D4}";
+    }
+
+    public void CancelCharge(string orderId, string regId, string userId, string reason, DateTime cancelledAt)
+    {
+        Guard.Against.NullOrWhiteSpace(orderId, nameof(orderId));
+        Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+    }
+
+    public void CancelCharge(LabBillingCancelRequest request)
+    {
+        Guard.Against.Null(request);
+        CancelCharge(request.OrderId, request.RegId, request.UserId, request.Reason, request.CancelledAt);
     }
 
     public BillingReleaseValidationResult ValidateReleaseEligibility(LabBillingReleaseValidationRequest request)

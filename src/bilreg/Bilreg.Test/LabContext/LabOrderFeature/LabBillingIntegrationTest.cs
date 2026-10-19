@@ -21,6 +21,38 @@ public class LabBillingIntegrationTest
     }
 
     [Fact]
+    public void ChargeOrder_ReturnsFakeTindakanId()
+    {
+        var sut = new LabBillingIntegration();
+        var order = LabOrderTestSupport.CreateEmrOrder();
+
+        var billingId = sut.ChargeOrder(order, "U1", DateTime.Now);
+
+        billingId.Should().StartWith("TDK-FAKE-");
+    }
+
+    [Fact]
+    public void CancelCharge_WithParameters_DoesNotThrow()
+    {
+        var sut = new LabBillingIntegration();
+
+        var act = () => sut.CancelCharge("LBO001", "REG001", "U1", "Cancellation test", DateTime.Now);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void CancelCharge_WithRequestDto_DoesNotThrow()
+    {
+        var sut = new LabBillingIntegration();
+        var request = new LabBillingCancelRequest("LBO001", "REG001", "U1", "Cancellation test", DateTime.Now);
+
+        var act = () => sut.CancelCharge(request);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public void ValidateReleaseEligibility_DefaultOrderNo_ReturnsClear()
     {
         var sut = new LabBillingIntegration();

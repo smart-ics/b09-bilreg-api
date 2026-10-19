@@ -69,8 +69,8 @@ Review Status: NOT-REVIEWED
 ### P1-S01: Contract Expansion for ILabBillingIntegration
 
 Title: Definisi Kontrak Charge dan Cancel pada ILabBillingIntegration  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Mendefinisikan DTO request/result dan memperluas port `ILabBillingIntegration` untuk mendukung eksekusi charge dan pembatalan finansial secara terstandar.  
 Depends On: None  
 Repository: `b09-bilreg-api`  
@@ -78,6 +78,22 @@ Completion Criteria:
 - Antarmuka `ILabBillingIntegration` memuat method `ChargeOrder(LabOrderModel order, string userId, DateTime occurredAt)` (atau `LabBillingChargeOrderRequest`) yang mengembalikan string billing reference ID.
 - Antarmuka `ILabBillingIntegration` memuat method `CancelCharge(string orderId, string regId, string userId, string reason, DateTime cancelledAt)`.
 - DTO dan tipe pengecualian `LabBillingChargeException` tertata rapi di namespace `Bilreg.Application.LabContext.LabOrderFeature.Integration`.
+
+Implementation Notes:
+- Didefinisikan DTO `LabBillingCancelRequest` bertipe record `(OrderId, RegId, UserId, Reason, CancelledAt)` di namespace `Bilreg.Application.LabContext.LabOrderFeature.Integration`.
+- Didefinisikan DTO pendukung `LabBillingChargeOrderRequest` dan `LabBillingChargeResult` di namespace `Bilreg.Application.LabContext.LabOrderFeature.Integration`.
+- Dilengkapi tipe pengecualian `LabBillingChargeException` dengan konstruktor standar `.NET` (`()`, `(message)`, `(message, innerException)`).
+- Diperluas antarmuka `ILabBillingIntegration` dengan method `ChargeOrder(LabOrderModel order, string userId, DateTime occurredAt)` dan `CancelCharge(string orderId, string regId, string userId, string reason, DateTime cancelledAt)` serta overload `CancelCharge(LabBillingCancelRequest request)`. Kontrak lama `CreateTindakan` dan `ValidateReleaseEligibility` tetap dipertahankan.
+- Diimplementasikan signature metode `ChargeOrder` dan `CancelCharge` pada adapter konkret `LabBillingIntegration` di `Bilreg.Infrastructure.LabContext.Integration` sehingga seluruh solusi terkompilasi bersih tanpa error.
+- Ditambahkan pengujian unit pada `LabBillingIntegrationTest` untuk memverifikasi eksekusi `ChargeOrder` dan `CancelCharge`. Seluruh pengujian lulus 100%.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/Integration/LabBillingCancelRequest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/Integration/LabBillingChargeOrderRequest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/Integration/LabBillingChargeException.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/Integration/ILabBillingIntegration.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/Integration/LabBillingIntegration.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabBillingIntegrationTest.cs`
 
 ---
 
