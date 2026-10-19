@@ -438,4 +438,143 @@ public class OkCreateOrderOpByRegHandlerTest
         await FluentActions.Awaiting(() => sut.Handle(cmd, CancellationToken.None))
             .Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task Handle_WhenRegHasWhitespaceAuditFields_ShouldBeTreatedAsActive_AndAllowSuccessfulOrderCreation()
+    {
+        // Arrange
+        var cmd = CreateSampleCmd("RG01378117");
+        var auditKeluar = new AuditInfoType("   ", "3000-01-01", "00:00:00");
+        var auditVoid = new AuditInfoType(" ", "3000-01-01", "00:00:00");
+        var auditCancelOut = new AuditInfoType("  ", "3000-01-01", "00:00:00");
+        var reg = new RegModel(
+            cmd.RegId,
+            new DateOnly(2026, 10, 16),
+            new AuditInfoType("user-reg", new DateTime(2026, 10, 16)),
+            auditKeluar,
+            auditCancelOut,
+            auditVoid,
+            JenisRegEnum.RegInap,
+            PasienModel.Default.ToReff(),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+
+        var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
+        var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
+        var dokterOperator = CreateSamplePpa(cmd.DokterOperatorId);
+        var icd = CreateSampleIcd(cmd.DiagCode);
+        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
+        var tarif = CreateSampleTarif(cmd.TarifId!);
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
+            .Returns(MayBe.From(reg));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == cmd.LayananPengorderId)))
+            .Returns(MayBe.From(layanan));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterPengorderId)))
+            .Returns(MayBe.From(dokterPengorder));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterOperatorId)))
+            .Returns(MayBe.From(dokterOperator));
+        _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
+            .Returns(MayBe.From(icd));
+        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
+            .Returns(MayBe.From(jenisOp));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == cmd.TarifId)))
+            .Returns(MayBe.From(tarif));
+        _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
+
+        OrderOpModel? savedOrderOp = null;
+        _orderOpRepoMock.Setup(x => x.SaveChanges(It.IsAny<OrderOpModel>()))
+            .Callback<OrderOpModel>(m => savedOrderOp = m);
+
+        var sut = CreateSut();
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.OrderOpId.Should().NotBe("-");
+        savedOrderOp.Should().NotBeNull();
+        _orderOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<OrderOpModel>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("", 2, "Kolf", "itemName")]
+    [InlineData("   ", 2, "Kolf", "itemName")]
+    [InlineData("PRC", 0, "Kolf", "jumlah")]
+    [InlineData("PRC", -1, "Kolf", "jumlah")]
+    [InlineData("PRC", 2, "", "satuan")]
+    [InlineData("PRC", 2, "   ", "satuan")]
+    public async Task Handle_WhenRegHasWhitespaceAuditFields_AndInvalidResource_ShouldTriggerResourceInvariantValidation_NotInactiveRegistrationException(
+        string itemName, int jumlah, string satuan, string expectedParam)
+    {
+        // Arrange: Registration with whitespace audit fields (reproducing legacy RG01378117 scenario for TC-KMO-06)
+        var invalidResource = new OrderOpResourceRequest(
+            OrderOpResourceTypeEnum.Darah,
+            itemName,
+            jumlah,
+            satuan,
+            "Keterangan");
+        var cmd = CreateSampleCmd(regId: "RG01378117", listResource: [invalidResource]);
+
+        var auditKeluar = new AuditInfoType("   ", "3000-01-01", "00:00:00");
+        var auditVoid = new AuditInfoType(" ", "3000-01-01", "00:00:00");
+        var reg = new RegModel(
+            cmd.RegId,
+            new DateOnly(2026, 10, 16),
+            new AuditInfoType("user-reg", new DateTime(2026, 10, 16)),
+            auditKeluar,
+            AuditInfoType.Default,
+            auditVoid,
+            JenisRegEnum.RegInap,
+            PasienModel.Default.ToReff(),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+
+        var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
+        var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
+        var icd = CreateSampleIcd(cmd.DiagCode);
+        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
+        var tarif = CreateSampleTarif(cmd.TarifId!);
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
+            .Returns(MayBe.From(reg));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == cmd.LayananPengorderId)))
+            .Returns(MayBe.From(layanan));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterPengorderId)))
+            .Returns(MayBe.From(dokterPengorder));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterOperatorId)))
+            .Returns(MayBe.From(dokterPengorder));
+        _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
+            .Returns(MayBe.From(icd));
+        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
+            .Returns(MayBe.From(jenisOp));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == cmd.TarifId)))
+            .Returns(MayBe.From(tarif));
+        _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
+
+        var sut = CreateSut();
+
+        // Act & Assert
+        // TC-KMO-06 verification: Active status validation passes, invariant failure comes from child resource validation
+        var exception = await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.Handle(cmd, CancellationToken.None));
+        exception.Message.Should().NotContain("tidak aktif");
+        exception.Message.Should().Contain(expectedParam);
+    }
 }

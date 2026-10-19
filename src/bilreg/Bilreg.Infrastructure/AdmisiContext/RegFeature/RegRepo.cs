@@ -71,10 +71,10 @@ public class RegRepo : IRegRepo
         if (regDto is null)
             return MayBe<RegModel>.None;
 
-        var regMasukAudit = new AuditInfoType(regDto.fs_kd_petugas, regDto.fd_tgl_masuk, regDto.fs_jam_masuk);
-        var regKeluarAudit = new AuditInfoType(regDto.fs_kd_petugas_keluar, regDto.fd_tgl_keluar, regDto.fs_jam_keluar);
-        var regCancelOutAudit = new AuditInfoType(regDto.fs_kd_petugas_cancel_out, regDto.fd_tgl_cancel_out, regDto.fs_jam_cancel_out);
-        var regVoidAudit = new AuditInfoType(regDto.fs_kd_petugas_void, regDto.fd_tgl_void, regDto.fs_jam_void);
+        var regMasukAudit = new AuditInfoType(regDto.fs_kd_petugas?.Trim() ?? string.Empty, regDto.fd_tgl_masuk, regDto.fs_jam_masuk);
+        var regKeluarAudit = new AuditInfoType(regDto.fs_kd_petugas_keluar?.Trim() ?? string.Empty, regDto.fd_tgl_keluar, regDto.fs_jam_keluar);
+        var regCancelOutAudit = new AuditInfoType(regDto.fs_kd_petugas_cancel_out?.Trim() ?? string.Empty, regDto.fd_tgl_cancel_out, regDto.fs_jam_cancel_out);
+        var regVoidAudit = new AuditInfoType(regDto.fs_kd_petugas_void?.Trim() ?? string.Empty, regDto.fd_tgl_void, regDto.fs_jam_void);
         var jenisReg = regDto.fs_kd_jenis_reg.ToJenisRegEnum();
         var pasien = new PasienReff(regDto.fs_mr, regDto.fs_nm_pasien, DateOnly.Parse(regDto.fd_tgl_lahir), regDto.fs_jns_kelamin);
         var tipeJmn = new TipeJaminanReff(regDto.fs_kd_tipe_jaminan, regDto.fs_nm_tipe_jaminan);
