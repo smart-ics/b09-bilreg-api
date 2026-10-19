@@ -12,7 +12,7 @@ using System.Data.SqlClient;
 
 namespace Bilreg.Infrastructure.ApotekContext.InvoiceFeature;
 
-public record CopyResepDto(string CopyResepId, string ResepKerjaId, string SalesOrderId, int Reason, string IssuedBy, DateTime IssuedAt,
+public record CopyResepDto(string CopyResepId, string ResepId, string SalesOrderId, int Reason, string IssuedBy, DateTime IssuedAt,
     string CrtUser, DateTime CrtDate, string UpdUser, DateTime UpdDate, string VodUser, DateTime VodDate);
 public record CopyResepItemDto(string CopyResepId, int ItemNo, int ResepKerjaItemNo, string BrgId, decimal Qty, string Note);
 public interface ICopyResepDal : IInsert<CopyResepDto>, IGetData<CopyResepDto, ICopyResepKey> { }
@@ -26,8 +26,8 @@ public class CopyResepDal : ICopyResepDal
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
-            INSERT INTO BILRG_AptCopyResep (CopyResepId, ResepKerjaId, SalesOrderId, Reason, IssuedBy, IssuedAt, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
-            VALUES (@CopyResepId, @ResepKerjaId, @SalesOrderId, @Reason, @IssuedBy, @IssuedAt, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+            INSERT INTO BILRG_AptCopyResep (CopyResepId, ResepId, SalesOrderId, Reason, IssuedBy, IssuedAt, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+            VALUES (@CopyResepId, @ResepId, @SalesOrderId, @Reason, @IssuedBy, @IssuedAt, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """, model);
     }
     public CopyResepDto GetData(ICopyResepKey key)
@@ -61,16 +61,16 @@ public class CopyResepRepo : ICopyResepRepo
     public void SaveChanges(CopyResepModel model)
     {
         if (_dal.GetData(model) is not null) return;
-        _dal.Insert(new CopyResepDto(model.CopyResepId, model.ResepKerjaId, model.SalesOrderId, model.Reason, model.IssuedBy, model.IssuedAt,
+        _dal.Insert(new CopyResepDto(model.CopyResepId, model.ResepId, model.SalesOrderId, model.Reason, model.IssuedBy, model.IssuedAt,
             model.IssuedBy, model.IssuedAt, "", new DateTime(3000,1,1), "", new DateTime(3000,1,1)));
-        _itemDal.Insert(model.Items.Select(x => new CopyResepItemDto(model.CopyResepId, x.ItemNo, x.ResepKerjaItemNo, x.BrgId, x.Qty, x.Note)));
+        _itemDal.Insert(model.Items.Select(x => new CopyResepItemDto(model.CopyResepId, x.ItemNo, x.ResepItemNo, x.BrgId, x.Qty, x.Note)));
     }
     public MayBe<CopyResepModel> LoadEntity(ICopyResepKey key)
     {
         var dto = _dal.GetData(key);
         if (dto is null) return MayBe<CopyResepModel>.None;
         var items = _itemDal.ListData(key).Select(x => new CopyResepItemModel(x.ItemNo, x.ResepKerjaItemNo, x.BrgId, x.Qty, x.Note));
-        return MayBe.From(CopyResepModel.Rehydrate(dto.CopyResepId, dto.ResepKerjaId, dto.SalesOrderId, dto.Reason, dto.IssuedBy, dto.IssuedAt, items));
+        return MayBe.From(CopyResepModel.Rehydrate(dto.CopyResepId, dto.ResepId, dto.SalesOrderId, dto.Reason, dto.IssuedBy, dto.IssuedAt, items));
     }
 }
 

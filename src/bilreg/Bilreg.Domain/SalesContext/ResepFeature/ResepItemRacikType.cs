@@ -11,7 +11,7 @@ public record ResepItemRacikType
         Satuan = satuan;
         Qty = qty;
         Dosis = dosis;
-        DosisTxt = dosisTxt;
+        DosisTxt = dosisTxt ?? string.Empty;
     }
     
     public int NoUrut { get; private set; }
@@ -22,4 +22,7 @@ public record ResepItemRacikType
     public string DosisTxt { get; init; }
 
     public void SetNoUrut(int noUrut) => NoUrut = noUrut;
+
+    public static ResepItemRacikType Create(int noUrut, IBrg brg, SatuanType satuan, decimal qty, decimal dosis, string dosisTxt)
+        => new(noUrut, brg.ToReff(), satuan, qty, dosis, dosisTxt);
 }

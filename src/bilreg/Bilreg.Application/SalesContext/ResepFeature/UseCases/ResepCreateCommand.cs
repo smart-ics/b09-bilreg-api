@@ -10,10 +10,16 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.DataTypeExtension;
 
 namespace Bilreg.Application.SalesContext.ResepFeature.UseCases;
+
+public interface IResepCreateDal
+{
+    IEnumerable<IResepKey> FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds);
+}
 
 public record ResepCreateCommand(
     string RegId,
@@ -27,7 +33,11 @@ public record ResepCreateCommand(
     decimal TinggiBadan,
     decimal Lpb,
     string UserId,
-    IEnumerable<ResepCreateObatCommand> ListObat) : IRequest<ResepCreateResponse>, IRegKey, IPpaKey, ILayananKey, ITipeBrgKey;
+    IEnumerable<ResepCreateObatCommand> ListObat,
+    string LayananStokId = "",
+    DateTime? TglRencanaPeriksa = null,
+    string ResepAsalReffId = "",
+    bool IsConfirmedDuplicate = false) : IRequest<ResepCreateResponse>, IRegKey, IPpaKey, ILayananKey, ITipeBrgKey;
 
 public record ResepCreateObatCommand(
     string BrgId,
@@ -37,7 +47,13 @@ public record ResepCreateObatCommand(
     string Signa,
     string Instruction,
     string Note,
-    IEnumerable<ResepCreateItemRacikCommand> ListItemRacik);
+    IEnumerable<ResepCreateItemRacikCommand> ListItemRacik,
+    bool IsRacik = false,
+    int? Frequency = null,
+    decimal? UnitDose = null,
+    string? Route = null,
+    string? MealRelation = null,
+    string? UddTime = null);
 
 public record ResepCreateItemRacikCommand(
     string BrgId,
@@ -57,25 +73,37 @@ public class ResepCreateHandler : IRequestHandler<ResepCreateCommand, ResepCreat
     private readonly IBrgRepo _brgRepo;
     private readonly ISatuanRepo _satuanRepo;
     private readonly IResepRepo _resepRepo;
+    private readonly IResepCreateDal _resepDal;
 
-    public ResepCreateHandler(IRegRepo regRepo, IPpaRepo ppaRepo, ILayananRepo layananRepo, ITipeBrgRepo tipeBrgRepo,
-        IBrgRepo brgRepo, ISatuanRepo satuanRepo, IResepRepo resepRepo)
+    public ResepCreateHandler(
+        IRegRepo regRepo,
+        IPpaRepo ppaRepo,
+        ILayananRepo layananRepo,
+        ITipeBrgRepo tipeBrgRepo,
+        IBrgRepo brgRepo,
+        ISatuanRepo satuanRepo,
+        IResepRepo resepRepo,
+        IResepCreateDal resepDal)
     {
-        _regRepo = regRepo;
-        _ppaRepo = ppaRepo;
-        _layananRepo = layananRepo;
-        _tipeBrgRepo = tipeBrgRepo;
-        _brgRepo = brgRepo;
-        _satuanRepo = satuanRepo;
-        _resepRepo = resepRepo;
+        _regRepo = Guard.Against.Null(regRepo, nameof(regRepo));
+        _ppaRepo = Guard.Against.Null(ppaRepo, nameof(ppaRepo));
+        _layananRepo = Guard.Against.Null(layananRepo, nameof(layananRepo));
+        _tipeBrgRepo = Guard.Against.Null(tipeBrgRepo, nameof(tipeBrgRepo));
+        _brgRepo = Guard.Against.Null(brgRepo, nameof(brgRepo));
+        _satuanRepo = Guard.Against.Null(satuanRepo, nameof(satuanRepo));
+        _resepRepo = Guard.Against.Null(resepRepo, nameof(resepRepo));
+        _resepDal = Guard.Against.Null(resepDal, nameof(resepDal));
     }
 
     public Task<ResepCreateResponse> Handle(ResepCreateCommand request, CancellationToken cancellationToken)
     {
         // GUARD
-        Guard.Against.NullOrWhiteSpace(request.UserId);
+        Guard.Against.Null(request, nameof(request));
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         if (request.ListObat.IsNullOrEmpty())
-            throw new ArgumentException("List Obat tidak boleh kosong");
+            throw new InvalidOperationException("Resep harus memiliki minimal 1 item obat.");
+        if (request.Iter < 0)
+            throw new ArgumentException("Iter tidak boleh bernilai negatif.", nameof(request.Iter));
 
         // BUILD
         var reg = LoadReg(request);
@@ -86,10 +114,42 @@ public class ResepCreateHandler : IRequestHandler<ResepCreateCommand, ResepCreat
         var urgenitas = string.IsNullOrWhiteSpace(request.UrgenitasId)
             ? UrgenitasType.Default
             : UrgenitasType.Load(request.UrgenitasId, string.Empty);
+        var layananStok = LoadLayananStok(request.LayananStokId);
+        var tglRencana = request.TglRencanaPeriksa ?? DateTime.Now;
 
-        var resep = ResepModel.Create(reg, bodyMetric, dokter, layanan, urgenitas, tipeBrg, request.Iter,
-            request.Description, request.UserId);
+        // CHECK POTENTIAL DUPLICATES (EX-04)
+        if (!request.IsConfirmedDuplicate)
+        {
+            var brgIds = request.ListObat
+                .Select(x => x.BrgId)
+                .Concat(request.ListObat.Where(x => x.ListItemRacik != null).SelectMany(x => x.ListItemRacik.Select(r => r.BrgId)))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToList();
+
+            var duplicates = _resepDal.FindPotentialDuplicate(reg.Pasien.PasienId, tglRencana.Date, brgIds);
+            if (duplicates != null && duplicates.Any())
+            {
+                throw new ArgumentException("Terdeteksi potensi duplikasi resep pada hari yang sama. Harap konfirmasi sebelum melanjutkan.");
+            }
+        }
+
+        var resep = ResepModel.Create(
+            reg,
+            bodyMetric,
+            dokter,
+            layanan,
+            urgenitas,
+            tipeBrg,
+            request.Iter,
+            request.Description,
+            request.UserId,
+            layananStok,
+            tglRencana,
+            request.ResepAsalReffId);
+
         resep = BuildItemResep(resep, request.ListObat);
+        resep.Validate();
 
         // WRITE
         _resepRepo.SaveChanges(resep);
@@ -118,6 +178,19 @@ public class ResepCreateHandler : IRequestHandler<ResepCreateCommand, ResepCreat
             );
 
         return layanan;
+    }
+
+    private LayananType? LoadLayananStok(string? layananStokId)
+    {
+        if (string.IsNullOrWhiteSpace(layananStokId))
+            return null;
+
+        var key = LayananType.Key(layananStokId);
+        return _layananRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Layanan Stok '{layananStokId}' not found")
+            );
     }
 
     private DokterType LoadDokter(IPpaKey key)
@@ -153,7 +226,7 @@ public class ResepCreateHandler : IRequestHandler<ResepCreateCommand, ResepCreat
 
         return brg;
     }
-    
+
     private SatuanType LoadSatuan(ISatuanKey satuanKey)
     {
         var satuan = _satuanRepo.LoadEntity(satuanKey)
@@ -169,34 +242,64 @@ public class ResepCreateHandler : IRequestHandler<ResepCreateCommand, ResepCreat
     {
         foreach (var obat in listObat)
         {
-            if (!obat.ListItemRacik.Any())
-            {
-                var brgKey = BrgObatType.Key(obat.BrgId);
-                var brg = LoadBrg(brgKey);
+            var items = obat.ListItemRacik?.ToList() ?? new List<ResepCreateItemRacikCommand>();
+            var isRacik = obat.IsRacik || items.Any();
 
-                var satuanKey = SatuanType.Key(obat.SatuanId);
-                var satuan = LoadSatuan(satuanKey);
-            
-                resep.AddObat(brg, satuan, obat.Qty, obat.Iter, obat.Signa, obat.Instruction, obat.Note);
-            }
-            else
+            if (isRacik)
             {
+                if (!items.Any())
+                    throw new InvalidOperationException($"Wadah racikan '{obat.BrgId}' harus memiliki minimal 1 bahan komponen.");
+
                 var brg = BrgObatType.Default with { BrgId = obat.BrgId, BrgName = obat.BrgId };
                 var satuanKey = SatuanType.Key(obat.SatuanId);
                 var satuan = LoadSatuan(satuanKey);
-            
-                resep.AddObat(brg, satuan, obat.Qty, obat.Iter, obat.Signa, obat.Instruction, obat.Note);
-                
-                foreach (var item in obat.ListItemRacik)
+
+                resep.AddRacik(
+                    brg,
+                    satuan,
+                    obat.Qty,
+                    obat.Iter,
+                    obat.Signa,
+                    obat.Instruction,
+                    obat.Frequency,
+                    obat.UnitDose,
+                    obat.Route ?? AppConst.DASH,
+                    obat.MealRelation ?? AppConst.DASH,
+                    obat.UddTime ?? AppConst.DASH,
+                    obat.Note ?? AppConst.DASH);
+
+                foreach (var item in items)
                 {
                     var itemRacikKey = BrgObatType.Key(item.BrgId);
                     var itemRacik = LoadBrg(itemRacikKey);
 
                     var satuanItemRacikKey = SatuanType.Key(item.SatuanId);
                     var satuanItemRacik = LoadSatuan(satuanItemRacikKey);
-                
+
                     resep.AddItemRacik(brg, itemRacik, satuanItemRacik, item.Qty, item.Dosis, item.DosisTxt);
                 }
+            }
+            else
+            {
+                var brgKey = BrgObatType.Key(obat.BrgId);
+                var brg = LoadBrg(brgKey);
+
+                var satuanKey = SatuanType.Key(obat.SatuanId);
+                var satuan = LoadSatuan(satuanKey);
+
+                resep.AddObat(
+                    brg,
+                    satuan,
+                    obat.Qty,
+                    obat.Iter,
+                    obat.Signa,
+                    obat.Instruction,
+                    obat.Frequency,
+                    obat.UnitDose,
+                    obat.Route ?? AppConst.DASH,
+                    obat.MealRelation ?? AppConst.DASH,
+                    obat.UddTime ?? AppConst.DASH,
+                    obat.Note ?? AppConst.DASH);
             }
         }
 

@@ -2,6 +2,7 @@ using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Infrastructure.SalesContext.ResepFeature;
 
@@ -18,6 +19,8 @@ public class ResepRepo : IResepRepo
 
     public void SaveChanges(ResepModel model)
     {
+        using var trans = TransHelper.NewScope();
+
         var dto = ResepDto.FromModel(model);
         LoadEntity(model)
             .Match(
@@ -27,6 +30,8 @@ public class ResepRepo : IResepRepo
         var listBrgDto = ResepBrgDto.FlattenFromModel(model);
         _resepBrgDal.Delete(model);
         _resepBrgDal.Insert(listBrgDto);
+
+        trans.Complete();
     }
 
     public MayBe<ResepModel> LoadEntity(IResepKey key)
@@ -42,8 +47,12 @@ public class ResepRepo : IResepRepo
 
     public void DeleteEntity(IResepKey key)
     {
+        using var trans = TransHelper.NewScope();
+
         _resepBrgDal.Delete(key);
         _resepDal.Delete(key);
+
+        trans.Complete();
     }
 
     public IEnumerable<ResepModel> ListData(IRegKey filter)
