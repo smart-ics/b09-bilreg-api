@@ -1,7 +1,9 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.PasienContext.DemografiFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 
@@ -11,7 +13,10 @@ public record PasienSetKtpCommand(string PasienId, string PasienName, string Nik
     string AlamatKtp, string GolDarah,
     string Gender, string TempatLahir, string TglLahir, string Agama, string StatusKawin,
     string Rt, string Rw, string KelurahanKtpId,
-    bool IsForceUpdate) : IRequest<PasienSetKtpResponse>, IPasienKey;
+    bool IsForceUpdate) : IRequest<PasienSetKtpResponse>, IPasienKey
+{
+    public string UserId { get; init; } = string.Empty;
+}
 
 public record PasienSetKtpResponse(
     string PasienId,
@@ -29,16 +34,21 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
 {
     private readonly IPasienRepo _pasienRepo;
     private readonly IKelurahanRepo _kelurahanRepo;
+    private readonly IAuditRepo _auditRepo;
+
     public PasienSetKtpHandler(IPasienRepo pasienRepo, 
-        IKelurahanRepo kelurahanRepo)
+        IKelurahanRepo kelurahanRepo,
+        IAuditRepo auditRepo)
     {
         _pasienRepo = pasienRepo;
         _kelurahanRepo = kelurahanRepo;
+        _auditRepo = auditRepo;
     }
 
     public Task<PasienSetKtpResponse> Handle(PasienSetKtpCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
             .Match(
                 onSome: x => x,
@@ -53,6 +63,8 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
 
         var kelurahan = _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanKtpId))
             .GetValueOrThrow($"Invalid Kelurahan KTP {request.KelurahanKtpId}");
+
+        var originalDataJson = AuditLogSnapshotJson.Serialize(pasien);
 
         //  BUILD
         if (request.IsForceUpdate)
@@ -72,6 +84,9 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
 
         //  WRITE
         _pasienRepo.SaveChanges(pasien);
+        var auditLog = AuditLog.Create(request.UserId, DateTime.Now, "Pasien.SetKtp", "Pasien", pasien.PasienId, null, originalDataJson);
+        _auditRepo.SaveChanges(auditLog);
+
         var result = new PasienSetKtpResponse(
             pasien.PasienId, isDifferent, request.IsForceUpdate,
             oriPerson, ktpPerson);
