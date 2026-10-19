@@ -138,8 +138,8 @@ Review Status: NOT-REVIEWED
 ### P3-S03: Refactor LabOrderChargeHandler
 
 Title: Pembersihan Dependensi dan Perampingan LabOrderChargeHandler  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Menghapus 6 dependensi repositori billing dari `LabOrderChargeHandler` dan hanya menyisakan `ILabOrderRepo`, `ILabBillingIntegration`, dan `ITglJamProvider`.  
 Depends On: P2-S02  
 Repository: `b09-bilreg-api`  
@@ -147,6 +147,18 @@ Completion Criteria:
 - Constructor `LabOrderChargeHandler` hanya menyuntikkan 3 dependensi inti.
 - Alur eksekusi memvalidasi `order.Charge(userId)`, memanggil `_labBillingIntegration.ChargeOrder(...)`, memanggil `order.MarkCharged(...)` jika sukses, atau `order.RecordBillingError(...)` jika gagal.
 - Transaksi perubahan disimpan via `_labOrderRepo.SaveChanges(order)` dalam `TransHelper.NewScope()`.
+
+Implementation Notes:
+- Menghapus 7 dependensi master billing dan app service (`IRegRepo`, `ITarifRepo`, `INilaiTarifRepo`, `IKomponenRepo`, `IJaminanRepo`, `IAddBillAppService`, `ILabExternalRepo`) dari `LabOrderChargeHandler`.
+- Konstruktor `LabOrderChargeHandler` kini ramping dengan hanya 3 dependensi: `ILabOrderRepo`, `ILabBillingIntegration`, dan `ITglJamProvider`.
+- Seluruh logika resolusi tarif, penjamin, dan penagihan pasien admisi maupun eksternal didelegasikan ke `_labBillingIntegration.ChargeOrder(...)`.
+- Handler mengeksekusi `order.Charge(userId)`, membungkus pemanggilan `ChargeOrder` dalam try-catch untuk memanggil `order.MarkCharged(billingRefId, ...)` jika sukses atau `order.RecordBillingError(ex.Message, ...)` jika terjadi `LabBillingChargeException`, serta menyimpan agregat order dalam `TransHelper.NewScope()`.
+- Menghapus method helper yang telah dipindahkan ke Infrastructure pada P2-S02 (`ChargeExternalPatient`, `ChargeAdmisiPatient`, `LoadReg`, dll.).
+- Memperbarui unit test pada `LabOrderChargeHandlerTest` agar menggunakan konstruktor 3 dependensi dan mock `ILabBillingIntegration.ChargeOrder` untuk skenario sukses, kegagalan billing, validasi input, order deferred, dan order not found. Seluruh pengujian (7 test) lulus 100%.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderChargeCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderChargeHandlerTest.cs`
 
 ### P3-S04: Refactor LabOrderCancelHandler
 
