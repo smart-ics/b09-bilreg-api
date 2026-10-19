@@ -105,8 +105,8 @@ Review Status: NOT-REVIEWED
 ### P2-S02: Implementation of LabBillingIntegration Adapter
 
 Title: Realisasi Pembebanan dan Void Tagihan di LabBillingIntegration  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Mengimplementasikan logika charge terpadu (pasien rawat jalan/inap/darurat dan pasien eksternal lab) serta kompensasi pembatalan pada `LabBillingIntegration`.  
 Depends On: P1-S01  
 Repository: `b09-bilreg-api`  
@@ -115,6 +115,18 @@ Completion Criteria:
 - Memanggil `IAddBillAppService.FromLabOrderItem` untuk setiap item order.
 - Menghasilkan billing reference ID yang valid (misal ID bill gabungan atau bill pertama).
 - `LabBillingIntegration.CancelCharge` memeriksa `ITataRekeningRepo`: melempar exception jika status `Finalized`/`Lunas`/ada pembayaran; menghapus seluruh `TrsBill` terkait jika status `Opened`.
+
+Implementation Notes:
+- Diimplementasikan `ChargeOrder` pada `LabBillingIntegration` dengan dual-path resolution (pasien admisi internal via `_regRepo` vs pasien eksternal via `_labExternalRepo`), resolusi tarif & jaminan, dan persistensi tagihan via `_addBillAppService.FromLabOrderItem`.
+- Seluruh pengecualian transaksi finansial dibungkus menjadi `LabBillingChargeException(ex.Message, ex)`.
+- Mengembalikan reference ID penagihan yang dipotong maksimal 12 karakter untuk kompatibilitas kolom `BillingTindakanId VARCHAR(12)`.
+- Diimplementasikan `CancelCharge` pada `LabBillingIntegration` dengan validasi status `TataRekening`: menolak pembatalan jika status `Finalized`, `Lunas`, atau memiliki pembayaran; menghapus tagihan matching (`orderId-` atau `orderId`) jika status `Opened` dan memanggil `_tataRekeningRepo.SaveChanges`.
+- Ditambahkan konstruktor injeksi DI dengan penanda `[ActivatorUtilitiesConstructor]` dan mempertahankan konstruktor parameterless untuk fleksibilitas testing.
+- Ditambahkan 15 unit test komprehensif pada `LabBillingIntegrationTest` yang menguji skenario sukses charge, dual-path external vs admisi, penanganan error/wrapping exception, batas 12 karakter ID, serta skenario cancel charge pada berbagai status Tata Rekening. Seluruh pengujian lulus 100%.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/Integration/LabBillingIntegration.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabBillingIntegrationTest.cs`
 
 ---
 
