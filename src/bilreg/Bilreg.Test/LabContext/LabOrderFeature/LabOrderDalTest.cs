@@ -194,7 +194,7 @@ public class LabOrderDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(FakerHeader());
         _sut.Delete(FakerKey());
-        var act = () => _sut.GetData(FakerKey());
-        act.Should().Throw<Exception>();
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeNull();
     }
 }

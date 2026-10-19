@@ -75,6 +75,17 @@ public class LabOrderControllerTest
     }
 
     [Fact]
+    public void ChargeAction_HasExpectedHttpAttributes()
+    {
+        var method = typeof(LabOrderController).GetMethod(nameof(LabOrderController.Charge));
+        method.Should().NotBeNull();
+
+        var patchAttr = method!.GetCustomAttribute<HttpPatchAttribute>();
+        patchAttr.Should().NotBeNull();
+        patchAttr!.Template.Should().Be("charge");
+    }
+
+    [Fact]
     public void GetAction_HasExpectedHttpAttributes()
     {
         var method = typeof(LabOrderController).GetMethod(nameof(LabOrderController.Get));
@@ -211,6 +222,33 @@ public class LabOrderControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.status.Should().Be("success");
         jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region Charge Endpoint Tests
+
+    [Fact]
+    public async Task Charge_GivenValidCommand_DispatchesAndReturnsOkWithJSendOk()
+    {
+        // Arrange
+        var cmd = new LabOrderChargeCmd("LBO20261015001", "PETUGAS01");
+        var expectedResponse = new LabOrderChargeResponse(true, "BILL-001", "");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Charge(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
 
         _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -4,7 +4,7 @@ Code: OC-LAB-ORDER-CHARGE
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-10-17
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -51,11 +51,11 @@ Architecture Applicability: ARCHITECTURE-REQUIRED
 
 | Phase | Title | Implementation Status | Review Status | Progress |
 |---|---|---|---|---|
-| P1 | Integration Contracts | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P2 | Infrastructure Realization | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P3 | Application Handlers Refactoring | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| P4 | Domain Invariants | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P5 | Verification & Test Alignment | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P1 | Integration Contracts | IMPLEMENTED | GO | 1/1 |
+| P2 | Infrastructure Realization | IMPLEMENTED | GO | 1/1 |
+| P3 | Application Handlers Refactoring | IMPLEMENTED | GO | 2/2 |
+| P4 | Domain Invariants | IMPLEMENTED | GO | 1/1 |
+| P5 | Verification & Test Alignment | IMPLEMENTED | GO | 1/1 |
 
 ---
 
@@ -226,14 +226,14 @@ Changed Files:
 
 ## P5 - Verification & Test Alignment
 
-Implementation Status: NOT-STARTED  
+Implementation Status: IMPLEMENTED  
 Review Status: NOT-REVIEWED
 
 ### P5-S06: Unit Test Suite Synchronization & Verification
 
 Title: Sinkronisasi Seluruh Unit Test Suite Terkait Charge, Cancel, dan Sampling  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperbarui mock dan assertion pada test suite unit testing untuk memastikan seluruh test lulus (*100% Green Build*).  
 Depends On: P3-S03, P3-S04, P4-S05  
 Repository: `b09-bilreg-api`  
@@ -242,6 +242,20 @@ Completion Criteria:
 - `LabOrderCancelHandlerTest` memverifikasi skenario delegasi pembatalan tagihan.
 - `LabOrderCollectSpecimenHandlerTest` dan `LabOrderModelTest` memverifikasi rule invariant rutin vs Cito.
 - `dotnet test` untuk seluruh suite LabContext berjalan lulus tanpa kegagalan.
+
+Implementation Notes:
+- Menjalankan dan memverifikasi seluruh unit test suite terkait LabContext pada `Bilreg.Test`: `LabBillingIntegrationTest` (15 test), `LabOrderChargeHandlerTest` (7 test), `LabOrderCancelHandlerTest` (16 test), `LabOrderCollectSpecimenHandlerTest` (6 test), `LabOrderModelTest` (66 test), `LabOrderControllerTest` (13 test), dan `LabOrderM9HandlersTest` (5 test).
+- Menambahkan pengujian atribut route `[HttpPatch("charge")]` dan unit test eksekusi endpoint `Charge` pada `LabOrderControllerTest` untuk melengkapi cakupan test controller charge dan cancel.
+- Memperbaiki penanganan `recordedAt` default pada `LabResultDocumentModel.MarkRecorded` dan `RecordResult` agar menggunakan fallback `DateTime.Now` ketika parameter waktu tidak diberikan secara eksplisit.
+- Memperbaiki asersi `Delete_RemovesHeader` pada `LabOrderDalTest` untuk memverifikasi kembalian `null` dari `GetData` pasca-penghapusan record.
+- Memverifikasi skema database pengujian pada `devTest` dengan mengeksekusi DDL script untuk tabel `BILRG_LabOrder`, `BILRG_LabOrderItem`, dan `BILRG_LabOrderItemComponent`.
+- Seluruh 383 unit test terkait LabContext pada solusi `Bilreg.Test` berjalan 100% lulus (green build) tanpa ada kegagalan maupun asersi yang diskip (`0 failed, 383 passed, 0 skipped`).
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Domain/LabContext/LabResultFeature/LabResultDocumentModel.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderControllerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderDalTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-ORDER-CHARGE-IMPLEMENTATION-PLAN.md`
 
 ---
 
