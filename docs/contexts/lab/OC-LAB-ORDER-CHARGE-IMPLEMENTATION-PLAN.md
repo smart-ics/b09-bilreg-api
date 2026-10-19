@@ -163,8 +163,8 @@ Changed Files:
 ### P3-S04: Refactor LabOrderCancelHandler
 
 Title: Delegasi Pembatalan Tagihan Kasir ke ILabBillingIntegration  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Menghilangkan dependensi langsung `ITataRekeningRepo` dari `LabOrderCancelHandler` dan mendelegasikannya ke `_labBillingIntegration.CancelCharge`.  
 Depends On: P2-S02  
 Repository: `b09-bilreg-api`  
@@ -172,6 +172,21 @@ Completion Criteria:
 - `LabOrderCancelHandler` tidak lagi menginjeksi `ITataRekeningRepo`.
 - Jika order berstatus `Charged`, handler memanggil `_labBillingIntegration.CancelCharge(...)` sebelum memanggil `order.Cancel(...)`.
 - Guard spesimen tetap terjaga (`EX-03`).
+
+Implementation Notes:
+- Menghapus dependensi langsung terhadap `ITataRekeningRepo` dari `LabOrderCancelHandler`.
+- Memperbarui konstruktor `LabOrderCancelHandler` dengan 3 dependensi: `ILabOrderRepo`, `ILabBillingIntegration`, dan `ITglJamProvider`.
+- Pada method `Handle`, jika `order.LabOrderStatus == LabOrderStatusEnum.Charged`, mendelegasikan pembatalan tagihan kasir ke `_labBillingIntegration.CancelCharge(order.OrderId, order.Patient.RegId, request.UserId, request.Reason, occurredAt)`.
+- Menjaga invariant EX-03 Specimen Guard (`Collected`, `Recorded`, `Verified`, `Released`).
+- Memanggil `order.Cancel(...)` dan menyimpan agregat order dalam transaksi `TransHelper.NewScope()`.
+- Memperbarui `LabOrderCancelHandlerTest` untuk menguji delegasi ke `_billingIntegration` saat order berstatus `Charged`, propagasi exception saat kasir `Final/Lunas`, dan invariant EX-03 (termasuk status `Released`).
+- Memperbarui `LabOrderM9HandlersTest` agar selaras dengan konstruktor baru. Seluruh pengujian lulus 100%.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCancelCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCancelHandlerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderM9HandlersTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-ORDER-CHARGE-IMPLEMENTATION-PLAN.md`
 
 ---
 
@@ -183,7 +198,7 @@ Review Status: NOT-REVIEWED
 ### P4-S05: Enforce Sampling Invariant in LabOrderModel
 
 Title: Penegakan Aturan Pengambilan Sampel Berbasis Status Charged dan Cito  
-Implementation Status: NOT-STARTED  
+Implementation Status: IN-PROGRESS  
 Review Status: NOT-REVIEWED  
 Objective: Memperketat metode `LabOrderModel.CollectSpecimen` agar mewajibkan status `Charged` untuk pemeriksaan rutin, namun tetap mengizinkan pengambilan spesimen langsung dari `Ordered` untuk pemeriksaan Cito.  
 Depends On: None  

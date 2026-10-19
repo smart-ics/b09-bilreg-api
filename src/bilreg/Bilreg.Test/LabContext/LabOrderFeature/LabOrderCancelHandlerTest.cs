@@ -1,12 +1,8 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
-using Bilreg.Application.PaymentContext.TataRekeningFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
-using Bilreg.Domain.PaymentContext.TataRekeningFeature;
-using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Bilreg.Test.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -25,7 +21,7 @@ public class LabOrderCancelHandlerTest
     private static readonly DateTime FixedNow = new(2026, 10, 15, 14, 0, 0);
 
     private readonly Mock<ILabOrderRepo> _labOrderRepo = new();
-    private readonly Mock<ITataRekeningRepo> _tataRekeningRepo = new();
+    private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
     private readonly Mock<ITglJamProvider> _tglJamProvider = new();
     private readonly LabOrderCancelHandler _sut;
 
@@ -34,8 +30,8 @@ public class LabOrderCancelHandlerTest
         _tglJamProvider.Setup(t => t.Now).Returns(FixedNow);
         _sut = new LabOrderCancelHandler(
             _labOrderRepo.Object,
-            _tglJamProvider.Object,
-            _tataRekeningRepo.Object);
+            _billingIntegration.Object,
+            _tglJamProvider.Object);
     }
 
     private static LabOrderModel CreateOrderedModel()
@@ -144,8 +140,7 @@ public class LabOrderCancelHandlerTest
         order.CancelledDate.Should().Be(FixedNow);
 
         _labOrderRepo.Verify(r => r.SaveChanges(order), Times.Once);
-        _tataRekeningRepo.Verify(r => r.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     [Fact]
@@ -166,28 +161,20 @@ public class LabOrderCancelHandlerTest
         // Assert
         order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
         _labOrderRepo.Verify(r => r.SaveChanges(order), Times.Once);
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     #endregion
 
-    #region Charged Order with Open Billing (Success & Bill Voided)
+    #region Charged Order Cancellation
 
     [Fact]
-    public async Task Handle_GivenChargedOrder_WhenBillingIsOpen_DeletesBillAndCancelsOrder()
+    public async Task Handle_GivenChargedOrder_CallsBillingIntegrationCancelChargeAndCancelsOrder()
     {
         // Arrange
         var order = CreateChargedModel(TindakanId);
         _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
             .Returns(MayBe.From(order));
-
-        var bill = TataRekeningTestDataBuilder.CreateBill(TindakanId, RegId, 150_000m);
-        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
-            RegId, TataRekeningStatusEnum.Opened, bill);
-        tataRekening.ListTrsBill.Should().Contain(b => b.TrsBillingId == TindakanId);
-
-        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
-            .Returns(MayBe.From(tataRekening));
 
         var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
 
@@ -200,30 +187,20 @@ public class LabOrderCancelHandlerTest
         order.CancelledUserId.Should().Be(UserId);
         order.CancelledDate.Should().Be(FixedNow);
 
-        tataRekening.ListTrsBill.Should().NotContain(b => b.TrsBillingId == TindakanId);
-
-        _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+        _billingIntegration.Verify(b => b.CancelCharge(order.OrderId, RegId, UserId, Reason, FixedNow), Times.Once);
         _labOrderRepo.Verify(r => r.SaveChanges(order), Times.Once);
     }
 
-    #endregion
-
-    #region Charged Order Rejection (Finalized / Lunas / Has Payments)
-
     [Fact]
-    public async Task Handle_GivenChargedOrder_WhenBillingIsFinalized_RejectsCancellation()
+    public async Task Handle_GivenChargedOrder_WhenBillingIntegrationThrows_PropagatesExceptionAndDoesNotCancelOrder()
     {
         // Arrange
         var order = CreateChargedModel(TindakanId);
         _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
             .Returns(MayBe.From(order));
 
-        var bill = TataRekeningTestDataBuilder.CreateBill(TindakanId, RegId, 150_000m);
-        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
-            RegId, TataRekeningStatusEnum.Finalized, bill);
-
-        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
-            .Returns(MayBe.From(tataRekening));
+        _billingIntegration.Setup(b => b.CancelCharge(order.OrderId, RegId, UserId, Reason, FixedNow))
+            .Throws(new InvalidOperationException("Order laboratorium tidak dapat dibatalkan karena transaksi penagihan kasir telah Final/Lunas."));
 
         var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
 
@@ -234,70 +211,9 @@ public class LabOrderCancelHandlerTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Order laboratorium tidak dapat dibatalkan karena transaksi penagihan kasir telah Final/Lunas.");
 
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(order.OrderId, RegId, UserId, Reason, FixedNow), Times.Once);
         _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
         order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Charged);
-    }
-
-    [Fact]
-    public async Task Handle_GivenChargedOrder_WhenBillingIsLunas_RejectsCancellation()
-    {
-        // Arrange
-        var order = CreateChargedModel(TindakanId);
-        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
-            .Returns(MayBe.From(order));
-
-        var bill = TataRekeningTestDataBuilder.CreateBill(TindakanId, RegId, 150_000m);
-        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
-            RegId, TataRekeningStatusEnum.Lunas, bill);
-
-        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
-            .Returns(MayBe.From(tataRekening));
-
-        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
-
-        // Act
-        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Order laboratorium tidak dapat dibatalkan karena transaksi penagihan kasir telah Final/Lunas.");
-
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
-        _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_GivenChargedOrder_WhenBillingHasPayments_RejectsCancellation()
-    {
-        // Arrange
-        var order = CreateChargedModel(TindakanId);
-        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
-            .Returns(MayBe.From(order));
-
-        var bill = TataRekeningTestDataBuilder.CreateBill(TindakanId, RegId, 150_000m);
-        var payment = TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 100_000m, 50_000m);
-        var tataRekening = new TataRekeningModel(
-            RegId,
-            TataRekeningStatusEnum.Opened,
-            TataRekeningFinalizationType.Default,
-            [payment],
-            [bill]);
-
-        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
-            .Returns(MayBe.From(tataRekening));
-
-        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
-
-        // Act
-        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Order laboratorium tidak dapat dibatalkan karena transaksi penagihan kasir telah Final/Lunas.");
-
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
-        _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 
     #endregion
@@ -323,7 +239,7 @@ public class LabOrderCancelHandlerTest
             .WithMessage($"LabOrder {order.OrderId} tidak dapat dibatalkan karena spesimen telah diambil (status Collected).");
 
         _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     [Fact]
@@ -346,6 +262,7 @@ public class LabOrderCancelHandlerTest
             .WithMessage($"LabOrder {order.OrderId} tidak dapat dibatalkan karena spesimen telah diambil (status Recorded).");
 
         _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     [Fact]
@@ -369,6 +286,32 @@ public class LabOrderCancelHandlerTest
             .WithMessage($"LabOrder {order.OrderId} tidak dapat dibatalkan karena spesimen telah diambil (status Verified).");
 
         _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_GivenReleasedOrder_RejectsCancellationWithSpecimenGuard()
+    {
+        // Arrange
+        var order = CreateCollectedModel();
+        order.MarkRecorded("ANALIS01", FixedNow.AddMinutes(-5));
+        order.MarkVerified("DOKTER_PATOLOGI", FixedNow.AddMinutes(-2));
+        order.Release("DOKTER_PATOLOGI", "Hasil valid", FixedNow.AddMinutes(-1));
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Released);
+        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
+            .Returns(MayBe.From(order));
+
+        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"LabOrder {order.OrderId} tidak dapat dibatalkan karena spesimen telah diambil (status Released).");
+
+        _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+        _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     #endregion
