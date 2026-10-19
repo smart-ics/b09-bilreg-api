@@ -490,6 +490,10 @@ public class LabOrderModel : ILabOrderKey
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; pengambilan spesimen hanya diperbolehkan dari Charged atau Ordered.");
 
+        if (LabOrderStatus == LabOrderStatusEnum.Ordered && !IsCito)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus Ordered; pemeriksaan rutin wajib berstatus Charged sebelum pengambilan spesimen.");
+
         var emptyCollected = CollectionInfoType.Default.CollectedDate;
         if (collectionInfo.CollectedDate == emptyCollected)
             throw new ArgumentException("CollectedDate wajib diisi.", nameof(collectionInfo));

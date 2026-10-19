@@ -19,7 +19,7 @@ public class LabOrderCollectSpecimenHandlerTest
         _sut = new LabOrderCollectSpecimenHandler(_repo.Object, TestTglJamProvider.Instance);
     }
 
-    private static LabOrderModel OrderedOrder()
+    private static LabOrderModel OrderedOrder(LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
     {
         var snapshot = new PatientSnapshotType(
             "REG001", "MR0001", "Pasien", new DateTime(1990, 1, 1), "L", 36);
@@ -28,7 +28,8 @@ public class LabOrderCollectSpecimenHandlerTest
             "LAB00000001",
             lines: [LabOrderTestSupport.ResolvedLine(item)],
             snapshot: snapshot,
-            audit: new AuditInfoType("U1", DateTime.Now));
+            audit: new AuditInfoType("U1", DateTime.Now),
+            urgency: urgency);
     }
 
     private static LabOrderModel ChargedOrder()
@@ -60,9 +61,9 @@ public class LabOrderCollectSpecimenHandlerTest
     }
 
     [Fact]
-    public async Task Handle_OrderedOrder_PersistsCollected()
+    public async Task Handle_OrderedCitoOrder_PersistsCollected()
     {
-        var order = OrderedOrder();
+        var order = OrderedOrder(LabOrderUrgencyEnum.Cito);
         _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         LabOrderModel? persisted = null;
         _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
@@ -77,6 +78,21 @@ public class LabOrderCollectSpecimenHandlerTest
         persisted.CollectionInfo.CollectedUserId.Should().Be("U3");
         persisted.CollectionInfo.CollectionNote.Should().Be("Sample taken directly");
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_OrderedRutinOrder_ThrowsInvalidOperationException()
+    {
+        var order = OrderedOrder(LabOrderUrgencyEnum.Rutin);
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+
+        var act = async () => await _sut.Handle(
+            new LabOrderCollectSpecimenCmd(order.OrderId, "U3", "Sampling rutin", null),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"LabOrder {order.OrderId} berstatus Ordered; pemeriksaan rutin wajib berstatus Charged sebelum pengambilan spesimen.");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 
     [Fact]

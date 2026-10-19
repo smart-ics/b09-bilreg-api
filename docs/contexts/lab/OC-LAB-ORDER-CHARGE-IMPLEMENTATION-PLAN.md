@@ -198,8 +198,8 @@ Review Status: NOT-REVIEWED
 ### P4-S05: Enforce Sampling Invariant in LabOrderModel
 
 Title: Penegakan Aturan Pengambilan Sampel Berbasis Status Charged dan Cito  
-Implementation Status: IN-PROGRESS  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperketat metode `LabOrderModel.CollectSpecimen` agar mewajibkan status `Charged` untuk pemeriksaan rutin, namun tetap mengizinkan pengambilan spesimen langsung dari `Ordered` untuk pemeriksaan Cito.  
 Depends On: None  
 Repository: `b09-bilreg-api`  
@@ -207,6 +207,20 @@ Completion Criteria:
 - Jika `LabOrderStatus == Ordered` dan `!IsCito`, `CollectSpecimen` melempar `InvalidOperationException` dengan pesan bahwa order rutin wajib berstatus Charged.
 - Jika `LabOrderStatus == Ordered` dan `IsCito == true`, `CollectSpecimen` berhasil memajukan status menjadi `Collected`.
 - Jika `LabOrderStatus == Charged`, `CollectSpecimen` berhasil memajukan status menjadi `Collected`.
+
+Implementation Notes:
+- Menambahkan penegakan aturan sampling (AD-03) pada method `LabOrderModel.CollectSpecimen`: jika `LabOrderStatus == LabOrderStatusEnum.Ordered && !IsCito`, melempar `InvalidOperationException($"LabOrder {OrderId} berstatus Ordered; pemeriksaan rutin wajib berstatus Charged sebelum pengambilan spesimen.");`.
+- Menjaga seluruh guard sebelumnya (`AuditTrail.IsVoided`, `Deferred`, `Cancelled`, serta guard status di luar `Charged` dan `Ordered`).
+- Mengizinkan pengambilan spesimen langsung dari `Ordered` apabila pemeriksaan berstatus Cito (`IsCito == true`).
+- Mengizinkan pengambilan spesimen untuk order berstatus `Charged` baik pemeriksaan rutin maupun Cito.
+- Menambahkan parameter opsional `LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin` pada factory helper pengujian `LabOrderTestSupport.CreateEmrOrder`.
+- Memperbarui dan menambahkan unit test eksplisit pada `LabOrderModelTest` dan `LabOrderCollectSpecimenHandlerTest` untuk menguji penolakan Rutin + Ordered, keberhasilan Cito + Ordered, dan keberhasilan Charged. Seluruh test (72 test) lulus 100%.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Domain/LabContext/LabOrderFeature/LabOrderModel.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderTestSupport.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderModelTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCollectSpecimenHandlerTest.cs`
 
 ---
 

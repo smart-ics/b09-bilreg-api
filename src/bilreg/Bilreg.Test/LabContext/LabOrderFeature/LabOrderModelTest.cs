@@ -82,8 +82,8 @@ public class LabOrderModelTest
         order.Items.Select(x => x.ItemNo).Should().Equal(1, 2);
     }
 
-    private static LabOrderModel OrderedOrder() =>
-        LabOrderTestSupport.CreateEmrOrder("LAB000010", audit: TestAudit());
+    private static LabOrderModel OrderedOrder(LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin) =>
+        LabOrderTestSupport.CreateEmrOrder("LAB000010", audit: TestAudit(), urgency: urgency);
 
     [Fact]
     public void Defer_FromOrdered_SetsDeferredState()
@@ -261,18 +261,49 @@ public class LabOrderModelTest
     }
 
     [Fact]
-    public void CollectSpecimen_FromOrdered_SetsCollectedAndCollectionInfo()
+    public void CollectSpecimen_FromOrderedCito_SetsCollectedAndCollectionInfo()
     {
-        var order = OrderedOrder();
+        var order = OrderedOrder(LabOrderUrgencyEnum.Cito);
         var when = new DateTime(2026, 5, 18, 14, 30, 0);
-        var info = new CollectionInfoType(when, "U9", "Sampling Ranap");
+        var info = new CollectionInfoType(when, "U9", "Sampling Cito");
 
         order.CollectSpecimen("U9", info);
 
         order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Collected);
         order.CollectionInfo.CollectedDate.Should().Be(when);
         order.CollectionInfo.CollectedUserId.Should().Be("U9");
-        order.CollectionInfo.CollectionNote.Should().Be("Sampling Ranap");
+        order.CollectionInfo.CollectionNote.Should().Be("Sampling Cito");
+        order.AuditTrail.Modified.UserId.Should().Be("U9");
+    }
+
+    [Fact]
+    public void CollectSpecimen_FromOrderedRutin_ThrowsInvalidOperationException()
+    {
+        var order = OrderedOrder(LabOrderUrgencyEnum.Rutin);
+        var when = new DateTime(2026, 5, 18, 14, 30, 0);
+        var info = new CollectionInfoType(when, "U9", "Sampling Rutin");
+
+        var act = () => order.CollectSpecimen("U9", info);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"LabOrder {order.OrderId} berstatus Ordered; pemeriksaan rutin wajib berstatus Charged sebelum pengambilan spesimen.");
+    }
+
+    [Fact]
+    public void CollectSpecimen_FromChargedCito_SetsCollectedAndCollectionInfo()
+    {
+        var order = OrderedOrder(LabOrderUrgencyEnum.Cito);
+        order.Charge("U2");
+        order.MarkCharged("TDK-CITO-0001", "U2");
+        var when = new DateTime(2026, 5, 18, 14, 30, 0);
+        var info = new CollectionInfoType(when, "U9", "Sampling Charged Cito");
+
+        order.CollectSpecimen("U9", info);
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Collected);
+        order.CollectionInfo.CollectedDate.Should().Be(when);
+        order.CollectionInfo.CollectedUserId.Should().Be("U9");
+        order.CollectionInfo.CollectionNote.Should().Be("Sampling Charged Cito");
         order.AuditTrail.Modified.UserId.Should().Be("U9");
     }
 
