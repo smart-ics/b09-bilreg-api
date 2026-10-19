@@ -20,6 +20,8 @@ public record ScheduleOpDto(
     string KamarId,
     string RegId,
     string PpaId,
+    string AlasanBatal,
+    int TurnoverBuffer,
 
     string CrtUser,
     DateTime CrtDate,
@@ -52,6 +54,8 @@ public record ScheduleOpDto(
             model.KamarOp.KamarId,
             model.Reg.RegId,
             model.TeamLead.PpaId,
+            string.Empty,
+            30,
 
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
