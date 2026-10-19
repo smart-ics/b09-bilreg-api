@@ -30,28 +30,12 @@ public class BrgRepo : IBrgRepo
     
     private void BrgUpdate(IBrg model)
     {
-        switch (model)
-        {
-            case BrgObatType brgObat:
-                _brgDal.Update(BrgDto.FromModel(brgObat));
-                break;
-            case BrgBhpType bhp:
-                _brgDal.Update(BrgDto.FromModel(bhp));
-                break;
-        }
+        _brgDal.Update(BrgDto.FromModel(model));
     }
     
     private void BrgInsert(IBrg model)
     {
-        switch (model)
-        {
-            case BrgObatType brgObat:
-                _brgDal.Insert(BrgDto.FromModel(brgObat));
-                break;
-            case BrgBhpType bhp:
-                _brgDal.Insert(BrgDto.FromModel(bhp));
-                break;
-        }
+        _brgDal.Insert(BrgDto.FromModel(model));
     }
     
     public MayBe<IBrg> LoadEntity(IBrgKey key)
@@ -63,17 +47,13 @@ public class BrgRepo : IBrgRepo
         var listSatuanDto = _brgSatuanDal.ListData(key)?.ToList() ?? [];
         var listSatuan = listSatuanDto.Select(x => x.ToModel());
         
-        IBrg result = dto.fs_kd_grup_rek_dk switch
-        {
-            "OBT" => dto.ToModelObat(listSatuan),
-            "BHP" => dto.ToModelBhp(listSatuan),
-            _ => throw new ArgumentOutOfRangeException()
-        };
+        IBrg result = dto.ToModel(listSatuan);
         return MayBe.From(result);
     }
     
     public void DeleteEntity(IBrgKey key)
     {
+        _brgSatuanDal.Delete(key);
         _brgDal.Delete(key);
     }
     

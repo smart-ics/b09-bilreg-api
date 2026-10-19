@@ -83,9 +83,13 @@ public class InvoiceEstablishHandler : IRequestHandler<InvoiceEstablishCmd, Invo
             return new InvoiceItemModel(i + 1, x.ItemNo, x.BrgId, x.BrgName, InvoiceItemKindEnum.Medication,
                 x.AcceptedQty, price.HargaSatuan, 0, 0, price.Tax * x.AcceptedQty, total);
         }).ToList();
-        var invoice = InvoiceModel.Establish(
-            so.SalesOrderId, so.PayerPath, snapshotAt, request.TipeJaminanId, request.TipeJaminanName,
-            snapshotAt, items, [], request.DiskonLain, request.BiayaLain, request.Pembulatan);
+        InvoiceModel invoice;
+        do
+        {
+            invoice = InvoiceModel.Establish(
+                so.SalesOrderId, so.PayerPath, snapshotAt, request.TipeJaminanId, request.TipeJaminanName,
+                snapshotAt, items, [], request.DiskonLain, request.BiayaLain, request.Pembulatan);
+        } while (_invoiceRepo.LoadEntity(InvoiceModel.Key(invoice.InvoiceId)).HasValue);
         using var trans = TransHelper.NewScope();
         _invoiceRepo.SaveChanges(invoice);
         foreach (var item in items)

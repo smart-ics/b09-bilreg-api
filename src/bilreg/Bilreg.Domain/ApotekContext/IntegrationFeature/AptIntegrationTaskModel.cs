@@ -9,6 +9,22 @@ public class AptIntegrationTaskModel : IAptIntegrationTaskKey
     public const int MaxRetries = 5;
     public const int StaleProcessingMinutes = 30;
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
 
     private AptIntegrationTaskModel(
         string integrationTaskId,
@@ -61,7 +77,7 @@ public class AptIntegrationTaskModel : IAptIntegrationTaskKey
             throw new ArgumentOutOfRangeException(nameof(idempotencyKey), "IdempotencyKey max length is 80.");
 
         return new AptIntegrationTaskModel(
-            NunaId.New(IdPrefix),
+            GenerateUniqueId(),
             taskType,
             sourceKind,
             sourceId,

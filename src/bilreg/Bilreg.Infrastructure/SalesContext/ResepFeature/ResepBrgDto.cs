@@ -21,7 +21,11 @@ public record ResepBrgDto(
     string Etiket,
     decimal Frequency,
     decimal UnitDose,
-    string SatuanName)
+    string SatuanName,
+    string Route = "",
+    string MealRelation = "",
+    string UddTime = "",
+    bool IsVoid = false)
 {
     public static IEnumerable<ResepBrgDto> FlattenFromModel(ResepModel model)
     {
@@ -39,7 +43,7 @@ public record ResepBrgDto(
                 item.Qty,
                 item.Satuan.SatuanId,
                 item.Iter,
-                item.ListItemRacik.Any(),
+                item.ListItemRacik.Any() || item.IsRacik,
                 false,
                 string.Empty,
                 0,
@@ -48,7 +52,11 @@ public record ResepBrgDto(
                 item.Etiket.Instruction,
                 item.Etiket.Frequency,
                 item.Etiket.UnitDose,
-                item.Satuan.SatuanName));
+                item.Satuan.SatuanName,
+                item.Etiket.Route,
+                item.Etiket.MealRelation,
+                item.Etiket.UddTime,
+                model.IsVoid));
 
             foreach (var itemRacik in item.ListItemRacik)
             {
@@ -70,7 +78,11 @@ public record ResepBrgDto(
                     string.Empty,
                     0,
                     0,
-                    itemRacik.Satuan.SatuanName));
+                    itemRacik.Satuan.SatuanName,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    model.IsVoid));
             }
         }
 
@@ -80,8 +92,10 @@ public record ResepBrgDto(
     public ResepObatType ToObatModel()
     {
         var brg = new BrgReff(BrgId, BrgName.Trim());
-        var satuan = SatuanType.Create(SatuanId, SatuanName);
-        var etiket = EtiketType.Load(Signa, Etiket, (int)Frequency, UnitDose, AppConst.DASH);
-        return new ResepObatType((int)NoUrut, brg, satuan, Qty, (int)Iter, etiket);
+        var safeSatuanId = string.IsNullOrWhiteSpace(SatuanId) ? "-" : SatuanId;
+        var safeSatuanName = string.IsNullOrWhiteSpace(SatuanName) ? safeSatuanId : SatuanName;
+        var satuan = SatuanType.Create(safeSatuanId, safeSatuanName);
+        var etiket = EtiketType.Load(Signa, Etiket, (int)Frequency, UnitDose, Route, MealRelation, UddTime, AppConst.DASH);
+        return new ResepObatType((int)NoUrut, brg, satuan, Qty, (int)Iter, etiket, IsRacik);
     }
 }

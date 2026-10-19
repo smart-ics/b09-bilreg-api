@@ -7,27 +7,49 @@ public class TelaahResepItemModel
 {
     public TelaahResepItemModel(
         int itemNo,
-        int resepKerjaItemNo,
+        int resepItemNo,
         TelaahDispositionEnum disposition,
         string acceptedBrgId,
         string acceptedBrgName,
         decimal acceptedQty,
         string reason,
-        string pharmacistId)
+        string pharmacistId,
+        string prescribedBrgId = "",
+        string prescribedBrgName = "",
+        decimal prescribedQty = 0)
     {
         Guard.Against.NegativeOrZero(itemNo, nameof(itemNo));
         ItemNo = itemNo;
-        ResepKerjaItemNo = resepKerjaItemNo;
+        ResepItemNo = resepItemNo;
         Disposition = disposition;
         AcceptedBrgId = acceptedBrgId ?? "";
         AcceptedBrgName = acceptedBrgName ?? "";
         AcceptedQty = acceptedQty;
         Reason = reason ?? "";
         PharmacistId = pharmacistId ?? "";
+        PrescribedBrgId = prescribedBrgId ?? "";
+        PrescribedBrgName = prescribedBrgName ?? "";
+        PrescribedQty = prescribedQty;
     }
 
-    public static TelaahResepItemModel Pending(int itemNo, int resepKerjaItemNo, string brgId, string brgName, decimal qty)
-        => new(itemNo, resepKerjaItemNo, TelaahDispositionEnum.Pending, brgId, brgName, qty, "", "");
+    public TelaahResepItemModel(
+        int itemNo,
+        int resepItemNo,
+        string prescribedBrgId,
+        string prescribedBrgName,
+        decimal prescribedQty,
+        TelaahDispositionEnum disposition,
+        string acceptedBrgId,
+        string acceptedBrgName,
+        decimal acceptedQty,
+        string reason,
+        string pharmacistId)
+        : this(itemNo, resepItemNo, disposition, acceptedBrgId, acceptedBrgName, acceptedQty, reason, pharmacistId, prescribedBrgId, prescribedBrgName, prescribedQty)
+    {
+    }
+
+    public static TelaahResepItemModel Pending(int itemNo, int resepItemNo, string brgId, string brgName, decimal qty)
+        => new(itemNo, resepItemNo, TelaahDispositionEnum.Pending, brgId, brgName, qty, "", "", brgId, brgName, qty);
 
     public TelaahResepItemModel WithDisposition(
         TelaahDispositionEnum disposition,
@@ -49,13 +71,16 @@ public class TelaahResepItemModel
 
         return new TelaahResepItemModel(
             ItemNo,
-            ResepKerjaItemNo,
+            ResepItemNo,
             disposition,
             acceptedBrgId,
             acceptedBrgName,
             acceptedQty,
             reason,
-            pharmacistId);
+            pharmacistId,
+            PrescribedBrgId,
+            PrescribedBrgName,
+            PrescribedQty);
     }
 
     public bool IsTerminal => Disposition != TelaahDispositionEnum.Pending;
@@ -63,7 +88,12 @@ public class TelaahResepItemModel
         Disposition is TelaahDispositionEnum.AcceptedAsPrescribed or TelaahDispositionEnum.AcceptedSubstitute;
 
     public int ItemNo { get; }
-    public int ResepKerjaItemNo { get; }
+    public int ResepItemNo { get; }
+    [Obsolete("Use ResepItemNo")]
+    public int ResepKerjaItemNo => ResepItemNo;
+    public string PrescribedBrgId { get; }
+    public string PrescribedBrgName { get; }
+    public decimal PrescribedQty { get; }
     public TelaahDispositionEnum Disposition { get; }
     public string AcceptedBrgId { get; }
     public string AcceptedBrgName { get; }

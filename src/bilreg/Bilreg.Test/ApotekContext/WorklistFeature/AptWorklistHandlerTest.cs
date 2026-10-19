@@ -8,6 +8,7 @@ using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Test.ApotekContext.WorklistFeature;
 
@@ -16,19 +17,37 @@ public class AptWorklistHandlerTest
     private readonly Mock<IAptWorklistDal> _dal = new();
 
     [Fact]
-    public async Task TelaahWorklistHandler_delegates_to_dal()
+    public async Task TelaahWorklistHandler_delegates_to_dal_with_explicit_business_date()
     {
         var expected = new List<TelaahWorklistItem>
         {
-            new("", "ARX1", "Pasien A", TelaahStatusEnum.Available, DateTime.Now)
+            new("KP01", "TR01", "Pasien A", "RM01", "Dr A", "Poli A", 60m, 160m, 70m, false, "Catatan", (int)TelaahStatusEnum.Available, DateTime.Now)
         };
-        _dal.Setup(x => x.ListTelaah()).Returns(expected);
-        var sut = new TelaahWorklistHandler(_dal.Object);
+        var businessDate = new DateOnly(2026, 2, 11);
+        _dal.Setup(x => x.ListTelaah(businessDate)).Returns(expected);
+        var clock = new Mock<ITglJamProvider>();
+        var sut = new TelaahWorklistHandler(_dal.Object, clock.Object);
+
+        var result = await sut.Handle(new TelaahWorklistQuery(businessDate), default);
+
+        result.Should().BeSameAs(expected);
+        _dal.Verify(x => x.ListTelaah(businessDate), Times.Once);
+    }
+
+    [Fact]
+    public async Task TelaahWorklistHandler_when_business_date_null_uses_clock_business_date()
+    {
+        var expected = new List<TelaahWorklistItem>();
+        var clockDate = new DateOnly(2026, 2, 11);
+        _dal.Setup(x => x.ListTelaah(clockDate)).Returns(expected);
+        var clock = new Mock<ITglJamProvider>();
+        clock.Setup(x => x.Now).Returns(new DateTime(2026, 2, 11, 8, 30, 0));
+        var sut = new TelaahWorklistHandler(_dal.Object, clock.Object);
 
         var result = await sut.Handle(new TelaahWorklistQuery(), default);
 
         result.Should().BeSameAs(expected);
-        _dal.Verify(x => x.ListTelaah(), Times.Once);
+        _dal.Verify(x => x.ListTelaah(clockDate), Times.Once);
     }
 
     [Fact]

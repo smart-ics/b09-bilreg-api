@@ -20,10 +20,11 @@ using Bilreg.Application.ApotekContext.IntegrationFeature.Handlers;
 using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
+using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.WorklistFeature;
+using Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -56,6 +57,10 @@ using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.BrgContext.BrgFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
+using Bilreg.Application.SalesContext.ResepFeature.UseCases;
+using Bilreg.Infrastructure.SalesContext.ResepFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
@@ -99,7 +104,13 @@ public static class InfrastructureService
             .AddScoped<ICollectionWindowDaysProvider, CollectionWindowDaysProvider>()
             .AddScoped<IAvailableStockPort, FailClosedAvailableStockPort>()
             .AddScoped<IAptAuthorizationPolicy, AuthenticatedActorAuthorizationPolicy>()
-            .AddScoped<IPrescriptionContractPort, FailClosedPrescriptionContractPort>()
+            .AddScoped<IKemkesKajianResepDal, KemkesKajianResepDal>()
+            .AddScoped<IKemkesKajianResepCatalogPort, KemkesKajianResepCatalogAdapter>()
+            .AddScoped<IResepVoidDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
+            .AddScoped<IResepCreateDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
+            .AddScoped<Bilreg.Infrastructure.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
+            .AddScoped<Bilreg.Application.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
+            .AddScoped<IResepRepo, ResepRepo>()
             .AddScoped<IPaymentClearancePort, FailClosedPaymentClearancePort>()
             .AddScoped<ITataRekeningChargePort, FailClosedTataRekeningChargePort>()
             .AddScoped<ITataRekeningInvoicePermissionPort, DenyTataRekeningInvoicePermissionPort>()
@@ -217,6 +228,8 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+
+        services.AddBrgFeature();
 
         services
             .Scan(selector => selector

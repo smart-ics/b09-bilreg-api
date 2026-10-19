@@ -40,12 +40,11 @@ public class ApotekApiContractTest
       .OrderBy(t => t)
       .ToArray();
 
-    postMethods.Should().HaveCount(31);
+    postMethods.Should().HaveCount(30);
     postMethods.Should().Contain([
-      "resep-kerja/intake-electronic",
-      "resep-kerja/intake-physical",
       "jual-bebas/accept",
       "telaah/start",
+      "telaah/kajian",
       "sales-order/establish",
       "queue/map",
       "invoice/establish",
@@ -102,6 +101,7 @@ public class ApotekApiContractTest
   [Theory]
   [InlineData(typeof(ApotekConcurrencyException), StatusCodes.Status409Conflict, "CONCURRENCY")]
   [InlineData(typeof(ApotekDomainException), StatusCodes.Status400BadRequest, "DOMAIN")]
+  [InlineData(typeof(KeyNotFoundException), StatusCodes.Status404NotFound, "NOT_FOUND")]
   [InlineData(typeof(UnauthorizedAccessException), StatusCodes.Status401Unauthorized, "AUTH")]
   public void ApotekExceptionFilter_MapsKnownFailuresToDocumentedShape(
     Type exceptionType, int statusCode, string code)
@@ -111,7 +111,9 @@ public class ApotekApiContractTest
       ? (Exception)new ApotekConcurrencyException("agg-1", 2)
       : exceptionType == typeof(ApotekDomainException)
         ? new ApotekDomainException("domain failure")
-        : new UnauthorizedAccessException("not authenticated");
+        : exceptionType == typeof(KeyNotFoundException)
+          ? new KeyNotFoundException("item not found")
+          : new UnauthorizedAccessException("not authenticated");
 
     var context = new ExceptionContext(
       new ActionContext
