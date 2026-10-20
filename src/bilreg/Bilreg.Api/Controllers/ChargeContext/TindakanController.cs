@@ -3,7 +3,6 @@ using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.OpenApi.Services;
 using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.ChargeContext;
@@ -27,11 +26,30 @@ public class TindakanController : Controller
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
+
     [HttpPost]
     [Route("save")]
     public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
     {
         var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> Get(string id)
+    {
+        var query = new TindakanGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("list/{regId}")]
+    public async Task<IActionResult> List(string regId, [FromQuery] string? pakaiBedId = null)
+    {
+        var query = new TindakanListQuery(regId, pakaiBedId ?? "");
+        var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
 
@@ -48,11 +66,18 @@ public class TindakanController : Controller
     [Route("batal")]
     public async Task<IActionResult> Batal(TindakanVoidRequest req)
     {
-        var userAgent = HttpHelper.GetUserAgent(Request);
-        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
-        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        try
+        {
+            var userAgent = HttpContext is null ? "" : HttpHelper.GetUserAgent(Request);
+            var remoteIpAddress = HttpContext is null ? "0.0.0.0" : HttpHelper.GetIpAddress(Request, HttpContext);
+            var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSend(StatusCodes.Status422UnprocessableEntity, "FAIL", ex.Message));
+        }
     }
 }
 

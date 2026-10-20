@@ -11,25 +11,30 @@ public record TindakanModel : ITindakanKey
 {
     private readonly List<TindakanKomponenBase> _listKomponen;
     private const string ID_PREFIX = "TDK";
+
     #region CREATION
     public TindakanModel(
         string tindakanId, DateTime tindakanDate, string orderTindakanId,
         RegReff reg, LayananReff layanan, KelasReff kelas,
         TipeTarifReff tipeTarif, TarifReff tarif,
         IEnumerable<TindakanKomponenBase> listKomponen, 
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail,
+        string pakaiBedId = "",
+        int qty = 1)
     {
         TindakanId = tindakanId;
         TindakanDate = tindakanDate;
         OrderTindakanId = orderTindakanId;
         
         Reg = reg;
+        PakaiBedId = pakaiBedId;
         Layanan = layanan;
 
         Kelas = kelas;
         TipeTarif = tipeTarif;
         Tarif = tarif;
-        _listKomponen = listKomponen.ToList() ?? [];
+        Qty = qty;
+        _listKomponen = listKomponen?.ToList() ?? [];
 
         AuditTrail = auditTrail;
     }
@@ -37,55 +42,95 @@ public record TindakanModel : ITindakanKey
     public static TindakanModel Create(RegModel reg, 
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
-        string userId, DateTime occurredAt = default)
+        string userId, DateTime occurredAt = default,
+        string pakaiBedId = "", int qty = 1)
     {
+        if (qty < 1)
+            throw new ArgumentException("Qty must be at least 1", nameof(qty));
+
         var newId = NunaId.New(ID_PREFIX);
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty);
         var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
         var result = new TindakanModel(newId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
-            tarif, listKomp, audit);
+            tarif, listKomp, audit, pakaiBedId, qty);
         return result;
     }
+
+    public static TindakanModel Create(RegModel reg, 
+        LayananType layanan, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        string userId, string pakaiBedId, int qty = 1, DateTime occurredAt = default)
+        => Create(reg, layanan, nilaiTarif, listKomponenPpaView, userId, occurredAt, pakaiBedId, qty);
     
     public static TindakanModel Save(string tindakanId, RegModel reg,
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView,
-        AuditTrailType auditTrail, DateTime occurredAt = default)
+        AuditTrailType auditTrail, DateTime occurredAt = default,
+        string pakaiBedId = "", int qty = 1)
     {
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        if (qty < 1)
+            throw new ArgumentException("Qty must be at least 1", nameof(qty));
+
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
 
         var result = new TindakanModel(tindakanId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
-            tarif, listKomp, auditTrail);
+            tarif, listKomp, auditTrail, pakaiBedId, qty);
         return result;
     }
 
+    public static TindakanModel Save(string tindakanId, RegModel reg,
+        LayananType layanan, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView,
+        AuditTrailType auditTrail, string pakaiBedId, int qty = 1, DateTime occurredAt = default)
+        => Save(tindakanId, reg, layanan, nilaiTarif, listKomponenPpaView, auditTrail, occurredAt, pakaiBedId, qty);
+
     public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
-        string userId, DateTime occurredAt = default)
+        string userId, DateTime occurredAt = default,
+        string pakaiBedId = "", int qty = 1)
     {
+        if (qty < 1)
+            throw new ArgumentException("Qty must be at least 1", nameof(qty));
+
         var newId = NunaId.New(ID_PREFIX);
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty);
         var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
         var result = new TindakanModel(newId, occurredAt, "",
             reg.ToReff(), reg.Layanan, nilaiTarif.Kelas, nilaiTarif.TipeTarif,
-            tarif, listKomp, audit);
+            tarif, listKomp, audit, pakaiBedId, qty);
         return result;
     }
 
+    public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        string userId, string pakaiBedId, int qty = 1, DateTime occurredAt = default)
+        => FromReg(reg, nilaiTarif, listKomponenPpaView, userId, occurredAt, pakaiBedId, qty);
+
+    public static TindakanModel Load(
+        string tindakanId, DateTime tindakanDate, string orderTindakanId,
+        RegReff reg, LayananReff layanan, KelasReff kelas,
+        TipeTarifReff tipeTarif, TarifReff tarif,
+        IEnumerable<TindakanKomponenBase> listKomponen, 
+        AuditTrailType auditTrail,
+        string pakaiBedId = "",
+        int qty = 1)
+        => new(tindakanId, tindakanDate, orderTindakanId, reg, layanan, kelas,
+            tipeTarif, tarif, listKomponen, auditTrail, pakaiBedId, qty);
+
     private static IEnumerable<TindakanKomponenBase> GenListKomponen(
-        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView)
+        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView, int qty = 1)
     {
         var result = new List<TindakanKomponenBase>();
-        var listKompPpaFetched = listKomponenPpaView.ToList();
+        var listKompPpaFetched = listKomponenPpaView?.ToList() ?? [];
         var index = 0;
         
         foreach (var item in nilaiTarif.ListKomponen)
@@ -94,9 +139,9 @@ public record TindakanModel : ITindakanKey
                 .FirstOrDefault(x => x.Komponen.ToReff() == item.Komponen);
             
             TindakanKomponenBase newItem = kompPPa is null 
-                ? new TindakanKomponenWithoutPpaType(item.Komponen,index++, item.Nilai, 1, item.Nilai) 
+                ? TindakanKomponenWithoutPpaType.Create(item.Komponen, index++, item.Nilai, qty) 
                 : TindakanKomponenWithPpaType.Create(kompPPa.Komponen, kompPPa.Ppa, 
-                    index++, item.Nilai, 1);
+                    index++, item.Nilai, qty);
             
             result.Add(newItem);
         }
@@ -114,7 +159,9 @@ public record TindakanModel : ITindakanKey
         TipeTarifType.Default.ToReff(), 
         TarifType.Default.ToReff(),
         [], 
-        AuditTrailType.Default
+        AuditTrailType.Default,
+        "",
+        1
     );
 
     public static ITindakanKey Key(string id) => Default with { TindakanId = id };
@@ -125,10 +172,12 @@ public record TindakanModel : ITindakanKey
     public DateTime TindakanDate { get; init; }
     public string OrderTindakanId { get; init; }
     public RegReff Reg { get; init; }
+    public string PakaiBedId { get; init; }
     public LayananReff Layanan { get; init; }
     public KelasReff Kelas { get; init; }
     public TipeTarifReff TipeTarif { get; init; }
     public TarifReff Tarif { get; private set; }
+    public int Qty { get; init; }
     public decimal Total => _listKomponen.Sum(t => t.SubTotal);
     public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;
     public AuditTrailType AuditTrail { get; init; }
@@ -148,8 +197,8 @@ public interface ITindakanKey
 }
 
 public record TindakanView(string TindakanId, DateTime TindakanDate, string OrderTdkId,
-    RegReff Reg, LayananReff Layanan, TarifReff Tarif) : ITindakanKey;
+    RegReff Reg, LayananReff Layanan, TarifReff Tarif, string PakaiBedId = "") : ITindakanKey;
 
 public record TindakanJualView(string TransaksiId, DateTime TransaksiDate, string OrderTrasaksi, 
     RegReff Reg, LayananReff Layanan, string DiskripsiId, string DiskripsiName, 
-    int Qty, decimal Total, string Tipe);
+    int Qty, decimal Total, string Tipe, string PakaiBedId = "");

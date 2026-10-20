@@ -28,11 +28,13 @@ public class TindakanDalTest
             TarifName: "Tarif A",
             Total: 150000,
             CrtUser: "USR001",
-            CrtDate: new DateTime(2025,2,3),
+            CrtDate: new DateTime(2025, 2, 3),
             UpdUser: "USR001",
-            UpdDate: new DateTime(2025,2,4),
+            UpdDate: new DateTime(2025, 2, 4),
             VodUser: "",
-            VodDate: new DateTime(3000, 1, 1)
+            VodDate: new DateTime(3000, 1, 1),
+            PakaiBedId: "BED001",
+            Qty: 2
         );
     
     private static ITindakanKey FakerKey()
@@ -52,7 +54,13 @@ public class TindakanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
+        _sut.Insert(Faker());
+        var updated = Faker() with { PakaiBedId = "BED999", Qty = 5 };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(updated);
+        actual.PakaiBedId.Should().Be("BED999");
+        actual.Qty.Should().Be(5);
     }
     
     [Fact]
@@ -69,6 +77,8 @@ public class TindakanDalTest
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker());
+        actual.PakaiBedId.Should().Be("BED001");
+        actual.Qty.Should().Be(2);
     }
     
     [Fact]
@@ -78,5 +88,17 @@ public class TindakanDalTest
         _sut.Insert(Faker());
         var actual = _sut.ListData(FakerRegKey());
         actual.Should().ContainEquivalentOf(Faker());
+    }
+
+    [Fact]
+    public void ListTdkJualTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListTdkJual(FakerRegKey()).ToList();
+        var item = actual.FirstOrDefault(x => x.TransaksiId == "TND001");
+        item.Should().NotBeNull();
+        item!.Qty.Should().Be(2);
+        item.PakaiBedId.Should().Be("BED001");
     }
 }

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -16,8 +16,31 @@ public record TindakanDto(
     string TarifId, string TarifName, decimal Total,
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
-    string VodUser, DateTime VodDate)
+    string VodUser, DateTime VodDate,
+    string PakaiBedId = "",
+    int Qty = 1)
 {
+    public TindakanDto() : this("", default, "", "", "", "", "", "", "", "", "", "", "", "", 0, "", default, "", default, "", default, "", 1)
+    {
+    }
+
+    public TindakanDto(
+        string tindakanId, DateTime tindakanDate, string orderTdkId,
+        string regId, string pakaiBedId, string pasienId, string pasienName,
+        string layananId, string layananName,
+        string kelasId, string kelasName,
+        string tipeTarifId, string tipeTarifName,
+        string tarifId, string tarifName, int qty, decimal total,
+        string crtUser, DateTime crtDate,
+        string updUser, DateTime updDate,
+        string vodUser, DateTime vodDate)
+        : this(tindakanId, tindakanDate, orderTdkId, regId, pasienId, pasienName,
+            layananId, layananName, kelasId, kelasName, tipeTarifId, tipeTarifName,
+            tarifId, tarifName, total, crtUser, crtDate, updUser, updDate, vodUser, vodDate,
+            pakaiBedId, qty)
+    {
+    }
+
     public static TindakanDto FromModel(TindakanModel model)
     {
         var result = new TindakanDto(
@@ -29,7 +52,8 @@ public record TindakanDto(
             model.Tarif.TarifId, model.Tarif.TarifName, model.Total,
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
-            model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp);
+            model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp,
+            model.PakaiBedId, model.Qty);
         return result;
     }
 
@@ -55,7 +79,9 @@ public record TindakanDto(
             tipeTarif,
             tarif,
             listKomponen,
-            auditTrail
+            auditTrail,
+            PakaiBedId,
+            Qty
         );
         return result;
     }
@@ -66,7 +92,7 @@ public record TindakanDto(
         var tarifReff = new TarifReff(TarifId, TarifName);
         var lyn = new LayananReff(LayananId, LayananName);
         var result = new TindakanView(TindakanId, TindakanDate, OrderTdkId,
-            regReff, lyn, tarifReff);
+            regReff, lyn, tarifReff, PakaiBedId);
         return result;
     }
 }
@@ -80,15 +106,20 @@ public record TindakanJualDto(
     string Tipe,
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
-    string VodUser, DateTime VodDate)
+    string VodUser, DateTime VodDate,
+    string PakaiBedId = "")
 {
+    public TindakanJualDto() : this("", default, "", "", "", "", "", "", "", "", 1, 0, "", "", default, "", default, "", default, "")
+    {
+    }
+
     public TindakanJualView ToView()
     {
         var regReff = new RegReff(RegId, PasienId, PasienName);
         var lyn = new LayananReff(LayananId, LayananName);
 
         var result = new TindakanJualView(TransaksiId, TransaksiDate, OrderTransaksiId, regReff, lyn,
-            DiskripsiId, DiskripsiName, Qty, Total, Tipe);
+            DiskripsiId, DiskripsiName, Qty, Total, Tipe, PakaiBedId);
 
         return result;
     }

@@ -1,13 +1,15 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
 using MediatR;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TdkListTindakanJualQuery(string RegId) : IRequest<IEnumerable<TdkListTindakanJualResponse>>, IRegKey;
 public record TdkListTindakanJualResponse(string TransaksiId, string TransaksiDate, 
-    RegReff Reg, LayananReff Layanan, TdkListTdkJualDesc Diskripsi, decimal TotalNilai);
+    RegReff Reg, LayananReff Layanan, TdkListTdkJualDesc Diskripsi, decimal TotalNilai,
+    int Qty = 1, string PakaiBedId = "");
 
 public record TdkListTdkJualDesc(string DiskripsiId, string DiskripsiName, string Tipe);
 
@@ -27,7 +29,8 @@ public class TdkListTindakanJualHandler : IRequestHandler<TdkListTindakanJualQue
         var listTdkJual = _tdkRepo.ListDataTdkJual(request)?.ToList() ?? [];
         var result = listTdkJual.Select(x => new TdkListTindakanJualResponse(
             x.TransaksiId, x.TransaksiDate.ToString("yyyy-MM-dd HH:mm:ss"),
-            x.Reg, x.Layanan, new TdkListTdkJualDesc(x.DiskripsiId, x.DiskripsiName, x.Tipe), x.Total));
+            x.Reg, x.Layanan, new TdkListTdkJualDesc(x.DiskripsiId, x.DiskripsiName, x.Tipe), x.Total,
+            x.Qty, x.PakaiBedId));
 
         return Task.FromResult(result);
     }

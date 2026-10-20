@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 
 namespace Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -12,7 +12,16 @@ public record TindakanKomponenWithoutPpaType(
     decimal Nilai,
     int Qty,
     decimal SubTotal
-) : TindakanKomponenBase(Komponen, NoUrut, Nilai, Qty, SubTotal);
+) : TindakanKomponenBase(Komponen, NoUrut, Nilai, Qty, SubTotal)
+{
+    public static TindakanKomponenWithoutPpaType Create(
+        KomponenType komp, int noUrut, decimal nilai, int qty)
+        => new(komp.ToReff(), noUrut, nilai, qty, nilai * qty);
+
+    public static TindakanKomponenWithoutPpaType Create(
+        KomponenReff komp, int noUrut, decimal nilai, int qty)
+        => new(komp, noUrut, nilai, qty, nilai * qty);
+}
 
 public record TindakanKomponenWithPpaType(KomponenReff Komponen, PpaReff Ppa,
     int NoUrut, decimal Nilai, int Qty, decimal SubTotal) 
@@ -28,4 +37,3 @@ public record TindakanKomponenWithPpaType(KomponenReff Komponen, PpaReff Ppa,
                 noUrut, nilai, qty, nilai * qty);
     }    
 }
-

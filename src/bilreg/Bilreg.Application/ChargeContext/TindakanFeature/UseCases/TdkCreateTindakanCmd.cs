@@ -22,7 +22,8 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
-    IEnumerable<TdkCreateTindakanPpaCmd> ListPpa) 
+    IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,
+    string PakaiBedId = "", int Qty = 1) 
     : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey;
 
 public record TdkCreateTindakanPpaCmd(string KomponenId, string PpaId);
@@ -92,7 +93,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, request.Qty);
         var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tindakan == TindakanModel.Default

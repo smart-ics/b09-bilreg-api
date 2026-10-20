@@ -42,16 +42,14 @@ public class NilaiTarifController : Controller
         return Ok(new JSendOk(result));
     }
 
-    //[HttpGet]
-    //[Route("{tarifId}/{kelasId}/{tipeTarifId}")]
-    //public async Task<IActionResult> ListTarifBrg(string tarifId,
-    //    string kelasId, string tipeTarifId)
-    //{
-    //    var query = new TrfGetNilaiTarifQuery(tarifId, kelasId, tipeTarifId);
-    //    var result = await _mediator.Send(query);
-    //    return Ok(new JSendOk(result));
-    //}
-
+    [HttpGet]
+    [Route("{tarifId}/{kelasId}/{tipeTarifId}")]
+    public async Task<IActionResult> GetNilaiTarif(string tarifId, string kelasId, string tipeTarifId)
+    {
+        var query = new TrfGetNilaiTarifQuery(tarifId, kelasId, tipeTarifId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }
 
 public record TrfImportNilaiTarifBody(string? ImportedBy = null, bool IsEmergency = false);

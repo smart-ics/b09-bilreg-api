@@ -10,9 +10,9 @@ public class TindakanKomponenDalTest
 {
     private readonly TindakanKomponenDal _sut = new(ConnStringHelper.GetTestEnv());
     
-    private static TindakanKomponenDto Faker()
-        => new TindakanKomponenDto("TND001",  1, "KTR", "Komponen Tarif A",
-                "PPA001", "Ppa A",  2, 75000, 150000);
+    private static TindakanKomponenDto Faker(int qty = 2)
+        => new TindakanKomponenDto("TND001", 1, "KTR", "Komponen Tarif A",
+                "PPA001", "Ppa A", qty, 75000, 75000 * qty);
 
     private static ITindakanKey FakerKey()
         => TindakanModel.Key("TND001");
@@ -35,9 +35,12 @@ public class TindakanKomponenDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var dto = Faker();
+        var dto = Faker(qty: 3);
         _sut.Insert([dto]);
         var actual = _sut.ListData(FakerKey());
         actual.Should().ContainEquivalentOf(dto);
+        var item = actual.First(x => x.TindakanId == "TND001");
+        item.Qty.Should().Be(3);
+        item.SubTotal.Should().Be(225000);
     }
 }
