@@ -509,5 +509,106 @@ public class DeliveryOrderModelTest
         remaining.Brg.BrgId.Should().Be("BRG002");
         sut.Total.Should().Be(1000000); // 50,000 * 20
     }
+
+    [Fact]
+    public void ClearItems_WhenDraft_ShouldEmptyItemsAndResetTotals()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        sut.AddItem(_brg1, _satuanBox, 10, 100000, 0, 0, "BATCH-1", ed, DeliveryInspectionType.Create(10, 10, 0, ""), _baseDate);
+        sut.ListItem.Should().HaveCount(1);
+        sut.Total.Should().Be(1000000);
+
+        // Act
+        sut.ClearItems();
+
+        // Assert
+        sut.ListItem.Should().BeEmpty();
+        sut.SubTotal.Should().Be(0);
+        sut.Total.Should().Be(0);
+        sut.GrandTotal.Should().Be(0);
+    }
+
+    [Fact]
+    public void ClearItems_WhenConfirmed_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        sut.AddItem(_brg1, _satuanBox, 10, 100000, 0, 0, "BATCH-1", ed, DeliveryInspectionType.Create(10, 10, 0, ""), _baseDate);
+        sut.Confirm("SPV01", _baseDate.AddHours(1));
+
+        // Act & Assert
+        var act = () => sut.ClearItems();
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*berstatus Confirmed*");
+    }
+
+    [Fact]
+    public void UpdateDeliveryOrderDate_WhenDraft_ShouldUpdateDate()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var newDate = new DateTime(2026, 10, 16, 9, 30, 0);
+
+        // Act
+        sut.UpdateDeliveryOrderDate(newDate);
+
+        // Assert
+        sut.DeliveryOrderDate.Should().Be(newDate);
+    }
+
+    [Fact]
+    public void UpdateSupplier_And_Gudang_And_PoId_WhenDraft_ShouldUpdateCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var newSupplier = new PartnerReff("SUP002", "PT Enseval");
+        var newGudang = new LayananReff("GDLOG", "Gudang Logistik");
+
+        // Act
+        sut.UpdateSupplier(newSupplier);
+        sut.UpdateGudang(newGudang);
+        sut.UpdatePoId("PO-NEW-001");
+
+        // Assert
+        sut.Supplier.PartnerId.Should().Be("SUP002");
+        sut.Supplier.PartnerName.Should().Be("PT Enseval");
+        sut.Gudang.LayananId.Should().Be("GDLOG");
+        sut.Gudang.LayananName.Should().Be("Gudang Logistik");
+        sut.PoId.Should().Be("PO-NEW-001");
+    }
+
+    [Fact]
+    public void SetModified_WhenDraft_ShouldSetAuditTrailModified()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var modDate = new DateTime(2026, 10, 16, 11, 0, 0);
+
+        // Act
+        sut.SetModified("USR02", modDate);
+
+        // Assert
+        sut.AuditTrail.Modified.Should().NotBeNull();
+        sut.AuditTrail.Modified!.UserId.Should().Be("USR02");
+        sut.AuditTrail.Modified!.Timestamp.Should().Be(modDate);
+    }
+
+    [Fact]
+    public void SetModified_WhenConfirmed_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        sut.AddItem(_brg1, _satuanBox, 10, 100000, 0, 0, "BATCH-1", ed, DeliveryInspectionType.Create(10, 10, 0, ""), _baseDate);
+        sut.Confirm("SPV01", _baseDate.AddHours(1));
+
+        // Act & Assert
+        var act = () => sut.SetModified("USR02", DateTime.Now);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*berstatus Confirmed*");
+    }
     #endregion
 }

@@ -28,7 +28,8 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         decimal grandTotal,
         AuditInfoType confirmed,
         AuditTrailType auditTrail,
-        IEnumerable<DeliveryOrderItemType> items)
+        IEnumerable<DeliveryOrderItemType> items,
+        string poDate = "")
     {
         DeliveryOrderId = id;
         SuratJalanNo = suratJalanNo;
@@ -48,6 +49,7 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         Confirmed = confirmed;
         AuditTrail = auditTrail;
         _listItem = [.. items];
+        PoDate = poDate ?? string.Empty;
     }
 
     public static IDeliveryOrderKey Key(string id) => new DeliveryOrderModel(
@@ -65,7 +67,8 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         LayananReff gudang,
         string keterangan,
         string userId,
-        DateTime occuredAt)
+        DateTime occuredAt,
+        string poDate = "")
     {
         if (string.IsNullOrWhiteSpace(suratJalanNo))
             throw new ArgumentException("Nomor surat jalan vendor tidak boleh kosong.", nameof(suratJalanNo));
@@ -91,7 +94,8 @@ public class DeliveryOrderModel : IDeliveryOrderKey
             0m, 0m, 0m, 0m, 0m, 0m, 0m,
             AuditInfoType.Default,
             auditTrail,
-            []);
+            [],
+            poDate?.Trim() ?? string.Empty);
     }
 
     public static DeliveryOrderModel Create(
@@ -101,12 +105,14 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         LayananReff gudang,
         string keterangan,
         string userId,
-        DateTime occuredAt)
-        => Create(suratJalanNo, poId, supplier?.ToReff() ?? throw new ArgumentNullException(nameof(supplier)), gudang, keterangan, userId, occuredAt);
+        DateTime occuredAt,
+        string poDate = "")
+        => Create(suratJalanNo, poId, supplier?.ToReff() ?? throw new ArgumentNullException(nameof(supplier)), gudang, keterangan, userId, occuredAt, poDate);
 
     public string DeliveryOrderId { get; private set; }
     public string SuratJalanNo { get; private set; }
     public string PoId { get; private set; }
+    public string PoDate { get; private set; }
     public DateTime DeliveryOrderDate { get; private set; }
     public DateTime TglDo => DeliveryOrderDate;
     public PartnerReff Supplier { get; private set; }
@@ -274,6 +280,67 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         if (string.IsNullOrWhiteSpace(suratJalanNo))
             throw new ArgumentException("Nomor surat jalan tidak boleh kosong.", nameof(suratJalanNo));
         SuratJalanNo = suratJalanNo.Trim();
+    }
+
+    public void ClearItems()
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat mengosongkan item pada dokumen berstatus {Status}.");
+
+        _listItem.Clear();
+        Recalculate();
+    }
+
+    public void UpdateDeliveryOrderDate(DateTime deliveryOrderDate)
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat mengubah tanggal dokumen pada dokumen berstatus {Status}.");
+
+        DeliveryOrderDate = deliveryOrderDate;
+    }
+
+    public void UpdateSupplier(PartnerReff supplier)
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat mengubah pemasok pada dokumen berstatus {Status}.");
+        if (supplier == null || string.IsNullOrWhiteSpace(supplier.PartnerId))
+            throw new ArgumentException("Supplier wajib ditentukan.", nameof(supplier));
+
+        Supplier = supplier;
+    }
+
+    public void UpdateGudang(LayananReff gudang)
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat mengubah gudang pada dokumen berstatus {Status}.");
+        if (gudang == null || string.IsNullOrWhiteSpace(gudang.LayananId))
+            throw new ArgumentException("Gudang tujuan wajib ditentukan.", nameof(gudang));
+
+        Gudang = gudang;
+    }
+
+    public void UpdatePoId(string poId)
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat mengubah PO pada dokumen berstatus {Status}.");
+
+        PoId = poId?.Trim() ?? string.Empty;
+    }
+
+    public void SetPoDate(string poDate)
+    {
+        PoDate = poDate?.Trim() ?? string.Empty;
+    }
+
+    public void SetModified(string userId, DateTime modifiedAt)
+    {
+        if (Status != DeliveryOrderStatusEnum.Draft)
+            throw new InvalidOperationException($"Tidak dapat memodifikasi dokumen berstatus {Status}.");
+
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID tidak boleh kosong.", nameof(userId));
+
+        AuditTrail.Modif(userId, modifiedAt);
     }
 
     public void Confirm(string userId, DateTime confirmedAt)

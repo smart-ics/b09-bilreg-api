@@ -197,6 +197,7 @@ public class DeliveryOrderDal : IDeliveryOrderDal
             CASE WHEN ISDATE(aa.fd_tgl_trs) = 1 THEN CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) ELSE '3000-01-01' END AS DoDate,
             aa.fs_kd_petugas AS PetugasId,
             aa.fs_kd_po AS PoId,
+            ISNULL(po.fd_tgl_trs, '') AS PoDate,
             aa.fs_kd_do_asli AS SuratJalanNo,
             aa.fs_kd_layanan AS LayananId,
             ISNULL(bb.fs_nm_layanan, '') AS LayananName,
@@ -218,5 +219,6 @@ public class DeliveryOrderDal : IDeliveryOrderDal
             TB_TRS_DO aa
             LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan
             LEFT JOIN t_iii cc ON aa.fs_kd_iii = cc.fs_kd_iii
+            LEFT JOIN tb_trs_po po ON aa.fs_kd_po = po.fs_kd_trs
         """;
 }

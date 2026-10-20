@@ -25,6 +25,14 @@ public class DeliveryController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPut("draft/{id}")]
+    public async Task<IActionResult> UpdateDraft(string id, [FromBody] DeliveryUpdateDraftCommand cmd)
+    {
+        var effectiveCmd = cmd with { DeliveryOrderId = id };
+        var response = await _mediator.Send(effectiveCmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPost("confirm")]
     public async Task<IActionResult> Confirm([FromBody] DeliveryConfirmCommand cmd)
     {
@@ -66,6 +74,17 @@ public class DeliveryController : ControllerBase
     public async Task<IActionResult> ListPendingPo()
     {
         var query = new DeliveryListPendingPoQuery();
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet("validate-surat-jalan")]
+    public async Task<IActionResult> ValidateSuratJalan(
+        [FromQuery] string supplierId,
+        [FromQuery] string suratJalanNo,
+        [FromQuery] string? excludeDoId = null)
+    {
+        var query = new DeliveryValidateSuratJalanQuery(supplierId, suratJalanNo, excludeDoId);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

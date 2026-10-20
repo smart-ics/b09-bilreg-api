@@ -6,6 +6,7 @@ public class DeliveryOrderDto
     public DateTime DoDate { get; set; }
     public string PetugasId { get; set; } = string.Empty;
     public string PoId { get; set; } = string.Empty;
+    public string PoDate { get; set; } = string.Empty;
     public string SuratJalanNo { get; set; } = string.Empty;
     public string LayananId { get; set; } = string.Empty;
     public string LayananName { get; set; } = string.Empty;

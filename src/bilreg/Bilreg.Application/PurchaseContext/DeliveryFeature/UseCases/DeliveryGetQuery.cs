@@ -25,7 +25,39 @@ public record DeliveryGetResponse(
     decimal DiskonLain,
     decimal GrandTotal,
     DeliveryGetConfirmedResponse Confirmed,
-    IReadOnlyList<DeliveryGetItemResponse> ListItem
+    IReadOnlyList<DeliveryGetItemResponse> ListItem,
+    DeliveryGetAuditResponse Created,
+    string PoDate = ""
+)
+{
+    public DeliveryGetResponse(
+        string deliveryOrderId,
+        string suratJalanNo,
+        string poId,
+        string deliveryOrderDate,
+        PartnerReff supplier,
+        LayananReff gudang,
+        string keterangan,
+        string status,
+        decimal subTotal,
+        decimal taxTotal,
+        decimal diskonTotal,
+        decimal total,
+        decimal biayaLain,
+        decimal diskonLain,
+        decimal grandTotal,
+        DeliveryGetConfirmedResponse confirmed,
+        IReadOnlyList<DeliveryGetItemResponse> listItem)
+        : this(deliveryOrderId, suratJalanNo, poId, deliveryOrderDate, supplier, gudang, keterangan, status,
+               subTotal, taxTotal, diskonTotal, total, biayaLain, diskonLain, grandTotal, confirmed, listItem,
+               new DeliveryGetAuditResponse(string.Empty, string.Empty), string.Empty)
+    {
+    }
+}
+
+public record DeliveryGetAuditResponse(
+    string UserId,
+    string Timestamp
 );
 
 public record DeliveryGetConfirmedResponse(
@@ -120,6 +152,11 @@ public class DeliveryGetHandler : IRequestHandler<DeliveryGetQuery, DeliveryGetR
             ? model.Confirmed.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
             : string.Empty;
 
+        var createdStr = model.AuditTrail?.Created is { } created && created.Timestamp != default && created.Timestamp.Year < 3000
+            ? created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+            : string.Empty;
+        var createdUser = model.AuditTrail?.Created?.UserId ?? string.Empty;
+
         return new DeliveryGetResponse(
             model.DeliveryOrderId,
             model.SuratJalanNo,
@@ -137,7 +174,9 @@ public class DeliveryGetHandler : IRequestHandler<DeliveryGetQuery, DeliveryGetR
             model.DiskonLain,
             model.GrandTotal,
             new DeliveryGetConfirmedResponse(model.Confirmed.UserId, confirmedAtStr),
-            listItem
+            listItem,
+            new DeliveryGetAuditResponse(createdUser, createdStr),
+            model.PoDate
         );
     }
 }

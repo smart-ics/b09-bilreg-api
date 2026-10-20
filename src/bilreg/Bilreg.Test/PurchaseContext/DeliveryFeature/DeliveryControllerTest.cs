@@ -66,6 +66,38 @@ public class DeliveryControllerTest
     }
 
     [Fact]
+    public async Task UpdateDraft_GivenValidCommand_WhenExecuted_ThenSendsCommandWithRouteIdAndReturnsOk()
+    {
+        // ARRANGE
+        const string doId = "DM001";
+        var cmd = new DeliveryUpdateDraftCommand(
+            "",
+            "SJ-001",
+            "PO-001",
+            "SUP-01",
+            "GDFAR",
+            "Update draft keterangan",
+            "USR01",
+            new List<DeliveryUpdateDraftItemCommand>()
+        );
+        var expectedResponse = new DeliveryUpdateDraftResponse(doId);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<DeliveryUpdateDraftCommand>(c => c.DeliveryOrderId == doId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var actionResult = await _sut.UpdateDraft(doId, cmd);
+
+        // ASSERT
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(It.Is<DeliveryUpdateDraftCommand>(c => c.DeliveryOrderId == doId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Confirm_GivenValidCommand_WhenExecuted_ThenSendsCommandAndReturnsOk()
     {
         // ARRANGE
@@ -256,6 +288,34 @@ public class DeliveryControllerTest
     }
 
     [Fact]
+    public async Task ValidateSuratJalan_GivenQueryParams_WhenExecuted_ThenSendsQueryAndReturnsOk()
+    {
+        // ARRANGE
+        const string supplierId = "SUP-01";
+        const string suratJalanNo = "SJ-001";
+        const string excludeDoId = "DM001";
+        var expectedResponse = new DeliveryValidateSuratJalanResponse(true, "", "", "");
+
+        _mediatorMock
+            .Setup(x => x.Send(
+                It.Is<DeliveryValidateSuratJalanQuery>(q => q.SupplierId == supplierId && q.SuratJalanNo == suratJalanNo && q.ExcludeDoId == excludeDoId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var actionResult = await _sut.ValidateSuratJalan(supplierId, suratJalanNo, excludeDoId);
+
+        // ASSERT
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<DeliveryValidateSuratJalanQuery>(q => q.SupplierId == supplierId && q.SuratJalanNo == suratJalanNo && q.ExcludeDoId == excludeDoId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public void DependencyInjection_DeliveryFeatureServices_CanBeResolvedFromContainer()
     {
         // ARRANGE
@@ -288,10 +348,12 @@ public class DeliveryControllerTest
         sp.GetService<IDeliveryOrderRepo>().Should().NotBeNull();
 
         sp.GetService<IRequestHandler<DeliveryCreateDraftCommand, DeliveryCreateDraftResponse>>().Should().NotBeNull();
+        sp.GetService<IRequestHandler<DeliveryUpdateDraftCommand, DeliveryUpdateDraftResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryConfirmCommand, DeliveryConfirmResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryDirectConfirmCommand, DeliveryDirectConfirmResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryVoidDraftCommand, DeliveryVoidDraftResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryGetQuery, DeliveryGetResponse>>().Should().NotBeNull();
+        sp.GetService<IRequestHandler<DeliveryValidateSuratJalanQuery, DeliveryValidateSuratJalanResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryListByPeriodeQuery, IEnumerable<DeliveryListByPeriodeResponse>>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<DeliveryListPendingPoQuery, IEnumerable<DeliveryPendingPoResponse>>>().Should().NotBeNull();
     }

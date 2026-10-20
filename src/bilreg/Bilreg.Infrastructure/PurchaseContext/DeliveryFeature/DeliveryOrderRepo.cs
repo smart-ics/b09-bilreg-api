@@ -189,7 +189,8 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             grandTotal,
             confirmedAudit,
             auditTrail,
-            items
+            items,
+            orderDto.PoDate
         );
 
         return MayBe.From(model);

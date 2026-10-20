@@ -16,6 +16,7 @@ public class DeliveryQueryTest
 {
     private readonly Mock<IDeliveryOrderRepo> _deliveryOrderRepoMock = new();
     private readonly Mock<IPoDeliveryTrackingDal> _poDeliveryTrackingDalMock = new();
+    private readonly Mock<IDeliveryValidationDal> _deliveryValidationDalMock = new();
 
     private static DeliveryOrderModel CreateTestDeliveryOrder(string doId = "DM0114280A")
     {
@@ -30,7 +31,8 @@ public class DeliveryQueryTest
             gudang: gudang,
             keterangan: "Penerimaan rutin obat",
             userId: "USR01",
-            occuredAt: refDate
+            occuredAt: refDate,
+            poDate: "2026-10-10"
         );
 
         var inspection = DeliveryInspectionType.Create(
@@ -91,6 +93,11 @@ public class DeliveryQueryTest
         response.Keterangan.Should().Be("Penerimaan rutin obat");
         response.Status.Should().Be("Draft");
         response.GrandTotal.Should().Be(model.GrandTotal);
+        response.PoDate.Should().Be("2026-10-10");
+
+        response.Created.Should().NotBeNull();
+        response.Created.UserId.Should().Be("USR01");
+        response.Created.Timestamp.Should().Be(new DateTime(2026, 10, 15, 10, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"));
 
         response.ListItem.Should().HaveCount(1);
         var item = response.ListItem[0];
@@ -370,5 +377,94 @@ public class DeliveryQueryTest
 
         // Assert
         result.Should().BeEmpty();
+    }
+
+    // ==========================================
+    // DeliveryValidateSuratJalanQuery Tests
+    // ==========================================
+
+    [Fact]
+    public async Task DeliveryValidateSuratJalan_WhenUnique_ReturnsIsUniqueTrueAndEmptyFields()
+    {
+        // Arrange
+        _deliveryValidationDalMock
+            .Setup(x => x.CheckDuplicateSuratJalan("SUP001", "SJ-12345", null))
+            .Returns((DeliveryDuplicateInfoDto?)null);
+
+        var sut = new DeliveryValidateSuratJalanHandler(_deliveryValidationDalMock.Object);
+        var query = new DeliveryValidateSuratJalanQuery("SUP001", "SJ-12345");
+
+        // Act
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.IsUnique.Should().BeTrue();
+        response.ExistingDeliveryOrderId.Should().BeEmpty();
+        response.ExistingDate.Should().BeEmpty();
+        response.ExistingPetugasName.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeliveryValidateSuratJalan_WhenDuplicateExists_ReturnsIsUniqueFalseAndDuplicateDetails()
+    {
+        // Arrange
+        var duplicateInfo = new DeliveryDuplicateInfoDto("DM0114275A", "2026-10-10", "Bpk. Roso");
+        _deliveryValidationDalMock
+            .Setup(x => x.CheckDuplicateSuratJalan("SUP001", "SJ-12345", null))
+            .Returns(duplicateInfo);
+
+        var sut = new DeliveryValidateSuratJalanHandler(_deliveryValidationDalMock.Object);
+        var query = new DeliveryValidateSuratJalanQuery("SUP001", "SJ-12345");
+
+        // Act
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.IsUnique.Should().BeFalse();
+        response.ExistingDeliveryOrderId.Should().Be("DM0114275A");
+        response.ExistingDate.Should().Be("2026-10-10");
+        response.ExistingPetugasName.Should().Be("Bpk. Roso");
+    }
+
+    [Fact]
+    public async Task DeliveryValidateSuratJalan_WhenExcludedDoIdMatches_ReturnsIsUniqueTrue()
+    {
+        // Arrange
+        _deliveryValidationDalMock
+            .Setup(x => x.CheckDuplicateSuratJalan("SUP001", "SJ-12345", "DM0114275A"))
+            .Returns((DeliveryDuplicateInfoDto?)null);
+
+        var sut = new DeliveryValidateSuratJalanHandler(_deliveryValidationDalMock.Object);
+        var query = new DeliveryValidateSuratJalanQuery("SUP001", "SJ-12345", "DM0114275A");
+
+        // Act
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.IsUnique.Should().BeTrue();
+        response.ExistingDeliveryOrderId.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("", "SJ-12345")]
+    [InlineData("   ", "SJ-12345")]
+    [InlineData(null, "SJ-12345")]
+    [InlineData("SUP001", "")]
+    [InlineData("SUP001", "   ")]
+    [InlineData("SUP001", null)]
+    public async Task DeliveryValidateSuratJalan_WhenRequiredParamMissing_ThrowsArgumentException(string? supplierId, string? suratJalanNo)
+    {
+        // Arrange
+        var sut = new DeliveryValidateSuratJalanHandler(_deliveryValidationDalMock.Object);
+        var query = new DeliveryValidateSuratJalanQuery(supplierId!, suratJalanNo!);
+
+        // Act
+        var act = () => sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 }

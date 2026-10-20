@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Bilreg.Test.PurchaseContext.DeliveryFeature;
 
+[Collection(DeliveryDatabaseCollection.Name)]
 public class DeliveryOrderDalTest
 {
     private readonly DeliveryOrderDal _orderDal;

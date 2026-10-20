@@ -11,6 +11,7 @@ using Xunit;
 
 namespace Bilreg.Test.PurchaseContext.DeliveryFeature;
 
+[Collection(DeliveryDatabaseCollection.Name)]
 public class PoDeliveryTrackingDalTest
 {
     private readonly IOptions<DatabaseOptions> _dbOptions;
