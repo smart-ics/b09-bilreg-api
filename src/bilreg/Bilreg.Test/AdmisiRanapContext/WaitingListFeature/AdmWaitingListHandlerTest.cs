@@ -133,6 +133,54 @@ public class AdmWaitingListHandlerTest
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
+    [Fact]
+    public async Task UT04_GivenActiveWaitingList_WhenCreateWaitingList_ThenReturnsExistingIdempotently()
+    {
+        var admission = AdmissionModel.Admit(
+            SamplePasienReff(),
+            SampleKelasDk(),
+            SampleBangsal(),
+            null,
+            null,
+            "user1");
+
+        var existingWaitingList = WaitingListModel.Create(
+            admission.RegId,
+            AdmissionStatusEnum.Admitted,
+            SamplePasienReff(),
+            SampleKelas(),
+            SampleBangsal(),
+            3,
+            "user1");
+
+        _admissionRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == admission.RegId)))
+            .Returns(MayBe.From(admission));
+        _waitingListRepoMock
+            .Setup(x => x.HasActiveByRegId(admission.RegId))
+            .Returns(true);
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId(admission.RegId))
+            .Returns(MayBe.From(existingWaitingList));
+
+        var handler = new AdmCreateWaitingListHandler(
+            _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var result = await handler.Handle(
+            new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.WaitingListId.Should().Be(existingWaitingList.WaitingListId);
+        _waitingListRepoMock.Verify(x => x.SaveChanges(It.IsAny<WaitingListModel>()), Times.Never);
+        _wardGatewayMock.Verify(x => x.NotifyHandOver(It.IsAny<WardAccommodationHandOver>()), Times.Never);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Never);
+    }
+
     private void SetupMasters()
     {
         _wardGatewayMock

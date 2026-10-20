@@ -375,7 +375,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 opn.OpnameRequestId,
                 (OpnameRequestStatusEnum)opn.OpnameRequestStatus,
                 NullDash(opn.FulfilledRegId),
-                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate),
+                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate,
+                opn.CrtDate),
             null,
             [],
             []);
@@ -425,7 +426,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 rsv.ReservationId,
                 (ReservationStatusEnum)rsv.ReservationStatus,
                 NullDash(rsv.RealizedRegId),
-                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate),
+                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate,
+                rsv.CrtDate),
             [],
             []);
 
@@ -517,7 +519,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 opname.OpnameRequestId,
                 (OpnameRequestStatusEnum)opname.OpnameRequestStatus,
                 NullDash(opname.FulfilledRegId),
-                opname.UpdDate == VoidSentinel ? opname.CrtDate : opname.UpdDate);
+                opname.UpdDate == VoidSentinel ? opname.CrtDate : opname.UpdDate,
+                opname.CrtDate);
 
         ReservationJourneyFact? rsvFact = reservation is null
             ? null
@@ -525,13 +528,15 @@ public sealed partial class JourneyDal : IJourneyDal
                 reservation.ReservationId,
                 (ReservationStatusEnum)reservation.ReservationStatus,
                 NullDash(reservation.RealizedRegId),
-                reservation.UpdDate == VoidSentinel ? reservation.CrtDate : reservation.UpdDate);
+                reservation.UpdDate == VoidSentinel ? reservation.CrtDate : reservation.UpdDate,
+                reservation.CrtDate);
 
         if (origin == JourneyOriginKind.OpnameRequest && opnFact is null && HasId(admission.OpnameRequestId))
             opnFact = new OpnameRequestJourneyFact(
                 admission.OpnameRequestId,
                 OpnameRequestStatusEnum.Fulfilled,
                 admission.RegId,
+                admission.AdmissionDate,
                 admission.AdmissionDate);
 
         if (origin == JourneyOriginKind.Reservation && rsvFact is null && HasId(admission.ReservationId))
@@ -539,6 +544,7 @@ public sealed partial class JourneyDal : IJourneyDal
                 admission.ReservationId,
                 ReservationStatusEnum.Realized,
                 admission.RegId,
+                admission.AdmissionDate,
                 admission.AdmissionDate);
 
         var facts = new JourneyNormalizedFacts(
@@ -554,7 +560,9 @@ public sealed partial class JourneyDal : IJourneyDal
                     NullDash(admission.ReservationId),
                     admission.AdmissionDate,
                     NullDash(admission.BangsalId),
-                    admission.BangsalName)
+                    admission.BangsalName,
+                    admission.CrtDate,
+                    admission.UpdDate == VoidSentinel ? null : admission.UpdDate)
             ],
             waitingLists,
             HasOrphanRegistration: false);
