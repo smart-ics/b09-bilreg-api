@@ -27,6 +27,14 @@ public class TataRekeningLifecycleDomainTest
             finalizationDate: new DateTime(2026, 6, 16, 10, 0, 0));
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        tataRekening.ListTrsBill.Should().AllSatisfy(bill =>
+        {
+            bill.ListFinalization.Should().AllSatisfy(f =>
+            {
+                f.TglBayar.Should().Be(new DateTime(2026, 6, 16, 10, 0, 0));
+                f.PetugasKasir.Should().Be("kasir-01");
+            });
+        });
 
         tataRekening.Pay(
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
@@ -222,6 +230,34 @@ public class TataRekeningLifecycleDomainTest
         pay.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         cancel.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         delete.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+    }
+
+    [Fact]
+    public void UT15_GivenMultipleBillsWithAllocations_WhenFinalizeFinancialResponsibility_ThenFinalizationTimestampSynchronizedAcrossAllBills()
+    {
+        var jasaBill = CreateBill("BILL-SYNC-JASA", BillModulGroup.Jasa, 60_000m);
+        var obatBill = CreateBill("BILL-SYNC-OBAT", BillModulGroup.Obat, 40_000m);
+        var tataRekening = HydrateOpened(jasaBill, obatBill);
+        tataRekening.Close();
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
+            [BuildPayment(PaymentType.ByKas, 60_000m, 40_000m)],
+            "kasir-awal");
+
+        var finalDate = new DateTime(2026, 6, 16, 15, 30, 45);
+        tataRekening.FinalizeFinancialResponsibility("verif-final", finalDate);
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        tataRekening.ListTrsBill.Should().HaveCount(2);
+        tataRekening.ListTrsBill.Should().AllSatisfy(bill =>
+        {
+            bill.ListFinalization.Should().NotBeEmpty();
+            bill.ListFinalization.Should().AllSatisfy(f =>
+            {
+                f.TglBayar.Should().Be(finalDate);
+                f.PetugasKasir.Should().Be("verif-final");
+            });
+        });
     }
 
     private static TataRekeningModel HydrateOpened(params TrsBillType[] listTrsBill) =>

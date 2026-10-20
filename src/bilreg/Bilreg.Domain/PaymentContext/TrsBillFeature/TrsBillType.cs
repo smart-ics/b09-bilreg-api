@@ -84,8 +84,11 @@ public record TrsBillType : ITrsBillingKey
         string trsBayarId,
         DateTime tglBayar)
     {
-        if (nilai < 0)
-            throw new ArgumentOutOfRangeException(nameof(nilai));
+        ArgumentNullException.ThrowIfNull(payment);
+
+        var isByKas = string.Equals(payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase);
+        if (nilai < 0 && !isByKas)
+            throw new ArgumentOutOfRangeException(nameof(nilai), "Nilai alokasi negatif hanya diizinkan untuk tipe pembayaran Kasir (BYKAS).");
 
         if (string.IsNullOrWhiteSpace(petugasKasir))
             throw new ArgumentException("Petugas kasir should not be empty", nameof(petugasKasir));
@@ -98,13 +101,19 @@ public record TrsBillType : ITrsBillingKey
         if (totalBase == 0)
             throw new InvalidOperationException("Cannot finalize bill when effective nilai is zero.");
 
+        var isDeposit = string.Equals(payment.PaymentId, PaymentType.ByDpu.PaymentId, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(payment.PaymentId, PaymentType.ByDpk.PaymentId, StringComparison.OrdinalIgnoreCase);
+
         var totalFinalized = _listTrsBill2FinalizationEvent.Sum(x => x.Nilai);
-        if (totalFinalized + nilai > totalBase)
+        if (!isByKas && !isDeposit && totalFinalized + nilai > totalBase)
             throw new InvalidOperationException("Finalization nilai exceeds remaining bill total.");
 
         var jenisBayar = ToJenisBayar(payment);
         var allocated = 0m;
-        var noUrut = _listTrsBill2FinalizationEvent.Count;
+        var maxTrans = _listTrsBill2TransEvent.Count > 0 ? _listTrsBill2TransEvent.Max(x => x.NoUrut) : -1;
+        var maxFinal = _listTrsBill2FinalizationEvent.Count > 0 ? _listTrsBill2FinalizationEvent.Max(x => x.NoUrut) : -1;
+        var maxNoUrut = Math.Max(maxTrans, maxFinal);
+        var noUrut = maxNoUrut >= 0 ? maxNoUrut + 1 : 0;
 
         for (var i = 0; i < _listTrsBill2TransEvent.Count; i++)
         {
@@ -119,6 +128,21 @@ public record TrsBillType : ITrsBillingKey
 
             _listTrsBill2FinalizationEvent.Add(finalization);
             allocated += share;
+        }
+    }
+
+    internal void UpdateFinalizationTimestamp(DateTime finalizationDate, string petugasVerif)
+    {
+        if (string.IsNullOrWhiteSpace(petugasVerif))
+            throw new ArgumentException("Petugas verif should not be empty", nameof(petugasVerif));
+
+        for (var i = 0; i < _listTrsBill2FinalizationEvent.Count; i++)
+        {
+            _listTrsBill2FinalizationEvent[i] = _listTrsBill2FinalizationEvent[i] with
+            {
+                TglBayar = finalizationDate,
+                PetugasKasir = petugasVerif
+            };
         }
     }
 
@@ -181,11 +205,16 @@ public record TrsBillType : ITrsBillingKey
 
     private static TrsBillJenisBayarType ToJenisBayar(PaymentType payment)
     {
-        if (payment == PaymentType.ByKas)
+        if (payment == PaymentType.ByKas || string.Equals(payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
             return TrsBillJenisBayarType.Kas;
 
-        if (payment == PaymentType.ByPri)
+        if (payment == PaymentType.ByPri || string.Equals(payment.PaymentId, PaymentType.ByPri.PaymentId, StringComparison.OrdinalIgnoreCase))
             return TrsBillJenisBayarType.Hut;
+
+        if (string.Equals(payment.PaymentId, PaymentType.ByDpu.PaymentId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(payment.PaymentId, PaymentType.ByDpk.PaymentId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(payment.PaymentId, PaymentType.ByVch.PaymentId, StringComparison.OrdinalIgnoreCase))
+            return new TrsBillJenisBayarType(payment.PaymentId, payment.PaymentName, true);
 
         if (payment.IsTipeJaminan)
             return new TrsBillJenisBayarType(payment.PaymentId, payment.PaymentName, true);
@@ -199,8 +228,11 @@ public record TrsBillType : ITrsBillingKey
     {
         var expected = ToJenisBayar(payment);
 
+        if (string.Equals(jenisBayar.JenisBayarId, expected.JenisBayarId, StringComparison.OrdinalIgnoreCase))
+            return true;
+
         if (jenisBayar.IsTipeJaminan && expected.IsTipeJaminan)
-            return string.Equals(jenisBayar.JenisBayarId, expected.JenisBayarId, StringComparison.Ordinal);
+            return string.Equals(jenisBayar.JenisBayarId, expected.JenisBayarId, StringComparison.OrdinalIgnoreCase);
 
         return jenisBayar == expected;
     }

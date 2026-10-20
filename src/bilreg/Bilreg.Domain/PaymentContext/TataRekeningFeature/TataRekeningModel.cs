@@ -176,6 +176,12 @@ public record TataRekeningModel : IRegKey
 
         FinalizationInfo = new TataRekeningFinalizationType(petugasVerif, finalizationDate);
         AssertFinalizationComplete();
+
+        foreach (var bill in _listTrsBill)
+        {
+            bill.UpdateFinalizationTimestamp(finalizationDate, petugasVerif);
+        }
+
         Status = TataRekeningStatusEnum.Finalized;
     }
 
@@ -450,6 +456,15 @@ public record TataRekeningModel : IRegKey
 
     private void ValidateFinalizationTotals(IReadOnlyList<TataRekeningPaymentType> listPayment)
     {
+        foreach (var payment in listPayment)
+        {
+            var isByKas = string.Equals(payment.Payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase);
+            if (!isByKas && (payment.NilaiJasa < 0 || payment.NilaiObat < 0))
+                throw new ArgumentOutOfRangeException(
+                    nameof(listPayment),
+                    $"Nilai alokasi negatif hanya diizinkan untuk tipe pembayaran Kasir (BYKAS), ditemukan pada '{payment.Payment.PaymentName}' ({payment.Payment.PaymentId}).");
+        }
+
         var totalJasaPayment = listPayment.Sum(x => x.NilaiJasa);
         var totalObatPayment = listPayment.Sum(x => x.NilaiObat);
         var totalJasaTrans = TotalBillByModul(BillModulGroup.Jasa);

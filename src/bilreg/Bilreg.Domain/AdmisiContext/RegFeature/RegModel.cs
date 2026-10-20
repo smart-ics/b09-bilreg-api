@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
@@ -204,6 +204,31 @@ public class RegModel : IRegKey
             throw new InvalidOperationException($"Registrasi {RegId} sudah keluar dan tidak dapat dibatalkan.");
 
         RegVoidAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    public void SetKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah tercatat keluar.");
+
+        RegKeluarAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    public void CancelKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit == AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} belum berstatus keluar.");
+
+        RegCancelOutAudit = new AuditInfoType(userId, timestamp);
+        RegKeluarAudit = AuditInfoType.Default;
     }
 
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)

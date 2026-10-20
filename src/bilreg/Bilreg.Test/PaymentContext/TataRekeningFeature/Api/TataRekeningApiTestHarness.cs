@@ -56,6 +56,7 @@ public sealed class TataRekeningApiTestHarness
         RemoveAndRegister(services, () => harness.TransferReceivableService.Object);
         RemoveAndRegister(services, () => harness.AuditRepo.Object);
         RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(TestAuthHandler.UserId));
+        RemoveAndRegister(services, () => (IRegRelationPolicy)TataRekeningDomainTestHelper.PermissiveRegRelationPolicy);
     }
 
     public void SetupOpenScenario()
@@ -117,7 +118,7 @@ public sealed class TataRekeningApiTestHarness
         TataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
             .Returns(MayBe.From(model));
 
-    private void SetupRegLoad(string regId, RegModel model) =>
+    public void SetupRegLoad(string regId, RegModel model) =>
         RegRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
             .Returns(MayBe.From(model));
 

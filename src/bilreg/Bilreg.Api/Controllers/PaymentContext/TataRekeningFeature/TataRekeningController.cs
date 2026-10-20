@@ -8,11 +8,11 @@ using Nuna.Lib.ActionResultHelper;
 namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature;
 
 /// <summary>
-/// Tata Rekening Financial Control API (SOP-TR-01 through SOP-TR-10).
+/// Tata Rekening Financial Control API (SOP-TR-01 through SOP-TR-05, SOP-TR-09).
 /// </summary>
 [Route("api/tatarekening")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class TataRekeningController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -24,7 +24,6 @@ public class TataRekeningController : ControllerBase
 
     /// <summary>SOP-TR-01 — Open Tata Rekening workspace for a registration.</summary>
     [HttpGet("{regId}")]
-    
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -59,7 +58,8 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Merge([FromBody] MergeBillingRequest request)
     {
-        var result = await _mediator.Send(new MergeBillingCommand(request.MergeRequestId, request.UserId));
+        var userId = !string.IsNullOrWhiteSpace(request.UserId) ? request.UserId : "-";
+        var result = await _mediator.Send(new MergeBillingCommand(request.MergeRequestId, userId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -74,8 +74,9 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Verify(string regId, [FromBody] FinancialVerificationRequest request)
     {
+        var userId = !string.IsNullOrWhiteSpace(request.UserId) ? request.UserId : "-";
         var result = await _mediator.Send(
-            new FinancialVerificationCommand(regId, request.Action, request.VerifiedAt, request.UserId));
+            new FinancialVerificationCommand(regId, request.Action, request.VerifiedAt, userId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -90,62 +91,9 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Adjust(string regId, [FromBody] FinancialAdjustmentRequest request)
     {
+        var userId = !string.IsNullOrWhiteSpace(request.UserId) ? request.UserId : "-";
         var result = await _mediator.Send(
-            new FinancialAdjustmentCommand(regId, request.Adjustment, request.AppliedAt, request.UserId));
-        return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
-    }
-
-    /// <summary>SOP-TR-06 — Allocate financial responsibility across payers.</summary>
-    [HttpPost("{regId}/allocate")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Allocate(
-        string regId,
-        [FromBody] AllocateFinancialResponsibilityRequest request)
-    {
-        var result = await _mediator.Send(
-            new AllocateFinancialResponsibilityCommand(regId, request.Payments));
-        return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
-    }
-
-    /// <summary>SOP-TR-07 — Finalize financial responsibility allocation.</summary>
-    [HttpPost("{regId}/finalize")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Finalize(
-        string regId,
-        [FromBody] FinalizeFinancialResponsibilityRequest? request)
-    {
-        var petugas = request?.UserId ?? "-";
-        var result = await _mediator.Send(
-            new FinalizeFinancialResponsibilityCommand(regId, petugas, request?.FinalizationDate));
-        return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
-    }
-
-    /// <summary>SOP-TR-08 — Cancel finalization to allow re-allocation.</summary>
-    [HttpPost("{regId}/cancel-finalization")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> CancelFinalization(
-        string regId,
-        [FromBody] CancelFinalizationRequest request)
-    {
-        var result = await _mediator.Send(new CancelFinalizationCommand(regId, request.UserId, request.Reason));
+            new FinancialAdjustmentCommand(regId, request.Adjustment, request.AppliedAt, userId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -160,31 +108,14 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Reopen(string regId, [FromBody] ReopenBillingRequest request)
     {
-        var result = await _mediator.Send(new ReopenBillingCommand(regId, request.Reason, request.UserId));
-        return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
-    }
-
-    /// <summary>SOP-TR-10 — Initiate settlement handoff to cashier.</summary>
-    [HttpPost("{regId}/settlement-initiation")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> SettlementInitiation(
-        string regId,
-        [FromBody] SettlementInitiationRequest? request)
-    {
-        var petugas = request?.UserId ?? "-";
-        var result = await _mediator.Send(
-            new SettlementInitiationCommand(regId, petugas, request?.InitiatedAt));
+        var userId = !string.IsNullOrWhiteSpace(request.UserId) ? request.UserId : "-";
+        var result = await _mediator.Send(new ReopenBillingCommand(regId, request.Reason, userId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
     [HttpGet]
     [Route("summaryBill/{regId}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetSummaryBills(string regId)
     {
         var query = new TataRekeningListSummaryBillQuery(regId);

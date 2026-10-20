@@ -94,6 +94,81 @@ public class RegModelTest
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
     }
 
+    [Fact]
+    public void GivenActiveRegistration_WhenSetKeluar_ThenUpdatesRegKeluarAuditAndBecomesInactive()
+    {
+        var registration = CreateReg();
+        var timestamp = new DateTime(2026, 7, 12, 14, 0, 0);
+
+        registration.SetKeluar("discharge-user", timestamp);
+
+        registration.RegKeluarAudit.Should().Be(new AuditInfoType("discharge-user", timestamp));
+        registration.RegCancelOutAudit.Should().Be(AuditInfoType.Default);
+        registration.RegVoidAudit.Should().Be(AuditInfoType.Default);
+        registration.IsAktif.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenDischargedRegistration_WhenSetKeluarAgain_ThenThrows()
+    {
+        var registration = CreateReg();
+        registration.SetKeluar("user-1", new DateTime(2026, 7, 12, 14, 0, 0));
+
+        var act = () => registration.SetKeluar("user-2", new DateTime(2026, 7, 12, 15, 0, 0));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah tercatat keluar*");
+    }
+
+    [Fact]
+    public void GivenVoidedRegistration_WhenSetKeluar_ThenThrows()
+    {
+        var registration = CreateReg();
+        registration.BatalBerobat("void-user", new DateTime(2026, 7, 12, 10, 0, 0));
+
+        var act = () => registration.SetKeluar("discharge-user", new DateTime(2026, 7, 12, 14, 0, 0));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dibatalkan*");
+    }
+
+    [Fact]
+    public void GivenDischargedRegistration_WhenCancelKeluar_ThenUpdatesRegCancelOutAuditAndBecomesActive()
+    {
+        var registration = CreateReg();
+        var dischargeTime = new DateTime(2026, 7, 12, 14, 0, 0);
+        var cancelTime = new DateTime(2026, 7, 12, 15, 30, 0);
+
+        registration.SetKeluar("discharge-user", dischargeTime);
+        registration.IsAktif.Should().BeFalse();
+
+        registration.CancelKeluar("cancel-user", cancelTime);
+
+        registration.RegKeluarAudit.Should().Be(AuditInfoType.Default);
+        registration.RegCancelOutAudit.Should().Be(new AuditInfoType("cancel-user", cancelTime));
+        registration.RegVoidAudit.Should().Be(AuditInfoType.Default);
+        registration.IsAktif.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GivenActiveRegistration_WhenCancelKeluar_ThenThrows()
+    {
+        var registration = CreateReg();
+
+        var act = () => registration.CancelKeluar("cancel-user", new DateTime(2026, 7, 12, 15, 30, 0));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*belum berstatus keluar*");
+    }
+
+    [Fact]
+    public void GivenVoidedRegistration_WhenCancelKeluar_ThenThrows()
+    {
+        var registration = CreateReg();
+        registration.BatalBerobat("void-user", new DateTime(2026, 7, 12, 10, 0, 0));
+
+        var act = () => registration.CancelKeluar("cancel-user", new DateTime(2026, 7, 12, 15, 30, 0));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dibatalkan*");
+    }
+
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")
     {
         var layanan = LayananType.Default with

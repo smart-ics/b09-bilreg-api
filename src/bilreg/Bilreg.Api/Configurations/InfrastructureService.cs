@@ -230,6 +230,7 @@ public static class InfrastructureService
         services.AddScoped<LegacyFreshnessGate>();
 
         services.AddBrgFeature();
+        services.AddTataRekeningFeature();
 
         services
             .Scan(selector => selector

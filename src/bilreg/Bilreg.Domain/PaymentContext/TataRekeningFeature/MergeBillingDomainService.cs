@@ -5,10 +5,14 @@ namespace Bilreg.Domain.PaymentContext.TataRekeningFeature;
 public sealed class MergeBillingDomainService : IMergeBillingDomainService
 {
     private readonly IProjectionRegenerationDomainService _projectionService;
+    private readonly IRegRelationPolicy _regRelationPolicy;
 
-    public MergeBillingDomainService(IProjectionRegenerationDomainService projectionService)
+    public MergeBillingDomainService(
+        IProjectionRegenerationDomainService projectionService,
+        IRegRelationPolicy regRelationPolicy)
     {
         _projectionService = projectionService ?? throw new ArgumentNullException(nameof(projectionService));
+        _regRelationPolicy = regRelationPolicy ?? throw new ArgumentNullException(nameof(regRelationPolicy));
     }
 
     public MergeBillingResult Execute(
@@ -21,6 +25,7 @@ public sealed class MergeBillingDomainService : IMergeBillingDomainService
         ArgumentNullException.ThrowIfNull(targetTataRekening);
 
         ValidateMergeRequest(mergeRequest, sourceTataRekening, targetTataRekening);
+        ValidateRelation(mergeRequest.SourceRegId, mergeRequest.TargetRegId!);
         ValidateSource(sourceTataRekening);
         ValidateTarget(targetTataRekening);
 
@@ -55,6 +60,13 @@ public sealed class MergeBillingDomainService : IMergeBillingDomainService
         if (!string.Equals(mergeRequest.TargetRegId, targetTataRekening.RegId, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 "Target Registrasi pada Merge Request tidak sesuai dengan Tata Rekening tujuan.");
+    }
+
+    private void ValidateRelation(string sourceRegId, string targetRegId)
+    {
+        if (!_regRelationPolicy.IsRelated(sourceRegId, targetRegId))
+            throw new InvalidOperationException(
+                "Registrasi sumber dan tujuan tidak memiliki keterkaitan relasi yang sah.");
     }
 
     private static void ValidateSource(TataRekeningModel sourceTataRekening)

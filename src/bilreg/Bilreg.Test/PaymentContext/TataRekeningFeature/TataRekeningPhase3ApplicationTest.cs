@@ -1,4 +1,6 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
+using Bilreg.Application.PaymentContext.DepositFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
@@ -24,6 +26,8 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepo = new();
     private readonly Mock<IMergeRequestRepo> _mergeRequestRepo = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepo = new();
+    private readonly Mock<IDepositRepo> _depositRepo = new();
+    private readonly Mock<IRegJaminanPolicy> _regJaminanPolicy = new();
     private readonly Mock<IRegRepo> _regRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
@@ -268,7 +272,7 @@ public class TataRekeningPhase3ApplicationTest
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new AllocateFinancialResponsibilityCommand(RegId, payments),
@@ -288,9 +292,10 @@ public class TataRekeningPhase3ApplicationTest
             tataRekening,
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 75_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
+        SetupRegLoad(RegId, RegModel.Default);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
@@ -310,8 +315,12 @@ public class TataRekeningPhase3ApplicationTest
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 60_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
 
+        var reg = RegModel.Default;
+        reg.SetKeluar("UserId", TestDate);
+        SetupRegLoad(RegId, reg);
+
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
 
