@@ -55,10 +55,10 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        scheduleOp.CancelSchedule(request.UserId, occurredAt);
+        // In-place leader assignment (no void-and-clone)
 
         ScheduleOpModel newScheduleOp;
-        newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp, occurredAt);
+        newScheduleOp = scheduleOp;
 
         // Checks if TeamLead is not null AND if PpaId is a valid string
         if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&

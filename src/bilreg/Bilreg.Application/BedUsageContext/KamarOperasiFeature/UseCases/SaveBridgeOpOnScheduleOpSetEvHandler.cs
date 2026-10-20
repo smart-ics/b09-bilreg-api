@@ -29,6 +29,9 @@ public class SaveBridgeOpOnScheduleOpSetEvHandler : INotificationHandler<OkSched
     {
         var projectId = _projectIdSvc.Execute();
 
+        if (notification.Aggregate?.Reg == null || string.IsNullOrWhiteSpace(notification.Aggregate.Reg.RegId))
+            return Task.CompletedTask;
+
         // TODO: Bagaimana agar tdk perlu panggil orderOpRepo lagi
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(notification.Command.OrderOpId))
             .GetValueOrDefault();

@@ -54,8 +54,8 @@ public record ScheduleOpDto(
             model.KamarOp.KamarId,
             model.Reg.RegId,
             model.TeamLead.PpaId,
-            string.Empty,
-            30,
+            model.AlasanBatal,
+            model.TurnoverBuffer,
 
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
@@ -73,12 +73,14 @@ public record ScheduleOpDto(
             model.TeamLead.PpaName,
             model.StartOpDate,
             model.EndOpDate,
-            0 // OrderOpState
+            (int)model.OrderOpState
         );
         return result;
     }
 
-    public ScheduleOpModel ToModel(IEnumerable<ScheduleOpPpaType> listPpa)
+    public ScheduleOpModel ToModel(
+        IEnumerable<ScheduleOpPpaType> listPpa,
+        IEnumerable<ScheduleOpHistType>? listHist = null)
     {
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
@@ -87,7 +89,10 @@ public record ScheduleOpDto(
         );
 
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
-        var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
+        var tglLahir = DateOnly.TryParseExact(TglLahir, "yyyy-MM-dd", out var parsedDate)
+            ? parsedDate
+            : (DateOnly.TryParse(TglLahir, out var parsedAny) ? parsedAny : new DateOnly(3000, 1, 1));
+        var pasien = new PasienReff(PasienId, PasienName, tglLahir, Gender);
         var kamarOp = new KamarReff(KamarId, KamarName);
         var reg = new RegReff(RegId, PasienId, PasienName);
         var teamLead = new PpaReff(PpaId, PpaName);
@@ -106,14 +111,28 @@ public record ScheduleOpDto(
             teamLead,
             StartedDate, FinishedDate,
             (OpCaseStateEnum)OrderOpState,
-            listPpa
+            listPpa,
+            AlasanBatal,
+            TurnoverBuffer,
+            listHist
         );
         return result;
+    }
+
+    public ScheduleOpModel ToModel(
+        IEnumerable<ScheduleOpPpaType> listPpa,
+        IEnumerable<ScheduleOpHistDto>? listHist)
+    {
+        var histModels = listHist?.Select(x => x.ToModel());
+        return ToModel(listPpa, histModels);
     }
     
     public ScheduleOpView ToView()
     {
-        var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
+        var tglLahir = DateOnly.TryParseExact(TglLahir, "yyyy-MM-dd", out var parsedDate)
+            ? parsedDate
+            : (DateOnly.TryParse(TglLahir, out var parsedAny) ? parsedAny : new DateOnly(3000, 1, 1));
+        var pasien = new PasienReff(PasienId, PasienName, tglLahir, Gender);
         var kamarOp = new KamarReff(KamarId, KamarName);
         var teamLead = new PpaReff(PpaId, PpaName);
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
@@ -127,7 +146,8 @@ public record ScheduleOpDto(
             teamLead,
             kamarOp,
             (OpCaseStateEnum)OrderOpState,
-            VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01"
+            VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01",
+            TurnoverBuffer
         );
         return result;
     }

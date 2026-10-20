@@ -9,12 +9,16 @@ public class ScheduleOpRepo : IScheduleOpRepo
 {
     private readonly IScheduleOpDal _scheduleOpDal;
     private readonly IScheduleOpPpaDal _scheduleOpPpaDal;
+    private readonly IScheduleOpHistDal _scheduleOpHistDal;
 
-    public ScheduleOpRepo(IScheduleOpDal scheduleOpDal, 
-        IScheduleOpPpaDal scheduleOpPpaDal)
+    public ScheduleOpRepo(
+        IScheduleOpDal scheduleOpDal, 
+        IScheduleOpPpaDal scheduleOpPpaDal,
+        IScheduleOpHistDal scheduleOpHistDal)
     {
         _scheduleOpDal = scheduleOpDal;
         _scheduleOpPpaDal = scheduleOpPpaDal;
+        _scheduleOpHistDal = scheduleOpHistDal;
     }
 
     public void SaveChanges(ScheduleOpModel model)
@@ -27,6 +31,26 @@ public class ScheduleOpRepo : IScheduleOpRepo
         var listPpa = model.ListPpa.Select(x => ScheduleOpPpaDto.FromModel(model.ScheduleOpId, x)).ToList();
         _scheduleOpPpaDal.Delete(model);
         _scheduleOpPpaDal.Insert(listPpa);
+
+        SaveHistoryDelta(model);
+    }
+
+    private void SaveHistoryDelta(ScheduleOpModel model)
+    {
+        if (!model.ListHistory.Any())
+            return;
+
+        var existingHist = _scheduleOpHistDal.ListData(model)?.ToList() ?? [];
+        var existingNoUruts = existingHist.Select(x => x.NoUrut).ToHashSet();
+        var newEntries = model.ListHistory
+            .Where(x => !existingNoUruts.Contains(x.NoUrut))
+            .Select(x => ScheduleOpHistDto.FromModel(model.ScheduleOpId, x))
+            .ToList();
+
+        if (newEntries.Count > 0)
+        {
+            _scheduleOpHistDal.Insert(newEntries);
+        }
     }
 
     public MayBe<ScheduleOpModel> LoadEntity(IScheduleOpKey key)
@@ -37,8 +61,11 @@ public class ScheduleOpRepo : IScheduleOpRepo
 
         var listPpaDto = _scheduleOpPpaDal.ListData(key)?.ToList() ?? [];
         var listPpa = listPpaDto.Select(x => x.ToModel());
+
+        var listHistDto = _scheduleOpHistDal.ListData(key)?.ToList() ?? [];
+        var listHist = listHistDto.Select(x => x.ToModel());
         
-        var model = dto.ToModel(listPpa);
+        var model = dto.ToModel(listPpa, listHist);
         return MayBe.From(model);
     }
 
@@ -56,6 +83,18 @@ public class ScheduleOpRepo : IScheduleOpRepo
     public IEnumerable<ScheduleOpView> ListData(IPasienKey filter)
     {
         var dto = _scheduleOpDal.ListData(filter)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
+    }
+
+    public IEnumerable<ScheduleOpView> ListActiveSchedulesInRoom(string kamarId, DateTime date)
+    {
+        var dto = _scheduleOpDal.ListActiveSchedulesInRoom(kamarId, date)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
+    }
+
+    public IEnumerable<ScheduleOpView> ListActiveSchedulesForDoctor(string ppaId, DateTime date)
+    {
+        var dto = _scheduleOpDal.ListActiveSchedulesForDoctor(ppaId, date)?.ToList() ?? [];
         return dto.Select(x => x.ToView());
     }
 }

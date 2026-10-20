@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -5,14 +8,10 @@ using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-
-namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using FluentAssertions;
 using Xunit;
+
+namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
 public class ScheduleOpModelTests
 {
@@ -22,7 +21,7 @@ public class ScheduleOpModelTests
     {
         return new PpaType(
             id,
-            "A",
+            "Dr. " + id,
             "B",
             SmfType.Default,
             GroupSpesialisType.Default,
@@ -33,7 +32,7 @@ public class ScheduleOpModelTests
             new List<PpaSatTugasType>
             {
                 new PpaSatTugasType(
-                    new SatTugasType("A","B", profesi),
+                    new SatTugasType("A", "B", profesi),
                     true)
             },
             new List<ContactType>
@@ -47,7 +46,7 @@ public class ScheduleOpModelTests
     {
         return new ScheduleOpModel(
             "S1",
-            new DateTime(3000,1,1),
+            new DateTime(3000, 1, 1),
             AuditTrailType.Default,
             OrderOpModel.Default.ToReff(),
             PasienModel.Default.ToReff(),
@@ -60,7 +59,10 @@ public class ScheduleOpModelTests
             new DateTime(3000, 1, 1),
             new DateTime(3000, 1, 1),
             OpCaseStateEnum.Scheduled,
-            Enumerable.Empty<ScheduleOpPpaType>()
+            Enumerable.Empty<ScheduleOpPpaType>(),
+            "",
+            30,
+            Enumerable.Empty<ScheduleOpHistType>()
         );
     }
 
@@ -214,6 +216,7 @@ public class ScheduleOpModelTests
         // Assert
         schedule.TglOp.Should().Be(newDate);
         schedule.KamarOp.KamarId.Should().Be("K1");
+        schedule.Durasi.Should().Be(durasi);
     }
 
     // ---------------------------------------------------------
@@ -225,14 +228,277 @@ public class ScheduleOpModelTests
         // Arrange
         var order = OrderOpModel.Default;
         var kamar = KamarType.Default;
-        var teamLeader = CreatePpa("D1", ProfesiType.Dokter);
+        var doctor = CreatePpa("D1", ProfesiType.Dokter);
 
         // Act
-        var result = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, teamLeader, DateTime.Today);
+        var result = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor, DateTime.Today);
 
         // Assert
         result.OrderOp.OrderOpId.Should().Be(order.OrderOpId);
         result.TeamLead.PpaId.Should().Be("D1");
-        result.ListPpa.Should().ContainSingle(x => x.Ppa.PpaId == "D1");
+        result.ListPpa.Should().ContainSingle(x => x.Ppa.PpaId == "D1" && x.NoUrut == 1);
+        result.TurnoverBuffer.Should().Be(30);
+        result.AlasanBatal.Should().BeEmpty();
+        result.ListHistory.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UT10_GivenNullOrEmptyDoctor_WhenCreateFromOrder_ThenThrowArgumentException()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+
+        // Act & Assert - null doctor
+        FluentActions.Invoking(() => ScheduleOpModel.CreateFromOrder(order, "u1", kamar, null!, DateTime.Today))
+            .Should().Throw<ArgumentException>()
+            .WithMessage("*Dokter Operator Utama wajib ditentukan*");
+
+        // Act & Assert - default doctor
+        FluentActions.Invoking(() => ScheduleOpModel.CreateFromOrder(order, "u1", kamar, PpaType.Default, DateTime.Today))
+            .Should().Throw<ArgumentException>()
+            .WithMessage("*Dokter Operator Utama wajib ditentukan*");
+    }
+
+    [Fact]
+    public void UT11_GivenNonDoctorPpa_WhenCreateFromOrder_ThenThrowArgumentException()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var nurse = CreatePpa("N1", ProfesiType.Perawat);
+
+        // Act & Assert
+        FluentActions.Invoking(() => ScheduleOpModel.CreateFromOrder(order, "u1", kamar, nurse, DateTime.Today))
+            .Should().Throw<ArgumentException>()
+            .WithMessage("*PPA yang ditugaskan sebagai Operator Utama harus berprofesi Dokter*");
+    }
+
+    // ---------------------------------------------------------
+    // UT12 - Reschedule In-Place & History Recording
+    // ---------------------------------------------------------
+    [Fact]
+    public void UT12_GivenActiveSchedule_WhenReschedule_ThenPreservesScheduleOpIdAndRecordsHistory()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamarAwal = KamarType.Default with { KamarId = "K-01", KamarName = "Kamar Operasi 1" };
+        var dokter = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var initialTglOp = new DateTime(2026, 10, 25, 8, 0, 0);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamarAwal, dokter, initialTglOp);
+        var originalId = sut.ScheduleOpId;
+
+        var newTglOp = new DateTime(2026, 10, 25, 13, 0, 0);
+        var newKamar = new KamarReff("K-02", "Kamar Operasi 2");
+        var newDurasi = 120;
+        var newTurnoverBuffer = 45;
+        var newLead = new PpaReff("DOC-02", "Dr. DOC-02");
+        var occurredAt = new DateTime(2026, 10, 20, 10, 0, 0);
+
+        // Act
+        sut.Reschedule(
+            newTglOp: newTglOp,
+            newKamar: newKamar,
+            newDurasi: newDurasi,
+            newTurnoverBuffer: newTurnoverBuffer,
+            newTeamLead: newLead,
+            alasanPerubahan: "Dislokasi jadwal akibat Cito",
+            isOverride: true,
+            overrideReason: "Disetujui komite bedah",
+            userId: "koordinator1",
+            occurredAt: occurredAt);
+
+        // Assert - Identity preserved (In-Place Mutation, no void-and-clone)
+        sut.ScheduleOpId.Should().Be(originalId);
+        sut.TglOp.Should().Be(newTglOp);
+        sut.KamarOp.Should().Be(newKamar);
+        sut.Durasi.Should().Be(newDurasi);
+        sut.TurnoverBuffer.Should().Be(newTurnoverBuffer);
+        sut.TeamLead.Should().Be(newLead);
+        sut.AuditTrail.Modified.UserId.Should().Be("koordinator1");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(occurredAt);
+
+        // Assert - History snapshot recorded
+        sut.ListHistory.Should().HaveCount(1);
+        var hist = sut.ListHistory.First();
+        hist.NoUrut.Should().Be(1);
+        hist.OldTglOp.Should().Be(initialTglOp);
+        hist.NewTglOp.Should().Be(newTglOp);
+        hist.OldDurasi.Should().Be(order.EstimasiDurasiInMinutes);
+        hist.NewDurasi.Should().Be(newDurasi);
+        hist.OldKamar.KamarId.Should().Be("K-01");
+        hist.NewKamar.KamarId.Should().Be("K-02");
+        hist.OldTeamLead.PpaId.Should().Be("DOC-01");
+        hist.NewTeamLead.PpaId.Should().Be("DOC-02");
+        hist.Alasan.Should().Be("Dislokasi jadwal akibat Cito");
+        hist.IsOverride.Should().BeTrue();
+        hist.OverrideReason.Should().Be("Disetujui komite bedah");
+        hist.UserId.Should().Be("koordinator1");
+        hist.CrtDate.Should().Be(occurredAt);
+
+        // Assert - Team lead updated in ListPpa at NoUrut = 1
+        sut.ListPpa.Should().ContainSingle(x => x.NoUrut == 1 && x.Ppa.PpaId == "DOC-02");
+    }
+
+    [Fact]
+    public void UT13_GivenMultipleReschedules_ThenHistorySequencedIncrementally()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default with { KamarId = "K-01", KamarName = "Kamar 1" };
+        var dokter = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, dokter, DateTime.Today);
+
+        // Act 1
+        sut.Reschedule(
+            DateTime.Today.AddHours(9),
+            kamar.ToReff(),
+            90,
+            30,
+            dokter.ToReff(),
+            "Pergeseran ke-1",
+            false,
+            "",
+            "u1",
+            DateTime.Now);
+
+        // Act 2
+        sut.Reschedule(
+            DateTime.Today.AddHours(14),
+            new KamarReff("K-02", "Kamar 2"),
+            100,
+            40,
+            dokter.ToReff(),
+            "Pergeseran ke-2",
+            false,
+            "",
+            "u2",
+            DateTime.Now.AddMinutes(30));
+
+        // Assert
+        sut.ListHistory.Should().HaveCount(2);
+        var list = sut.ListHistory.ToList();
+        list[0].NoUrut.Should().Be(1);
+        list[0].Alasan.Should().Be("Pergeseran ke-1");
+        list[1].NoUrut.Should().Be(2);
+        list[1].Alasan.Should().Be("Pergeseran ke-2");
+    }
+
+    [Fact]
+    public void UT14_GivenEmptyAlasanPerubahan_WhenReschedule_ThenThrowArgumentException()
+    {
+        // Arrange
+        var schedule = CreateEmptySchedule();
+        var doctor = CreatePpa("DOC-01", ProfesiType.Dokter);
+
+        // Act & Assert - null reason
+        FluentActions.Invoking(() => schedule.Reschedule(
+                DateTime.Today,
+                KamarReff.Default,
+                60,
+                30,
+                doctor.ToReff(),
+                null!,
+                false,
+                "",
+                "u1",
+                DateTime.Now))
+            .Should().Throw<ArgumentException>();
+
+        // Act & Assert - empty reason
+        FluentActions.Invoking(() => schedule.Reschedule(
+                DateTime.Today,
+                KamarReff.Default,
+                60,
+                30,
+                doctor.ToReff(),
+                "   ",
+                false,
+                "",
+                "u1",
+                DateTime.Now))
+            .Should().Throw<ArgumentException>();
+    }
+
+    // ---------------------------------------------------------
+    // UT15 - CancelSchedule With Required Alasan
+    // ---------------------------------------------------------
+    [Fact]
+    public void UT15_GivenValidAlasanBatal_WhenCancelSchedule_ThenAlasanBatalAndAuditRecorded()
+    {
+        // Arrange
+        var schedule = CreateEmptySchedule();
+        var cancelledAt = new DateTime(2026, 10, 20, 11, 30, 0);
+
+        // Act
+        schedule.CancelSchedule("Kondisi pasien tidak stabil (Pre-Op Unfit)", "dr_anestesi", cancelledAt);
+
+        // Assert
+        schedule.AlasanBatal.Should().Be("Kondisi pasien tidak stabil (Pre-Op Unfit)");
+        schedule.AuditTrail.Voided.UserId.Should().Be("dr_anestesi");
+        schedule.AuditTrail.Voided.Timestamp.Should().Be(cancelledAt);
+    }
+
+    [Fact]
+    public void UT16_GivenEmptyAlasanBatal_WhenCancelSchedule_ThenThrowArgumentException()
+    {
+        // Arrange
+        var schedule = CreateEmptySchedule();
+
+        // Act & Assert - null
+        FluentActions.Invoking(() => schedule.CancelSchedule(null!, "u1", DateTime.Now))
+            .Should().Throw<ArgumentException>();
+
+        // Act & Assert - whitespace
+        FluentActions.Invoking(() => schedule.CancelSchedule("   ", "u1", DateTime.Now))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void UT17_GivenConstructorParameters_WhenInstantiated_ThenPropertiesAssignedCorrectly()
+    {
+        // Arrange
+        var hist = new ScheduleOpHistType(
+            1,
+            DateTime.Today,
+            DateTime.Today.AddHours(2),
+            60,
+            90,
+            KamarReff.Default,
+            new KamarReff("K1", "Kamar 1"),
+            PpaReff.Default,
+            new PpaReff("D1", "Dokter 1"),
+            "Revisi",
+            false,
+            "",
+            "u1",
+            DateTime.Now);
+
+        // Act
+        var sut = new ScheduleOpModel(
+            "SCH-TEST-01",
+            DateTime.Today,
+            AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(),
+            PasienModel.Default.ToReff(),
+            UrgencyLevelEnum.Cito,
+            90,
+            DateTime.Today.AddHours(2),
+            new KamarReff("K1", "Kamar 1"),
+            RegModel.Default.ToReff(),
+            new PpaReff("D1", "Dokter 1"),
+            DateTime.Today,
+            DateTime.Today.AddHours(3),
+            OpCaseStateEnum.Scheduled,
+            [],
+            "Batal jadwal lama",
+            45,
+            [hist]);
+
+        // Assert
+        sut.ScheduleOpId.Should().Be("SCH-TEST-01");
+        sut.AlasanBatal.Should().Be("Batal jadwal lama");
+        sut.TurnoverBuffer.Should().Be(45);
+        sut.ListHistory.Should().ContainSingle().Which.Should().Be(hist);
     }
 }

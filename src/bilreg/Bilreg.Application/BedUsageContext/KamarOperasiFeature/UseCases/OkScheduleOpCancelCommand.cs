@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
@@ -6,7 +7,10 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkScheduleOpCancelCommand(string OrderOpId, string UserId) : IRequest, IOrderOpKey;
+public record OkScheduleOpCancelCommand(
+    string OrderOpId,
+    string UserId,
+    string AlasanBatal = "") : IRequest, IOrderOpKey;
 
 public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelCommand>
 {
@@ -28,25 +32,38 @@ public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelComma
 
     public Task Handle(OkScheduleOpCancelCommand request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.AlasanBatal, nameof(request.AlasanBatal),
+            "Alasan pembatalan jadwal operasi wajib diisi.");
+
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
         var opCase = _opCaseRepo.LoadEntity(orderOp)
             .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
 
-        var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
-            ?? [];
-        var scheduleWithOrderOpId = listSchedule?
-            .Where(x => !x.IsVoid)
-            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
-        if (scheduleWithOrderOpId == null)
+        ScheduleOpModel? scheduleOp = null;
+        if (opCase.ScheduleOp != null && !string.IsNullOrWhiteSpace(opCase.ScheduleOp.ScheduleOpId) && opCase.ScheduleOp.ScheduleOpId != "-")
+        {
+            scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(opCase.ScheduleOp.ScheduleOpId)).GetValueOrDefault();
+        }
+
+        if (scheduleOp == null)
+        {
+            var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList() ?? [];
+            var scheduleWithOrderOpId = listSchedule
+                .Where(x => !x.IsVoid)
+                .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
+            if (scheduleWithOrderOpId != null)
+            {
+                scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId)).GetValueOrDefault();
+            }
+        }
+
+        if (scheduleOp == null || scheduleOp.AuditTrail.IsVoided)
             throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
 
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
-
-        scheduleOp.CancelSchedule(request.UserId, _tglJamProvider.Now);
-
+        var occurredAt = _tglJamProvider.Now;
+        scheduleOp.CancelSchedule(request.AlasanBatal, request.UserId, occurredAt);
         opCase.CancelSchedule();
 
         using var trans = TransHelper.NewScope();

@@ -211,4 +211,77 @@ public class SaveBridgeOpOnScheduleOpSetEvHandlerTest
         // Assert
         _bridgeServiceMock.Verify(x => x.Execute(It.IsAny<BridgeOperasiCmd>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_WhenRescheduledInPlace_ShouldCallBridgeServiceWithUpdatedTglOpAndMaintainIdempotency()
+    {
+        // Arrange
+        _projectIdSvcMock.Setup(x => x.Execute()).Returns("RS001");
+        var orderOp = CreateSampleOrderOp("ORD-001", tarifName: "Tarif Laparoskopi", namaOperasi: "Laparoskopi");
+        var reg = CreateSampleReg("REG-001");
+
+        // Schedule was originally on 2026-10-20, rescheduled to 2026-10-22
+        var cmd = new OkScheduleOpSetCommand("ORD-001", "KAMAR-2", "2026-10-22", "13:00", 90, "user-resched",
+            AlasanPerubahan: "Pasien demam, geser 2 hari");
+
+        var hist = new ScheduleOpHistType(
+            1,
+            new DateTime(2026, 10, 20, 8, 0, 0),
+            new DateTime(2026, 10, 22, 13, 0, 0),
+            60,
+            90,
+            new KamarReff("KAMAR-1", "OK 1"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            new PpaReff("DOC-01", "dr. Bedah"),
+            new PpaReff("DOC-01", "dr. Bedah"),
+            "Pasien demam, geser 2 hari",
+            false,
+            "",
+            "user-resched",
+            new DateTime(2026, 10, 19, 10, 0, 0));
+
+        var schedule = new ScheduleOpModel(
+            "SCH-001",
+            new DateTime(2026, 10, 16),
+            AuditTrailType.Create("u1", new DateTime(2026, 10, 16)),
+            new OrderOpReff("ORD-001", new DateTime(2026, 10, 16), "Laparoskopi"),
+            new PasienReff("PAS-001", "Pasien BPJS", new DateOnly(1990, 1, 1), "L"),
+            UrgencyLevelEnum.Elective,
+            90,
+            new DateTime(2026, 10, 22),
+            new KamarReff("KAMAR-2", "OK 2"),
+            new RegReff("REG-001", "PAS-001", "Pasien BPJS"),
+            new PpaReff("DOC-01", "dr. Bedah"),
+            new DateTime(2026, 10, 22, 13, 0, 0),
+            new DateTime(2026, 10, 22, 14, 30, 0),
+            OpCaseStateEnum.Scheduled,
+            [],
+            "",
+            30,
+            [hist]);
+
+        var ev = new OkScheduleOpSetEvent(cmd, schedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-001")))
+            .Returns(MayBe.From(reg));
+
+        BridgeOperasiCmd? capturedCmd = null;
+        _bridgeServiceMock.Setup(x => x.Execute(It.IsAny<BridgeOperasiCmd>()))
+            .Callback<BridgeOperasiCmd>(c => capturedCmd = c);
+
+        var sut = CreateSut();
+
+        // Act
+        await sut.Handle(ev, CancellationToken.None);
+
+        // Assert
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TanggalOperasi.Should().Be("2026-10-22");
+        capturedCmd.KodeBooking.Should().Be("REG-001");
+        capturedCmd.JenisTindakan.Should().Be("Tarif Laparoskopi");
+        capturedCmd.RsId.Should().Be("RS001");
+        _bridgeServiceMock.Verify(x => x.Execute(It.IsAny<BridgeOperasiCmd>()), Times.Once);
+    }
 }

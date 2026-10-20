@@ -230,6 +230,7 @@ public static class InfrastructureService
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
         services.AddScoped<IOrderOpResourceDal, OrderOpResourceDal>();
+        services.AddScoped<IScheduleOpHistDal, ScheduleOpHistDal>();
 
         services.AddBrgFeature();
 
