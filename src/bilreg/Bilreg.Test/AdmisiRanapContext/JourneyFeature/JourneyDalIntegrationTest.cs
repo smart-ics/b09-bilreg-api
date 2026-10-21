@@ -153,6 +153,19 @@ public class JourneyDalIntegrationTest
         detail.Should().NotBeNull();
         detail!.Identity.RegId.Should().Be(ids.RegId);
         detail.Stage.Should().Be(JourneyOperationalStage.HandoverRequired);
+
+        var opnRequested = detail.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.OpnameRequested);
+        var opnFulfilled = detail.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.OpnameFulfilled);
+        opnRequested.OccurredAt.Should().NotBeNull();
+        opnFulfilled.OccurredAt.Should().NotBeNull();
+        opnRequested.OccurredAt.Should().BeBefore(opnFulfilled.OccurredAt!.Value);
+
+        var singleBag = _sut.LoadFactBagForTests($"opn:{ids.OpnId}");
+        singleBag.Should().NotBeNull();
+        singleBag!.Facts.OpnameRequest.Should().NotBeNull();
+        singleBag.Facts.OpnameRequest!.CreatedAt.Should().NotBeNull();
+        singleBag.Facts.OpnameRequest.CreatedAt.Should().Be(opnRequested.OccurredAt);
+        singleBag.Facts.OpnameRequest.StatusAt.Should().Be(opnFulfilled.OccurredAt!.Value);
     }
 
     [Fact]
@@ -167,6 +180,50 @@ public class JourneyDalIntegrationTest
         detail.Should().NotBeNull();
         detail!.Identity.JourneyId.Should().Be($"rsv:{ids.RsvId}");
         detail.Identity.RegId.Should().Be(ids.RegId);
+
+        var rsvCreated = detail.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.ReservationCreated);
+        var rsvRealized = detail.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.ReservationRealized);
+        rsvCreated.OccurredAt.Should().NotBeNull();
+        rsvRealized.OccurredAt.Should().NotBeNull();
+        rsvCreated.OccurredAt.Should().BeBefore(rsvRealized.OccurredAt!.Value);
+
+        var singleBag = _sut.LoadFactBagForTests($"rsv:{ids.RsvId}");
+        singleBag.Should().NotBeNull();
+        singleBag!.Facts.Reservation.Should().NotBeNull();
+        singleBag.Facts.Reservation!.CreatedAt.Should().NotBeNull();
+        singleBag.Facts.Reservation.CreatedAt.Should().Be(rsvCreated.OccurredAt);
+        singleBag.Facts.Reservation.StatusAt.Should().Be(rsvRealized.OccurredAt!.Value);
+    }
+
+    [Fact]
+    public void Admission_Updated_Timeline_Has_Accurate_Distinct_Registered_And_Updated_Timestamps()
+    {
+        using var trans = TransHelper.NewScope();
+        var ids = NewIds();
+        var t0 = DateTime.Now.AddMinutes(-10);
+        var t1 = DateTime.Now;
+        SeedAdmission(ids.RegId, ids.PasienId, "-", "-",
+            admissionDate: t0,
+            status: (int)AdmissionStatusEnum.Updated,
+            crtDate: t0,
+            updDate: t1);
+
+        var detail = _sut.GetByJourneyId($"reg:{ids.RegId}");
+        detail.Should().NotBeNull();
+
+        var admRegistered = detail!.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.AdmissionRegistered);
+        var admUpdated = detail.Timeline.Single(t => t.Kind == JourneyTimelineEventKind.AdmissionUpdated);
+        admRegistered.OccurredAt.Should().NotBeNull();
+        admUpdated.OccurredAt.Should().NotBeNull();
+        admRegistered.OccurredAt.Should().BeBefore(admUpdated.OccurredAt!.Value);
+
+        var singleBag = _sut.LoadFactBagForTests($"reg:{ids.RegId}");
+        singleBag.Should().NotBeNull();
+        var admFact = singleBag!.Facts.Admissions.Single();
+        admFact.CreatedAt.Should().NotBeNull();
+        admFact.UpdatedAt.Should().NotBeNull();
+        admFact.AdmissionAt.Should().Be(admRegistered.OccurredAt);
+        admFact.UpdatedAt.Should().Be(admUpdated.OccurredAt);
     }
 
     [Fact]
@@ -466,22 +523,53 @@ public class JourneyDalIntegrationTest
             NextId("W", 12),
             "P" + Guid.NewGuid().ToString("N")[..8]);
 
-    private void SeedOpname(string id, string pasienId, int status, string fulfilledRegId = "-")
+    private void SeedOpname(
+        string id,
+        string pasienId,
+        int status,
+        string fulfilledRegId = "-",
+        DateTime? crtDate = null,
+        DateTime? updDate = null)
     {
+        var now = DateTime.Now;
+        var isMutated = status != (int)OpnameRequestStatusEnum.Requested;
+        var created = crtDate ?? (isMutated ? now.AddMinutes(-5) : now);
+        var updated = updDate ?? now;
+
         var dal = new OpnameRequestDal(_opt);
         dal.Insert(new OpnameRequestDto(
             id, status, pasienId, "", "3000-01-01", "",
-            "D001", "Dokter Uji", DateTime.Now, "notes", fulfilledRegId,
-            "journey-it", DateTime.Now, "journey-it", DateTime.Now, "", VoidSentinel, "CH0001"));
+            "D001", "Dokter Uji", now, "notes", fulfilledRegId,
+            "journey-it", created, "journey-it", updated, "", VoidSentinel, "CH0001"));
     }
 
-    private void SeedReservation(string id, string pasienId, int status, string realizedRegId = "-")
+    private void SeedOpnameRequest(
+        string id,
+        string pasienId,
+        int status,
+        string fulfilledRegId = "-",
+        DateTime? crtDate = null,
+        DateTime? updDate = null) =>
+        SeedOpname(id, pasienId, status, fulfilledRegId, crtDate, updDate);
+
+    private void SeedReservation(
+        string id,
+        string pasienId,
+        int status,
+        string realizedRegId = "-",
+        DateTime? crtDate = null,
+        DateTime? updDate = null)
     {
+        var now = DateTime.Now;
+        var isMutated = status != (int)ReservationStatusEnum.Reserved;
+        var created = crtDate ?? (isMutated ? now.AddMinutes(-5) : now);
+        var updated = updDate ?? now;
+
         var dal = new ReservationDal(_opt);
         dal.Insert(new ReservationDto(
             id, status, pasienId, "Pasien Uji", new DateTime(1990, 1, 1), "L",
-            DateTime.Now, "1", "Kelas 1", "B001", "Bangsal A", realizedRegId,
-            "journey-it", DateTime.Now, "journey-it", DateTime.Now, "", VoidSentinel));
+            now, "1", "Kelas 1", "B001", "Bangsal A", realizedRegId,
+            "journey-it", created, "journey-it", updated, "", VoidSentinel));
     }
 
     private void SeedAdmission(
@@ -489,19 +577,28 @@ public class JourneyDalIntegrationTest
         string pasienId,
         string opnameRequestId,
         string reservationId,
-        DateTime? admissionDate = null)
+        DateTime? admissionDate = null,
+        int status = (int)AdmissionStatusEnum.Admitted,
+        DateTime? crtDate = null,
+        DateTime? updDate = null)
     {
+        var now = DateTime.Now;
+        var admDate = admissionDate ?? now;
+        var isMutated = status != (int)AdmissionStatusEnum.Admitted;
+        var created = crtDate ?? (isMutated ? admDate.AddMinutes(-5) : admDate);
+        var updated = updDate ?? (isMutated ? now : admDate);
+
         var dal = new AdmissionDal(_opt);
         dal.Insert(new AdmissionDto(
             regId,
-            (int)AdmissionStatusEnum.Admitted,
+            status,
             0,
             pasienId, "", "3000-01-01", "",
             opnameRequestId, reservationId,
             "1", "Kelas 1", "B001", "Bangsal A",
-            admissionDate ?? DateTime.Now,
-            "journey-it", admissionDate ?? DateTime.Now,
-            "journey-it", admissionDate ?? DateTime.Now,
+            admDate,
+            "journey-it", created,
+            "journey-it", updated,
             "", VoidSentinel));
     }
 

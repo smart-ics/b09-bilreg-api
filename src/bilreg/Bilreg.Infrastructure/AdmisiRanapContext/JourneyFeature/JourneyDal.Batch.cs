@@ -324,7 +324,8 @@ public sealed partial class JourneyDal
                 opn.OpnameRequestId,
                 (OpnameRequestStatusEnum)opn.OpnameRequestStatus,
                 NullDash(opn.FulfilledRegId),
-                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate),
+                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate,
+                opn.CrtDate),
             null,
             [],
             []);
@@ -387,7 +388,8 @@ public sealed partial class JourneyDal
                 rsv.ReservationId,
                 (ReservationStatusEnum)rsv.ReservationStatus,
                 NullDash(rsv.RealizedRegId),
-                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate),
+                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate,
+                rsv.CrtDate),
             [],
             []);
 

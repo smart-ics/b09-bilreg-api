@@ -387,7 +387,7 @@ public static class Release1JourneyStageResolver
         {
             events.Add(new JourneyTimelineEvent(
                 JourneyTimelineEventKind.OpnameRequested,
-                opn.StatusAt,
+                opn.CreatedAt ?? opn.StatusAt,
                 opn.OpnameRequestId,
                 "Opname Request dibuat"));
             if (opn.Status == OpnameRequestStatusEnum.Cancelled)
@@ -408,7 +408,7 @@ public static class Release1JourneyStageResolver
         {
             events.Add(new JourneyTimelineEvent(
                 JourneyTimelineEventKind.ReservationCreated,
-                rsv.StatusAt,
+                rsv.CreatedAt ?? rsv.StatusAt,
                 rsv.ReservationId,
                 "Reservasi dibuat"));
             if (rsv.Status == ReservationStatusEnum.Maintained)
@@ -435,19 +435,19 @@ public static class Release1JourneyStageResolver
         {
             events.Add(new JourneyTimelineEvent(
                 JourneyTimelineEventKind.AdmissionRegistered,
-                admission.AdmissionAt,
+                admission.AdmissionAt ?? admission.CreatedAt,
                 admission.RegId,
                 "Admisi didaftarkan"));
             if (admission.Status == AdmissionStatusEnum.Updated)
                 events.Add(new JourneyTimelineEvent(
                     JourneyTimelineEventKind.AdmissionUpdated,
-                    admission.AdmissionAt,
+                    admission.UpdatedAt ?? admission.AdmissionAt,
                     admission.RegId,
                     "Admisi diperbarui"));
             if (admission.Status == AdmissionStatusEnum.Cancelled)
                 events.Add(new JourneyTimelineEvent(
                     JourneyTimelineEventKind.AdmissionCancelled,
-                    admission.AdmissionAt,
+                    admission.UpdatedAt ?? admission.AdmissionAt,
                     admission.RegId,
                     "Admisi dibatalkan"));
         }

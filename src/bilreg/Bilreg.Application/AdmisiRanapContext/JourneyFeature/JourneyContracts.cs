@@ -26,13 +26,15 @@ public sealed record OpnameRequestJourneyFact(
     string OpnameRequestId,
     OpnameRequestStatusEnum Status,
     string FulfilledRegId,
-    DateTime? StatusAt = null);
+    DateTime? StatusAt = null,
+    DateTime? CreatedAt = null);
 
 public sealed record ReservationJourneyFact(
     string ReservationId,
     ReservationStatusEnum Status,
     string RealizedRegId,
-    DateTime? StatusAt = null);
+    DateTime? StatusAt = null,
+    DateTime? CreatedAt = null);
 
 public sealed record AdmissionJourneyFact(
     string RegId,
@@ -41,7 +43,9 @@ public sealed record AdmissionJourneyFact(
     string ReservationId,
     DateTime? AdmissionAt = null,
     string? BangsalId = null,
-    string? BangsalName = null);
+    string? BangsalName = null,
+    DateTime? CreatedAt = null,
+    DateTime? UpdatedAt = null);
 
 public sealed record WaitingListJourneyFact(
     string WaitingListId,
