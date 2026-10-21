@@ -1,7 +1,17 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
@@ -115,13 +125,14 @@ public class LabOrderGetHandlerTest
         result.Urgency.Should().Be((int)LabOrderUrgencyEnum.Cito);
         result.IsCito.Should().BeTrue();
 
-        // Item-level urgency assertions
+        // Item-level urgency & TarifPrice assertions
         result.Items.Should().HaveCount(1);
         var item = result.Items.First();
         item.TestDefinitionId.Should().Be("DEF-CKMB");
         item.LabTestName.Should().Be("Creatine Kinase-MB");
         item.Urgency.Should().Be((int)LabOrderUrgencyEnum.Cito);
         item.IsCito.Should().BeTrue();
+        item.TarifPrice.Should().Be(0m);
 
         // Component assertions
         result.ItemComponents.Should().HaveCount(1);
@@ -148,5 +159,117 @@ public class LabOrderGetHandlerTest
         var item = result.Items.Single();
         item.Urgency.Should().Be((int)LabOrderUrgencyEnum.Rutin);
         item.IsCito.Should().BeFalse();
+        item.TarifPrice.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_GivenNilaiTarifRepo_MapsTarifPriceToItem()
+    {
+        // Arrange
+        var order = CreateSampleOrder();
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        var nilaiTarifRepoMock = new Mock<INilaiTarifRepo>();
+        var sampleNilaiTarif = new NilaiTarifType(
+            nilaiTarifId: "NT-001",
+            tarifId: "TRF-CKMB",
+            tarifName: "Pemeriksaan CK-MB",
+            tipeTarif: TipeTarifType.Default.ToReff(),
+            kelas: KelasType.Default.ToReff(),
+            nilai: 185000m,
+            listKomponen: []);
+
+        nilaiTarifRepoMock
+            .Setup(r => r.LoadEntity(It.Is<INilaiTarifCompositKey>(k => k.TarifId == "TRF-CKMB")))
+            .Returns(MayBe.From(sampleNilaiTarif));
+
+        var sutWithTarif = new LabOrderGetHandler(_repo.Object, nilaiTarifRepoMock.Object);
+
+        // Act
+        var result = await sutWithTarif.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.Items.Should().HaveCount(1);
+        result.Items.First().TarifPrice.Should().Be(185000m);
+    }
+
+    [Fact]
+    public async Task Handle_GivenNilaiTarifRepoAndRegRepo_ResolvesTarifPriceUsingPatientRegistration()
+    {
+        // Arrange
+        var order = CreateSampleOrder();
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        var regRepoMock = new Mock<IRegRepo>();
+        var regModel = new RegModel(
+            "REG001",
+            new DateOnly(2026, 10, 15),
+            new AuditInfoType("USER01", FixedNow),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            new PasienReff("MR001", "Budi Santoso", new DateOnly(1985, 5, 20), "L"),
+            new TipeJaminanReff("00000", "Umum"),
+            PolisModel.Default.ToReff(),
+            new KelasReff("I", "Kelas 1"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+
+        regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From(regModel));
+
+        var nilaiTarifRepoMock = new Mock<INilaiTarifRepo>();
+        var sampleNilaiTarif = new NilaiTarifType(
+            nilaiTarifId: "NT-002",
+            tarifId: "TRF-CKMB",
+            tarifName: "Pemeriksaan CK-MB",
+            tipeTarif: new TipeTarifReff("RJ", "Rawat Jalan"),
+            kelas: new KelasReff("I", "Kelas 1"),
+            nilai: 210000m,
+            listKomponen: []);
+
+        nilaiTarifRepoMock
+            .Setup(r => r.LoadEntity(It.Is<INilaiTarifCompositKey>(k => k.TarifId == "TRF-CKMB" && k.KelasId == "I" && k.TipeTarifId == "RJ")))
+            .Returns(MayBe.From(sampleNilaiTarif));
+
+        var sut = new LabOrderGetHandler(_repo.Object, nilaiTarifRepoMock.Object, regRepoMock.Object);
+
+        // Act
+        var result = await sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.Items.Should().HaveCount(1);
+        result.Items.First().TarifPrice.Should().Be(210000m);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTarifNotFound_DefaultsTarifPriceToZero()
+    {
+        // Arrange
+        var order = CreateSampleOrder();
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        var nilaiTarifRepoMock = new Mock<INilaiTarifRepo>();
+        nilaiTarifRepoMock
+            .Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe<NilaiTarifType>.None);
+
+        var sut = new LabOrderGetHandler(_repo.Object, nilaiTarifRepoMock.Object);
+
+        // Act
+        var result = await sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.Items.Should().HaveCount(1);
+        result.Items.First().TarifPrice.Should().Be(0m);
     }
 }
