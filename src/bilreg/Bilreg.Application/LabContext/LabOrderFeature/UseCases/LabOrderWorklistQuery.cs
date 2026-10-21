@@ -7,7 +7,8 @@ public record LabOrderWorklistQuery(
     string? SearchTerm,
     DateTime? Date1,
     DateTime? Date2,
-    bool? IsCitoOnly = null) : IRequest<IEnumerable<LabOrderWorklistView>>;
+    bool? IsCitoOnly = null,
+    int? OrderSource = null) : IRequest<IEnumerable<LabOrderWorklistView>>;
 
 public class LabOrderWorklistHandler : IRequestHandler<LabOrderWorklistQuery, IEnumerable<LabOrderWorklistView>>
 {
@@ -27,7 +28,8 @@ public class LabOrderWorklistHandler : IRequestHandler<LabOrderWorklistQuery, IE
             request.SearchTerm,
             request.Date1,
             request.Date2,
-            request.IsCitoOnly);
+            request.IsCitoOnly,
+            request.OrderSource);
 
         return Task.FromResult(_dal.List(filter));
     }

@@ -40,10 +40,11 @@ public class LabOrderController : ControllerBase
         [FromQuery] string? searchTerm,
         [FromQuery] DateTime? date1,
         [FromQuery] DateTime? date2,
-        [FromQuery] bool? isCitoOnly = null)
+        [FromQuery] bool? isCitoOnly = null,
+        [FromQuery] int? orderSource = null)
     {
         var response = await _mediator.Send(new LabOrderWorklistQuery(
-            labOrderStatus, searchTerm, date1, date2, isCitoOnly));
+            labOrderStatus, searchTerm, date1, date2, isCitoOnly, orderSource));
         return Ok(new JSendOk(response));
     }
 

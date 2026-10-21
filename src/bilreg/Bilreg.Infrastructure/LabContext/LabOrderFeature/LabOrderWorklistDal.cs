@@ -35,6 +35,7 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
                 ) AS TestNamesCsv
             FROM BILRG_LabOrder aa
             WHERE aa.VodDate = @VodDate
+              AND (@OrderSource IS NULL OR aa.OrderSource = @OrderSource)
             """;
 
         if (filter.LabOrderStatus.HasValue)
@@ -55,10 +56,11 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
                  )
                 """;
 
-        sql += " ORDER BY aa.CrtDate DESC";
+        sql += " ORDER BY aa.Urgency DESC, aa.CrtDate DESC";
 
         var dp = new DynamicParameters();
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
+        dp.AddParam("@OrderSource", filter.OrderSource, SqlDbType.Int);
 
         if (filter.LabOrderStatus.HasValue)
             dp.AddParam("@LabOrderStatus", filter.LabOrderStatus.Value, SqlDbType.Int);

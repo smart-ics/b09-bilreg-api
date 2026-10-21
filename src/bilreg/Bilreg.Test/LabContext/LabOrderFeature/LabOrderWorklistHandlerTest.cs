@@ -58,6 +58,7 @@ public class LabOrderWorklistHandlerTest
         captured.Date1.Should().Be(new DateTime(2026, 5, 1));
         captured.Date2.Should().Be(new DateTime(2026, 5, 31));
         captured.IsCitoOnly.Should().BeNull();
+        captured.OrderSource.Should().BeNull();
         _dal.Verify(d => d.List(It.IsAny<LabOrderWorklistFilter>()), Times.Once);
     }
 
@@ -154,5 +155,27 @@ public class LabOrderWorklistHandlerTest
         item.DokterPerujukName.Should().Be("dr. Budi, Sp.PD");
         item.LayananPerujukName.Should().Be("Poli Penyakit Dalam");
         item.IsCito.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_GivenOrderSource_PassesFilterToDal()
+    {
+        LabOrderWorklistFilter? captured = null;
+        _dal.Setup(d => d.List(It.IsAny<LabOrderWorklistFilter>()))
+            .Callback<LabOrderWorklistFilter>(f => captured = f)
+            .Returns([]);
+
+        await _sut.Handle(
+            new LabOrderWorklistQuery(
+                LabOrderStatus: null,
+                SearchTerm: null,
+                Date1: null,
+                Date2: null,
+                IsCitoOnly: null,
+                OrderSource: 2),
+            CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.OrderSource.Should().Be(2);
     }
 }

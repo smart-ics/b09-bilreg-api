@@ -10,7 +10,8 @@ public record LabOrderWorklistFilter(
     string? SearchTerm,
     DateTime? Date1,
     DateTime? Date2,
-    bool? IsCitoOnly = null);
+    bool? IsCitoOnly = null,
+    int? OrderSource = null);
 
 public record LabOrderWorklistView(
     string OrderId,
