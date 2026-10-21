@@ -13,7 +13,9 @@ public record OkScheduleOpAssignLeaderCommand(
     string OrderOpId,
     string PpaId,
     string UserId,
-    string AlasanPerubahan) : IRequest, IOrderOpKey, IPpaKey;
+    string AlasanPerubahan,
+    bool IsOverride = false,
+    string OverrideReason = "") : IRequest, IOrderOpKey, IPpaKey;
 
 public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssignLeaderCommand>
 {
@@ -64,23 +66,48 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        // In-place leader assignment (no void-and-clone)
-        if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
-            !string.IsNullOrWhiteSpace(ppaId) &&
-            ppaId != "-" &&
-            ppaId != request.PpaId)
+        // Collision detection for substitute doctor across active schedules on the same date
+        DateTime start = scheduleOp.TglOp;
+        DateTime end = start.AddMinutes(scheduleOp.Durasi);
+
+        var activeDoctorSchedules = _scheduleOpRepo.ListActiveSchedulesForDoctor(ppa.PpaId, start.Date)?.ToList() ?? [];
+        var activeTeamSchedules = _scheduleOpRepo.ListActiveSchedulesForPpaInTeam(ppa.PpaId, start.Date)?.ToList() ?? [];
+
+        var combinedSchedules = activeDoctorSchedules
+            .Concat(activeTeamSchedules)
+            .GroupBy(x => x.ScheduleOpId)
+            .Select(g => g.OrderByDescending(x => !string.IsNullOrWhiteSpace(x.ProfesiName)).First())
+            .ToList();
+
+        var warnings = new List<string>();
+        foreach (var d in combinedSchedules)
         {
-            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(ppaId))
-                .GetValueOrDefault();
-            if (assignedPpaLead is not null)
-                scheduleOp.RemovePpa(assignedPpaLead, request.UserId, occurredAt);
+            if (d.IsVoid) continue;
+            if (d.ScheduleOpId == scheduleOp.ScheduleOpId) continue;
+
+            var startD = d.TglOp;
+            var endD = d.TglOp.AddMinutes(d.Durasi);
+
+            if (start < endD && end > startD)
+            {
+                var roomDisplay = !string.IsNullOrWhiteSpace(d.Kamar?.KamarId) ? d.Kamar.KamarId : scheduleOp.KamarOp?.KamarId ?? "";
+                var roleInfo = !string.IsNullOrWhiteSpace(d.ProfesiName) ? $" sebagai {d.ProfesiName}" : "";
+                warnings.Add($"Dokter/PPA {ppa.PpaName}{roleInfo} telah terjadwal pada operasi lain ({roomDisplay}) dari jam {startD:HH:mm} s/d {endD:HH:mm}.");
+            }
         }
 
-        var existingPpa = scheduleOp.ListPpa
-            .FirstOrDefault(x => x.Ppa.PpaId == request.PpaId);
-        if (existingPpa is null)
-            scheduleOp.AddPpa(ppa, request.UserId, occurredAt);
-        scheduleOp.AssignLeader(ppa, request.AlasanPerubahan, request.UserId, occurredAt);
+        if (warnings.Count > 0 && !request.IsOverride)
+        {
+            throw new ScheduleWarningException(warnings);
+        }
+
+        if (warnings.Count > 0 && request.IsOverride)
+        {
+            Guard.Against.NullOrWhiteSpace(request.OverrideReason, nameof(request.OverrideReason),
+                "Alasan diskresi override wajib diisi jika terdapat peringatan bentrok dokter/turnover buffer.");
+        }
+
+        scheduleOp.AssignLeader(ppa, request.AlasanPerubahan, request.UserId, occurredAt, request.IsOverride, request.OverrideReason);
 
         opCase.Schedule(scheduleOp, occurredAt);
 

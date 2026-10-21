@@ -472,6 +472,58 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
+    public async Task AssignLeader_WhenScheduleWarningExceptionThrown_Returns422UnprocessableEntityWithJSendFail()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "PPA-01", "user-01", "Perubahan operator utama");
+        var warnings = new List<string> { "Dokter/PPA PPA-01 telah terjadwal pada operasi lain" };
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpAssignLeaderCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ScheduleWarningException(warnings));
+
+        // ACT
+        var result = await _sut.AssignLeader(cmd);
+
+        // ASSERT
+        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
+        jsend.Status.Should().Be("fail");
+        jsend.Data.Should().NotBeNull();
+
+        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
+        dataProp.Should().NotBeNull();
+        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
+        actualWarnings.Should().BeEquivalentTo(warnings);
+
+        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
+        reqOverrideProp.Should().NotBeNull();
+        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+    }
+
+    [Fact]
+    public async Task AssignLeader_WhenIsOverrideTrue_Returns200OkWithJSendOk()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "PPA-01", "user-01", "Perubahan operator utama", IsOverride: true, OverrideReason: "Disetujui komite medik");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.AssignLeader(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public void DependencyInjection_WhenAddInfrastructureCalled_RegistersScheduleOpHistDal()
     {
         // ARRANGE

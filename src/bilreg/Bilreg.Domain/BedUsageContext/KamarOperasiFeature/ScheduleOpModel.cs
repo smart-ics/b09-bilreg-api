@@ -36,10 +36,12 @@ public class ScheduleOpModel : IScheduleOpKey
         StartOpDate = startOpDate;
         EndOpDate = endOpDate;
         OrderOpState = opState;
-        _listPpa = listPpa?.ToList() ?? [];
+        _listPpa = listPpa?.OrderBy(x => x.NoUrut).ToList() ?? [];
         AlasanBatal = alasanBatal ?? string.Empty;
         TurnoverBuffer = turnoverBuffer <= 0 ? 30 : turnoverBuffer;
         _listHistory = listHistory?.ToList() ?? [];
+
+        EnsureTeamLeadInvariant();
     }
 
     public static ScheduleOpModel Default 
@@ -163,21 +165,9 @@ public class ScheduleOpModel : IScheduleOpKey
         TurnoverBuffer = newTurnoverBuffer;
         TeamLead = newTeamLead;
 
-        if (newTeamLead != null && !newTeamLead.IsDefault && !string.IsNullOrWhiteSpace(newTeamLead.PpaId))
+        if (newTeamLead != null && !newTeamLead.IsDefault && !string.IsNullOrWhiteSpace(newTeamLead.PpaId) && newTeamLead.PpaId != "-")
         {
-            var existingIndex = _listPpa.FindIndex(x => x.Ppa.PpaId == newTeamLead.PpaId);
-            if (existingIndex < 0)
-            {
-                var leadIndex = _listPpa.FindIndex(x => x.NoUrut == 1);
-                if (leadIndex >= 0)
-                {
-                    _listPpa[leadIndex] = _listPpa[leadIndex] with { Ppa = newTeamLead };
-                }
-                else
-                {
-                    _listPpa.Insert(0, new ScheduleOpPpaType(1, newTeamLead, ProfesiType.Dokter, GroupSpesialisType.Default));
-                }
-            }
+            EnsureTeamLeadInvariant();
         }
 
         AuditTrail.Modif(userId, occurredAt);
@@ -200,20 +190,15 @@ public class ScheduleOpModel : IScheduleOpKey
 
     public void RemovePpa(PpaType ppa, string userId, DateTime updatedAt = default)
     {
+        if (ppa.PpaId == TeamLead.PpaId)
+            throw new ArgumentException("Dokter Operator Utama aktif tidak dapat dihapus dari tim operasi. Alihkan peran TeamLead terlebih dahulu.");
+
         _listPpa.RemoveAll(x => x.Ppa.PpaId == ppa.PpaId);
-        var newList = new List<ScheduleOpPpaType>();
-        var i = 0;
-        foreach (var item in _listPpa)
-        {
-            i++;
-            newList.Add(item with { NoUrut = i });
-        }
-        _listPpa.Clear();
-        _listPpa.AddRange(newList);
+        EnsureTeamLeadInvariant();
         AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void AssignLeader(PpaType ppa, string alasanPerubahan, string userId, DateTime updatedAt = default)
+    public void AssignLeader(PpaType ppa, string alasanPerubahan, string userId, DateTime updatedAt = default, bool isOverride = false, string overrideReason = "")
     {
         Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
 
@@ -224,14 +209,17 @@ public class ScheduleOpModel : IScheduleOpKey
         if (profesi != ProfesiType.Dokter)
             throw new ArgumentException("PPA harus dokter");
 
-        // harus terdaftar di listPpa
-        var existing = _listPpa.FirstOrDefault(x => x.Ppa.PpaId == ppa.PpaId);
-        if (existing is null)
-            throw new ArgumentException("PPA harus terdaftar di member");
-
         // guard pre-condition invarian bisnis
         if (ppa.PpaId == TeamLead.PpaId)
             throw new ArgumentException("Dokter Operator Utama baru sama dengan Dokter Operator Utama yang aktif.");
+
+        // jika belum ada di listPpa, daftarkan
+        var existingIndex = _listPpa.FindIndex(x => x.Ppa.PpaId == ppa.PpaId);
+        if (existingIndex < 0)
+        {
+            var groupSpesialis = ppa.GroupSpesialis ?? GroupSpesialisType.Default;
+            _listPpa.Add(new ScheduleOpPpaType(_listPpa.Count + 1, ppa.ToReff(), profesi, groupSpesialis));
+        }
 
         var nextNoUrut = _listHistory.Count + 1;
         var hist = new ScheduleOpHistType(
@@ -241,13 +229,42 @@ public class ScheduleOpModel : IScheduleOpKey
             KamarOp, KamarOp,
             TeamLead, ppa.ToReff(),
             alasanPerubahan,
-            false, string.Empty,
+            isOverride,
+            overrideReason ?? string.Empty,
             userId, updatedAt,
             "ASSIGN_LEADER");
         _listHistory.Add(hist);
 
         TeamLead = ppa.ToReff();
+        EnsureTeamLeadInvariant();
         AuditTrail.Modif(userId, updatedAt);
+    }
+
+    private void EnsureTeamLeadInvariant()
+    {
+        if (_listPpa.Count == 0)
+            return;
+
+        if (TeamLead != null && !string.IsNullOrWhiteSpace(TeamLead.PpaId) && TeamLead.PpaId != "-")
+        {
+            var leadIndex = _listPpa.FindIndex(x => x.Ppa.PpaId == TeamLead.PpaId);
+            if (leadIndex < 0)
+            {
+                _listPpa.Insert(0, new ScheduleOpPpaType(1, TeamLead, ProfesiType.Dokter, GroupSpesialisType.Default));
+            }
+            else if (leadIndex > 0)
+            {
+                var leadItem = _listPpa[leadIndex];
+                _listPpa.RemoveAt(leadIndex);
+                _listPpa.Insert(0, leadItem);
+            }
+        }
+
+        // Penomoran ulang terurut rapat: NoUrut 1 untuk lead, 2..N untuk anggota lain
+        for (var i = 0; i < _listPpa.Count; i++)
+        {
+            _listPpa[i] = _listPpa[i] with { NoUrut = i + 1 };
+        }
     }
 
     public void CancelSchedule(string alasanBatal, string userId, DateTime cancelledAt)

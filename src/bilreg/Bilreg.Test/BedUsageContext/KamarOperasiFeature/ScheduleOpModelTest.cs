@@ -201,18 +201,189 @@ public class ScheduleOpModelTests
     }
 
     [Fact]
-    public void UT7_GivenDoctorNotInList_WhenAssignLeader_ThenThrowException()
+    public void UT7_GivenDoctorNotInList_WhenAssignLeader_ThenDoctorAutoRegisteredAndPlacedAtNoUrutOne()
     {
         // Arrange
-        var schedule = CreateEmptySchedule();
-        var doctor = CreatePpa("D1", ProfesiType.Dokter);
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+        var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
 
         // Act
-        Action act = () => schedule.AssignLeader(doctor, "Alasan valid", "user1");
+        schedule.AssignLeader(doctor2, "Dokter pengganti dari luar", "user1", isOverride: true, overrideReason: "ACC Direktur");
+
+        // Assert
+        schedule.TeamLead.PpaId.Should().Be("D2");
+        var list = schedule.ListPpa.ToList();
+        list.Should().HaveCount(2);
+        list[0].Ppa.PpaId.Should().Be("D2");
+        list[0].NoUrut.Should().Be(1);
+        list[1].Ppa.PpaId.Should().Be("D1");
+        list[1].NoUrut.Should().Be(2);
+
+        var hist = schedule.ListHistory.First();
+        hist.ChangeType.Should().Be("ASSIGN_LEADER");
+        hist.IsOverride.Should().BeTrue();
+        hist.OverrideReason.Should().Be("ACC Direktur");
+    }
+
+    [Fact]
+    public void AssignLeader_GivenDoctorAlreadyInList_ShouldMoveNewDoctorToNoUrut1AndDemoteOldDoctor()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
+        var nurse = CreatePpa("N1", ProfesiType.Perawat);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+        schedule.AddPpa(doctor2, "user1");
+        schedule.AddPpa(nurse, "user1");
+
+        // Act
+        schedule.AssignLeader(doctor2, "Pergantian dokter operator utama", "user1");
+
+        // Assert
+        schedule.TeamLead.PpaId.Should().Be("D2");
+        var list = schedule.ListPpa.ToList();
+        list.Should().HaveCount(3);
+        list[0].Ppa.PpaId.Should().Be("D2");
+        list[0].NoUrut.Should().Be(1);
+        list[1].Ppa.PpaId.Should().Be("D1");
+        list[1].NoUrut.Should().Be(2);
+        list[2].Ppa.PpaId.Should().Be("N1");
+        list[2].NoUrut.Should().Be(3);
+    }
+
+    [Fact]
+    public void RemovePpa_GivenActiveTeamLead_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+
+        // Act
+        Action act = () => schedule.RemovePpa(doctor1, "user1");
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("PPA harus terdaftar di member");
+            .WithMessage("Dokter Operator Utama aktif tidak dapat dihapus dari tim operasi. Alihkan peran TeamLead terlebih dahulu.");
+    }
+
+    [Fact]
+    public void RemovePpa_GivenNonLeadMember_ShouldPreserveTeamLeadAtNoUrutOneAndResequenceOthers()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
+        var nurse1 = CreatePpa("N1", ProfesiType.Perawat);
+        var nurse2 = CreatePpa("N2", ProfesiType.Perawat);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+        schedule.AddPpa(doctor2, "user1");
+        schedule.AddPpa(nurse1, "user1");
+        schedule.AddPpa(nurse2, "user1");
+
+        // Act - remove doctor2 (originally NoUrut 2)
+        schedule.RemovePpa(doctor2, "user1");
+
+        // Assert
+        schedule.TeamLead.PpaId.Should().Be("D1");
+        var list = schedule.ListPpa.ToList();
+        list.Should().HaveCount(3);
+        list[0].Ppa.PpaId.Should().Be("D1");
+        list[0].NoUrut.Should().Be(1);
+        list[1].Ppa.PpaId.Should().Be("N1");
+        list[1].NoUrut.Should().Be(2);
+        list[2].Ppa.PpaId.Should().Be("N2");
+        list[2].NoUrut.Should().Be(3);
+    }
+
+    [Fact]
+    public void Constructor_GivenDisorderedOrGappedNoUrut_ShouldSelfHealWithTeamLeadAtNoUrutOneAndResequenceContiguously()
+    {
+        // Arrange
+        var teamLead = new PpaReff("DOC-LEAD", "Dr. Lead");
+        var listPpa = new List<ScheduleOpPpaType>
+        {
+            new ScheduleOpPpaType(5, new PpaReff("NURSE-01", "Nurse 1"), ProfesiType.Perawat, GroupSpesialisType.Default),
+            new ScheduleOpPpaType(10, teamLead, ProfesiType.Dokter, GroupSpesialisType.Default),
+            new ScheduleOpPpaType(2, new PpaReff("ASST-01", "Asst 1"), ProfesiType.Dokter, GroupSpesialisType.Default)
+        };
+
+        // Act
+        var sut = new ScheduleOpModel(
+            "SCH-HEAL-01",
+            DateTime.Today,
+            AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(),
+            PasienModel.Default.ToReff(),
+            UrgencyLevelEnum.Elective,
+            60,
+            DateTime.Today,
+            KamarType.Default.ToReff(),
+            RegModel.Default.ToReff(),
+            teamLead,
+            DateTime.Today,
+            DateTime.Today.AddHours(1),
+            OpCaseStateEnum.Scheduled,
+            listPpa,
+            "",
+            30,
+            []
+        );
+
+        // Assert
+        var resultList = sut.ListPpa.ToList();
+        resultList.Should().HaveCount(3);
+        resultList[0].Ppa.PpaId.Should().Be("DOC-LEAD");
+        resultList[0].NoUrut.Should().Be(1);
+        resultList[1].Ppa.PpaId.Should().Be("ASST-01");
+        resultList[1].NoUrut.Should().Be(2);
+        resultList[2].Ppa.PpaId.Should().Be("NURSE-01");
+        resultList[2].NoUrut.Should().Be(3);
+    }
+
+    [Fact]
+    public void Reschedule_GivenNewTeamLead_ShouldPlaceNewLeadAtNoUrutOneAndRetainOldLead()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var nurse = CreatePpa("NURSE-01", ProfesiType.Perawat);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, doctor1, DateTime.Today);
+        sut.AddPpa(nurse, "u1");
+
+        var newLead = new PpaReff("DOC-02", "Dr. DOC-02");
+
+        // Act
+        sut.Reschedule(
+            newTglOp: DateTime.Today.AddHours(2),
+            newKamar: kamar.ToReff(),
+            newDurasi: 90,
+            newTurnoverBuffer: 30,
+            newTeamLead: newLead,
+            alasanPerubahan: "Pergantian dokter utama saat reschedule",
+            isOverride: false,
+            overrideReason: "",
+            userId: "user1",
+            occurredAt: DateTime.Now);
+
+        // Assert
+        sut.TeamLead.Should().Be(newLead);
+        var list = sut.ListPpa.ToList();
+        list.Should().HaveCount(3);
+        list[0].Ppa.PpaId.Should().Be("DOC-02");
+        list[0].NoUrut.Should().Be(1);
+        list[1].Ppa.PpaId.Should().Be("DOC-01");
+        list[1].NoUrut.Should().Be(2);
+        list[2].Ppa.PpaId.Should().Be("NURSE-01");
+        list[2].NoUrut.Should().Be(3);
     }
 
     [Fact]
