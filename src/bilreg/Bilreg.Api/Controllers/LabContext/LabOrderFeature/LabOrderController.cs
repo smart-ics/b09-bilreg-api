@@ -1,4 +1,6 @@
+using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +81,19 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPatch("{orderId}")]
+    public async Task<IActionResult> Update(string orderId, [FromBody] LabOrderUpdateDto dto)
+    {
+        var cmd = new LabOrderUpdateCmd(
+            orderId,
+            dto.UserId,
+            dto.Items,
+            (LabOrderUrgencyEnum)dto.Urgency,
+            dto.ClinicalNote ?? string.Empty);
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPatch("defer")]
     public async Task<IActionResult> Defer(LabOrderDeferCmd cmd)
     {
@@ -129,3 +144,9 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 }
+
+public record LabOrderUpdateDto(
+    string UserId,
+    List<LabOrderTarifItemInput> Items,
+    int Urgency = 0,
+    string ClinicalNote = "");

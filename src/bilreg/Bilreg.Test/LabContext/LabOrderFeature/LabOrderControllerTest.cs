@@ -2,6 +2,7 @@ using System.Reflection;
 using Bilreg.Api.Controllers.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -105,6 +106,17 @@ public class LabOrderControllerTest
         var getAttr = method!.GetCustomAttribute<HttpGetAttribute>();
         getAttr.Should().NotBeNull();
         getAttr!.Template.Should().Be("worklist");
+    }
+
+    [Fact]
+    public void UpdateAction_HasExpectedHttpAttributes()
+    {
+        var method = typeof(LabOrderController).GetMethod(nameof(LabOrderController.Update));
+        method.Should().NotBeNull();
+
+        var patchAttr = method!.GetCustomAttribute<HttpPatchAttribute>();
+        patchAttr.Should().NotBeNull();
+        patchAttr!.Template.Should().Be("{orderId}");
     }
 
     #endregion
@@ -391,6 +403,55 @@ public class LabOrderControllerTest
                 q.Date1 == new DateTime(2026, 10, 1) &&
                 q.Date2 == new DateTime(2026, 10, 15) &&
                 q.IsCitoOnly == true),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region Update Endpoint Tests
+
+    [Fact]
+    public async Task Update_GivenValidDto_DispatchesCommandAndReturnsOkWithJSendOk()
+    {
+        // Arrange
+        var orderId = "LBO20261021001";
+        var dto = new LabOrderUpdateDto(
+            UserId: "DOKTER01",
+            Items: [new LabOrderTarifItemInput("TRF001", "Tarif CK-MB", Urgency: 1)],
+            Urgency: 1,
+            ClinicalNote: "Update CITO note");
+
+        var expectedResponse = new LabOrderUpdateResponse(
+            OrderId: orderId,
+            ItemCount: 1,
+            ComponentCount: 2);
+
+        _mediatorMock
+            .Setup(x => x.Send(
+                It.Is<LabOrderUpdateCmd>(c =>
+                    c.OrderId == orderId &&
+                    c.UserId == "DOKTER01" &&
+                    c.Urgency == LabOrderUrgencyEnum.Cito &&
+                    c.ClinicalNote == "Update CITO note" &&
+                    c.Items.Count == 1),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Update(orderId, dto);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<LabOrderUpdateCmd>(c =>
+                c.OrderId == orderId &&
+                c.UserId == "DOKTER01" &&
+                c.Urgency == LabOrderUrgencyEnum.Cito &&
+                c.ClinicalNote == "Update CITO note"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

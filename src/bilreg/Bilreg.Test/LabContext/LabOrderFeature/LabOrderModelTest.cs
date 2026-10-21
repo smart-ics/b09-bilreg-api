@@ -957,4 +957,145 @@ public class LabOrderModelTest
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak dapat dibatalkan karena spesimen telah diambil (status Released)*");
     }
+
+    #region UpdateItems Tests
+
+    [Fact]
+    public void UpdateItems_WhenOrdered_UpdatesItemsComponentsUrgencyAndNote()
+    {
+        // Arrange
+        var order = OrderedOrder();
+        var item1 = TestItem() with { TestDefinitionId = "LTD0010", LabTestName = "Hemoglobin" };
+        var item2 = TestItem() with { TestDefinitionId = "LTD0020", LabTestName = "Leukosit" };
+        var comp1 = LabOrderTestSupport.SampleComponent() with { ComponentId = "CMP01", ComponentName = "HB" };
+        var comp2 = LabOrderTestSupport.SampleComponent() with { ComponentId = "CMP02", ComponentName = "LEU" };
+
+        var newLines = new List<LabOrderModel.ResolvedOrderLine>
+        {
+            new(item1, [comp1]),
+            new(item2, [comp2])
+        };
+        var updateTime = new DateTime(2026, 10, 21, 14, 30, 0);
+
+        // Act
+        order.UpdateItems(newLines, LabOrderUrgencyEnum.Rutin, "Catatan perubahan klinis", "U99", updateTime);
+
+        // Assert
+        order.Items.Should().HaveCount(2);
+        order.Items[0].TestDefinitionId.Should().Be("LTD0010");
+        order.Items[0].ItemNo.Should().Be(1);
+        order.Items[1].TestDefinitionId.Should().Be("LTD0020");
+        order.Items[1].ItemNo.Should().Be(2);
+
+        order.ItemComponents.Should().HaveCount(2);
+        order.ItemComponents[0].ItemNo.Should().Be(1);
+        order.ItemComponents[0].ComponentNo.Should().Be(1);
+        order.ItemComponents[1].ItemNo.Should().Be(2);
+        order.ItemComponents[1].ComponentNo.Should().Be(1);
+
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Rutin);
+        order.IsCito.Should().BeFalse();
+        order.ClinicalNote.Should().Be("Catatan perubahan klinis");
+        order.AuditTrail.Modified.UserId.Should().Be("U99");
+        order.AuditTrail.Modified.Timestamp.Should().Be(updateTime);
+    }
+
+    [Fact]
+    public void UpdateItems_WhenNotOrdered_ThrowsInvalidOperationException()
+    {
+        // Arrange: status Deferred
+        var order = OrderedOrder();
+        order.Defer("Puasa", DateTime.Now.AddDays(1), "U2");
+
+        var newLines = new List<LabOrderModel.ResolvedOrderLine> { LabOrderTestSupport.ResolvedLine() };
+
+        // Act & Assert
+        var act = () => order.UpdateItems(newLines, LabOrderUrgencyEnum.Rutin, "Note", "U3");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"LabOrder {order.OrderId} berstatus Deferred; update hanya diperbolehkan dari Ordered.");
+    }
+
+    [Fact]
+    public void UpdateItems_WhenCharged_ThrowsInvalidOperationException()
+    {
+        // Arrange: status Charged
+        var order = OrderedOrder();
+        order.MarkCharged("TDK001", "U2");
+
+        var newLines = new List<LabOrderModel.ResolvedOrderLine> { LabOrderTestSupport.ResolvedLine() };
+
+        // Act & Assert
+        var act = () => order.UpdateItems(newLines, LabOrderUrgencyEnum.Rutin, "Note", "U3");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"LabOrder {order.OrderId} berstatus Charged; update hanya diperbolehkan dari Ordered.");
+    }
+
+    [Fact]
+    public void UpdateItems_CitoUrgencyOnOrder_InheritsToAllItems()
+    {
+        // Arrange
+        var order = OrderedOrder(LabOrderUrgencyEnum.Rutin);
+        var item1 = TestItem() with { Urgency = LabOrderUrgencyEnum.Rutin };
+        var item2 = TestItem() with { Urgency = LabOrderUrgencyEnum.Rutin };
+
+        var newLines = new List<LabOrderModel.ResolvedOrderLine>
+        {
+            LabOrderTestSupport.ResolvedLine(item1),
+            LabOrderTestSupport.ResolvedLine(item2)
+        };
+
+        // Act
+        order.UpdateItems(newLines, LabOrderUrgencyEnum.Cito, "Order darurat CITO", "U88");
+
+        // Assert
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        order.IsCito.Should().BeTrue();
+        order.Items.Should().AllSatisfy(item =>
+        {
+            item.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+            item.IsCito.Should().BeTrue();
+        });
+    }
+
+    [Fact]
+    public void UpdateItems_CitoItem_PromotesOrderUrgencyToCito()
+    {
+        // Arrange
+        var order = OrderedOrder(LabOrderUrgencyEnum.Rutin);
+        var item1 = TestItem() with { Urgency = LabOrderUrgencyEnum.Rutin };
+        var item2 = TestItem() with { Urgency = LabOrderUrgencyEnum.Cito };
+
+        var newLines = new List<LabOrderModel.ResolvedOrderLine>
+        {
+            LabOrderTestSupport.ResolvedLine(item1),
+            LabOrderTestSupport.ResolvedLine(item2)
+        };
+
+        // Act
+        order.UpdateItems(newLines, LabOrderUrgencyEnum.Rutin, "Item CITO parsial", "U77");
+
+        // Assert
+        order.Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+        order.IsCito.Should().BeTrue();
+        order.Items[0].Urgency.Should().Be(LabOrderUrgencyEnum.Rutin);
+        order.Items[1].Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
+    }
+
+    [Fact]
+    public void UpdateItems_EmptyLines_ThrowsArgumentException()
+    {
+        var order = OrderedOrder();
+        var act = () => order.UpdateItems([], LabOrderUrgencyEnum.Rutin, "", "U1");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void UpdateItems_EmptyUserId_ThrowsArgumentException()
+    {
+        var order = OrderedOrder();
+        var act = () => order.UpdateItems([LabOrderTestSupport.ResolvedLine()], LabOrderUrgencyEnum.Rutin, "", "");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    #endregion
 }

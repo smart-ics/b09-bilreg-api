@@ -403,6 +403,42 @@ public class LabOrderModel : ILabOrderKey
 
     #region BEHAVIOUR
 
+    public void UpdateItems(
+        IEnumerable<ResolvedOrderLine> lines,
+        LabOrderUrgencyEnum urgency,
+        string clinicalNote,
+        string userId,
+        DateTime updatedAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (LabOrderStatus != LabOrderStatusEnum.Ordered)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; update hanya diperbolehkan dari Ordered.");
+
+        var (itemList, componentList) = AssignLineNumbers(lines);
+
+        var hasAnyCitoItem = itemList.Any(x => x.IsCito);
+        var effectiveUrgency = (urgency == LabOrderUrgencyEnum.Cito || hasAnyCitoItem)
+            ? LabOrderUrgencyEnum.Cito
+            : LabOrderUrgencyEnum.Rutin;
+
+        if (urgency == LabOrderUrgencyEnum.Cito)
+        {
+            itemList = itemList.Select(x => x with { Urgency = LabOrderUrgencyEnum.Cito }).ToList();
+        }
+
+        _items.Clear();
+        _items.AddRange(itemList);
+        _itemComponents.Clear();
+        _itemComponents.AddRange(componentList);
+
+        Urgency = effectiveUrgency;
+        ClinicalNote = clinicalNote ?? string.Empty;
+        var at = updatedAt == default ? DateTime.Now : updatedAt;
+        AuditTrail.Modif(userId, at);
+    }
+
     public void Defer(string reason, DateTime untilDate, string userId, DateTime deferredAt = default)
     {
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
@@ -748,8 +784,8 @@ public class LabOrderModel : ILabOrderKey
     public string DokterPerujukName { get; init; }
     public string LayananPerujukId { get; init; }
     public string LayananPerujukName { get; init; }
-    public string ClinicalNote { get; init; }
-    public LabOrderUrgencyEnum Urgency { get; init; }
+    public string ClinicalNote { get; private set; }
+    public LabOrderUrgencyEnum Urgency { get; private set; }
     public bool IsCito => Urgency == LabOrderUrgencyEnum.Cito;
     public IReadOnlyList<LabOrderItemModel> Items => _items;
     public IReadOnlyList<LabOrderItemComponentModel> ItemComponents => _itemComponents;
