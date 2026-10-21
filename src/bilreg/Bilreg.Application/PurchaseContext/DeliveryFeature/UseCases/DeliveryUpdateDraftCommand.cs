@@ -202,7 +202,12 @@ public class DeliveryUpdateDraftHandler : IRequestHandler<DeliveryUpdateDraftCom
         model.SetDiskonLain(request.DiskonLain);
 
         if (request.DeliveryOrderDate.HasValue)
-            model.UpdateDeliveryOrderDate(request.DeliveryOrderDate.Value);
+        {
+            var updatedDate = request.DeliveryOrderDate.Value.TimeOfDay == TimeSpan.Zero
+                ? request.DeliveryOrderDate.Value.Date.Add(model.DeliveryOrderDate.TimeOfDay != TimeSpan.Zero ? model.DeliveryOrderDate.TimeOfDay : modifiedAt.TimeOfDay)
+                : request.DeliveryOrderDate.Value;
+            model.UpdateDeliveryOrderDate(updatedDate);
+        }
 
         if (!string.IsNullOrWhiteSpace(request.SupplierId) && request.SupplierId != model.Supplier.PartnerId)
             model.UpdateSupplier(new PartnerReff(request.SupplierId, request.SupplierName ?? string.Empty));

@@ -666,4 +666,37 @@ public class DeliveryUpdateDraftCommandTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task Handle_WhenDeliveryOrderDateHasNoTime_CombinesWithExistingTime()
+    {
+        // Arrange
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? capturedSavedModel = null;
+        var existing = CreateSampleDraftModel();
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns(MayBe.From(existing));
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => capturedSavedModel = m);
+
+        var dateOnly = new DateTime(2026, 10, 22); // 00:00:00
+        var command = new DeliveryUpdateDraftCommand(
+            DeliveryOrderId: DoId,
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: CreateSampleItems(),
+            DeliveryOrderDate: dateOnly);
+
+        // Act
+        await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        capturedSavedModel.Should().NotBeNull();
+        capturedSavedModel!.DeliveryOrderDate.Should().Be(new DateTime(2026, 10, 22, 10, 0, 0));
+        capturedSavedModel.DeliveryOrderDate.TimeOfDay.Should().Be(_now.TimeOfDay);
+    }
 }

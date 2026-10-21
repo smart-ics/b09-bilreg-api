@@ -51,15 +51,24 @@ public class DeliveryOrderDal : IDeliveryOrderDal
             )
             """;
 
+        var now = DateTime.Now;
         var isVoided = dto.TglVoid.Year < 3000 && dto.TglVoid != default;
         var tglVoidStr = isVoided ? dto.TglVoid.ToString("yyyy-MM-dd") : DefaultVoidDate;
         var jamVoidStr = isVoided ? (string.IsNullOrWhiteSpace(dto.JamVoid) ? dto.TglVoid.ToString("HH:mm:ss") : dto.JamVoid) : DefaultVoidTime;
-        var crtTgl = dto.CrtTgl != default && dto.CrtTgl.Year < 3000 ? dto.CrtTgl : (dto.DoDate != default ? dto.DoDate : DateTime.Now);
+        var crtTgl = dto.CrtTgl != default && dto.CrtTgl.Year < 3000 ? dto.CrtTgl : (dto.DoDate != default ? dto.DoDate : now);
+
+        var jamTrs = dto.DoDate != default && dto.DoDate.TimeOfDay != TimeSpan.Zero
+            ? dto.DoDate.ToString("HH:mm:ss")
+            : now.ToString("HH:mm:ss");
+
+        var jamCrt = crtTgl != default && crtTgl.TimeOfDay != TimeSpan.Zero
+            ? crtTgl.ToString("HH:mm:ss")
+            : now.ToString("HH:mm:ss");
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", dto.DoId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_trs", dto.DoDate != default ? dto.DoDate.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jam_trs", dto.DoDate != default ? dto.DoDate.ToString("HH:mm:ss") : DateTime.Now.ToString("HH:mm:ss"), SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_trs", jamTrs, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas", dto.PetugasId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_void", tglVoidStr, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_void", jamVoidStr, SqlDbType.VarChar);
@@ -78,7 +87,7 @@ public class DeliveryOrderDal : IDeliveryOrderDal
         dp.AddParam("@fs_kd_trs_fk", string.Empty, SqlDbType.VarChar);
         dp.AddParam("@fn_status_bridge", 0m, SqlDbType.Decimal);
         dp.AddParam("@CRTTGL", crtTgl.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@CRTJAM", crtTgl.ToString("HH:mm:ss"), SqlDbType.VarChar);
+        dp.AddParam("@CRTJAM", jamCrt, SqlDbType.VarChar);
         dp.AddParam("@CRTIPA", string.Empty, SqlDbType.VarChar);
         dp.AddParam("@CRTVER", string.Empty, SqlDbType.VarChar);
         dp.AddParam("@CRTUSR", dto.CrtUsr ?? string.Empty, SqlDbType.VarChar);
@@ -121,10 +130,14 @@ public class DeliveryOrderDal : IDeliveryOrderDal
         var jamVoidStr = isVoided ? (string.IsNullOrWhiteSpace(dto.JamVoid) ? dto.TglVoid.ToString("HH:mm:ss") : dto.JamVoid) : DefaultVoidTime;
         var updTgl = dto.UpdTgl != default && dto.UpdTgl.Year < 3000 ? dto.UpdTgl : DateTime.Now;
 
+        var jamTrs = dto.DoDate != default && dto.DoDate.TimeOfDay != TimeSpan.Zero
+            ? dto.DoDate.ToString("HH:mm:ss")
+            : updTgl.ToString("HH:mm:ss");
+
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", dto.DoId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_trs", dto.DoDate != default ? dto.DoDate.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jam_trs", dto.DoDate != default ? dto.DoDate.ToString("HH:mm:ss") : DateTime.Now.ToString("HH:mm:ss"), SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_trs", jamTrs, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas", dto.PetugasId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_void", tglVoidStr, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_void", jamVoidStr, SqlDbType.VarChar);

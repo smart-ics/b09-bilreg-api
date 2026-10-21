@@ -169,7 +169,12 @@ public class DeliveryCreateDraftHandler : IRequestHandler<DeliveryCreateDraftCom
         }
 
         // 4. Build Model
-        var occuredAt = request.DeliveryOrderDate ?? _tglJamProvider.Now;
+        var now = _tglJamProvider.Now;
+        var occuredAt = request.DeliveryOrderDate.HasValue
+            ? (request.DeliveryOrderDate.Value.TimeOfDay == TimeSpan.Zero
+                ? request.DeliveryOrderDate.Value.Date.Add(now.TimeOfDay)
+                : request.DeliveryOrderDate.Value)
+            : now;
         var supplier = new PartnerReff(request.SupplierId, request.SupplierName ?? string.Empty);
         var gudang = new LayananReff(request.GudangId, request.GudangName ?? string.Empty);
         var poId = request.PoId?.Trim() ?? string.Empty;

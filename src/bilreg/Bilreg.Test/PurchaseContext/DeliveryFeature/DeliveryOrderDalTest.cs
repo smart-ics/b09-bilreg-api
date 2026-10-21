@@ -175,6 +175,21 @@ public class DeliveryOrderDalTest
         list.Should().Contain(x => x.DoId == "DO_TEST04");
     }
 
+    [Fact]
+    public void Order_Insert_WhenDateOnly_ShouldNotStoreZeroTime()
+    {
+        using var trans = TransHelper.NewScope();
+        var order = FakerOrder("DO_TEST05");
+        order.DoDate = new DateTime(2026, 10, 21); // 00:00:00
+        order.CrtTgl = new DateTime(2026, 10, 21); // 00:00:00
+
+        _orderDal.Insert(order);
+        var actual = _orderDal.GetData(FakerKey("DO_TEST05"));
+
+        actual.Should().NotBeNull();
+        actual.DoDate.TimeOfDay.Should().NotBe(TimeSpan.Zero);
+    }
+
     // ==========================================
     // DeliveryOrderItemDal Tests (TB_TRS_DO2)
     // ==========================================

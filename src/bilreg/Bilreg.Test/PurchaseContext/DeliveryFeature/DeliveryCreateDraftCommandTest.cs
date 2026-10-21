@@ -573,4 +573,33 @@ public class DeliveryCreateDraftCommandTest
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*kurang dari 18 bulan*wajib menyertakan surat jaminan retur*");
     }
+
+    [Fact]
+    public async Task Handle_WhenDeliveryOrderDateHasNoTime_CombinesWithCurrentTime()
+    {
+        // ARRANGE
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
+
+        var dateOnly = new DateTime(2026, 10, 21); // 00:00:00
+        var command = new DeliveryCreateDraftCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: CreateSampleItems(),
+            DeliveryOrderDate: dateOnly);
+
+        // ACT
+        await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        savedModel.Should().NotBeNull();
+        savedModel!.DeliveryOrderDate.Should().Be(new DateTime(2026, 10, 21, 10, 0, 0));
+        savedModel.DeliveryOrderDate.TimeOfDay.Should().Be(_now.TimeOfDay);
+    }
 }
