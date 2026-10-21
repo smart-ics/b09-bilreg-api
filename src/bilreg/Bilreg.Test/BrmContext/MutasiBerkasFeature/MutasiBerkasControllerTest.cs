@@ -67,6 +67,30 @@ public class MutasiBerkasControllerTest
     }
 
     [Fact]
+    public async Task PinjamInternal_GivenValidCommand_WhenExecuted_ThenSendsCommandAndReturnsOk()
+    {
+        // ARRANGE
+        var cmd = new MutasiBerkasPinjamInternalCommand(
+            "00000001", "CASEMIX", "PET02", "PET01", "Audit Berkas Medis", "2026-10-17", "09:00");
+        var expectedResponse = new MutasiBerkasPinjamInternalResponse(
+            "MK00000001", "PINJAM-20261017090000", "00000001", 1, 1m, "CASEMIX", "PET02", "PET01", "Audit Berkas Medis");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var actionResult = await _sut.PinjamInternal(cmd);
+
+        // ASSERT
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Terima_GivenValidCommand_WhenExecuted_ThenSendsCommandAndReturnsOk()
     {
         // ARRANGE
@@ -423,6 +447,7 @@ public class MutasiBerkasControllerTest
 
         // MediatR Handlers
         sp.GetService<IRequestHandler<MutasiBerkasKirimCommand, MutasiBerkasKirimResponse>>().Should().NotBeNull();
+        sp.GetService<IRequestHandler<MutasiBerkasPinjamInternalCommand, MutasiBerkasPinjamInternalResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBerkasTerimaCommand, MutasiBerkasTerimaResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBerkasTransferUnitCommand, MutasiBerkasTransferUnitResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBerkasKembaliCommand, MutasiBerkasKembaliResponse>>().Should().NotBeNull();

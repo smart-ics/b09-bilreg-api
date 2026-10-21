@@ -26,6 +26,13 @@ public class MutasiBerkasController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("pinjam-internal")]
+    public async Task<IActionResult> PinjamInternal([FromBody] MutasiBerkasPinjamInternalCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("terima")]
     public async Task<IActionResult> Terima([FromBody] MutasiBerkasTerimaCommand cmd)
     {
