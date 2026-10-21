@@ -39,8 +39,73 @@ public record ScheduleOpDto(
     string PpaName,
     DateTime StartedDate,
     DateTime FinishedDate,
-    int OrderOpState)
+    int OrderOpState,
+    string ProfesiId = "",
+    string ProfesiName = "")
 {
+    public ScheduleOpDto(
+        string ScheduleOpId,
+        DateTime ScheduleOpDate,
+        string OrderOpId,
+        string PasienId,
+        int UrgencyLevel,
+        int Durasi,
+        DateTime TglOp,
+        string KamarId,
+        string RegId,
+        string PpaId,
+        string AlasanBatal,
+        int TurnoverBuffer,
+        string CrtUser,
+        DateTime CrtDate,
+        string UpdUser,
+        DateTime UpdDate,
+        string VodUser,
+        DateTime VodDate,
+        DateTime OrderDate,
+        string NamaOperasi,
+        string PasienName,
+        string TglLahir,
+        string Gender,
+        string KamarName,
+        string PpaName,
+        DateTime StartedDate,
+        DateTime FinishedDate,
+        int OrderOpState)
+        : this(
+            ScheduleOpId,
+            ScheduleOpDate,
+            OrderOpId,
+            PasienId,
+            UrgencyLevel,
+            Durasi,
+            TglOp,
+            KamarId,
+            RegId,
+            PpaId,
+            AlasanBatal,
+            TurnoverBuffer,
+            CrtUser,
+            CrtDate,
+            UpdUser,
+            UpdDate,
+            VodUser,
+            VodDate,
+            OrderDate,
+            NamaOperasi,
+            PasienName,
+            TglLahir,
+            Gender,
+            KamarName,
+            PpaName,
+            StartedDate,
+            FinishedDate,
+            OrderOpState,
+            string.Empty,
+            string.Empty)
+    {
+    }
+
     public static ScheduleOpDto FromModel(ScheduleOpModel model)
     {
         var result = new ScheduleOpDto(
@@ -147,7 +212,9 @@ public record ScheduleOpDto(
             kamarOp,
             (OpCaseStateEnum)OrderOpState,
             VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01",
-            TurnoverBuffer
+            TurnoverBuffer,
+            ProfesiId,
+            ProfesiName
         );
         return result;
     }

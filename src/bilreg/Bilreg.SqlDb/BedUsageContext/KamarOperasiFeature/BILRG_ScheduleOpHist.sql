@@ -16,6 +16,7 @@ BEGIN
         Alasan           VARCHAR(255) NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_Alasan DEFAULT(''),
         IsOverride       BIT          NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_IsOverride DEFAULT(0),
         OverrideReason   VARCHAR(255) NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_OverrideReason DEFAULT(''),
+        ChangeType       VARCHAR(20)  NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_ChangeType DEFAULT('RESCHEDULE'),
         UserId           VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_UserId DEFAULT(''),
         CrtDate          DATETIME     NOT NULL CONSTRAINT DF_BILRG_ScheduleOpHist_CrtDate DEFAULT('3000-01-01'),
 
@@ -30,4 +31,11 @@ BEGIN
         ON BILRG_ScheduleOpHist (ScheduleOpId, NoUrut)
         WITH (FILLFACTOR = 95);
 END
+GO
+
+-- Penambahan Kolom ChangeType untuk Pembedaan Tipe Entri Riwayat
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_ScheduleOpHist') AND name = 'ChangeType')
+    ALTER TABLE BILRG_ScheduleOpHist
+        ADD ChangeType VARCHAR(20) NOT NULL
+        CONSTRAINT DF_BILRG_ScheduleOpHist_ChangeType DEFAULT('RESCHEDULE');
 GO

@@ -156,9 +156,17 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         // 7. Soft Warning Checks
         var warnings = new List<string>();
 
-        // Bentrok Dokter di Kamar Lain
+        // Bentrok Dokter / PPA di Kamar Lain (Jalur Lead & Anggota Tim)
         var activeDoctorSchedules = _scheduleOpRepo.ListActiveSchedulesForDoctor(ppa.PpaId, start.Date)?.ToList() ?? [];
-        foreach (var d in activeDoctorSchedules)
+        var activeTeamSchedules = _scheduleOpRepo.ListActiveSchedulesForPpaInTeam(ppa.PpaId, start.Date)?.ToList() ?? [];
+
+        var combinedDoctorSchedules = activeDoctorSchedules
+            .Concat(activeTeamSchedules)
+            .GroupBy(x => x.ScheduleOpId)
+            .Select(g => g.OrderByDescending(x => !string.IsNullOrWhiteSpace(x.ProfesiName)).First())
+            .ToList();
+
+        foreach (var d in combinedDoctorSchedules)
         {
             if (d.IsVoid) continue;
             if (existingSchedule != null && d.ScheduleOpId == existingSchedule.ScheduleOpId) continue;
@@ -169,7 +177,8 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             if (start < endD && end > startD)
             {
                 var roomDisplay = !string.IsNullOrWhiteSpace(d.Kamar?.KamarId) ? d.Kamar.KamarId : request.KamarId;
-                warnings.Add($"Dokter {ppa.PpaName} telah terjadwal pada operasi lain ({roomDisplay}) dari jam {startD:HH:mm} s/d {endD:HH:mm}.");
+                var roleInfo = !string.IsNullOrWhiteSpace(d.ProfesiName) ? $" sebagai {d.ProfesiName}" : "";
+                warnings.Add($"Dokter/PPA {ppa.PpaName}{roleInfo} telah terjadwal pada operasi lain ({roomDisplay}) dari jam {startD:HH:mm} s/d {endD:HH:mm}.");
             }
         }
 

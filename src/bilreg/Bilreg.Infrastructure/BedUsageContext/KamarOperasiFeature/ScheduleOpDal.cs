@@ -19,6 +19,7 @@ public interface IScheduleOpDal :
 {
     IEnumerable<ScheduleOpDto> ListActiveSchedulesInRoom(string kamarId, DateTime date);
     IEnumerable<ScheduleOpDto> ListActiveSchedulesForDoctor(string ppaId, DateTime date);
+    IEnumerable<ScheduleOpDto> ListActiveSchedulesForPpaInTeam(string ppaId, DateTime date);
 }
 
 public class ScheduleOpDal : IScheduleOpDal
@@ -312,6 +313,49 @@ public class ScheduleOpDal : IScheduleOpDal
                 aa.PpaId = @PpaId
                 AND aa.VodDate = '3000-01-01'
                 AND aa.TglOp >= @StartDate AND aa.TglOp < @EndDate
+            """;
+
+        var startDate = date.Date;
+        var endDate = date.Date.AddDays(1);
+        var dp = new DynamicParameters();
+        dp.AddParam("@PpaId", ppaId, SqlDbType.VarChar);
+        dp.AddParam("@StartDate", startDate, SqlDbType.DateTime);
+        dp.AddParam("@EndDate", endDate, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<ScheduleOpDto>(sql, dp);
+    }
+
+    public IEnumerable<ScheduleOpDto> ListActiveSchedulesForPpaInTeam(string ppaId, DateTime date)
+    {
+        const string sql = """
+            SELECT aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+                   aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                   aa.AlasanBatal, aa.TurnoverBuffer,
+                   aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+                   ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
+                   ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
+                   ISNULL(cc.fs_nm_pasien, '') AS PasienName,
+                   ISNULL(cc.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                   ISNULL(cc.fs_jns_kelamin, '') AS Gender,
+                   ISNULL(dd.fs_nm_kamar, '') AS KamarName,
+                   ISNULL(ee.fs_nm_peg, '') AS PpaName,
+                   ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+                   ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
+                   ISNULL(ff.OrderOpState, 0) AS OrderOpState,
+                   bbTeam.ProfesiId AS ProfesiId,
+                   ISNULL(prof.ProfesiName, '') AS ProfesiName
+            FROM   BILRG_ScheduleOpPpa bbTeam
+                   INNER JOIN BILRG_ScheduleOp aa ON bbTeam.ScheduleOpId = aa.ScheduleOpId
+                   LEFT JOIN  BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
+                   LEFT JOIN  tc_mr cc ON aa.PasienId = cc.fs_mr
+                   LEFT JOIN  ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
+                   LEFT JOIN  td_peg ee ON aa.PpaId = ee.fs_kd_peg
+                   LEFT JOIN  BILRG_OpCase ff ON aa.OrderOpId = ff.OrderOpId
+                   LEFT JOIN  BILRG_Profesi prof ON bbTeam.ProfesiId = prof.ProfesiId
+            WHERE  bbTeam.PpaId = @PpaId
+                   AND aa.VodDate = '3000-01-01'
+                   AND aa.TglOp >= @StartDate AND aa.TglOp < @EndDate
             """;
 
         var startDate = date.Date;

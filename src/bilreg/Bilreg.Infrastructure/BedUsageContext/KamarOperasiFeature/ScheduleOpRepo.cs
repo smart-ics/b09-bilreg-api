@@ -97,4 +97,10 @@ public class ScheduleOpRepo : IScheduleOpRepo
         var dto = _scheduleOpDal.ListActiveSchedulesForDoctor(ppaId, date)?.ToList() ?? [];
         return dto.Select(x => x.ToView());
     }
+
+    public IEnumerable<ScheduleOpView> ListActiveSchedulesForPpaInTeam(string ppaId, DateTime date)
+    {
+        var dto = _scheduleOpDal.ListActiveSchedulesForPpaInTeam(ppaId, date)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
+    }
 }

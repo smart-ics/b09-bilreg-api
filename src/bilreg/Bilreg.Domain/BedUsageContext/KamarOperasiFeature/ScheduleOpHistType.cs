@@ -17,7 +17,8 @@ public record ScheduleOpHistType(
     bool IsOverride,
     string OverrideReason,
     string UserId,
-    DateTime CrtDate)
+    DateTime CrtDate,
+    string ChangeType = "RESCHEDULE")
 {
     public static ScheduleOpHistType Default => new(
         0,
@@ -33,5 +34,6 @@ public record ScheduleOpHistType(
         false,
         string.Empty,
         string.Empty,
-        new DateTime(3000, 1, 1));
+        new DateTime(3000, 1, 1),
+        "RESCHEDULE");
 }

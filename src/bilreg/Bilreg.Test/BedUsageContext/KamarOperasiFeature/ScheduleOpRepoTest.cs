@@ -345,6 +345,35 @@ public class ScheduleOpRepoTests
         capturedDto.TurnoverBuffer.Should().Be(45);
     }
 
+    [Fact]
+    public void UT15_GivenPpaIdAndDate_WhenListActiveSchedulesForPpaInTeam_ThenDelegatesToDalAndReturnsMappedViews()
+    {
+        // Arrange
+        var date = new DateTime(2026, 10, 20);
+        var ppaId = "PPA-01";
+        var dto = CreateTestDto() with
+        {
+            ProfesiId = "PROF-02",
+            ProfesiName = "Perawat Anestesi"
+        };
+        var expectedDtos = new List<ScheduleOpDto> { dto };
+
+        _scheduleOpDalMock
+            .Setup(x => x.ListActiveSchedulesForPpaInTeam(ppaId, date))
+            .Returns(expectedDtos);
+
+        // Act
+        var result = _repository.ListActiveSchedulesForPpaInTeam(ppaId, date).ToList();
+
+        // Assert
+        _scheduleOpDalMock.Verify(x => x.ListActiveSchedulesForPpaInTeam(ppaId, date), Times.Once);
+        result.Should().HaveCount(1);
+        result[0].ScheduleOpId.Should().Be(dto.ScheduleOpId);
+        result[0].ProfesiId.Should().Be("PROF-02");
+        result[0].ProfesiName.Should().Be("Perawat Anestesi");
+        result[0].TurnoverBuffer.Should().Be(dto.TurnoverBuffer);
+    }
+
     private static ScheduleOpModel CreateTestModel()
         => ScheduleOpModel.Default;
 

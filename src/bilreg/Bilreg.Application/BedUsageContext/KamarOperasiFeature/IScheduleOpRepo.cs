@@ -15,6 +15,7 @@ public interface IScheduleOpRepo :
 {
     IEnumerable<ScheduleOpView> ListActiveSchedulesInRoom(string kamarId, DateTime date);
     IEnumerable<ScheduleOpView> ListActiveSchedulesForDoctor(string ppaId, DateTime date);
+    IEnumerable<ScheduleOpView> ListActiveSchedulesForPpaInTeam(string ppaId, DateTime date);
 }
 
 public record ScheduleOpView(string ScheduleOpId,
@@ -26,4 +27,6 @@ public record ScheduleOpView(string ScheduleOpId,
     KamarReff Kamar,
     OpCaseStateEnum Status,
     bool IsVoid,
-    int TurnoverBuffer = 30);
+    int TurnoverBuffer = 30,
+    string ProfesiId = "",
+    string ProfesiName = "");

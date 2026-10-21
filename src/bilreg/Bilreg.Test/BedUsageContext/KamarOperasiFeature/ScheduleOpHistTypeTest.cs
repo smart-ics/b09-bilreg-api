@@ -52,6 +52,35 @@ public class ScheduleOpHistTypeTest
         sut.OverrideReason.Should().Be("Disetujui komite medis");
         sut.UserId.Should().Be("USER01");
         sut.CrtDate.Should().Be(crtDate);
+        sut.ChangeType.Should().Be("RESCHEDULE");
+    }
+
+    [Fact]
+    public void Construct_GivenExplicitChangeType_ShouldInitializeChangeType()
+    {
+        // Arrange & Act
+        var sut = new ScheduleOpHistType(
+            2,
+            new DateTime(2026, 10, 20, 8, 0, 0),
+            new DateTime(2026, 10, 20, 8, 0, 0),
+            120,
+            120,
+            new KamarReff("K01", "OK 1"),
+            new KamarReff("K01", "OK 1"),
+            new PpaReff("D01", "dr. Bedah 1"),
+            new PpaReff("D02", "dr. Bedah 2"),
+            "Pergantian operator utama",
+            false,
+            "",
+            "USER02",
+            new DateTime(2026, 10, 19, 15, 0, 0),
+            "ASSIGN_LEADER");
+
+        // Assert
+        sut.NoUrut.Should().Be(2);
+        sut.ChangeType.Should().Be("ASSIGN_LEADER");
+        sut.OldTeamLead.PpaId.Should().Be("D01");
+        sut.NewTeamLead.PpaId.Should().Be("D02");
     }
 
     [Fact]
@@ -94,6 +123,10 @@ public class ScheduleOpHistTypeTest
         item1.Should().Be(item2);
         (item1 == item2).Should().BeTrue();
         item1.GetHashCode().Should().Be(item2.GetHashCode());
+
+        var itemDifferentChangeType = item1 with { ChangeType = "ASSIGN_LEADER" };
+        item1.Should().NotBe(itemDifferentChangeType);
+        (item1 == itemDifferentChangeType).Should().BeFalse();
     }
 
     [Fact]
@@ -117,6 +150,7 @@ public class ScheduleOpHistTypeTest
         sut.OverrideReason.Should().BeEmpty();
         sut.UserId.Should().BeEmpty();
         sut.CrtDate.Should().Be(new DateTime(3000, 1, 1));
+        sut.ChangeType.Should().Be("RESCHEDULE");
     }
 
     [Fact]

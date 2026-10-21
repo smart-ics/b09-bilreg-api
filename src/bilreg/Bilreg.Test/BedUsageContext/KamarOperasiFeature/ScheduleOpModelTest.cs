@@ -151,19 +151,36 @@ public class ScheduleOpModelTests
     // UT5 - AssignLeader
     // ---------------------------------------------------------
     [Fact]
-    public void UT5_GivenValidDoctorInList_WhenAssignLeader_ThenLeaderAssigned()
+    public void UT5_GivenValidDoctorInList_WhenAssignLeader_ThenLeaderAssignedAndHistoryRecorded()
     {
         // Arrange
         var schedule = CreateEmptySchedule();
         var doctor = CreatePpa("D1", ProfesiType.Dokter);
-
         schedule.AddPpa(doctor, "user1");
+        var updatedAt = new DateTime(2026, 10, 21, 10, 0, 0);
 
         // Act
-        schedule.AssignLeader(doctor, "user1");
+        schedule.AssignLeader(doctor, "Pergantian dokter operator utama", "user1", updatedAt);
 
         // Assert
         schedule.TeamLead.PpaId.Should().Be("D1");
+        schedule.ListHistory.Should().HaveCount(1);
+        var hist = schedule.ListHistory.First();
+        hist.NoUrut.Should().Be(1);
+        hist.OldTglOp.Should().Be(schedule.TglOp);
+        hist.NewTglOp.Should().Be(schedule.TglOp);
+        hist.OldDurasi.Should().Be(schedule.Durasi);
+        hist.NewDurasi.Should().Be(schedule.Durasi);
+        hist.OldKamar.Should().Be(schedule.KamarOp);
+        hist.NewKamar.Should().Be(schedule.KamarOp);
+        hist.OldTeamLead.PpaId.Should().Be("-");
+        hist.NewTeamLead.PpaId.Should().Be("D1");
+        hist.Alasan.Should().Be("Pergantian dokter operator utama");
+        hist.IsOverride.Should().BeFalse();
+        hist.OverrideReason.Should().BeEmpty();
+        hist.UserId.Should().Be("user1");
+        hist.CrtDate.Should().Be(updatedAt);
+        hist.ChangeType.Should().Be("ASSIGN_LEADER");
     }
 
     [Fact]
@@ -176,7 +193,7 @@ public class ScheduleOpModelTests
         schedule.AddPpa(nurse, "user1");
 
         // Act
-        Action act = () => schedule.AssignLeader(nurse, "user1");
+        Action act = () => schedule.AssignLeader(nurse, "Alasan valid", "user1");
 
         // Assert
         act.Should().Throw<ArgumentException>()
@@ -191,11 +208,90 @@ public class ScheduleOpModelTests
         var doctor = CreatePpa("D1", ProfesiType.Dokter);
 
         // Act
-        Action act = () => schedule.AssignLeader(doctor, "user1");
+        Action act = () => schedule.AssignLeader(doctor, "Alasan valid", "user1");
 
         // Assert
         act.Should().Throw<ArgumentException>()
             .WithMessage("PPA harus terdaftar di member");
+    }
+
+    [Fact]
+    public void AssignLeader_GivenNullOrWhitespaceAlasanPerubahan_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var schedule = CreateEmptySchedule();
+        var doctor = CreatePpa("D1", ProfesiType.Dokter);
+        schedule.AddPpa(doctor, "user1");
+
+        // Act & Assert - null reason
+        FluentActions.Invoking(() => schedule.AssignLeader(doctor, null!, "user1"))
+            .Should().Throw<ArgumentException>();
+
+        // Act & Assert - whitespace reason
+        FluentActions.Invoking(() => schedule.AssignLeader(doctor, "   ", "user1"))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AssignLeader_GivenSameDoctorAsActiveLeader_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+
+        // Act
+        Action act = () => schedule.AssignLeader(doctor1, "Perubahan ke dokter yang sama", "user1");
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Dokter Operator Utama baru sama dengan Dokter Operator Utama yang aktif.");
+    }
+
+    [Fact]
+    public void AssignLeader_GivenMultipleChanges_ShouldSequenceHistoryIncrementally()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
+        var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
+        var doctor3 = CreatePpa("D3", ProfesiType.Dokter);
+        var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+
+        schedule.AddPpa(doctor2, "user1");
+        schedule.AddPpa(doctor3, "user1");
+
+        var time1 = new DateTime(2026, 10, 21, 10, 0, 0);
+        var time2 = new DateTime(2026, 10, 21, 11, 0, 0);
+
+        // Act 1
+        schedule.AssignLeader(doctor2, "Perubahan leader ke dokter 2", "user1", time1);
+
+        // Act 2
+        schedule.AssignLeader(doctor3, "Perubahan leader ke dokter 3", "user2", time2);
+
+        // Assert
+        schedule.TeamLead.PpaId.Should().Be("D3");
+        schedule.ListHistory.Should().HaveCount(2);
+
+        var list = schedule.ListHistory.ToList();
+        list[0].NoUrut.Should().Be(1);
+        list[0].OldTeamLead.PpaId.Should().Be("D1");
+        list[0].NewTeamLead.PpaId.Should().Be("D2");
+        list[0].Alasan.Should().Be("Perubahan leader ke dokter 2");
+        list[0].ChangeType.Should().Be("ASSIGN_LEADER");
+        list[0].UserId.Should().Be("user1");
+        list[0].CrtDate.Should().Be(time1);
+
+        list[1].NoUrut.Should().Be(2);
+        list[1].OldTeamLead.PpaId.Should().Be("D2");
+        list[1].NewTeamLead.PpaId.Should().Be("D3");
+        list[1].Alasan.Should().Be("Perubahan leader ke dokter 3");
+        list[1].ChangeType.Should().Be("ASSIGN_LEADER");
+        list[1].UserId.Should().Be("user2");
+        list[1].CrtDate.Should().Be(time2);
     }
 
     // ---------------------------------------------------------
@@ -335,6 +431,7 @@ public class ScheduleOpModelTests
         hist.OverrideReason.Should().Be("Disetujui komite bedah");
         hist.UserId.Should().Be("koordinator1");
         hist.CrtDate.Should().Be(occurredAt);
+        hist.ChangeType.Should().Be("RESCHEDULE");
 
         // Assert - Team lead updated in ListPpa at NoUrut = 1
         sut.ListPpa.Should().ContainSingle(x => x.NoUrut == 1 && x.Ppa.PpaId == "DOC-02");

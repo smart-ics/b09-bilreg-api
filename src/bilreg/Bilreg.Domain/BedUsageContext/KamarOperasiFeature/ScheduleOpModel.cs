@@ -153,7 +153,8 @@ public class ScheduleOpModel : IScheduleOpKey
             isOverride,
             overrideReason ?? string.Empty,
             userId,
-            occurredAt);
+            occurredAt,
+            "RESCHEDULE");
         _listHistory.Add(hist);
 
         TglOp = newTglOp;
@@ -212,18 +213,39 @@ public class ScheduleOpModel : IScheduleOpKey
         AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void AssignLeader(PpaType ppa, string userId, DateTime updatedAt = default)
+    public void AssignLeader(PpaType ppa, string alasanPerubahan, string userId, DateTime updatedAt = default)
     {
+        Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
+
         // harus dokter
         var profesi = ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi;
         if (profesi is null)
             throw new ArgumentException("Profesi PPA tidak valid");
         if (profesi != ProfesiType.Dokter)
             throw new ArgumentException("PPA harus dokter");
-        //  harus terdaftar di listPpa
+
+        // harus terdaftar di listPpa
         var existing = _listPpa.FirstOrDefault(x => x.Ppa.PpaId == ppa.PpaId);
         if (existing is null)
             throw new ArgumentException("PPA harus terdaftar di member");
+
+        // guard pre-condition invarian bisnis
+        if (ppa.PpaId == TeamLead.PpaId)
+            throw new ArgumentException("Dokter Operator Utama baru sama dengan Dokter Operator Utama yang aktif.");
+
+        var nextNoUrut = _listHistory.Count + 1;
+        var hist = new ScheduleOpHistType(
+            nextNoUrut,
+            TglOp, TglOp,
+            Durasi, Durasi,
+            KamarOp, KamarOp,
+            TeamLead, ppa.ToReff(),
+            alasanPerubahan,
+            false, string.Empty,
+            userId, updatedAt,
+            "ASSIGN_LEADER");
+        _listHistory.Add(hist);
+
         TeamLead = ppa.ToReff();
         AuditTrail.Modif(userId, updatedAt);
     }

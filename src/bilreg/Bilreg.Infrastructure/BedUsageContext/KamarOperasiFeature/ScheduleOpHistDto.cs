@@ -20,7 +20,8 @@ public record ScheduleOpHistDto(
     bool IsOverride,
     string OverrideReason,
     string UserId,
-    DateTime CrtDate)
+    DateTime CrtDate,
+    string ChangeType = "RESCHEDULE")
 {
     public static ScheduleOpHistDto FromModel(string scheduleOpId, ScheduleOpHistType model)
     {
@@ -40,7 +41,8 @@ public record ScheduleOpHistDto(
             model.IsOverride,
             model.OverrideReason,
             model.UserId,
-            model.CrtDate
+            model.CrtDate,
+            model.ChangeType
         );
     }
 
@@ -64,6 +66,7 @@ public record ScheduleOpHistDto(
             IsOverride,
             OverrideReason,
             UserId,
-            CrtDate);
+            CrtDate,
+            ChangeType);
     }
 }

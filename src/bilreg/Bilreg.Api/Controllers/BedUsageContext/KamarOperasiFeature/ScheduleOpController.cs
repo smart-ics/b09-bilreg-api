@@ -57,13 +57,20 @@ public class ScheduleOpController : ControllerBase
     [Route("AddPpa")]
     public async Task<IActionResult> AddPpa(OkScheduleOpAddPpaCommand cmd)
     {
-        var userId = GetUserId();
-        if (!string.IsNullOrWhiteSpace(userId))
+        try
         {
-            cmd = cmd with { UserId = userId };
+            var userId = GetUserId();
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                cmd = cmd with { UserId = userId };
+            }
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
         }
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        catch (ScheduleWarningException ex)
+        {
+            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
+        }
     }
 
     [HttpPatch]

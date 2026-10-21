@@ -556,4 +556,133 @@ public class OkScheduleOpSetCommandHandlerTest
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*PPA yang ditugaskan sebagai Operator Utama harus berprofesi Dokter.*");
     }
+
+    [Fact]
+    public async Task Handle_DoctorOverlap_AsTeamMemberInOtherRoom_IncludesRoleInWarning()
+    {
+        // Arrange
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 7, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1", "OK 1");
+        var doctor = CreateSampleDoctor("DOC-01", "dr. Bedah Sp.B");
+        var opCase = CreateSampleOpCase(orderOp);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.Is<IKamarKey>(k => k.KamarId == "KAMAR-1")))
+            .Returns(MayBe.From(kamar));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOC-01")))
+            .Returns(MayBe.From(doctor));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.IsAny<IPasienKey>()))
+            .Returns(new List<ScheduleOpView>());
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesInRoom("KAMAR-1", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForDoctor("DOC-01", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+
+        // Same doctor is in a team as Asisten Operator in KAMAR-2 from 08:30 to 09:30
+        var teamScheduleInOtherRoom = new ScheduleOpView(
+            "SCH-TEAM-OTHER",
+            new PasienReff("PAS-003", "Pasien C", new DateOnly(1980, 1, 1), "L"),
+            new OrderOpReff("ORD-003", new DateTime(2026, 10, 20), "Laparotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 8, 30, 0),
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            ProfesiId: "PROF-02",
+            ProfesiName: "Asisten Operator");
+
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForPpaInTeam("DOC-01", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView> { teamScheduleInOtherRoom });
+
+        var cmd = new OkScheduleOpSetCommand(
+            "ORD-001", "KAMAR-1", "2026-10-20", "08:00", 60, "user1",
+            DokterOperatorId: "DOC-01", IsOverride: false);
+
+        var sut = CreateSut();
+
+        // Act
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().Contain(w =>
+            w.Contains("dr. Bedah Sp.B") &&
+            w.Contains("sebagai Asisten Operator") &&
+            w.Contains("KAMAR-2"));
+    }
+
+    [Fact]
+    public async Task Handle_DoctorOverlap_PresentInBothLeadAndTeamLists_DeduplicatesWarning()
+    {
+        // Arrange
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 7, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1", "OK 1");
+        var doctor = CreateSampleDoctor("DOC-01", "dr. Bedah Sp.B");
+        var opCase = CreateSampleOpCase(orderOp);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.Is<IKamarKey>(k => k.KamarId == "KAMAR-1")))
+            .Returns(MayBe.From(kamar));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOC-01")))
+            .Returns(MayBe.From(doctor));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.IsAny<IPasienKey>()))
+            .Returns(new List<ScheduleOpView>());
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesInRoom("KAMAR-1", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+
+        // Same schedule ID SCH-DUAL returned from both queries
+        var leadSchedule = new ScheduleOpView(
+            "SCH-DUAL",
+            new PasienReff("PAS-003", "Pasien C", new DateOnly(1980, 1, 1), "L"),
+            new OrderOpReff("ORD-003", new DateTime(2026, 10, 20), "Laparotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 8, 30, 0),
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false);
+
+        var teamSchedule = new ScheduleOpView(
+            "SCH-DUAL",
+            new PasienReff("PAS-003", "Pasien C", new DateOnly(1980, 1, 1), "L"),
+            new OrderOpReff("ORD-003", new DateTime(2026, 10, 20), "Laparotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 8, 30, 0),
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            ProfesiId: "PROF-01",
+            ProfesiName: "Dokter Operator");
+
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForDoctor("DOC-01", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView> { leadSchedule });
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForPpaInTeam("DOC-01", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView> { teamSchedule });
+
+        var cmd = new OkScheduleOpSetCommand(
+            "ORD-001", "KAMAR-1", "2026-10-20", "08:00", 60, "user1",
+            DokterOperatorId: "DOC-01", IsOverride: false);
+
+        var sut = CreateSut();
+
+        // Act
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().HaveCount(1, "Schedules with identical ScheduleOpId must be deduplicated at application layer");
+    }
 }

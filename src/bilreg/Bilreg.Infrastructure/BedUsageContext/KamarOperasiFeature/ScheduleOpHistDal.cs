@@ -32,12 +32,12 @@ public class ScheduleOpHistDal : IScheduleOpHistDal
                 ScheduleOpHistId, ScheduleOpId, NoUrut,
                 OldTglOp, NewTglOp, OldDurasi, NewDurasi,
                 OldKamarId, NewKamarId, OldPpaId, NewPpaId,
-                Alasan, IsOverride, OverrideReason, UserId, CrtDate)
+                Alasan, IsOverride, OverrideReason, UserId, CrtDate, ChangeType)
             VALUES(
                 @ScheduleOpHistId, @ScheduleOpId, @NoUrut,
                 @OldTglOp, @NewTglOp, @OldDurasi, @NewDurasi,
                 @OldKamarId, @NewKamarId, @OldPpaId, @NewPpaId,
-                @Alasan, @IsOverride, @OverrideReason, @UserId, @CrtDate)
+                @Alasan, @IsOverride, @OverrideReason, @UserId, @CrtDate, @ChangeType)
             """;
 
         var dp = new DynamicParameters();
@@ -57,6 +57,7 @@ public class ScheduleOpHistDal : IScheduleOpHistDal
         dp.AddParam("@OverrideReason", dto.OverrideReason, SqlDbType.VarChar);
         dp.AddParam("@UserId", dto.UserId, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@ChangeType", dto.ChangeType, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -88,6 +89,7 @@ public class ScheduleOpHistDal : IScheduleOpHistDal
         bcp.AddMap("OverrideReason", "OverrideReason");
         bcp.AddMap("UserId", "UserId");
         bcp.AddMap("CrtDate", "CrtDate");
+        bcp.AddMap("ChangeType", "ChangeType");
 
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "BILRG_ScheduleOpHist";
@@ -129,7 +131,8 @@ public class ScheduleOpHistDal : IScheduleOpHistDal
                 IsOverride,
                 OverrideReason,
                 UserId,
-                CrtDate
+                CrtDate,
+                ChangeType
             FROM
                 BILRG_ScheduleOpHist
             WHERE

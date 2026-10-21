@@ -377,6 +377,58 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
+    public async Task AddPpa_WhenScheduleWarningExceptionThrown_Returns422UnprocessableEntityWithJSendFail()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpAddPpaCommand("ORD-001", "PPA-01", "user-01");
+        var warnings = new List<string> { "Dokter/PPA PPA-01 sebagai Asisten telah terjadwal pada operasi lain" };
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpAddPpaCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ScheduleWarningException(warnings));
+
+        // ACT
+        var result = await _sut.AddPpa(cmd);
+
+        // ASSERT
+        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
+        jsend.Status.Should().Be("fail");
+        jsend.Data.Should().NotBeNull();
+
+        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
+        dataProp.Should().NotBeNull();
+        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
+        actualWarnings.Should().BeEquivalentTo(warnings);
+
+        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
+        reqOverrideProp.Should().NotBeNull();
+        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+    }
+
+    [Fact]
+    public async Task AddPpa_WhenIsOverrideTrue_Returns200OkWithJSendOk()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpAddPpaCommand("ORD-001", "PPA-01", "user-01", IsOverride: true, OverrideReason: "Disetujui kepala ruangan");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.AddPpa(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task RemovePpa_GivenValidCommand_WhenInvoked_Returns200Ok()
     {
         // ARRANGE
@@ -399,7 +451,7 @@ public class ScheduleOpControllerTest
     public async Task AssignLeader_GivenValidCommand_WhenInvoked_Returns200Ok()
     {
         // ARRANGE
-        var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "PPA-01", "user-01");
+        var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "PPA-01", "user-01", "Perubahan operator utama");
 
         _mediatorMock
             .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
@@ -412,6 +464,11 @@ public class ScheduleOpControllerTest
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(It.Is<OkScheduleOpAssignLeaderCommand>(c =>
+            c.OrderOpId == "ORD-001" &&
+            c.PpaId == "PPA-01" &&
+            c.AlasanPerubahan == "Perubahan operator utama"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
