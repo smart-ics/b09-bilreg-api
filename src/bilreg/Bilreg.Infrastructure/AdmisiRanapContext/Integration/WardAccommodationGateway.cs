@@ -25,12 +25,33 @@ public class WardAccommodationGateway : IWardAccommodationGateway
         _bangsalByKelasDkDal = bangsalByKelasDkDal;
     }
 
-    public KelasReff ResolveKelas(string kelasId)
+    public KelasType ResolveKelasEntity(string kelasId)
     {
         Guard.Against.NullOrWhiteSpace(kelasId);
         return _kelasRepo.LoadEntity(KelasType.Key(kelasId))
-            .GetValueOrThrow($"Kelas '{kelasId}' tidak ditemukan.")
-            .ToReff();
+            .GetValueOrThrow($"Kelas '{kelasId}' tidak ditemukan.");
+    }
+
+    public KelasReff ResolveKelas(string kelasId)
+    {
+        return ResolveKelasEntity(kelasId).ToReff();
+    }
+
+    public KelasReff ResolveKelasForCareClass(string bangsalId, string kelasDkId)
+    {
+        Guard.Against.NullOrWhiteSpace(bangsalId);
+        Guard.Against.NullOrWhiteSpace(kelasDkId);
+
+        ResolveBangsalForCareClass(bangsalId, kelasDkId);
+
+        var matchingClass = _kelasRepo.ListData()
+            .FirstOrDefault(k => k.IsAktif && k.KelasDk.KelasDkId == kelasDkId);
+
+        if (matchingClass is null)
+            throw new InvalidOperationException(
+                $"Kelas aktif untuk Care Class '{kelasDkId}' tidak ditemukan.");
+
+        return matchingClass.ToReff();
     }
 
     public KelasDkType ResolveKelasDk(string kelasDkId)

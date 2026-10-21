@@ -172,6 +172,23 @@ public class ResepDalTest
     }
 
     [Fact]
+    public void LockPrescription_SetsStatusDobillToOne()
+    {
+        using var trans = TransHelper.NewScope();
+        var resepId = NewTestResepId();
+        var dto = FakerData(resepId);
+        _sut.Insert(dto);
+
+        _sut.LockPrescription(resepId);
+
+        _sut.HasBeenProcessed(resepId).Should().BeTrue();
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        var status = conn.ExecuteScalar<int>("SELECT fn_status_dobill FROM ta_trs_kartu_periksa WHERE fs_kd_trs = @ResepId", new { ResepId = resepId });
+        status.Should().Be(1);
+    }
+
+    [Fact]
     public void FindPotentialDuplicate_ReturnsDuplicateWhenSamePatientAndDay()
     {
         using var trans = TransHelper.NewScope();

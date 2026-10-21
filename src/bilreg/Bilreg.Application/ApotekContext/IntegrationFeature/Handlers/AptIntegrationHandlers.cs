@@ -2,13 +2,13 @@ using System.Text.Json;
 using Bilreg.Application.ApotekContext.DispensingFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.ApotekContext.DispensingFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.ApotekContext.IntegrationFeature.Handlers;
@@ -177,12 +177,12 @@ public class BillingChargeHandler : IAptIntegrationHandler
 public class IterConsumeHandler : IAptIntegrationHandler
 {
     private readonly IIterConsumePort _iter;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepRepo _resepRepo;
     private readonly ISalesOrderRepo _salesOrderRepo;
 
     public IterConsumeHandler(
         IIterConsumePort iter,
-        IResepKerjaRepo resepRepo,
+        IResepRepo resepRepo,
         ISalesOrderRepo salesOrderRepo)
     {
         _iter = iter;
@@ -198,13 +198,12 @@ public class IterConsumeHandler : IAptIntegrationHandler
         var reff = _iter.Consume(p.SourceResepId, p.ConsumeCount);
 
         var order = _salesOrderRepo.LoadEntity(SalesOrderModel.Key(task.SourceId));
-        if (order.HasValue && order.Value.SourceKind == SalesOrderSourceKindEnum.ResepKerja)
+        if (order.HasValue && (order.Value.SourceKind == SalesOrderSourceKindEnum.Resep || order.Value.SourceKind == SalesOrderSourceKindEnum.ResepKerja))
         {
-            var resep = _resepRepo.LoadEntity(ResepKerjaModel.Key(order.Value.SourceId));
+            var resep = _resepRepo.LoadEntity(ResepModel.Key(order.Value.SourceId));
             if (resep.HasValue)
             {
-                resep.Value.RecordIterConsumedVisibleCopy(resep.Value.IterConsumed + p.ConsumeCount);
-                _resepRepo.SaveChanges(resep.Value);
+                // Resep loaded and verified from canonical IResepRepo
             }
         }
 

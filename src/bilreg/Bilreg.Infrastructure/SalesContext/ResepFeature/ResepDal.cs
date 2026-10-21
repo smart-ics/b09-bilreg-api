@@ -12,6 +12,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Infrastructure.SalesContext.ResepFeature;
 
 public interface IResepDal :
+    Bilreg.Application.SalesContext.ResepFeature.IResepDal,
     IResepVoidDal,
     IResepCreateDal,
     IInsert<ResepDto>,
@@ -242,6 +243,21 @@ public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ExecuteScalar<bool>(sql, dp);
+    }
+
+    public void LockPrescription(string resepId)
+    {
+        const string sql = """
+            UPDATE ta_trs_kartu_periksa
+            SET fn_status_dobill = 1
+            WHERE fs_kd_trs = @resepId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@resepId", resepId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 
     public IEnumerable<ResepDto> FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds)

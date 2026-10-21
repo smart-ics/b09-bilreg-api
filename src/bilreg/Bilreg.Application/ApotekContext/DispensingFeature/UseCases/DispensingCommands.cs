@@ -232,9 +232,12 @@ public class DispensingPickupCallHandler : IRequestHandler<DispensingPickupCallC
         var resolvedCount = 0;
         foreach (var map in mappings)
         {
-            var sourceKind = map.DemandKind == Domain.ApotekContext.QueueFeature.QueueDemandKindEnum.ResepKerja
-                ? SalesOrderSourceKindEnum.ResepKerja
-                : SalesOrderSourceKindEnum.JualBebas;
+            var sourceKind = map.DemandKind switch
+            {
+                Domain.ApotekContext.QueueFeature.QueueDemandKindEnum.JualBebas => SalesOrderSourceKindEnum.JualBebas,
+                Domain.ApotekContext.QueueFeature.QueueDemandKindEnum.ResepKerja => SalesOrderSourceKindEnum.ResepKerja,
+                _ => SalesOrderSourceKindEnum.Resep
+            };
             var orders = _salesOrderRepo.ListBySource(sourceKind, map.DemandId);
             if (orders.Count == 0)
                 throw new ApotekDomainException("Pickup call requires every mapped demand Established or accountably resolved.");

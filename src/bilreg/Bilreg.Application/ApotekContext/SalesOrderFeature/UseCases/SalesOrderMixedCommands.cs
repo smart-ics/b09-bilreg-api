@@ -1,16 +1,16 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -18,8 +18,12 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 
-public record SalesOrderEstablishMixedCmd(string UserId, string ResepKerjaId, string SepNo)
-    : IRequest<SalesOrderEstablishMixedResponse>;
+public record SalesOrderEstablishMixedCmd(string UserId, string ResepId, string SepNo)
+    : IRequest<SalesOrderEstablishMixedResponse>
+{
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId => ResepId;
+}
 
 public record SalesOrderEstablishMixedResponse(
     string? BpjsSalesOrderId,
@@ -27,7 +31,11 @@ public record SalesOrderEstablishMixedResponse(
     string? PatientPaySalesOrderId,
     int? PatientPayVersion);
 
-public record MixedCoverageReadQuery(string ResepKerjaId) : IRequest<MixedCoverageReadResponse>;
+public record MixedCoverageReadQuery(string ResepId) : IRequest<MixedCoverageReadResponse>
+{
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId => ResepId;
+}
 
 public record MixedCoverageItemRead(
     int ItemNo,
@@ -49,15 +57,19 @@ public record MixedCoverageOrderArm(
     IReadOnlyList<MixedCoverageItemRead> Items);
 
 public record MixedCoverageReadResponse(
-    string ResepKerjaId,
+    string ResepId,
     MixedCoverageOrderArm? BpjsOrder,
-    MixedCoverageOrderArm? PatientPayOrder);
+    MixedCoverageOrderArm? PatientPayOrder)
+{
+    [Obsolete("Use ResepId")]
+    public string ResepKerjaId => ResepId;
+}
 
 public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstablishMixedCmd, SalesOrderEstablishMixedResponse>
 {
     private readonly ISalesOrderRepo _salesOrderRepo;
     private readonly ITelaahResepRepo _telaahRepo;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepRepo _resepRepo;
     private readonly IAvailableStockPort _availableStock;
     private readonly IAptIntegrationTaskRepo _taskRepo;
     private readonly ISepFornasPort _sepFornas;
@@ -66,7 +78,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
     public SalesOrderEstablishMixedHandler(
         ISalesOrderRepo salesOrderRepo,
         ITelaahResepRepo telaahRepo,
-        IResepKerjaRepo resepRepo,
+        IResepRepo resepRepo,
         IAvailableStockPort availableStock,
         IAptIntegrationTaskRepo taskRepo,
         ISepFornasPort sepFornas,
@@ -84,16 +96,16 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
     public Task<SalesOrderEstablishMixedResponse> Handle(SalesOrderEstablishMixedCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(SalesOrderEstablishMixedCmd), request.UserId);
-        Guard.Against.NullOrWhiteSpace(request.ResepKerjaId, nameof(request.ResepKerjaId));
+        Guard.Against.NullOrWhiteSpace(request.ResepId, nameof(request.ResepId));
         if (string.IsNullOrWhiteSpace(request.SepNo))
             throw new ApotekDomainException("Mixed coverage requires a valid SEP.");
         if (request.SepNo.Length > 50)
             throw new ApotekDomainException("SepNo exceeds PD-03 width 50.");
 
-        var resep = _resepRepo.LoadEntity(ResepKerjaModel.Key(request.ResepKerjaId))
-            .GetValueOrThrow($"Resep Kerja '{request.ResepKerjaId}' not found");
-        var telaah = _telaahRepo.LoadByResepKerja(resep.ResepKerjaId)
-            .GetValueOrThrow($"Telaah for '{request.ResepKerjaId}' not found");
+        var resep = _resepRepo.LoadEntity(ResepModel.Key(request.ResepId))
+            .GetValueOrThrow($"Resep '{request.ResepId}' not found");
+        var telaah = _telaahRepo.LoadByResep(resep.ResepId)
+            .GetValueOrThrow($"Telaah for '{request.ResepId}' not found");
         if (!telaah.CanEstablishSalesOrder)
             throw new ApotekDomainException("Rejected or incomplete Telaah cannot establish mixed Sales Orders.");
 
@@ -101,7 +113,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
         var notCoveredLines = new List<TelaahResepItemModel>();
         foreach (var line in telaah.AcceptedItems())
         {
-            var evidence = _sepFornas.Evaluate(resep.RegId, line.AcceptedBrgId);
+            var evidence = _sepFornas.Evaluate(resep.Register.RegId, line.AcceptedBrgId);
             var coverage = evidence.Coverage;
             if (coverage == FornasCoverageEnum.Unknown)
                 throw new ApotekDomainException("Fornas master membership alone is not Coverage Clearance.");
@@ -115,9 +127,9 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
             throw new ApotekDomainException("Mixed coverage requires both Covered and Not Covered reviewed items.");
 
         var existingBpjs = _salesOrderRepo.LoadActive(
-            SalesOrderSourceKindEnum.ResepKerja, request.ResepKerjaId, resep.RegId, PayerPathEnum.Bpjs);
+            SalesOrderSourceKindEnum.Resep, request.ResepId, resep.Register.RegId, PayerPathEnum.Bpjs);
         var existingPatientPay = _salesOrderRepo.LoadActive(
-            SalesOrderSourceKindEnum.ResepKerja, request.ResepKerjaId, resep.RegId, PayerPathEnum.GeneralPatientPay);
+            SalesOrderSourceKindEnum.Resep, request.ResepId, resep.Register.RegId, PayerPathEnum.GeneralPatientPay);
         if (existingBpjs.HasValue && existingPatientPay.HasValue)
         {
             return Task.FromResult(new SalesOrderEstablishMixedResponse(
@@ -131,10 +143,23 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
             ? existingBpjs.Value
             : EstablishArm(
                 resep, telaah, coveredLines, PayerPathEnum.Bpjs, PartialReasonEnum.None, request.SepNo);
+        while (!existingBpjs.HasValue && _salesOrderRepo.LoadEntity(SalesOrderModel.Key(bpjsOrder.SalesOrderId)).HasValue)
+        {
+            bpjsOrder = EstablishArm(
+                resep, telaah, coveredLines, PayerPathEnum.Bpjs, PartialReasonEnum.None, request.SepNo);
+        }
+
         var patientPayOrder = existingPatientPay.HasValue
             ? existingPatientPay.Value
             : EstablishArm(
                 resep, telaah, notCoveredLines, PayerPathEnum.GeneralPatientPay, PartialReasonEnum.FornasNotCovered, request.SepNo);
+
+        while ((!existingPatientPay.HasValue && patientPayOrder.SalesOrderId == bpjsOrder.SalesOrderId)
+               || (!existingPatientPay.HasValue && _salesOrderRepo.LoadEntity(SalesOrderModel.Key(patientPayOrder.SalesOrderId)).HasValue))
+        {
+            patientPayOrder = EstablishArm(
+                resep, telaah, notCoveredLines, PayerPathEnum.GeneralPatientPay, PartialReasonEnum.FornasNotCovered, request.SepNo);
+        }
 
         AssertReconcilesToReviewedDemand(telaah, bpjsOrder, patientPayOrder);
 
@@ -143,7 +168,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
             _salesOrderRepo.SaveChanges(bpjsOrder);
         if (!existingPatientPay.HasValue)
             _salesOrderRepo.SaveChanges(patientPayOrder);
-        if (!existingBpjs.HasValue && resep.IterEntitled > 0 && !string.IsNullOrWhiteSpace(resep.SourceResepId))
+        if (!existingBpjs.HasValue && resep.Iter > 0 && !string.IsNullOrWhiteSpace(resep.ResepAsalReffId) && resep.ResepAsalReffId != "-")
         {
             AptIntegrationTaskEnqueue.InsertIfAbsent(_taskRepo, AptIntegrationTaskModel.CreatePending(
                 AptIntegrationTaskTypeEnum.IterConsume,
@@ -151,7 +176,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
                 bpjsOrder.SalesOrderId,
                 $"{bpjsOrder.SalesOrderId}:ITER",
                 AptIntegrationDestinationEnum.ResepIter,
-                System.Text.Json.JsonSerializer.Serialize(new { SourceResepId = resep.SourceResepId, ConsumeCount = 1 })));
+                System.Text.Json.JsonSerializer.Serialize(new { SourceResepId = resep.ResepAsalReffId, ConsumeCount = 1 })));
         }
         trans.Complete();
 
@@ -163,7 +188,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
     }
 
     private SalesOrderModel EstablishArm(
-        ResepKerjaModel resep,
+        ResepModel resep,
         TelaahResepModel telaah,
         IReadOnlyList<TelaahResepItemModel> lines,
         PayerPathEnum payerPath,
@@ -175,7 +200,7 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
         {
             proposed.Add(SalesOrderItemModel.Establish(
                 proposed.Count + 1,
-                line.ResepKerjaItemNo,
+                line.ResepItemNo,
                 line.AcceptedBrgId,
                 line.AcceptedBrgName,
                 "",
@@ -210,12 +235,12 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
         }
 
         return SalesOrderModel.Establish(
-            SalesOrderSourceKindEnum.ResepKerja,
-            resep.ResepKerjaId,
+            SalesOrderSourceKindEnum.Resep,
+            resep.ResepId,
             telaah.TelaahResepId,
-            resep.RegId,
-            resep.PasienId,
-            resep.PasienName,
+            resep.Register.RegId,
+            resep.Register.PasienId,
+            resep.Register.PasienName,
             payerPath,
             partialReason,
             accepted,
@@ -229,8 +254,8 @@ public class SalesOrderEstablishMixedHandler : IRequestHandler<SalesOrderEstabli
     {
         foreach (var line in telaah.AcceptedItems())
         {
-            var bpjsQty = bpjsOrder.Items.Where(x => x.SourceItemNo == line.ResepKerjaItemNo).Sum(x => x.AcceptedQty);
-            var patientQty = patientPayOrder.Items.Where(x => x.SourceItemNo == line.ResepKerjaItemNo).Sum(x => x.AcceptedQty);
+            var bpjsQty = bpjsOrder.Items.Where(x => x.SourceItemNo == line.ResepItemNo).Sum(x => x.AcceptedQty);
+            var patientQty = patientPayOrder.Items.Where(x => x.SourceItemNo == line.ResepItemNo).Sum(x => x.AcceptedQty);
             if (bpjsQty > 0 && patientQty > 0)
                 throw new ApotekDomainException("Covered and Not Covered quantities must be mutually exclusive per reviewed line.");
             if (bpjsQty + patientQty != line.AcceptedQty)
@@ -252,14 +277,14 @@ public class MixedCoverageReadHandler : IRequestHandler<MixedCoverageReadQuery, 
 
     public Task<MixedCoverageReadResponse> Handle(MixedCoverageReadQuery request, CancellationToken cancellationToken)
     {
-        Guard.Against.NullOrWhiteSpace(request.ResepKerjaId, nameof(request.ResepKerjaId));
+        Guard.Against.NullOrWhiteSpace(request.ResepId, nameof(request.ResepId));
         var orders = _salesOrderRepo
-            .ListBySource(SalesOrderSourceKindEnum.ResepKerja, request.ResepKerjaId)
+            .ListBySource(SalesOrderSourceKindEnum.Resep, request.ResepId)
             .Where(x => x.IsActiveKey || x.SalesOrderStatus == SalesOrderStatusEnum.Resolved)
             .ToList();
 
         return Task.FromResult(new MixedCoverageReadResponse(
-            request.ResepKerjaId,
+            request.ResepId,
             ToArm(orders.FirstOrDefault(x => x.PayerPath == PayerPathEnum.Bpjs)),
             ToArm(orders.FirstOrDefault(x => x.PayerPath == PayerPathEnum.GeneralPatientPay))));
     }

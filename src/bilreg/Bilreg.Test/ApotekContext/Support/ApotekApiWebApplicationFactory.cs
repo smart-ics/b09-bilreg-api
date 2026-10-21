@@ -1,9 +1,9 @@
 using Bilreg.Api.Authorization;
 using Bilreg.Application.ApotekContext.CopyResepFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -16,27 +16,33 @@ namespace Bilreg.Test.ApotekContext.Support;
 
 public sealed class ApotekApiTestHarness
 {
-    public InMemoryResepKerjaRepo ResepKerjaRepo { get; } = new();
+    public InMemoryResepRepo ResepRepo { get; } = new();
+    public FakeResepDal ResepDal { get; } = new();
     public InMemoryTelaahRepo TelaahRepo { get; } = new();
     public InMemorySalesOrderRepo SalesOrderRepo { get; } = new();
     public InMemoryCopyResepRepo CopyResepRepo { get; } = new();
-    public FakePrescriptionPort PrescriptionPort { get; } = new();
     public IAvailableStockPort AvailableStockPort { get; set; } = new FailClosedAvailableStockPort();
+    public IKemkesKajianResepCatalogPort KemkesKajianCatalogPort { get; set; } = new FakeKemkesKajianResepCatalogPort();
 
     public void Reset()
     {
-        ResepKerjaRepo.Store.Clear();
+        ResepRepo.Store.Clear();
+        ResepDal.LockedPrescriptions.Clear();
         TelaahRepo.Store.Clear();
+        TelaahRepo.KajianStore.Clear();
         SalesOrderRepo.Store.Clear();
         CopyResepRepo.Store.Clear();
-        PrescriptionPort.Contract = null!;
         AvailableStockPort = new FailClosedAvailableStockPort();
+        KemkesKajianCatalogPort = new FakeKemkesKajianResepCatalogPort();
     }
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.RemoveAll<IResepKerjaRepo>();
-        services.AddScoped<IResepKerjaRepo>(_ => ResepKerjaRepo);
+        services.RemoveAll<IResepRepo>();
+        services.AddScoped<IResepRepo>(_ => ResepRepo);
+
+        services.RemoveAll<Bilreg.Application.SalesContext.ResepFeature.IResepDal>();
+        services.AddScoped<Bilreg.Application.SalesContext.ResepFeature.IResepDal>(_ => ResepDal);
 
         services.RemoveAll<ITelaahResepRepo>();
         services.AddScoped<ITelaahResepRepo>(_ => TelaahRepo);
@@ -50,8 +56,8 @@ public sealed class ApotekApiTestHarness
         services.RemoveAll<IAvailableStockPort>();
         services.AddScoped<IAvailableStockPort>(_ => AvailableStockPort);
 
-        services.RemoveAll<IPrescriptionContractPort>();
-        services.AddScoped<IPrescriptionContractPort>(_ => PrescriptionPort);
+        services.RemoveAll<IKemkesKajianResepCatalogPort>();
+        services.AddScoped<IKemkesKajianResepCatalogPort>(_ => KemkesKajianCatalogPort);
 
         // Keep the REAL claims-based user context so the actor id stamped by
         // AptActor.Require comes from the authenticated principal, not a test double.

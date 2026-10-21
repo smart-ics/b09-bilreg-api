@@ -20,11 +20,11 @@ using Bilreg.Application.ApotekContext.IntegrationFeature.Handlers;
 using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
+using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.WorklistFeature;
-using Bilreg.Infrastructure.ApotekContext.ResepKerjaFeature;
+using Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -104,10 +104,12 @@ public static class InfrastructureService
             .AddScoped<ICollectionWindowDaysProvider, CollectionWindowDaysProvider>()
             .AddScoped<IAvailableStockPort, FailClosedAvailableStockPort>()
             .AddScoped<IAptAuthorizationPolicy, AuthenticatedActorAuthorizationPolicy>()
-            .AddScoped<IPrescriptionContractPort, PrescriptionContractAdapter>()
+            .AddScoped<IKemkesKajianResepDal, KemkesKajianResepDal>()
+            .AddScoped<IKemkesKajianResepCatalogPort, KemkesKajianResepCatalogAdapter>()
             .AddScoped<IResepVoidDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<IResepCreateDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<Bilreg.Infrastructure.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
+            .AddScoped<Bilreg.Application.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<IResepRepo, ResepRepo>()
             .AddScoped<IPaymentClearancePort, FailClosedPaymentClearancePort>()
             .AddScoped<ITataRekeningChargePort, FailClosedTataRekeningChargePort>()

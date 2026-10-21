@@ -104,12 +104,12 @@ public class ResepBrgDal : IResepBrgDal
         const string sql = """
             SELECT
                 aa.fs_kd_trs AS ResepId,
-                aa.fn_no_urut AS NoUrut,
+                CAST(aa.fn_no_urut AS DECIMAL(18,2)) AS NoUrut,
                 aa.fs_kd_barang AS BrgId,
                 aa.fs_nm_barang AS BrgName,
                 aa.fn_qty_barang AS Qty,
                 aa.fs_kd_satuan AS SatuanId,
-                aa.fn_iter_barang AS Iter,
+                CAST(aa.fn_iter_barang AS DECIMAL(18,2)) AS Iter,
                 aa.fb_racik AS IsRacik,
                 aa.fb_komponen AS IsKomponen,
                 aa.fs_kd_racik AS RacikId,
@@ -117,7 +117,7 @@ public class ResepBrgDal : IResepBrgDal
                 aa.fs_racik_qty AS DosisTxt,
                 aa.fs_keterangan AS Signa,
                 aa.fs_etiket_desc AS Etiket,
-                aa.fn_etiket_qty AS Frequency,
+                CAST(aa.fn_etiket_qty AS DECIMAL(18,2)) AS Frequency,
                 aa.fn_etiket_hari AS UnitDose,
                 ISNULL(bb.fs_nm_satuan, '') AS SatuanName,
                 ISNULL(aa.fs_etiket_kd_pakai, '') AS Route,

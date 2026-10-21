@@ -4,7 +4,6 @@ using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.JualBebasFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
@@ -16,25 +15,18 @@ using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.JualBebasFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Application.SalesContext.ResepFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Test.ApotekContext.Support;
-
-public class InMemoryResepKerjaRepo : IResepKerjaRepo
-{
-    public Dictionary<string, ResepKerjaModel> Store { get; } = new();
-    public void SaveChanges(ResepKerjaModel model) => Store[model.ResepKerjaId] = model;
-    public MayBe<ResepKerjaModel> LoadEntity(IResepKerjaKey key)
-        => Store.TryGetValue(key.ResepKerjaId, out var m) ? MayBe.From(m) : MayBe<ResepKerjaModel>.None;
-    public MayBe<ResepKerjaModel> LoadBySource(ResepKerjaSourceKindEnum sourceKind, string sourceResepId)
-    {
-        var m = Store.Values.FirstOrDefault(x => x.SourceKind == sourceKind && x.SourceResepId == sourceResepId);
-        return m is null ? MayBe<ResepKerjaModel>.None : MayBe.From(m);
-    }
-}
 
 public class InMemoryJualBebasRepo : IJualBebasRepo
 {
@@ -47,14 +39,71 @@ public class InMemoryJualBebasRepo : IJualBebasRepo
 public class InMemoryTelaahRepo : ITelaahResepRepo
 {
     public Dictionary<string, TelaahResepModel> Store { get; } = new();
-    public void SaveChanges(TelaahResepModel model) => Store[model.TelaahResepId] = model;
-    public MayBe<TelaahResepModel> LoadEntity(ITelaahResepKey key)
-        => Store.TryGetValue(key.TelaahResepId, out var m) ? MayBe.From(m) : MayBe<TelaahResepModel>.None;
-    public MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId)
+    public Dictionary<string, List<TelaahResepKajianModel>> KajianStore { get; } = new();
+
+    public void SaveChanges(TelaahResepModel model)
     {
-        var m = Store.Values.FirstOrDefault(x => x.ResepKerjaId == resepKerjaId);
-        return m is null ? MayBe<TelaahResepModel>.None : MayBe.From(m);
+        Store[model.TelaahResepId] = model;
+        KajianStore[model.TelaahResepId] = model.KajianItems.ToList();
     }
+
+    public MayBe<TelaahResepModel> LoadEntity(ITelaahResepKey key)
+    {
+        if (!Store.TryGetValue(key.TelaahResepId, out var m))
+            return MayBe<TelaahResepModel>.None;
+
+        var kajian = KajianStore.TryGetValue(key.TelaahResepId, out var k) && k.Count > 0
+            ? k
+            : (m.KajianItems.Count > 0 ? m.KajianItems : TelaahResepKajianModel.DefaultCatalog());
+
+        var rehydrated = TelaahResepModel.Rehydrate(
+            m.TelaahResepId, m.ResepId, m.RegId, m.TelaahStatus, m.PharmacistId,
+            m.StartedAt, m.CompletedAt, m.Version, m.Items, kajian);
+
+        return MayBe.From(rehydrated);
+    }
+
+    public MayBe<TelaahResepModel> LoadByResep(string resepId)
+    {
+        var m = Store.Values.FirstOrDefault(x => x.ResepId == resepId);
+        if (m is null) return MayBe<TelaahResepModel>.None;
+        return LoadEntity(TelaahResepModel.Key(m.TelaahResepId));
+    }
+
+    public MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId) => LoadByResep(resepKerjaId);
+}
+
+public class InMemoryTelaahResepRepo : InMemoryTelaahRepo
+{
+}
+
+public class InMemoryResepRepo : IResepRepo, Bilreg.Application.SalesContext.ResepFeature.IResepDal, Bilreg.Application.SalesContext.ResepFeature.UseCases.IResepVoidDal
+{
+    public Dictionary<string, ResepModel> Store { get; } = new();
+    public HashSet<string> LockedPrescriptions { get; } = new();
+    public void SaveChanges(ResepModel model) => Store[model.ResepId] = model;
+    public MayBe<ResepModel> LoadEntity(IResepKey key)
+    {
+        if (Store.TryGetValue(key.ResepId, out var m))
+            return MayBe.From(m);
+        return MayBe<ResepModel>.None;
+    }
+    public void DeleteEntity(IResepKey key) => Store.Remove(key.ResepId);
+    public IEnumerable<ResepModel> ListData(Bilreg.Domain.AdmisiContext.RegFeature.IRegKey filter) =>
+        Store.Values.Where(x => x.Register.RegId == filter.RegId);
+    public void LockPrescription(string resepId) => LockedPrescriptions.Add(resepId);
+    public bool HasBeenProcessed(string resepId) => LockedPrescriptions.Contains(resepId);
+}
+
+public class FakeResepDal : Bilreg.Application.SalesContext.ResepFeature.IResepDal
+{
+    public HashSet<string> LockedPrescriptions { get; } = new();
+    public void LockPrescription(string resepId) => LockedPrescriptions.Add(resepId);
+}
+
+public class FakeKemkesKajianResepCatalogPort : IKemkesKajianResepCatalogPort
+{
+    public IReadOnlyList<TelaahResepKajianModel> GetAll() => TelaahResepKajianModel.DefaultCatalog();
 }
 
 public class InMemorySalesOrderRepo : ISalesOrderRepo
@@ -153,12 +202,6 @@ public class InMemoryIntegrationTaskRepo : IAptIntegrationTaskRepo
         m.ClaimPending();
         return true;
     }
-}
-
-public class FakePrescriptionPort : IPrescriptionContractPort
-{
-    public PrescriptionContract Contract { get; set; } = default!;
-    public PrescriptionContract Load(ResepKerjaSourceKindEnum sourceKind, string sourceResepId) => Contract;
 }
 
 public class AllowAllAuth : IAptAuthorizationPolicy
