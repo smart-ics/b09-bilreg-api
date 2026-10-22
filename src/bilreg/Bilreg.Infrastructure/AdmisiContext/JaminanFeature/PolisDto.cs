@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -51,6 +51,8 @@ public record PolisViewDto(
     string fs_kd_tipe_jaminan,
     string fd_tgl_expired,
     //
+    string fs_kd_kelas_ri,
+    string fs_nm_kelas,
     string fs_mr,
     string fs_nm_pasien,
     string fd_tgl_lahir,
@@ -59,10 +61,15 @@ public record PolisViewDto(
 {
     public PolisView ToModel()
     {
+        var kelasReff = string.IsNullOrWhiteSpace(fs_kd_kelas_ri)
+            ? KelasType.Default.ToReff()
+            : new KelasReff(fs_kd_kelas_ri, fs_nm_kelas ?? string.Empty);
+
         var result = new PolisView(
             fs_kd_polis, fs_no_polis, fs_atas_nama,
             new PasienReff(fs_mr, fs_nm_pasien, DateOnly.Parse(fd_tgl_lahir), fs_jns_kelamin),
             new TipeJaminanReff(fs_kd_tipe_jaminan, fs_nm_tipe_jaminan),
+            kelasReff,
             DateOnly.Parse(fd_tgl_expired));
         return result;
     }
