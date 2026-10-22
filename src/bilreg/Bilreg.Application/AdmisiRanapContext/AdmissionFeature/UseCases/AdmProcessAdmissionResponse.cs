@@ -4,4 +4,5 @@ namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
 public record AdmProcessAdmissionResponse(
     string RegId,
-    AdmissionStatusEnum AdmissionStatus);
+    AdmissionStatusEnum AdmissionStatus,
+    string? WaitingListId = null);

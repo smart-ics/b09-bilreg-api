@@ -9,7 +9,9 @@ public record AdmProcessReservationCmd(
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration) : IRequest<AdmProcessAdmissionResponse>, IReservationKey;
+    AdmissionRegistrationData Registration,
+    string? KelasId = null,
+    int Priority = 3) : IRequest<AdmProcessAdmissionResponse>, IReservationKey;
 
 public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservationCmd, AdmProcessAdmissionResponse>
 {
