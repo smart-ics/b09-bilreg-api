@@ -71,9 +71,13 @@ public class DeliveryController : ControllerBase
     }
 
     [HttpGet("pending-po")]
-    public async Task<IActionResult> ListPendingPo()
+    public async Task<IActionResult> ListPendingPo(
+        [FromQuery] string? tglAwal = null,
+        [FromQuery] string? tglAkhir = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int limit = 100)
     {
-        var query = new DeliveryListPendingPoQuery();
+        var query = new DeliveryListPendingPoQuery(tglAwal, tglAkhir, search, limit);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

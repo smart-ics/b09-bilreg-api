@@ -284,7 +284,59 @@ public class DeliveryControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().BeEquivalentTo(expectedResponse);
 
-        _mediatorMock.Verify(x => x.Send(It.IsAny<DeliveryListPendingPoQuery>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mediatorMock.Verify(x => x.Send(It.Is<DeliveryListPendingPoQuery>(q =>
+            q.TglAwal == null && q.TglAkhir == null && q.Search == null && q.Limit == 100), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListPendingPo_GivenQueryParams_WhenExecuted_ThenSendsQueryWithParametersAndReturnsOk()
+    {
+        // ARRANGE
+        const string tglAwal = "2026-10-01";
+        const string tglAkhir = "2026-10-15";
+        const string search = "PO26";
+        const int limit = 50;
+
+        var expectedResponse = new List<DeliveryPendingPoResponse>
+        {
+            new(
+                "PO26100001",
+                "2026-10-10",
+                "SUP-01",
+                "Vendor A",
+                "GDFAR",
+                "Gudang Farmasi",
+                "PO Catatan",
+                0m,
+                new List<DeliveryPendingPoItemResponse>()
+            )
+        };
+
+        _mediatorMock
+            .Setup(x => x.Send(
+                It.Is<DeliveryListPendingPoQuery>(q =>
+                    q.TglAwal == tglAwal &&
+                    q.TglAkhir == tglAkhir &&
+                    q.Search == search &&
+                    q.Limit == limit),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var actionResult = await _sut.ListPendingPo(tglAwal, tglAkhir, search, limit);
+
+        // ASSERT
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<DeliveryListPendingPoQuery>(q =>
+                q.TglAwal == tglAwal &&
+                q.TglAkhir == tglAkhir &&
+                q.Search == search &&
+                q.Limit == limit),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

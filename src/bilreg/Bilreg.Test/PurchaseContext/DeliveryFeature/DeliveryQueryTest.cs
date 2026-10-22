@@ -328,7 +328,7 @@ public class DeliveryQueryTest
             }
         };
 
-        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems())
+        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems(null, null, null, 100))
             .Returns(pendingItems);
 
         var sut = new DeliveryListPendingPoHandler(_poDeliveryTrackingDalMock.Object);
@@ -366,7 +366,7 @@ public class DeliveryQueryTest
     public async Task DeliveryListPendingPo_WhenNoPendingPoItems_ReturnsEmpty()
     {
         // Arrange
-        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems())
+        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems(null, null, null, 100))
             .Returns([]);
 
         var sut = new DeliveryListPendingPoHandler(_poDeliveryTrackingDalMock.Object);
@@ -380,6 +380,56 @@ public class DeliveryQueryTest
     }
 
     // ==========================================
+    [Fact]
+    public async Task DeliveryListPendingPo_GivenFilterParameters_PassesParametersToDal()
+    {
+        // Arrange
+        const string tglAwal = "2026-10-01";
+        const string tglAkhir = "2026-10-15";
+        const string search = "KIMIA";
+        const int limit = 50;
+
+        var pendingItems = new List<PoPendingItemDto>
+        {
+            new()
+            {
+                PoId = "PO26100001",
+                PoDate = "2026-10-05",
+                SupplierId = "SUP01",
+                SupplierName = "PT Kimia Sehat",
+                LayananId = "GDFAR",
+                LayananName = "Gudang Farmasi",
+                Keterangan = "PO Filtered",
+                StatusDo = 0m,
+                NoUrut = 1,
+                BrgId = "BRG001",
+                BrgName = "Paracetamol",
+                SatuanId = "BOX",
+                SatuanName = "Box",
+                QtyPo = 100m,
+                QtyDo = 0m,
+                SisaQty = 100m,
+                Konversi = 100m,
+                Harga = 45000m,
+                Diskon = 0m
+            }
+        };
+
+        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems(tglAwal, tglAkhir, search, limit))
+            .Returns(pendingItems);
+
+        var sut = new DeliveryListPendingPoHandler(_poDeliveryTrackingDalMock.Object);
+        var query = new DeliveryListPendingPoQuery(tglAwal, tglAkhir, search, limit);
+
+        // Act
+        var result = (await sut.Handle(query, CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].PoId.Should().Be("PO26100001");
+        _poDeliveryTrackingDalMock.Verify(x => x.ListPendingPoItems(tglAwal, tglAkhir, search, limit), Times.Once);
+    }
+
     // DeliveryValidateSuratJalanQuery Tests
     // ==========================================
 

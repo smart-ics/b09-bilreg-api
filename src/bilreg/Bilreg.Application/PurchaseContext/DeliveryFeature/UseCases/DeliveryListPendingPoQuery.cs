@@ -2,7 +2,12 @@ using MediatR;
 
 namespace Bilreg.Application.PurchaseContext.DeliveryFeature.UseCases;
 
-public record DeliveryListPendingPoQuery() : IRequest<IEnumerable<DeliveryPendingPoResponse>>;
+public record DeliveryListPendingPoQuery(
+    string? TglAwal = null,
+    string? TglAkhir = null,
+    string? Search = null,
+    int Limit = 100
+) : IRequest<IEnumerable<DeliveryPendingPoResponse>>;
 
 public record DeliveryPendingPoResponse(
     string PoId,
@@ -41,7 +46,7 @@ public class DeliveryListPendingPoHandler : IRequestHandler<DeliveryListPendingP
 
     public Task<IEnumerable<DeliveryPendingPoResponse>> Handle(DeliveryListPendingPoQuery request, CancellationToken cancellationToken)
     {
-        var pendingItems = _poDeliveryTrackingDal.ListPendingPoItems() ?? [];
+        var pendingItems = _poDeliveryTrackingDal.ListPendingPoItems(request.TglAwal, request.TglAkhir, request.Search, request.Limit) ?? [];
 
         var response = pendingItems
             .GroupBy(x => new

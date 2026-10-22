@@ -30,7 +30,7 @@ public class PoDeliveryTrackingDalTest
     private static string NewTestPoId() => $"POT{Random.Shared.Next(1000000, 9999999)}";
     private static string NewTestPmId() => $"PMT{Random.Shared.Next(1000000, 9999999)}";
 
-    private void InsertTestPo(string poId, string permintaanId = "", decimal statusDo = 0)
+    private void InsertTestPo(string poId, string permintaanId = "", decimal statusDo = 0, string tglTrs = "2026-10-15", string supplierId = "SUP01")
     {
         const string sql = """
             INSERT INTO tb_trs_po (
@@ -43,19 +43,19 @@ public class PoDeliveryTrackingDalTest
                 UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR, fd_tgl_closed, fs_jam_closed, fs_kd_petugas_closed,
                 fd_tgl_open, fs_jam_open, fs_kd_petugas_open, fs_kd_jenis_beli
             ) VALUES (
-                @PoId, '2026-10-15', '10:00:00', 'TEST', '3000-01-01', '00:00:00', '',
-                'SUP01', @PermintaanId, 'Test PO', '', '', '',
+                @PoId, @TglTrs, '10:00:00', 'TEST', '3000-01-01', '00:00:00', '',
+                @SupplierId, @PermintaanId, 'Test PO', '', '', '',
                 1000, 100, 1100, 0, 0, 1100,
                 @StatusDo, 0, '', 0, 0, 0,
                 '', '3000-01-01', '00:00:00', '', '3000-01-01', '00:00:00',
-                '', '', '', '2026-10-15', '10:00:00', '', '', 'TEST',
+                '', '', '', @TglTrs, '10:00:00', '', '', 'TEST',
                 '3000-01-01', '00:00:00', '', '', '', '3000-01-01', '00:00:00', '',
                 '3000-01-01', '00:00:00', '', ''
             );
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
-        conn.Execute(sql, new { PoId = poId, PermintaanId = permintaanId, StatusDo = statusDo });
+        conn.Execute(sql, new { PoId = poId, PermintaanId = permintaanId, StatusDo = statusDo, TglTrs = tglTrs, SupplierId = supplierId });
     }
 
     private void InsertTestPoItem(string poId, int noUrut, string brgId, decimal qty, decimal qtyDo, bool isClosed, bool isVoid = false)
@@ -234,5 +234,79 @@ public class PoDeliveryTrackingDalTest
         using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
         var status = conn.ExecuteScalar<decimal>("SELECT fn_status_do FROM tb_trs_po WHERE fs_kd_trs = @PoId", new { PoId = poId });
         status.Should().Be(0);
+    }
+
+    [Fact]
+    public void ListPendingPoItems_WhenDefaultDates_FiltersToDefaultWindow()
+    {
+        using var trans = TransHelper.NewScope();
+        var recentPoId = NewTestPoId();
+        var oldPoId = NewTestPoId();
+        var today = DateTime.Today;
+
+        InsertTestPo(recentPoId, tglTrs: today.AddDays(-5).ToString("yyyy-MM-dd"));
+        InsertTestPoItem(recentPoId, 1, "1.DUMI.2", qty: 10, qtyDo: 2, isClosed: false);
+
+        InsertTestPo(oldPoId, tglTrs: today.AddDays(-40).ToString("yyyy-MM-dd"));
+        InsertTestPoItem(oldPoId, 1, "1.DUMI.2", qty: 10, qtyDo: 2, isClosed: false);
+
+        var actual = _sut.ListPendingPoItems().ToList();
+
+        actual.Should().Contain(x => x.PoId == recentPoId);
+        actual.Should().NotContain(x => x.PoId == oldPoId);
+    }
+
+    [Fact]
+    public void ListPendingPoItems_WhenCustomDateRangeProvided_FiltersByCustomRange()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId1 = NewTestPoId();
+        var poId2 = NewTestPoId();
+
+        InsertTestPo(poId1, tglTrs: "2025-05-10");
+        InsertTestPoItem(poId1, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+
+        InsertTestPo(poId2, tglTrs: "2025-06-10");
+        InsertTestPoItem(poId2, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+
+        var mayResults = _sut.ListPendingPoItems(tglAwal: "2025-05-01", tglAkhir: "2025-05-31").ToList();
+        mayResults.Should().Contain(x => x.PoId == poId1);
+        mayResults.Should().NotContain(x => x.PoId == poId2);
+
+        var juneResults = _sut.ListPendingPoItems(tglAwal: "2025-06-01", tglAkhir: "2025-06-30").ToList();
+        juneResults.Should().Contain(x => x.PoId == poId2);
+        juneResults.Should().NotContain(x => x.PoId == poId1);
+    }
+
+    [Fact]
+    public void ListPendingPoItems_WhenSearchProvided_BypassesDateWindow()
+    {
+        using var trans = TransHelper.NewScope();
+        var oldPoId = NewTestPoId();
+
+        // PO from 2023, outside the default 30-day window and specified 2026 window
+        InsertTestPo(oldPoId, tglTrs: "2023-01-15");
+        InsertTestPoItem(oldPoId, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+
+        var actual = _sut.ListPendingPoItems(tglAwal: "2026-10-01", tglAkhir: "2026-10-31", search: oldPoId).ToList();
+
+        actual.Should().Contain(x => x.PoId == oldPoId);
+    }
+
+    [Fact]
+    public void ListPendingPoItems_WhenLimitProvided_LimitsNumberOfReturnedRows()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+
+        InsertTestPo(poId, tglTrs: DateTime.Today.ToString("yyyy-MM-dd"));
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+        InsertTestPoItem(poId, 2, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+        InsertTestPoItem(poId, 3, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+
+        var actual = _sut.ListPendingPoItems(search: poId, limit: 2).ToList();
+
+        actual.Should().HaveCount(2);
+        actual.Should().OnlyContain(x => x.PoId == poId);
     }
 }

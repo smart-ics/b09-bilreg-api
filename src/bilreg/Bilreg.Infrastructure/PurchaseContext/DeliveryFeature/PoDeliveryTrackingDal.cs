@@ -96,10 +96,20 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
         conn.Execute(sql, dp);
     }
 
-    public IEnumerable<PoPendingItemDto> ListPendingPoItems()
+    public IEnumerable<PoPendingItemDto> ListPendingPoItems(string? tglAwal = null, string? tglAkhir = null, string? search = null, int limit = 100)
     {
+        var effectiveTglAwal = string.IsNullOrWhiteSpace(tglAwal)
+            ? DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd")
+            : tglAwal.Trim();
+        var effectiveTglAkhir = string.IsNullOrWhiteSpace(tglAkhir)
+            ? DateTime.Today.ToString("yyyy-MM-dd")
+            : tglAkhir.Trim();
+        var effectiveLimit = limit <= 0 ? 100 : limit;
+        var searchParam = (search ?? string.Empty).Trim();
+        var searchPattern = $"%{searchParam}%";
+
         const string sql = """
-            SELECT
+            SELECT TOP (@Limit)
                 po.fs_kd_trs AS PoId,
                 po.fd_tgl_trs AS PoDate,
                 po.fs_kd_iii AS SupplierId,
@@ -132,10 +142,22 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
               AND po2.fb_void = 0
               AND po2.fb_closed_po = 0
               AND (po2.fn_qty - po2.fn_qty_do) > 0
+              AND (
+                  (@Search = '' AND po.fd_tgl_trs >= @TglAwal AND po.fd_tgl_trs <= @TglAkhir)
+                  OR
+                  (@Search <> '' AND (po.fs_kd_trs LIKE @SearchPattern OR sup.fs_nm_iii LIKE @SearchPattern))
+              )
             ORDER BY po.fd_tgl_trs DESC, po.fs_kd_trs DESC, po2.fn_no_urut ASC
             """;
 
+        var dp = new DynamicParameters();
+        dp.AddParam("@Limit", effectiveLimit, SqlDbType.Int);
+        dp.AddParam("@TglAwal", effectiveTglAwal, SqlDbType.VarChar);
+        dp.AddParam("@TglAkhir", effectiveTglAkhir, SqlDbType.VarChar);
+        dp.AddParam("@Search", searchParam, SqlDbType.VarChar);
+        dp.AddParam("@SearchPattern", searchPattern, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PoPendingItemDto>(sql) ?? Enumerable.Empty<PoPendingItemDto>();
+        return conn.Query<PoPendingItemDto>(sql, dp) ?? Enumerable.Empty<PoPendingItemDto>();
     }
 }

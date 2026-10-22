@@ -78,5 +78,5 @@ public interface IPoDeliveryTrackingDal
     IEnumerable<PoQuotaDto> GetRemainingQuota(string poId);
     void IncrementReceivedQty(string poId, int noUrut, decimal qtyAccepted);
     void UpdatePoOverallStatus(string poId);
-    IEnumerable<PoPendingItemDto> ListPendingPoItems();
+    IEnumerable<PoPendingItemDto> ListPendingPoItems(string? tglAwal = null, string? tglAkhir = null, string? search = null, int limit = 100);
 }
