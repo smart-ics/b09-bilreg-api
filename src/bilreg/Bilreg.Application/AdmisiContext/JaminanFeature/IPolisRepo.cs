@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
 
@@ -16,4 +17,5 @@ public interface IPolisRepo :
 public record PolisView(
     string PolisId, string NoPolis, string AtasName, 
     PasienReff Pasien, TipeJaminanReff TipeJaminan,
+    KelasReff Kelas,
     DateOnly TglExpired) : IPolisKey;
