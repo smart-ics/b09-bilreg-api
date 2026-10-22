@@ -208,7 +208,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
         var client = _factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync(
             $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalization",
-            new { reason = "Koreksi alokasi" });
+            new { reason = "Koreksi alokasi pembayaran", userId = "TEST-USER", supervisorUserId = "SPV-01" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await ParseDataJson(response);
@@ -286,14 +286,14 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API16_GivenEmptyReason_WhenCancelFinalization_ThenReturns422()
+    public async Task API16_GivenEmptyReason_WhenCancelFinalization_ThenReturns400()
     {
         var client = _factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync(
             $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalization",
-            new { reason = "" });
+            new { reason = "", userId = "TEST-USER", supervisorUserId = "SPV-01" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private async Task<JsonElement> ParseDataJson(HttpResponseMessage response)

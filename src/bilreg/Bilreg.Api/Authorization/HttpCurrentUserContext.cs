@@ -14,6 +14,33 @@ public sealed class HttpCurrentUserContext(IHttpContextAccessor httpContextAcces
         return userId;
     }
 
+    public IReadOnlyList<string> GetRoles()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+            return [];
+
+        return user.FindAll(ClaimTypes.Role)
+            .Concat(user.FindAll("role"))
+            .Select(claim => claim.Value?.Trim() ?? string.Empty)
+            .Where(role => role.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public string GetClientIpAddress()
+    {
+        var context = httpContextAccessor.HttpContext;
+        if (context is null)
+            return string.Empty;
+
+        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedFor))
+            return forwardedFor.Split(',')[0].Trim();
+
+        return context.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+    }
+
     private string? TryGetUserId()
     {
         var user = httpContextAccessor.HttpContext?.User;

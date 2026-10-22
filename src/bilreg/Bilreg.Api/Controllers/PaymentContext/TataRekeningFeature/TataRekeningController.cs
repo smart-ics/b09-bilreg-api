@@ -145,7 +145,8 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] CancelFinalizationRequest request)
     {
-        var result = await _mediator.Send(new CancelFinalizationCommand(regId, request.UserId, request.Reason));
+        var result = await _mediator.Send(new CancelFinalizationCommand(
+            regId, request.UserId, request.SupervisorUserId, request.Reason));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 

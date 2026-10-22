@@ -181,6 +181,32 @@ public class TrsBillingDal : ITrsBillingDal
                 aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
                 aa.fs_keterangan, aa.fs_keterangan2, aa.fs_kd_ref_biaya,
                 CAST(aa.fn_qty AS DECIMAL(18,0)) AS fn_qty, aa.fs_kd_trs_main,
+                
+                -- NEW FIELDS FOR TRACEABILITY (TD-003 / P3-S05)
+                -- SourceRegId: original registration ID (from billing row or merge ancestor)
+                ISNULL(mm.fs_kd_reg_asal, aa.fs_kd_reg) AS SourceRegId,
+                
+                -- SourceRegType: registration type (IGD/RJL/RNA) from registrasi
+                ISNULL(bb.fs_jenis_reg, '') AS SourceRegType,
+                
+                -- ServiceUnitName: unit pelayanan asal dari registrasi
+                ISNULL(bb.fs_nm_unit, '') AS ServiceUnitName,
+                
+                -- BedCode: kode bed dari ta_trs_bed
+                ISNULL(kk.fs_kd_bed, '') AS BedCode,
+                
+                -- CategoryCode: kategori biaya dari layanan (KAMAR, TINDAKAN, FARMASI, LAB, RAD, ADMINISTRASI)
+                CASE WHEN dd.fs_kd_layanan LIKE 'KAMAR%' OR dd.fs_kd_layanan LIKE 'SEWA%' THEN 'KAMAR'
+                     WHEN dd.fs_kd_layanan LIKE 'TINDAK%' THEN 'TINDAK'
+                     WHEN dd.fs_kd_layanan LIKE 'FARM%' THEN 'FARMASI'
+                     WHEN dd.fs_kd_layanan LIKE 'LAB%' THEN 'LAB'
+                     WHEN dd.fs_kd_layanan LIKE 'RAD%' THEN 'RAD'
+                     ELSE 'ADMINISTRASI' END AS CategoryCode,
+                
+                -- DifferentialAmount: selisih tarif kelas (dari billing2 atau null jika belum tersedia)
+                NULL AS DifferentialAmount,
+                
+                -- Existing fields
                 ISNULL(bb.fs_mr, '') AS fs_mr, 
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien, 
                 ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan, 
@@ -193,8 +219,67 @@ public class TrsBillingDal : ITrsBillingDal
                 LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
                 LEFT JOIN ta_kelas ee ON aa.fs_kd_kelas = ee.fs_kd_kelas
                 LEFT JOIN ta_rekap_cetak_tarif ff ON aa.fs_kd_rekap_cetak = ff.fs_kd_rekap_cetak_tarif
+                -- NEW JOINS for TD-003 traceability
+                LEFT JOIN ta_trs_merge mm ON aa.fs_kd_reg = mm.fs_kd_reg_asal
+                LEFT JOIN ta_trs_bed kk ON aa.fs_kd_trs = kk.fs_kd_trs AND aa.fn_no_urut = kk.fn_no_urut
             WHERE
                 aa.fs_kd_reg = @fs_kd_reg
+            
+            UNION ALL
+            
+            SELECT
+                aa.fs_kd_trs, CAST(aa.fn_modul AS DECIMAL(18,0)) AS fn_modul,
+                aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
+                aa.fs_kd_reg, aa.fs_kd_layanan, aa.fs_kd_kelas, 
+                aa.fs_kd_rekap_cetak, aa.fs_kd_petugas, 
+                aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
+                aa.fs_keterangan, aa.fs_keterangan2, aa.fs_kd_ref_biaya,
+                CAST(aa.fn_qty AS DECIMAL(18,0)) AS fn_qty, aa.fs_kd_trs_main,
+                
+                -- NEW FIELDS FOR TRACEABILITY (TD-003 / P3-S05)
+                -- SourceRegId: for merged rows, the original registration ID from merge ancestor
+                mm.fs_kd_reg_asal AS SourceRegId,
+                
+                -- SourceRegType: registration type from the merged source registrasi
+                ISNULL(bb.fs_jenis_reg, '') AS SourceRegType,
+                
+                -- ServiceUnitName: unit pelayanan asal from the merged source registrasi
+                ISNULL(bb.fs_nm_unit, '') AS ServiceUnitName,
+                
+                -- BedCode: kode bed from ta_trs_bed for the merged row
+                ISNULL(kk.fs_kd_bed, '') AS BedCode,
+                
+                -- CategoryCode: kategori biaya from layanan
+                CASE WHEN dd.fs_kd_layanan LIKE 'KAMAR%' OR dd.fs_kd_layanan LIKE 'SEWA%' THEN 'KAMAR'
+                     WHEN dd.fs_kd_layanan LIKE 'TINDAK%' THEN 'TINDAK'
+                     WHEN dd.fs_kd_layanan LIKE 'FARM%' THEN 'FARMASI'
+                     WHEN dd.fs_kd_layanan LIKE 'LAB%' THEN 'LAB'
+                     WHEN dd.fs_kd_layanan LIKE 'RAD%' THEN 'RAD'
+                     ELSE 'ADMINISTRASI' END AS CategoryCode,
+                
+                -- DifferentialAmount: selisih tarif kelas
+                NULL AS DifferentialAmount,
+                
+                -- Existing fields
+                ISNULL(bb.fs_mr, '') AS fs_mr, 
+                ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien, 
+                ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan, 
+                ISNULL(ee.fs_nm_kelas, '') AS fs_nm_kelas, 
+                ISNULL(ff.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak 
+            FROM
+                ta_trs_billing2 aa
+                INNER JOIN ta_trs_billing bill ON aa.fs_kd_trs = bill.fs_kd_trs
+                LEFT JOIN ta_registrasi bb ON bill.fs_kd_reg = bb.fs_kd_reg
+                LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
+                LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
+                LEFT JOIN ta_kelas ee ON bill.fs_kd_kelas = ee.fs_kd_kelas
+                LEFT JOIN ta_rekap_cetak_tarif ff ON bill.fs_kd_rekap_cetak = ff.fs_kd_rekap_cetak_tarif
+                -- NEW JOINS for TD-003 traceability - merged registration ancestors
+                LEFT JOIN ta_trs_merge mm ON aa.fs_kd_reg = mm.fs_kd_reg_asal
+                LEFT JOIN ta_trs_bed kk ON aa.fs_kd_trs = kk.fs_kd_trs AND aa.fn_no_urut = kk.fn_no_urut
+            WHERE
+                bill.fs_kd_reg = @fs_kd_reg
+                OR aa.fs_kd_reg IN (SELECT fs_kd_reg_asal FROM ta_trs_merge WHERE fs_kd_reg_merge = @fs_kd_reg)
             
             """;
         var dp = new DynamicParameters();

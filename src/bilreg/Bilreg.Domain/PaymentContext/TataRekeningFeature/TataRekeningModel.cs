@@ -207,7 +207,7 @@ public record TataRekeningModel : IRegKey
         SettlementInitiated = true;
     }
 
-    public void CancelFinalization()
+    public void CancelFinalization(IDownstreamSettlementInspector settlementInspector)
     {
         EnsureNotLunas();
 
@@ -221,15 +221,37 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "Tidak dapat cancel finalization karena sudah ada pembayaran pada list TrsBill.");
 
+        EnsureNoDownstreamSettlement(settlementInspector);
+
         ClearFinancialResponsibilityAllocation();
         FinalizationInfo = TataRekeningFinalizationType.Default;
         SettlementInitiated = false;
         Status = TataRekeningStatusEnum.Closed;
     }
 
+    /// <summary>
+    /// True bila alokasi pembayaran hilir telah disetujui untuk registrasi ini.
+    /// </summary>
+    public bool HasApprovedAllocation(IDownstreamSettlementInspector settlementInspector) =>
+        settlementInspector.HasApprovedAllocation(RegId);
+
+    /// <summary>
+    /// True bila transaksi kasir telah diproses untuk registrasi ini.
+    /// </summary>
+    public bool HasCashierSettlement(IDownstreamSettlementInspector settlementInspector) =>
+        settlementInspector.HasCashierSettlement(RegId);
+
     public void EnsureCanCreateTrsBill() => EnsureOpenForBillMutation();
 
     public void EnsureCanDeleteBill() => EnsureOpenForBillMutation();
+
+    public void EnsureCanModifyBill()
+    {
+        if (Status is TataRekeningStatusEnum.Closed or TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+        {
+            throw new BillingLockViolationException(RegId, Status);
+        }
+    }
 
     internal void ClearFinancialProjection() => ClearFinancialResponsibilityAllocation();
 
@@ -403,6 +425,14 @@ public record TataRekeningModel : IRegKey
         if (_listTrsBill.Count == 0)
             throw new InvalidOperationException(
                 "Operasi lifecycle memerlukan list TrsBill yang tidak kosong.");
+    }
+
+    private void EnsureNoDownstreamSettlement(IDownstreamSettlementInspector settlementInspector)
+    {
+        if (HasApprovedAllocation(settlementInspector) || HasCashierSettlement(settlementInspector))
+            throw new InvalidOperationException(
+                "Pembatalan status Final ditolak: Alokasi Pembayaran atau Transaksi Kasir telah diproses. " +
+                "Batalkan transaksi kasir/alokasi pembayaran terlebih dahulu sebelum membuka kunci tagihan.");
     }
 
     private void EnsureCanAllocate()

@@ -4,6 +4,7 @@ using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -31,6 +32,7 @@ public class TindakanVoidCmdTest
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepoMock = new();
     private readonly Mock<IJurnalRepo> _jurnalRepoMock = new();
+    private readonly Mock<IBillingLockValidationService> _billingLockValidatorMock = new();
 
     private readonly TindakanVoidHandler _sut;
     private readonly DateTime _testNow = new(2026, 10, 20, 11, 0, 0);
@@ -45,7 +47,8 @@ public class TindakanVoidCmdTest
             _auditRepoMock.Object,
             _tglJamProviderMock.Object,
             _trsBillingRepoMock.Object,
-            _jurnalRepoMock.Object);
+            _jurnalRepoMock.Object,
+            _billingLockValidatorMock.Object);
     }
 
     private static TindakanModel CreateTestTindakan(string tindakanId = "TDK-001", string regId = "REG01")
@@ -126,6 +129,34 @@ public class TindakanVoidCmdTest
         _tdkRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
         _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.IsAny<ITrsBillingKey>()), Times.Never);
         _jurnalRepoMock.Verify(x => x.DeleteEntity(It.IsAny<IJurnalKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTataRekeningIsFinalized_ShouldThrowBillingLockViolationException()
+    {
+        // Arrange
+        const string tdkId = "TDK-001";
+        const string regId = "REG01";
+        var tdk = CreateTestTindakan(tdkId, regId);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == tdkId)))
+            .Returns(MayBe.From(tdk));
+
+        _billingLockValidatorMock
+            .Setup(x => x.EnsureCanModifyBillingAsync(regId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BillingLockViolationException(regId, TataRekeningStatusEnum.Finalized));
+
+        var cmd = new TindakanVoidCmd(tdkId, "SUPERVISOR", "Salah input", "127.0.0.1", "Mozilla/5.0");
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BillingLockViolationException>()
+            .WithMessage($"*Episode billing '{regId}' telah berstatus Finalized*");
+
+        _tdkRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.IsAny<ITrsBillingKey>()), Times.Never);
     }
 
     [Fact]

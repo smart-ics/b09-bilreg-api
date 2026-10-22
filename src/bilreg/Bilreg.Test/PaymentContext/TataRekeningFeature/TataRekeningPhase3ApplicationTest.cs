@@ -29,8 +29,10 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
     private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
+    private readonly Mock<ITataRekeningCancellationLogRepo> _cancellationLogRepo = new();
+    private readonly Mock<IDownstreamSettlementInspector> _settlementInspector = new();
     private readonly FixedCurrentUserContext _currentUser =
-        new(TataRekeningDomainTestHelper.DefaultPetugasVerif);
+        new(TataRekeningDomainTestHelper.DefaultPetugasVerif, TataRekeningSupervisorRole.VerifikatorSupervisor);
 
     public TataRekeningPhase3ApplicationTest()
     {
@@ -290,7 +292,8 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>()));
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
@@ -311,9 +314,12 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _cancellationLogRepo.Object,
+            _settlementInspector.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
-        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
+        var result = await handler.Handle(
+            new CancelFinalizationCommand(RegId, "UserId", "SPV-01", "Koreksi alokasi pembayaran"),
+            CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();

@@ -6,6 +6,7 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -45,6 +46,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IBillingLockValidationService _billingLockValidator;
     public TindakanCreateHandler(ITindakanRepo tindakanRepo,
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
@@ -53,7 +55,8 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         IAddBillAppService addBillAppService, 
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -68,12 +71,15 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
         _tglJamProvider = tglJamProvider;
+        _billingLockValidator = billingLockValidator;
     }
 
-    public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
+    public async Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
     {
         if (request.ListPpa is null)
             throw new ArgumentException("List PPA tidak boleh null");
+
+        await _billingLockValidator.EnsureCanModifyBillingAsync(request.RegId, cancellationToken);
 
         //  BUILD
         var reg = LoadReg(request);
@@ -108,7 +114,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         trans.Complete();
 
         //  RESPONSE
-        return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
+        return new TindakanCreateRespose(tindakan.TindakanId);
     }
 
     #region PRIVATE-HELPER

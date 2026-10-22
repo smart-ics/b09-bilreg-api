@@ -26,6 +26,8 @@ public sealed class TataRekeningApiTestHarness
     public Mock<IUnitOfWorkScope> UnitOfWorkScope { get; } = new();
     public Mock<ITransferReceivableService> TransferReceivableService { get; } = new();
     public Mock<IAuditRepo> AuditRepo { get; } = new();
+    public Mock<ITataRekeningCancellationLogRepo> CancellationLogRepo { get; } = new();
+    public Mock<IDownstreamSettlementInspector> SettlementInspector { get; } = new();
 
     public TataRekeningApiTestHarness()
     {
@@ -42,6 +44,8 @@ public sealed class TataRekeningApiTestHarness
         UnitOfWorkScope.Reset();
         TransferReceivableService.Reset();
         AuditRepo.Reset();
+        CancellationLogRepo.Reset();
+        SettlementInspector.Reset();
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
     }
 
@@ -55,7 +59,10 @@ public sealed class TataRekeningApiTestHarness
         RemoveAndRegister(services, () => harness.UnitOfWork.Object);
         RemoveAndRegister(services, () => harness.TransferReceivableService.Object);
         RemoveAndRegister(services, () => harness.AuditRepo.Object);
-        RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(TestAuthHandler.UserId));
+        RemoveAndRegister(services, () => harness.CancellationLogRepo.Object);
+        RemoveAndRegister(services, () => harness.SettlementInspector.Object);
+        RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(
+            TestAuthHandler.UserId, TataRekeningSupervisorRole.VerifikatorSupervisor));
     }
 
     public void SetupOpenScenario()

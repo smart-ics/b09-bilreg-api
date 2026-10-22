@@ -3,6 +3,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -16,7 +17,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TindakanVoidCmd(string TindakanId, string UserId, string VoidReason,
-    string ClientIpAddress, string UserAgent) : IRequest, ITindakanKey;
+    string ClientIpAddress, string UserAgent, string RegId = "") : IRequest, ITindakanKey;
 
 public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
 {
@@ -26,12 +27,15 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly IBillingLockValidationService _billingLockValidator;
+
     public TindakanVoidHandler(ITindakanRepo tdkRepo,
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo, 
         ITglJamProvider tglJamProvider, 
         ITrsBillingRepo trsBillingRepo, 
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        IBillingLockValidationService billingLockValidator)
     {
         _tdkRepo = tdkRepo;
         _tataRekeningRepo = tataRekeningRepo;
@@ -39,9 +43,10 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         _tglJamProvider = tglJamProvider;
         _trsBillingRepo = trsBillingRepo;
         _jurnalRepo = jurnalRepo;
+        _billingLockValidator = billingLockValidator;
     }
 
-    public Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
+    public async Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.TindakanId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
@@ -52,6 +57,9 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Tindakan {request.TindakanId} not found") 
             );
+
+        var regId = !string.IsNullOrWhiteSpace(request.RegId) ? request.RegId : tdk.Reg.RegId;
+        await _billingLockValidator.EnsureCanModifyBillingAsync(regId, cancellationToken);
 
         var tataRekening = _tataRekeningRepo.LoadEntity(RegModel.Key(tdk.Reg.RegId))
             .Match(
@@ -73,8 +81,6 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         var audit = CreateAudit(tdk, snapshotJson, request);
         _auditRepo.SaveChanges(audit);
         trans.Complete();
-
-        return Task.CompletedTask;
     }
     
     private static AuditLog CreateAudit(TindakanModel tdk, string snapShotJson, TindakanVoidCmd cmd)

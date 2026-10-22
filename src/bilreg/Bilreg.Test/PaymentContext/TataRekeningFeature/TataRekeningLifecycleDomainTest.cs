@@ -124,7 +124,7 @@ public class TataRekeningLifecycleDomainTest
     {
         var tataRekening = CreateFinalizedTataRekening();
 
-        tataRekening.CancelFinalization();
+        tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
         tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
@@ -141,7 +141,7 @@ public class TataRekeningLifecycleDomainTest
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
 
-        Action act = () => tataRekening.CancelFinalization();
+        Action act = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*sudah ada pembayaran*");
@@ -210,7 +210,7 @@ public class TataRekeningLifecycleDomainTest
         Action allocate = () => tataRekening.AllocateFinancialResponsibility([]);
         Action initiateSettlement = () => tataRekening.InitiateSettlement("kasir", DateTime.Now);
         Action pay = () => tataRekening.Pay([], "PAY", DateTime.Now);
-        Action cancel = () => tataRekening.CancelFinalization();
+        Action cancel = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
         Action delete = () => tataRekening.DeleteBill("BILL-JASA-01");
 
         close.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");

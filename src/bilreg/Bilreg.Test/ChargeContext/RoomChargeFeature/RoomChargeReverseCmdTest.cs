@@ -1,7 +1,9 @@
 using Bilreg.Application.ChargeContext.RoomChargeFeature;
 using Bilreg.Application.ChargeContext.RoomChargeFeature.UseCases;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.ChargeContext.RoomChargeFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using FluentAssertions;
 using Moq;
@@ -14,7 +16,7 @@ namespace Bilreg.Test.ChargeContext.RoomChargeFeature;
 public class RoomChargeReverseCmdTest
 {
     private readonly Mock<IRoomChargeRepo> _roomChargeRepoMock;
-    private readonly Mock<IBillingLockChecker> _billingLockCheckerMock;
+    private readonly Mock<IBillingLockValidationService> _billingLockValidatorMock;
     private readonly Mock<ITrsBillingRepo> _trsBillingRepoMock;
     private readonly Mock<ITglJamProvider> _tglJamProviderMock;
 
@@ -23,7 +25,7 @@ public class RoomChargeReverseCmdTest
     public RoomChargeReverseCmdTest()
     {
         _roomChargeRepoMock = new Mock<IRoomChargeRepo>();
-        _billingLockCheckerMock = new Mock<IBillingLockChecker>();
+        _billingLockValidatorMock = new Mock<IBillingLockValidationService>();
         _trsBillingRepoMock = new Mock<ITrsBillingRepo>();
         _tglJamProviderMock = new Mock<ITglJamProvider>();
 
@@ -31,7 +33,7 @@ public class RoomChargeReverseCmdTest
 
         _sut = new RoomChargeReverseHandler(
             _roomChargeRepoMock.Object,
-            _billingLockCheckerMock.Object,
+            _billingLockValidatorMock.Object,
             _trsBillingRepoMock.Object,
             _tglJamProviderMock.Object);
     }
@@ -88,7 +90,7 @@ public class RoomChargeReverseCmdTest
         result.StornoRoomChargeId.Should().NotBeNullOrEmpty();
         result.StornoRoomChargeId.Should().NotBe("RMC01");
 
-        _billingLockCheckerMock.Verify(x => x.AssertBillingNotFinal("REG01"), Times.Once);
+        _billingLockValidatorMock.Verify(x => x.EnsureCanModifyBillingAsync("REG01", It.IsAny<CancellationToken>()), Times.Once);
 
         // Source saved with status Reversed
         _roomChargeRepoMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
@@ -110,13 +112,13 @@ public class RoomChargeReverseCmdTest
     }
 
     [Fact]
-    public async Task GivenBillingIsFinal_WhenReversed_ThenThrowsBillingEpisodeFinalException()
+    public async Task GivenBillingIsFinal_WhenReversed_ThenThrowsBillingLockViolationException()
     {
         // Arrange
         var source = CreatePostedCharge("RMC-FINAL");
         _roomChargeRepoMock.Setup(x => x.LoadEntity("RMC-FINAL")).Returns(MayBe.From(source));
-        _billingLockCheckerMock.Setup(x => x.AssertBillingNotFinal("REG01"))
-            .Throws(new BillingEpisodeFinalException("REG01"));
+        _billingLockValidatorMock.Setup(x => x.EnsureCanModifyBillingAsync("REG01", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BillingLockViolationException("REG01", TataRekeningStatusEnum.Finalized));
 
         var cmd = new RoomChargeReverseCmd("RMC-FINAL", "ADMIN01", "Koreksi");
 
@@ -124,7 +126,7 @@ public class RoomChargeReverseCmdTest
         var act = () => _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<BillingEpisodeFinalException>();
+        await act.Should().ThrowAsync<BillingLockViolationException>();
         _roomChargeRepoMock.Verify(x => x.SaveChanges(It.IsAny<RoomChargeModel>()), Times.Never);
     }
 

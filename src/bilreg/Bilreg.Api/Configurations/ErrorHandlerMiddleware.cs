@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.Shared;
 using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
@@ -77,6 +78,10 @@ public class ErrorHandlerMiddleware
                 case SequenceExhaustedException:
                     statusCode = (int)HttpStatusCode.ServiceUnavailable;
                     status = "AQ_SEQUENCE_EXHAUSTED";
+                    break;
+                case BusinessValidationException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "BIZ_VALIDATION_FAILED";
                     break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;

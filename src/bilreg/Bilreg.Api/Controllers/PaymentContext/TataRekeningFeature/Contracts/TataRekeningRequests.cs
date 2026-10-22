@@ -22,7 +22,9 @@ public record FinalizeFinancialResponsibilityRequest(
     DateTime? FinalizationDate = null, [Required, MinLength(1)] string UserId = null);
 
 public record CancelFinalizationRequest(
-    [Required, MinLength(1)] string Reason, [Required, MinLength(1)] string UserId);
+    [Required, MinLength(10)] string Reason,
+    [Required, MinLength(1)] string UserId,
+    [Required, MinLength(1)] string SupervisorUserId);
 
 public record ReopenBillingRequest(
     [Required, MinLength(1)] string Reason, [Required, MinLength(1)] string UserId);

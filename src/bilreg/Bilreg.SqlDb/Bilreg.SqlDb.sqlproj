@@ -353,8 +353,11 @@
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
+    <Build Include="PaymentContext\TataRekeningFeature\ta_trs_merge.sql" />
+    <Build Include="PaymentContext\TataRekeningFeature\ta_trs_billing_log.sql" />
     <None Include="PaymentContext\TrsBillingFeature\BILRG_TataRekening.sql" />
     <None Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
+    <None Include="PaymentContext\TrsBillingFeature\BILRG_TrsBilling_M3_TraseabilityIndex_Alter.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_StartOp.sql" />
     <Build Include="PasienContext\PasienFeature\tc_mr_id.sql" />

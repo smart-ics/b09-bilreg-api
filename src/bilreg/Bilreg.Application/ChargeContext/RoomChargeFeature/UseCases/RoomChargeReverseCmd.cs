@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.ChargeContext.RoomChargeFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
@@ -22,23 +23,23 @@ public record RoomChargeReverseResponse(
 public class RoomChargeReverseHandler : IRequestHandler<RoomChargeReverseCmd, RoomChargeReverseResponse>
 {
     private readonly IRoomChargeRepo _roomChargeRepo;
-    private readonly IBillingLockChecker _billingLockChecker;
+    private readonly IBillingLockValidationService _billingLockValidator;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
     public RoomChargeReverseHandler(
         IRoomChargeRepo roomChargeRepo,
-        IBillingLockChecker billingLockChecker,
+        IBillingLockValidationService billingLockValidator,
         ITrsBillingRepo trsBillingRepo,
         ITglJamProvider tglJamProvider)
     {
         _roomChargeRepo = roomChargeRepo;
-        _billingLockChecker = billingLockChecker;
+        _billingLockValidator = billingLockValidator;
         _trsBillingRepo = trsBillingRepo;
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task<RoomChargeReverseResponse> Handle(RoomChargeReverseCmd request, CancellationToken cancellationToken)
+    public async Task<RoomChargeReverseResponse> Handle(RoomChargeReverseCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RoomChargeId, nameof(request.RoomChargeId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
@@ -52,7 +53,7 @@ public class RoomChargeReverseHandler : IRequestHandler<RoomChargeReverseCmd, Ro
             );
 
         // 1. Checks billing lock
-        _billingLockChecker.AssertBillingNotFinal(sourceCharge.RegId);
+        await _billingLockValidator.EnsureCanModifyBillingAsync(sourceCharge.RegId, cancellationToken);
 
         // 2. Validates status is Posted
         if (sourceCharge.RoomChargeStatus != RoomChargeStatusEnum.Posted)
@@ -77,6 +78,6 @@ public class RoomChargeReverseHandler : IRequestHandler<RoomChargeReverseCmd, Ro
             trans.Complete();
         }
 
-        return Task.FromResult(new RoomChargeReverseResponse(sourceCharge.RoomChargeId, stornoRecord.RoomChargeId));
+        return new RoomChargeReverseResponse(sourceCharge.RoomChargeId, stornoRecord.RoomChargeId);
     }
 }

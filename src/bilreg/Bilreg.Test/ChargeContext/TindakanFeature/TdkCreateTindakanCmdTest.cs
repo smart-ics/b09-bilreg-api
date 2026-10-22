@@ -8,6 +8,8 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -46,6 +48,7 @@ public class TdkCreateTindakanCmdTest
     private readonly Mock<IMapJaminanJkRepo> _mapJaminanJkRepoMock = new();
     private readonly Mock<IJurnalRepo> _jurnalRepoMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
+    private readonly Mock<IBillingLockValidationService> _billingLockValidatorMock = new();
 
     private readonly TindakanCreateHandler _sut;
     private readonly DateTime _testNow = new(2026, 10, 20, 10, 0, 0);
@@ -67,7 +70,8 @@ public class TdkCreateTindakanCmdTest
             _addBillAppServiceMock.Object,
             _mapJaminanJkRepoMock.Object,
             _jurnalRepoMock.Object,
-            _tglJamProviderMock.Object);
+            _tglJamProviderMock.Object,
+            _billingLockValidatorMock.Object);
 
         SetupCommonMocks();
     }
@@ -120,6 +124,29 @@ public class TdkCreateTindakanCmdTest
         var reg = RegModel.Default;
         reg.ApplyJaminan(TipeJaminanType.BayarSendiri, PolisModel.Default);
         return reg;
+    }
+
+    [Fact]
+    public async Task Handle_WhenBillingIsFinalized_ShouldThrowBillingLockViolationException()
+    {
+        // Arrange
+        const string regId = "REG-LOCKED";
+        var ppaCmd = new TdkCreateTindakanPpaCmd("K01", "PPA01");
+        var cmd = new TdkCreateTindakanCmd(regId, "LAY01", "NT01", "USER01", [ppaCmd]);
+
+        _billingLockValidatorMock
+            .Setup(x => x.EnsureCanModifyBillingAsync(regId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BillingLockViolationException(regId, TataRekeningStatusEnum.Finalized));
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BillingLockViolationException>()
+            .WithMessage($"*Episode billing '{regId}' telah berstatus Finalized*");
+
+        _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
     }
 
     [Fact]

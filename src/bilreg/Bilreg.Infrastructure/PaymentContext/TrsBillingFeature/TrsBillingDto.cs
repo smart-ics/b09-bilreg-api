@@ -42,7 +42,16 @@ public record TrsBillingDto(
     string fs_nm_pasien,
     string fs_nm_layanan,
     string fs_nm_kelas,
-    string fs_nm_rekap_cetak)
+    string fs_nm_rekap_cetak,
+
+    // NEW FIELDS FOR TRACEABILITY (TD-003 / P3-S05)
+    string SourceRegId = "",
+    string SourceRegType = "",
+    string ServiceUnitName = "",
+    string BedCode = "",
+    string CategoryCode = "",
+    decimal? DifferentialAmount = null
+)
 {
     public static TrsBillingDto FromModel(TrsBillType model)
     {
@@ -64,24 +73,25 @@ public record TrsBillingDto(
             model.Kelas.KelasId,
             model.RekapCetak.RekapCetakId,
             model.AuditInfo.UserId,
-            
+
             model.Nilai.SubTotal,
             model.Nilai.Diskon,
             model.Nilai.Biaya,
             model.Nilai.Tax,
             model.Nilai.Total,
-            
+
             keterangan,
             keterangan2,
             model.Keterangan.RefBiaya,
             model.Keterangan.Qty,
             model.Keterangan.TrsMainId,
-            
+
             model.Reg.PasienId,
             model.Reg.PasienName,
             model.Layanan.LayananName,
             model.Kelas.KelasName,
             model.RekapCetak.RekapCetakName
+            // NEW FIELDS: initialized to empty/default via record default values (lines 48-53)
         );
     }
 
@@ -129,4 +139,36 @@ public record TrsBillingDto(
         return result;
     }
     
+    // Mapping to the traceability DTO for P3-S05 / P4-S06
+    public TrsBillingItemDto ToTrsBillingItemDto(
+        string itemName,
+        string categoryCode,
+        string categoryName,
+        string serviceUnitId,
+        string sourceRegId,
+        string sourceRegType,
+        string bedCode,
+        decimal? differentialAmount)
+    {
+        return new TrsBillingItemDto(
+            BillingId: fs_kd_trs,
+            ItemName: itemName,
+            CategoryCode: categoryCode,
+            CategoryName: categoryName,
+            SourceRegId: sourceRegId,
+            SourceRegType: sourceRegType,
+            ServiceUnitId: serviceUnitId,
+            ServiceUnitName: ServiceUnitName,
+            BedCode: bedCode,
+            TransactionDate: DateTime.ParseExact(fd_tgl_trs, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+            Qty: fn_qty,
+            Tarif: fn_biaya / fn_qty,
+            Diskon: fn_diskon,
+            Total: fn_total,
+            PhysicalClass: fs_nm_kelas,
+            PayerClass: null,
+            BillingClass: null,
+            DifferentialAmount: differentialAmount
+        );
+    }
 }

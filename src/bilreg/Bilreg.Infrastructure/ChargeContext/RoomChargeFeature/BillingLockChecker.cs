@@ -1,30 +1,19 @@
 using Bilreg.Application.ChargeContext.RoomChargeFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.PaymentContext.TataRekeningFeature;
-using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 
 namespace Bilreg.Infrastructure.ChargeContext.RoomChargeFeature;
 
 public class BillingLockChecker : IBillingLockChecker
 {
-    private readonly IBilrgTataRekeningDal _tataRekeningDal;
+    private readonly IBillingLockValidationService _billingLockValidator;
 
-    public BillingLockChecker(IBilrgTataRekeningDal tataRekeningDal)
+    public BillingLockChecker(IBillingLockValidationService billingLockValidator)
     {
-        _tataRekeningDal = tataRekeningDal;
+        _billingLockValidator = billingLockValidator;
     }
 
     public void AssertBillingNotFinal(string regId)
     {
-        if (string.IsNullOrWhiteSpace(regId))
-            return;
-
-        var dto = _tataRekeningDal.GetData(new RegKey(regId));
-        if (dto != null && (dto.Status == (int)TataRekeningStatusEnum.Finalized || dto.Status == (int)TataRekeningStatusEnum.Lunas))
-        {
-            throw new BillingEpisodeFinalException(regId);
-        }
+        _billingLockValidator.EnsureCanModifyBillingAsync(regId).GetAwaiter().GetResult();
     }
-
-    private record RegKey(string RegId) : IRegKey;
 }
