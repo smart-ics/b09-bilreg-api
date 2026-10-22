@@ -1,4 +1,4 @@
-using Ardalis.GuardClauses;
+﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -85,22 +85,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         if ((int)opCase.OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new InvalidOperationException($"Status Operasi ({opCase.OrderOpState}) tidak dapat dijadwalkan ulang karena operasi telah dimulai atau selesai.");
 
-        // 3. Resolusi Dokter Operator Utama
-        var dokterOperatorId = !string.IsNullOrWhiteSpace(request.DokterOperatorId)
-            ? request.DokterOperatorId
-            : orderOp.DokterOperator?.PpaId;
-
-        if (string.IsNullOrWhiteSpace(dokterOperatorId) || dokterOperatorId == "-")
-            throw new ArgumentException("Dokter Operator Utama wajib ditentukan saat penjadwalan kamar operasi.");
-
-        var ppa = _ppaRepo.LoadEntity(PpaType.Key(dokterOperatorId))
-            .GetValueOrThrow($"Dokter Operator dengan ID {dokterOperatorId} tidak ditemukan.");
-
-        var isDokter = ppa.IsDokter() || (ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi == ProfesiType.Dokter);
-        if (!isDokter)
-            throw new ArgumentException("PPA yang ditugaskan sebagai Operator Utama harus berprofesi Dokter.");
-
-        // 4. Deteksi Jadwal Eksisting
+        // 3. Deteksi Jadwal Eksisting
         ScheduleOpModel? existingSchedule = null;
         if (opCase.ScheduleOp != null && !string.IsNullOrWhiteSpace(opCase.ScheduleOp.ScheduleOpId) && opCase.ScheduleOp.ScheduleOpId != "-")
         {
@@ -129,6 +114,31 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             Guard.Against.NullOrWhiteSpace(request.AlasanPerubahan, nameof(request.AlasanPerubahan),
                 "Alasan perubahan jadwal wajib diisi saat reschedule.");
         }
+
+        // 4. Resolusi Dokter Operator Utama (3-tier fallback)
+        string? dokterOperatorId = null;
+        if (!string.IsNullOrWhiteSpace(request.DokterOperatorId))
+        {
+            dokterOperatorId = request.DokterOperatorId;
+        }
+        else if (existingSchedule != null && !string.IsNullOrWhiteSpace(existingSchedule.TeamLead?.PpaId) && existingSchedule.TeamLead.PpaId != "-")
+        {
+            dokterOperatorId = existingSchedule.TeamLead.PpaId;
+        }
+        else
+        {
+            dokterOperatorId = orderOp.DokterOperator?.PpaId;
+        }
+
+        if (string.IsNullOrWhiteSpace(dokterOperatorId) || dokterOperatorId == "-")
+            throw new ArgumentException("Dokter Operator Utama wajib ditentukan saat penjadwalan kamar operasi.");
+
+        var ppa = _ppaRepo.LoadEntity(PpaType.Key(dokterOperatorId))
+            .GetValueOrThrow($"Dokter Operator dengan ID {dokterOperatorId} tidak ditemukan.");
+
+        var isDokter = ppa.IsDokter() || (ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi == ProfesiType.Dokter);
+        if (!isDokter)
+            throw new ArgumentException("PPA yang ditugaskan sebagai Operator Utama harus berprofesi Dokter.");
 
         // 5. Perhitungan Waktu
         DateTime start = DateTime.ParseExact($"{request.Tgl} {request.Jam}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
@@ -242,8 +252,11 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         // 10. Transaksi Atomik
         using (var trans = TransHelper.NewScope())
         {
+            orderOp.SetDokterOperator(ppa.ToReff());
+            orderOp.AuditTrail.Modif(request.UserId, occurredAt);
             _scheduleOpRepo.SaveChanges(scheduleOp);
             _opCaseRepo.SaveChanges(opCase);
+            _orderOpRepo.SaveChanges(orderOp);
             trans.Complete();
         }
 

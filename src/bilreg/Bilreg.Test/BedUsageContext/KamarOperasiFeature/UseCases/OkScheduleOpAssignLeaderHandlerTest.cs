@@ -238,8 +238,13 @@ public class OkScheduleOpAssignLeaderHandlerTest
         hist.IsOverride.Should().BeFalse();
         hist.OverrideReason.Should().BeEmpty();
 
+        orderOp.DokterOperator.PpaId.Should().Be("DOC-02");
+        orderOp.AuditTrail.Modified.UserId.Should().Be("user-01");
+        orderOp.AuditTrail.Modified.Timestamp.Should().Be(now);
+
         _scheduleOpRepoMock.Verify(x => x.SaveChanges(scheduleOp), Times.Once);
         _opCaseRepoMock.Verify(x => x.SaveChanges(opCase), Times.Once);
+        _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
     }
 
     [Fact]
@@ -388,8 +393,12 @@ public class OkScheduleOpAssignLeaderHandlerTest
         hist.IsOverride.Should().BeTrue();
         hist.OverrideReason.Should().Be("Disetujui komite medik untuk supervisi simultan");
 
+        orderOp.DokterOperator.PpaId.Should().Be("DOC-02");
+        orderOp.AuditTrail.Modified.UserId.Should().Be("user-01");
+
         _scheduleOpRepoMock.Verify(x => x.SaveChanges(scheduleOp), Times.Once);
         _opCaseRepoMock.Verify(x => x.SaveChanges(opCase), Times.Once);
+        _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
     }
 
     [Fact]

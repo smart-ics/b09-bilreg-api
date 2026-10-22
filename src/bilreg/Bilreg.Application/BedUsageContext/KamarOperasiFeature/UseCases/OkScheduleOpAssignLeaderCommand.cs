@@ -111,9 +111,13 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         opCase.Schedule(scheduleOp, occurredAt);
 
+        orderOp.SetDokterOperator(ppa);
+        orderOp.AuditTrail.Modif(request.UserId, occurredAt);
+
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);
         _opCaseRepo.SaveChanges(opCase);
+        _orderOpRepo.SaveChanges(orderOp);
         trans.Complete();
 
         return Task.CompletedTask;

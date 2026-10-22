@@ -154,4 +154,39 @@ public class OkScheduleOpCancelHandlerTest
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("Schedule Operasi tidak ditemukan.");
     }
+
+    [Fact]
+    public async Task Handle_CancelSchedule_PreservesOrderOpDokterOperatorWithoutReversion()
+    {
+        // Arrange
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 9, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001");
+        // Simulate mutated doctor operator from AssignLeader (e.g. DR00139)
+        orderOp.SetDokterOperator(new PpaReff("DR00139", "dr. Arya Yunan, Sp.B"));
+
+        var opCase = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 20));
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001");
+        opCase.Schedule(scheduleOp, new DateTime(2026, 10, 20, 7, 0, 0));
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(scheduleOp));
+
+        var cmd = new OkScheduleOpCancelCommand("ORD-001", "user1", "Pasien demam tinggi dan operasi ditunda");
+        var sut = CreateSut();
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+        orderOp.DokterOperator.PpaId.Should().Be("DR00139");
+        orderOp.DokterOperator.PpaName.Should().Be("dr. Arya Yunan, Sp.B");
+
+        // OrderOp should not be re-saved or reverted upon cancel
+        _orderOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<OrderOpModel>()), Times.Never);
+    }
 }

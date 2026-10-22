@@ -134,4 +134,49 @@ public class OkListOperasiAktifHandlerTest
         item.DokterId.Should().Be("DOC-OBGYN");
         item.DokterName.Should().Be("dr. Obgyn, Sp.OG");
     }
+
+    [Fact]
+    public async Task Handle_WhenOrderOpDokterOperatorUpdated_ReflectsUpdatedDoctorInResponse()
+    {
+        // Arrange
+        var pasien = new PasienReff("PAS-001", "Tn. Budi", new DateOnly(1985, 5, 20), "L");
+        var activeCase = new OpCaseOrderView(
+            "ORD-001",
+            pasien,
+            "Apendektomi Laparoskopi",
+            new PpaReff("DR00083", "dr. Martahadinan, Sp.B"),
+            90,
+            UrgencyLevelEnum.Cito,
+            new DateTime(2026, 10, 20),
+            OpCaseStateEnum.Scheduled);
+
+        var reg = RegModel.Default;
+        var layananPengorder = new LayananReff("LYN-001", "Poli Bedah");
+        var dokterPengorder = new PpaReff("DR00083", "dr. Martahadinan, Sp.B");
+        var orderOp = OrderOpModel.CreateByReg(reg, layananPengorder, dokterPengorder, "user-nurse", new DateTime(2026, 10, 16));
+        orderOp.SetProsedur("Apendektomi Laparoskopi", "Eksplorasi Peritoneal", KlasifikasiOperasiEnum.Besar);
+        // Initial doctor DR00083
+        orderOp.SetDokterOperator(new PpaReff("DR00083", "dr. Martahadinan, Sp.B"));
+
+        // Mutation: Updated to DR00139 (dr. Arya Yunan) via AssignLeader sync
+        orderOp.SetDokterOperator(new PpaReff("DR00139", "dr. Arya Yunan, Sp.B"));
+
+        _opCaseRepo.Setup(x => x.ListActiveOpCase()).Returns([activeCase]);
+        _orderOpRepo.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+
+        var sut = CreateSut();
+
+        // Act
+        var result = (await sut.Handle(new OkListOperasiAktifQuery(), CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        var item = result[0];
+        item.DokterPengorderId.Should().Be("DR00083");
+        item.DokterOperatorId.Should().Be("DR00139");
+        item.DokterOperatorName.Should().Be("dr. Arya Yunan, Sp.B");
+        item.DokterId.Should().Be("DR00139");
+        item.DokterName.Should().Be("dr. Arya Yunan, Sp.B");
+    }
 }
