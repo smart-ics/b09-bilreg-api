@@ -33,7 +33,8 @@ public record LabOrderCreateFromEmrCmd(
 public record LabOrderCreateFromEmrResponse(
     string EmrOrderId,
     int LabOrderStatus,
-    string OrderNo);
+    string OrderNo,
+    string OrderId = "");
 
 public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEmrCmd, LabOrderCreateFromEmrResponse>
 {
@@ -160,7 +161,8 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
             response = new LabOrderCreateFromEmrResponse(
                 order.EmrOrderId,
                 (int)order.LabOrderStatus,
-                order.OrderNo);
+                order.OrderNo,
+                order.OrderId);
         }
 
         return Task.FromResult(response);

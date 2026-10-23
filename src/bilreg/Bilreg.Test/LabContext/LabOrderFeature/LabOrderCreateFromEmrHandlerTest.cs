@@ -113,7 +113,9 @@ public class LabOrderCreateFromEmrHandlerTest
         result.EmrOrderId.Should().Be("EMR-ORDER-001");
         result.OrderNo.Should().Be("LAB00000042");
         result.LabOrderStatus.Should().Be((int)LabOrderStatusEnum.Ordered);
+        result.OrderId.Should().NotBeNullOrWhiteSpace();
         persisted.Should().NotBeNull();
+        result.OrderId.Should().Be(persisted!.OrderId);
         persisted!.EmrOrderId.Should().Be("EMR-ORDER-001");
         persisted.DokterPerujukId.Should().Be("DR01");
         persisted.DokterPerujukName.Should().Be("dr. Strange");
