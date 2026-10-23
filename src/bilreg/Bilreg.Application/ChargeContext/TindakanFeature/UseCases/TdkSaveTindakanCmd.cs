@@ -39,7 +39,6 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private readonly IKomponenRepo _komponenRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly ITindakanRepo _tindakanRepo;
-    private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
@@ -52,7 +51,6 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         IKomponenRepo komponenRepo,
         IPpaRepo ppaRepo,
         ITindakanRepo tindakanRepo,
-        ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
@@ -66,7 +64,6 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         _komponenRepo = komponenRepo;
         _ppaRepo = ppaRepo;
         _tindakanRepo = tindakanRepo;
-        _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
@@ -99,16 +96,17 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
         var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty);
+
+        //  WRITE
+        using var trans = TransHelper.NewScope();
         var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
-        //  WRITE
-        using var trans = TransHelper.NewScope();
+
         _tindakanRepo.SaveChanges(tdk);
-        _trsBillingRepo.SaveChanges(trsBilling);
         _jurnalRepo.SaveChanges(jurnal);
         trans.Complete();
 

@@ -90,6 +90,36 @@ public class TindakanVoidHandlerTest
     }
 
     [Fact]
+    public async Task GivenBillingInClosedStatus_WhenVoid_ThenThrowsInvalidOperationExceptionAndBubbles()
+    {
+        // Arrange
+        const string tindakanId = "TDK-01";
+        const string regId = "REG-01";
+        var cmd = new TindakanVoidCmd(tindakanId, "USER-01", "Salah input", "127.0.0.1", "TestAgent");
+        var tindakan = CreateTindakan(tindakanId, regId);
+        var bill = TataRekeningTestDataBuilder.CreateBill(tindakanId, regId, 50000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(regId, TataRekeningStatusEnum.Closed, bill);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(cmd))
+            .Returns(MayBe.From(tindakan));
+        _tataRekeningRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns(MayBe.From(tataRekening));
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*OPEN*");
+
+        _tdkRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.IsAny<ITrsBillingKey>()), Times.Never);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.IsAny<IJurnalKey>()), Times.Never);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GivenBillingInFinalizedStatus_WhenVoid_ThenThrowsInvalidOperationExceptionAndBubbles()
     {
         // Arrange

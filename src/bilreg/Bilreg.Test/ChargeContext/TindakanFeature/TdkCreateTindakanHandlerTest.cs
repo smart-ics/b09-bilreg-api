@@ -40,7 +40,6 @@ public class TdkCreateTindakanHandlerTest
     private readonly Mock<IPpaRepo> _ppaRepoMock = new();
     private readonly Mock<ITarifRepo> _tarifRepoMock = new();
     private readonly Mock<IJaminanRepo> _jaminanRepoMock = new();
-    private readonly Mock<ITrsBillingRepo> _trsBillingRepoMock = new();
     private readonly Mock<IAddBillAppService> _addBillAppServiceMock = new();
     private readonly Mock<IMapJaminanJkRepo> _mapJaminanJkRepoMock = new();
     private readonly Mock<IJurnalRepo> _jurnalRepoMock = new();
@@ -59,7 +58,6 @@ public class TdkCreateTindakanHandlerTest
             _ppaRepoMock.Object,
             _tarifRepoMock.Object,
             _jaminanRepoMock.Object,
-            _trsBillingRepoMock.Object,
             _addBillAppServiceMock.Object,
             _mapJaminanJkRepoMock.Object,
             _jurnalRepoMock.Object,
@@ -148,12 +146,9 @@ public class TdkCreateTindakanHandlerTest
             Qty: 3);
 
         TindakanModel? savedTindakan = null;
-        TrsBillType? savedTrsBill = null;
 
         _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
             .Callback<TindakanModel>(t => savedTindakan = t);
-        _trsBillingRepoMock.Setup(x => x.SaveChanges(It.IsAny<TrsBillType>()))
-            .Callback<TrsBillType>(b => savedTrsBill = b);
 
         // Act
         var result = await _sut.Handle(cmd, CancellationToken.None);
@@ -169,14 +164,14 @@ public class TdkCreateTindakanHandlerTest
         savedTindakan.ListKomponen.First().Qty.Should().Be(3);
         savedTindakan.ListKomponen.First().SubTotal.Should().Be(150000m);
 
-        savedTrsBill.Should().NotBeNull();
-        savedTrsBill!.Keterangan.Qty.Should().Be(3m);
-        savedTrsBill.Nilai.SubTotal.Should().Be(150000m);
-        savedTrsBill.ListTransaction.Should().HaveCount(1);
-        savedTrsBill.ListTransaction.First().Nilai.Should().Be(150000m);
-
+        _addBillAppServiceMock.Verify(x => x.FromTindakan(
+            It.IsAny<TindakanModel>(),
+            It.IsAny<RegModel>(),
+            It.IsAny<TarifType>(),
+            It.IsAny<JaminanType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<DateTime>()), Times.Once);
         _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Once);
-        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Once);
         _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Once);
     }
 
@@ -197,12 +192,9 @@ public class TdkCreateTindakanHandlerTest
             Qty: nonPositiveQty);
 
         TindakanModel? savedTindakan = null;
-        TrsBillType? savedTrsBill = null;
 
         _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
             .Callback<TindakanModel>(t => savedTindakan = t);
-        _trsBillingRepoMock.Setup(x => x.SaveChanges(It.IsAny<TrsBillType>()))
-            .Callback<TrsBillType>(b => savedTrsBill = b);
 
         // Act
         var result = await _sut.Handle(cmd, CancellationToken.None);
@@ -212,10 +204,6 @@ public class TdkCreateTindakanHandlerTest
         savedTindakan.Should().NotBeNull();
         savedTindakan!.Qty.Should().Be(1);
         savedTindakan.Total.Should().Be(50000m);
-
-        savedTrsBill.Should().NotBeNull();
-        savedTrsBill!.Keterangan.Qty.Should().Be(1m);
-        savedTrsBill.Nilai.SubTotal.Should().Be(50000m);
     }
 
     [Fact]
@@ -255,5 +243,45 @@ public class TdkCreateTindakanHandlerTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*List PPA tidak boleh null*");
+    }
+
+    [Fact]
+    public async Task GivenAddBillAppServiceThrowsInvalidOperationException_WhenCreate_ThenRollbacksAndDoesNotSaveChanges()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01",
+            "LYN-01",
+            "NT-01",
+            "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")],
+            Qty: 1);
+
+        _addBillAppServiceMock.Setup(x => x.FromTindakan(
+                It.IsAny<TindakanModel>(),
+                It.IsAny<RegModel>(),
+                It.IsAny<TarifType>(),
+                It.IsAny<JaminanType>(),
+                It.IsAny<IEnumerable<KomponenType>>(),
+                It.IsAny<DateTime>()))
+            .Throws(new InvalidOperationException("Operasi bill hanya diizinkan saat TataRekening untuk registrasi 'REG-01' berstatus OPEN."));
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*OPEN*");
+
+        _addBillAppServiceMock.Verify(x => x.FromTindakan(
+            It.IsAny<TindakanModel>(),
+            It.IsAny<RegModel>(),
+            It.IsAny<TarifType>(),
+            It.IsAny<JaminanType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<DateTime>()), Times.Once);
+        _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
+        _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Never);
     }
 }
