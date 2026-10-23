@@ -301,4 +301,93 @@ public class LabOrderCreateExternalPatientHandlerTest
         await act.Should().ThrowAsync<ArgumentException>();
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_With12CharRegExternalIdAnd16CharExternalMrNo_MapsToSnapshotAndSavesOrder()
+    {
+        // AC-ARCH-09 & TD-09: Ensure order creation handles EffectiveRegId (12 chars) and EffectivePatientId (16 chars, e.g. EXT-202610-00001)
+        var reg12Char = "LEX26A150001";
+        var mr16Char = "EXT-202610-00001";
+        reg12Char.Length.Should().Be(12);
+        mr16Char.Length.Should().Be(16);
+
+        var externalModel = CreateActiveExternal(regExternalId: reg12Char, externalMrNo: mr16Char);
+        _labExternalRepo.Setup(r => r.LoadEntity(It.Is<ILabExternalKey>(k => k.RegExternalId == reg12Char)))
+            .Returns(MayBe.From(externalModel));
+
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = new LabOrderCreateExternalPatientCmd(
+            UserId: "USER-01",
+            EmrOrderId: null,
+            RegId: null,
+            PatientId: null,
+            PatientName: "Pasien Uji Sizing 12-16",
+            BirthDateYmd: "1990-01-01",
+            Gender: "L",
+            Items: [new LabOrderTarifItemInput("TR1", "Tarif Hemoglobin")],
+            RegExternalId: reg12Char,
+            ExternalMrNo: mr16Char,
+            Urgency: 0);
+
+        cmd.EffectiveRegId.Should().Be(reg12Char);
+        cmd.EffectiveRegId.Length.Should().Be(12);
+        cmd.EffectivePatientId.Should().Be(mr16Char);
+        cmd.EffectivePatientId.Length.Should().Be(16);
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.Patient.RegId.Should().Be(reg12Char);
+        persisted.Patient.RegId.Length.Should().Be(12);
+        persisted.Patient.PatientId.Should().Be(mr16Char);
+        persisted.Patient.PatientId.Length.Should().Be(16);
+        persisted.OrderSource.Should().Be(LabOrderSourceEnum.ExternalPatient);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithFallbackRegIdAndPatientId_12CharAnd16Char_MapsCorrectly()
+    {
+        // AC-ARCH-09 & TD-09: Ensure order creation with fallback RegId (12 chars) and PatientId (16 chars)
+        var reg12Char = "LEX26A150002";
+        var mr16Char = "EXT-202610-00002";
+        reg12Char.Length.Should().Be(12);
+        mr16Char.Length.Should().Be(16);
+
+        var externalModel = CreateActiveExternal(regExternalId: reg12Char, externalMrNo: mr16Char);
+        _labExternalRepo.Setup(r => r.LoadEntity(It.Is<ILabExternalKey>(k => k.RegExternalId == reg12Char)))
+            .Returns(MayBe.From(externalModel));
+
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = new LabOrderCreateExternalPatientCmd(
+            UserId: "USER-01",
+            EmrOrderId: null,
+            RegId: reg12Char,
+            PatientId: mr16Char,
+            PatientName: "Pasien Uji Fallback Sizing",
+            BirthDateYmd: "1990-01-01",
+            Gender: "L",
+            Items: [new LabOrderTarifItemInput("TR1", "Tarif Hemoglobin")]);
+
+        cmd.EffectiveRegId.Should().Be(reg12Char);
+        cmd.EffectiveRegId.Length.Should().Be(12);
+        cmd.EffectivePatientId.Should().Be(mr16Char);
+        cmd.EffectivePatientId.Length.Should().Be(16);
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.Patient.RegId.Should().Be(reg12Char);
+        persisted.Patient.RegId.Length.Should().Be(12);
+        persisted.Patient.PatientId.Should().Be(mr16Char);
+        persisted.Patient.PatientId.Length.Should().Be(16);
+    }
 }

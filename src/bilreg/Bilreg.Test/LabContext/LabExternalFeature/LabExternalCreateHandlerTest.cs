@@ -61,11 +61,13 @@ public class LabExternalCreateHandlerTest
         // Assert
         result.Should().NotBeNull();
         result.RegExternalId.Should().StartWith("LEX");
+        result.RegExternalId.Length.Should().Be(12);
         result.ExternalMrNo.Should().Be("EXT-202610-00001");
         result.BillingAccountId.Should().Be(result.RegExternalId);
 
         savedBilling.Should().NotBeNull();
         savedBilling!.RegId.Should().Be(result.RegExternalId);
+        savedBilling.RegId.Length.Should().Be(12);
         savedBilling.Status.Should().Be(TataRekeningStatusEnum.Opened);
 
         savedExternal.Should().NotBeNull();
@@ -337,5 +339,49 @@ public class LabExternalCreateHandlerTest
         var id = LabExternalNumberHelper.GenerateRegExternalId();
         id.Should().NotBeNullOrWhiteSpace();
         id.Should().StartWith("LEX");
+        id.Length.Should().Be(12);
+    }
+
+    [Fact]
+    public async Task Handle_Generates12CharRegExternalId_MapsToTataRekeningRegIdWithStatusOpened()
+    {
+        // AC-ARCH-09 & TD-09: Verify regExternalId 12 characters (NunaId.New("LEX")) is properly mapped to TataRekeningModel.RegId and saved with status Opened
+        _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(10);
+        TataRekeningModel? savedBilling = null;
+        LabExternalModel? savedExternal = null;
+
+        _tataRekeningRepo.Setup(r => r.SaveChanges(It.IsAny<TataRekeningModel>()))
+            .Callback<TataRekeningModel>(m => savedBilling = m);
+        _labExternalRepo.Setup(r => r.SaveChanges(It.IsAny<LabExternalModel>()))
+            .Callback<LabExternalModel>(m => savedExternal = m);
+
+        var cmd = new LabExternalCreateCmd(
+            UserId: "USR001",
+            PatientName: "Pasien Eksternal Uji Sizing",
+            Nik: "3171012345670001",
+            BirthDate: new DateTime(1992, 5, 10),
+            Gender: "L",
+            Phone: "08123456789",
+            Address: "Jl. Laboratorium No. 12",
+            ReferralType: LabReferralTypeEnum.Aps,
+            ReferralDoctor: null,
+            ReferralOrigin: null,
+            ClinicalNotes: null);
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.RegExternalId.Should().StartWith("LEX");
+        result.RegExternalId.Length.Should().Be(12);
+
+        savedBilling.Should().NotBeNull();
+        savedBilling!.RegId.Should().Be(result.RegExternalId);
+        savedBilling.RegId.Length.Should().Be(12);
+        savedBilling.Status.Should().Be(TataRekeningStatusEnum.Opened);
+
+        savedExternal.Should().NotBeNull();
+        savedExternal!.RegExternalId.Should().Be(result.RegExternalId);
+        savedExternal.RegExternalId.Length.Should().Be(12);
+        savedExternal.BillingAccountId.Should().Be(result.RegExternalId);
     }
 }
