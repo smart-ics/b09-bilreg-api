@@ -121,7 +121,7 @@ public class LabOrderCreateExternalPatientHandler
         var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
 
         // 3. Deteksi duplikasi 24 jam menggunakan _labOrderDal.ListActiveTestsByPatientWithinHours
-        var activeTests = _labOrderDal.ListActiveTestsByPatientWithinHours(patientId, 24)?.ToList() ?? [];
+        var activeTests = _labOrderDal.ListActiveTestsByPatientWithinHours(patientId, 24, _tglJamProvider.Now)?.ToList() ?? [];
         if (activeTests.Count > 0)
         {
             var duplicates = activeTests

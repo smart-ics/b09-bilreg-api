@@ -190,10 +190,12 @@ public class LabOrderDal : ILabOrderTableDal
         return conn.Read<LabOrderDto>(sql, dp);
     }
 
-    public IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours)
+    public IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours, DateTime asOf)
     {
         if (string.IsNullOrWhiteSpace(patientId))
             return Enumerable.Empty<LabOrderActiveTestDto>();
+
+        var cutoffDate = asOf.AddHours(-hours);
 
         const string sql = """
             SELECT
@@ -208,14 +210,14 @@ public class LabOrderDal : ILabOrderTableDal
             INNER JOIN BILRG_LabOrderItem bb ON aa.OrderId = bb.OrderId
             WHERE aa.PatientId = @PatientId
               AND aa.LabOrderStatus IN (1, 2, 3, 4)
-              AND aa.CrtDate >= DATEADD(HOUR, -@Hours, GETDATE())
+              AND aa.CrtDate >= @CutoffDate
               AND aa.VodDate = @VodSentinel
             ORDER BY aa.CrtDate DESC
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@PatientId", patientId, SqlDbType.VarChar);
-        dp.AddParam("@Hours", hours, SqlDbType.Int);
+        dp.AddParam("@CutoffDate", cutoffDate, SqlDbType.DateTime);
         dp.AddParam("@VodSentinel", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

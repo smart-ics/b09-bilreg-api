@@ -33,7 +33,7 @@ public class LabOrderCreateExternalPatientHandlerTest
             .Returns(MayBe.From(CreateActiveExternal()));
 
         // Default: no duplicate active tests
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>()))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>()))
             .Returns([]);
 
         _sut = new LabOrderCreateExternalPatientHandler(
@@ -232,7 +232,7 @@ public class LabOrderCreateExternalPatientHandlerTest
     [Fact]
     public async Task Handle_DuplicateTestWithin24Hours_WithoutConfirmation_ThrowsEX05()
     {
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24, It.IsAny<DateTime>()))
             .Returns([
                 new LabOrderActiveTestDto(
                     "ORD-PREV-01",
@@ -256,7 +256,7 @@ public class LabOrderCreateExternalPatientHandlerTest
     [Fact]
     public async Task Handle_DuplicateTestWithin24Hours_WithConfirmation_SavesSuccessfully()
     {
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("EXT-202610-00001", 24, It.IsAny<DateTime>()))
             .Returns([
                 new LabOrderActiveTestDto(
                     "ORD-PREV-01",

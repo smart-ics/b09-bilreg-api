@@ -197,4 +197,42 @@ public class LabOrderDalTest
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeNull();
     }
+
+    [Fact]
+    public void ListActiveTestsByPatientWithinHours_ReturnsOrdersWithinCutoff_AndExcludesOlderOrders()
+    {
+        using var trans = TransHelper.NewScope();
+        var asOf = new DateTime(2026, 5, 18, 12, 0, 0);
+        var patientId = "MR-TEST-DUP-01";
+
+        // Order 1: within 24 hours (2 hours before asOf) -> should be included
+        var order1Id = "LBO000000091";
+        var order1 = FakerHeader(order1Id) with
+        {
+            PatientId = patientId,
+            CrtDate = asOf.AddHours(-2),
+            LabOrderStatus = (int)LabOrderStatusEnum.Ordered
+        };
+        _sut.Insert(order1);
+        _itemDal.Insert([FakerItem(order1Id)]);
+
+        // Order 2: older than 24 hours (25 hours before asOf) -> should be excluded
+        var order2Id = "LBO000000092";
+        var order2 = FakerHeader(order2Id) with
+        {
+            PatientId = patientId,
+            CrtDate = asOf.AddHours(-25),
+            LabOrderStatus = (int)LabOrderStatusEnum.Ordered
+        };
+        _sut.Insert(order2);
+        _itemDal.Insert([FakerItem(order2Id)]);
+
+        // Act
+        var activeTests = _sut.ListActiveTestsByPatientWithinHours(patientId, 24, asOf).ToList();
+
+        // Assert
+        activeTests.Should().ContainSingle();
+        activeTests[0].OrderId.Should().Be(order1Id);
+        activeTests[0].LabTestName.Should().Be("Hemoglobin");
+    }
 }

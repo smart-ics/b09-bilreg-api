@@ -11,5 +11,5 @@ public record LabOrderActiveTestDto(
 
 public interface ILabOrderDal
 {
-    IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours);
+    IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours, DateTime asOf);
 }

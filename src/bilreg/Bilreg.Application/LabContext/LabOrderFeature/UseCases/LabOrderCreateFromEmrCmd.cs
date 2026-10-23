@@ -105,9 +105,12 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         }
 
         var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
+        var patientId = !string.IsNullOrWhiteSpace(reg?.Pasien?.PasienId) && reg.Pasien.PasienId != "-"
+            ? reg.Pasien.PasienId
+            : request.PatientId;
         var snapshot = LabOrderCreateHelper.BuildSnapshot(
             request.RegId,
-            request.PatientId,
+            patientId,
             request.PatientName,
             request.BirthDateYmd,
             request.Gender,
@@ -115,7 +118,7 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
 
         // 3. Deteksi tes duplikat 24 jam (EX-05)
-        var activeTests = _labOrderDal.ListActiveTestsByPatientWithinHours(request.PatientId, 24)?.ToList() ?? [];
+        var activeTests = _labOrderDal.ListActiveTestsByPatientWithinHours(patientId, 24, _tglJamProvider.Now)?.ToList() ?? [];
         if (activeTests.Count > 0)
         {
             var duplicates = activeTests

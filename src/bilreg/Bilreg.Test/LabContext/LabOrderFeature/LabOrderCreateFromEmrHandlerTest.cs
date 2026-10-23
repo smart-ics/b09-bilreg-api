@@ -47,7 +47,7 @@ public class LabOrderCreateFromEmrHandlerTest
             .Returns(MayBe.From(doctor));
 
         // Default: no duplicate active tests
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>()))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>()))
             .Returns([]);
 
         _sut = new LabOrderCreateFromEmrHandler(
@@ -203,7 +203,7 @@ public class LabOrderCreateFromEmrHandlerTest
     [Fact]
     public async Task Handle_DuplicateTestWithin24Hours_WithoutConfirmation_ThrowsEX05()
     {
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("MR0001", 24))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("MR0001", 24, It.IsAny<DateTime>()))
             .Returns([
                 new LabOrderActiveTestDto(
                     "ORD-PREV-01",
@@ -227,7 +227,7 @@ public class LabOrderCreateFromEmrHandlerTest
     [Fact]
     public async Task Handle_DuplicateTestWithin24Hours_WithConfirmation_SavesSuccessfully()
     {
-        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("MR0001", 24))
+        _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours("MR0001", 24, It.IsAny<DateTime>()))
             .Returns([
                 new LabOrderActiveTestDto(
                     "ORD-PREV-01",
@@ -261,5 +261,43 @@ public class LabOrderCreateFromEmrHandlerTest
         var cmd = ValidCmd() with { Items = [] };
         var act = async () => await _sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithRegPasienId_NormalizesPatientIdInSnapshotAndDalCall()
+    {
+        var regWithPasien = new RegModel(
+            "REG001",
+            new DateOnly(2026, 1, 1),
+            new AuditInfoType("tester", DateTime.Now),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            new PasienReff("PASIEN-REG-01", "Pasien Dari Reg", new DateOnly(1990, 1, 1), "L"),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+        _regRepo.Setup(r => r.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(regWithPasien));
+
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = ValidCmd() with { PatientId = "FALLBACK-MR" };
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.Patient.PatientId.Should().Be("PASIEN-REG-01");
+        _labOrderDal.Verify(d => d.ListActiveTestsByPatientWithinHours("PASIEN-REG-01", 24, It.IsAny<DateTime>()), Times.Once);
     }
 }
