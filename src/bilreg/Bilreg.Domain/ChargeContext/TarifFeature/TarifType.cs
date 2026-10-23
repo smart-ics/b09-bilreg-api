@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.PaymentContext.RekapCetakFeature;
+using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 
@@ -35,4 +35,7 @@ public interface ITarifKey
     string TarifId {get;}
 }
 
-public record TarifReff(string TarifId, string TarifName) : ITarifKey;
+public record TarifReff(string TarifId, string TarifName) : ITarifKey
+{
+    public static TarifReff Default => new("-", "-");
+}

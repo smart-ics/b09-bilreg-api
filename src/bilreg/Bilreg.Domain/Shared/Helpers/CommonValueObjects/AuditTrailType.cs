@@ -1,4 +1,6 @@
-﻿namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using System.Globalization;
+
+namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 public class AuditTrailType
 {
@@ -39,9 +41,37 @@ public class AuditTrailType
 
 public record AuditInfoType(string UserId, DateTime Timestamp)
 {
+    private readonly string _userId = UserId?.Trim() ?? string.Empty;
+
+    public string UserId
+    {
+        get => _userId;
+        init => _userId = value?.Trim() ?? string.Empty;
+    }
+
     public AuditInfoType(string userId, string tgl, string jam) :
-        this(userId, DateTime.ParseExact($"{tgl} {jam}", "yyyy-MM-dd HH:mm:ss", null))
+        this(
+            string.IsNullOrWhiteSpace(userId) ? string.Empty : userId,
+            ParseTimestampOrSentinel(userId, tgl, jam))
     {
     }
-    public static AuditInfoType Default => new("", new DateTime(3000,1,1));
-};
+
+    private static DateTime ParseTimestampOrSentinel(string userId, string tgl, string jam)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return new DateTime(3000, 1, 1);
+
+        var combined = $"{tgl?.Trim()} {jam?.Trim()}".Trim();
+        if (DateTime.TryParseExact(combined, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtExact))
+            return dtExact;
+
+        if (DateTime.TryParse(combined, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtParsed))
+            return dtParsed;
+
+        return DateTime.ParseExact($"{tgl} {jam}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+    }
+
+    public bool IsEmpty => string.IsNullOrWhiteSpace(UserId) || Timestamp.Date >= new DateTime(3000, 1, 1);
+
+    public static AuditInfoType Default => new("", new DateTime(3000, 1, 1));
+}

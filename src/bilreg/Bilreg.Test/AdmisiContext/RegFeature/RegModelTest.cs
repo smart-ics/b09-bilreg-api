@@ -27,15 +27,19 @@ public class RegModelTest
             listLayanan: [], listSatTugas: [new PpaSatTugasType(satTugas, true)], listContact: []);
     }
 
-    private static RegModel CreateReg(PpaReff? dokter = null)
+    private static RegModel CreateReg(
+        PpaReff? dokter = null,
+        AuditInfoType? regKeluarAudit = null,
+        AuditInfoType? regVoidAudit = null,
+        AuditInfoType? regCancelOutAudit = null)
     {
         var result = new RegModel(
             "RG00000001",
             RegDate,
             new AuditInfoType("tester", new DateTime(2026, 6, 14, 8, 0, 0)),
-            AuditInfoType.Default,
-            AuditInfoType.Default,
-            AuditInfoType.Default,
+            regKeluarAudit ?? AuditInfoType.Default,
+            regCancelOutAudit ?? AuditInfoType.Default,
+            regVoidAudit ?? AuditInfoType.Default,
             JenisRegEnum.RegJalan,
             PasienModel.Default.ToReff(),
             TipeJaminanType.Default.ToReff(),
@@ -92,6 +96,134 @@ public class RegModelTest
         var act = () => registration.BatalBerobat("void-user", new DateTime(2026, 7, 12));
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
+    }
+
+    [Fact]
+    public void GivenActiveRegistration_WhenCheckingIsAktif_ThenReturnsTrue()
+    {
+        // Arrange
+        var registration = CreateReg();
+
+        // Act & Assert
+        registration.IsAktif.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("   ", "   ")]
+    [InlineData("", "")]
+    [InlineData(null, null)]
+    [InlineData("   ", "")]
+    [InlineData("", "   ")]
+    [InlineData("\t", " ")]
+    public void GivenRegistrationWithWhitespaceAuditFields_WhenCheckingIsAktif_ThenReturnsTrue(string? keluarUser, string? voidUser)
+    {
+        // Arrange
+        var keluarAudit = new AuditInfoType(keluarUser!, new DateTime(3000, 1, 1));
+        var voidAudit = new AuditInfoType(voidUser!, new DateTime(3000, 1, 1));
+        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
+
+        // Act & Assert
+        registration.IsAktif.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("   ", "3000-01-01", "00:00:00")]
+    [InlineData("", "3000-01-01", "00:00:00")]
+    [InlineData("   ", "9999-12-31", "23:59:59")]
+    public void GivenRegistrationWithThreeArgConstructorWhitespaceAudits_WhenCheckingIsAktif_ThenReturnsTrue(string userId, string tgl, string jam)
+    {
+        // Arrange
+        var keluarAudit = new AuditInfoType(userId, tgl, jam);
+        var voidAudit = new AuditInfoType(userId, tgl, jam);
+        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
+
+        // Act & Assert
+        registration.IsAktif.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GivenRegistrationWithRealDischargeAudit_WhenCheckingIsAktif_ThenReturnsFalse()
+    {
+        // Arrange
+        var dischargeAudit = new AuditInfoType("discharge-user", new DateTime(2026, 6, 15, 8, 0, 0));
+        var registration = CreateReg(regKeluarAudit: dischargeAudit);
+
+        // Act & Assert
+        registration.IsAktif.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenRegistrationWithRealVoidAudit_WhenCheckingIsAktif_ThenReturnsFalse()
+    {
+        // Arrange
+        var voidAudit = new AuditInfoType("void-user", new DateTime(2026, 6, 15, 8, 0, 0));
+        var registration = CreateReg(regVoidAudit: voidAudit);
+
+        // Act & Assert
+        registration.IsAktif.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenRegistrationWithWhitespaceAudits_WhenBatalBerobat_ThenAllowsCancellationAndSetsVoidAudit()
+    {
+        // Arrange
+        var keluarAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
+        var voidAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
+        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+
+        // Act
+        registration.BatalBerobat("void-user", timestamp);
+
+        // Assert
+        registration.RegVoidAudit.Should().Be(new AuditInfoType("void-user", timestamp));
+        registration.IsAktif.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenVoidedRegistrationWithWhitespaceDischargeAudit_WhenBatalBerobat_ThenThrows()
+    {
+        // Arrange
+        var keluarAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
+        var voidAudit = new AuditInfoType("void-user", new DateTime(2026, 6, 15, 8, 0, 0));
+        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
+
+        // Act
+        var act = () => registration.BatalBerobat("another-user", new DateTime(2026, 7, 12));
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dibatalkan*");
+    }
+
+    [Fact]
+    public void GivenDischargedRegistrationWithWhitespaceVoidAudit_WhenBatalBerobat_ThenThrows()
+    {
+        // Arrange
+        var keluarAudit = new AuditInfoType("discharge-user", new DateTime(2026, 6, 15, 8, 0, 0));
+        var voidAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
+        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
+
+        // Act
+        var act = () => registration.BatalBerobat("void-user", new DateTime(2026, 7, 12));
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void GivenActiveRegistration_WhenBatalBerobatWithEmptyOrWhitespaceUserId_ThenThrowsArgumentException(string? invalidUserId)
+    {
+        // Arrange
+        var registration = CreateReg();
+
+        // Act
+        var act = () => registration.BatalBerobat(invalidUserId!, DateTime.Now);
+
+        // Assert
+        act.Should().Throw<ArgumentException>().WithMessage("*UserId wajib diisi*");
     }
 
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")

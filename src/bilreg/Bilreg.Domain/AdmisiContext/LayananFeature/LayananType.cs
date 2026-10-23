@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Nuna.Lib.AutoNumberHelper;
 
@@ -60,6 +60,9 @@ public interface ILayananKey
     string LayananId {get;}
 }
 
-public record LayananReff(string LayananId, string LayananName) : ILayananKey;
+public record LayananReff(string LayananId, string LayananName) : ILayananKey
+{
+    public static LayananReff Default => new("-", "-");
+}
 
 public record PoliBpjsReff(string PoliBpjsId, string PoliBpjsName);

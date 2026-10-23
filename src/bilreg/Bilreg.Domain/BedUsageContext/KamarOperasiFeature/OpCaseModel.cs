@@ -45,7 +45,7 @@ public class OpCaseModel : IOrderOpKey
         {
             new(0, OpCaseStateEnum.Requested, createdAt)
         };
-        var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", createdAt);
+        var dokterRequester = new OpCasePpaType(0, orderOp.DokterPengorder, "REQUESTER", createdAt);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
             ScheduleOpReff.Default, DischargeOpReff.Default, DuranteOpReff.Default,
@@ -164,6 +164,18 @@ public class OpCaseModel : IOrderOpKey
         OrderOpState = OpCaseStateEnum.Requested;
         ScheduleOp = ScheduleOpReff.Default;
         DuranteOp = DuranteOpReff.Default;
+    }
+
+    public void CancelOrder(DateTime cancelledAt = default)
+    {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
+            throw new InvalidOperationException("Status Operasi tidak dapat dibatalkan!");
+
+        OrderOpState = OpCaseStateEnum.Cancelled;
+        ScheduleOp = ScheduleOpReff.Default;
+        DuranteOp = DuranteOpReff.Default;
+
+        UpsertStateHistory(OrderOpState, cancelledAt);
     }
 
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,

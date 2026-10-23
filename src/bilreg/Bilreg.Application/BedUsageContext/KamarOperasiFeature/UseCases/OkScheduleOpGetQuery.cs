@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
@@ -8,15 +8,49 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkScheduleOpGetQuery(string OrderOpId) : IRequest<ScheduleOpGetResponse>, IOrderOpKey;
 
-public record ScheduleOpGetResponse(string OrderOpId, string ScheduleOpId, string NamaOperasi, string Urgency,
-    string PasienId, string PasienName, string RegId,
-    string TglOp, string JamOp,
-    string TglStartOp, string JamStartOp,
-    string TglFinishOp, string JamFinishOp,
-    string KamarId, string KamarName,
-    string DokterId, string DokterName,
+public record ScheduleOpGetResponse(
+    string OrderOpId,
+    string ScheduleOpId,
+    string NamaOperasi,
+    string Urgency,
+    string PasienId,
+    string PasienName,
+    string RegId,
+    string TglOp,
+    string JamOp,
+    string TglStartOp,
+    string JamStartOp,
+    string TglFinishOp,
+    string JamFinishOp,
+    string KamarId,
+    string KamarName,
+    string DokterId,
+    string DokterName,
     string StatusOp,
-    IEnumerable<PpaReff> ListPpa);
+    IEnumerable<PpaReff> ListPpa,
+    string AlasanBatal,
+    int TurnoverBuffer,
+    IEnumerable<OkScheduleOpHistDto> History);
+
+public record OkScheduleOpHistDto(
+    int NoUrut,
+    DateTime OldTglOp,
+    DateTime NewTglOp,
+    int OldDurasi,
+    int NewDurasi,
+    string OldKamarId,
+    string OldKamarName,
+    string NewKamarId,
+    string NewKamarName,
+    string OldTeamLeadId,
+    string OldTeamLeadName,
+    string NewTeamLeadId,
+    string NewTeamLeadName,
+    string Alasan,
+    bool IsOverride,
+    string OverrideReason,
+    string UserId,
+    DateTime CrtDate);
 
 public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, ScheduleOpGetResponse>
 {
@@ -37,7 +71,7 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
 
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
-        var scheduleWithOrderOpId = listSchedule?
+        var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
         if (scheduleWithOrderOpId is null)
@@ -46,7 +80,30 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow($"Schedule Operasi untuk Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
-        var response = new ScheduleOpGetResponse(scheduleOp.OrderOp.OrderOpId, scheduleOp.ScheduleOpId,
+        var historyList = scheduleOp.ListHistory?.Select(h => new OkScheduleOpHistDto(
+            h.NoUrut,
+            h.OldTglOp,
+            h.NewTglOp,
+            h.OldDurasi,
+            h.NewDurasi,
+            h.OldKamar?.KamarId ?? string.Empty,
+            h.OldKamar?.KamarName ?? string.Empty,
+            h.NewKamar?.KamarId ?? string.Empty,
+            h.NewKamar?.KamarName ?? string.Empty,
+            h.OldTeamLead?.PpaId ?? string.Empty,
+            h.OldTeamLead?.PpaName ?? string.Empty,
+            h.NewTeamLead?.PpaId ?? string.Empty,
+            h.NewTeamLead?.PpaName ?? string.Empty,
+            h.Alasan,
+            h.IsOverride,
+            h.OverrideReason,
+            h.UserId,
+            h.CrtDate
+        )).ToList() ?? [];
+
+        var response = new ScheduleOpGetResponse(
+            scheduleOp.OrderOp.OrderOpId,
+            scheduleOp.ScheduleOpId,
             orderOp.NamaOperasi,
             orderOp.UrgencyLevel.ToString(),
             scheduleOp.Pasien.PasienId,
@@ -63,7 +120,11 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             scheduleOp.TeamLead.PpaId,
             scheduleOp.TeamLead.PpaName,
             TranslateState(scheduleOp.OrderOpState),
-            scheduleOp.ListPpa.Select(x => new PpaReff(x.Ppa.PpaId, x.Ppa.PpaName)));
+            scheduleOp.ListPpa.Select(x => new PpaReff(x.Ppa.PpaId, x.Ppa.PpaName)),
+            scheduleOp.AlasanBatal,
+            scheduleOp.TurnoverBuffer,
+            historyList);
+
         return Task.FromResult(response);
     }
 
