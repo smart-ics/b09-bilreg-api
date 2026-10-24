@@ -195,7 +195,7 @@ public class OrderTdkModelTests
     private static RegModel CreateTestNonAktifRegModel()
     {
         var reg = RegModel.Default;
-        // Simulate non-aktif reg by modifying the audit trail
+        reg.BatalBerobat("TEST_USER", DateTime.Now);
         return reg;
     }
 }

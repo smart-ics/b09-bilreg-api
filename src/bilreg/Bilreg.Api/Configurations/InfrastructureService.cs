@@ -31,12 +31,14 @@ using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.Integration;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
@@ -228,6 +230,11 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+
+        // PakaiBrgFeature (tb_trs_pakai, tb_trs_pakai2)
+        services.AddScoped<IPakaiBrgDal, PakaiBrgDal>();
+        services.AddScoped<IPakaiBrgItemDal, PakaiBrgItemDal>();
+        services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
 
         services.AddBrgFeature();
 
