@@ -19,16 +19,11 @@ public class PoDeliveryTrackingDalTest
 
     public PoDeliveryTrackingDalTest()
     {
-        _dbOptions = Options.Create(new DatabaseOptions
-        {
-            ServerName = "dev.smart-ics.com",
-            DbName = "HOSPITAL_PKL"
-        });
+        _dbOptions = ConnStringHelper.GetTestEnv();
         _sut = new PoDeliveryTrackingDal(_dbOptions);
     }
 
     private static string NewTestPoId() => $"POT{Random.Shared.Next(1000000, 9999999)}";
-    private static string NewTestPmId() => $"PMT{Random.Shared.Next(1000000, 9999999)}";
 
     private void InsertTestPo(string poId, string permintaanId = "", decimal statusDo = 0, string tglTrs = "2026-10-15", string supplierId = "SUP01")
     {
@@ -82,28 +77,6 @@ public class PoDeliveryTrackingDalTest
         conn.Execute(sql, new { PoId = poId, NoUrut = noUrut, BrgId = brgId, Qty = qty, QtyDo = qtyDo, IsClosed = isClosed, IsVoid = isVoid });
     }
 
-    private void InsertTestPermintaan(string pmId, string layananId)
-    {
-        const string sql = """
-            INSERT INTO tb_trs_permintaan (
-                fs_kd_trs, fd_tgl_trs, fs_jam_trs, fs_kd_petugas, fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                fs_kd_layanan, fs_keterangan, fs_keterangan2, fs_keterangan3, fn_status_mutasi, fs_kd_peg_approved,
-                fb_closed, fs_kd_kelompok, fs_kd_grup_rek, fs_kd_layanan_tujuan, fb_cito, FD_PERIODE1, FD_PERIODE2,
-                FS_KD_GOLONGAN, fs_reff_getlist, fs_kd_trs_mr, fs_kd_bentuk, fn_qty_days, fs_kd_gol_obat_dk,
-                fs_kd_jenis_barang, CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
-            ) VALUES (
-                @PmId, '2026-10-15', '10:00:00', 'TEST', '3000-01-01', '00:00:00', '',
-                @LayananId, 'Test Permintaan', '', '', 0, '',
-                0, '', '', '', 0, '', '',
-                '', '', '', '', 0, '',
-                '', '2026-10-15', '10:00:00', '', '', 'TEST', '3000-01-01', '00:00:00', '', '', ''
-            );
-            """;
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
-        conn.Execute(sql, new { PmId = pmId, LayananId = layananId });
-    }
-
     [Fact]
     public void GetRemainingQuota_WhenPoHasItems_ReturnsRemainingQuotaAndCalculatesSisaQty()
     {
@@ -130,22 +103,6 @@ public class PoDeliveryTrackingDalTest
         item2.QtyDo.Should().Be(5);
         item2.SisaQty.Should().Be(0);
         item2.IsClosed.Should().BeTrue();
-    }
-
-    [Fact]
-    public void GetRemainingQuota_WhenPoHasPermintaan_ReturnsLayananId()
-    {
-        using var trans = TransHelper.NewScope();
-        var poId = NewTestPoId();
-        var pmId = NewTestPmId();
-        InsertTestPermintaan(pmId, "4FM02");
-        InsertTestPo(poId, permintaanId: pmId);
-        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 8, qtyDo: 0, isClosed: false);
-
-        var actual = _sut.GetRemainingQuota(poId).ToList();
-
-        actual.Should().HaveCount(1);
-        actual[0].LayananId.Should().Be("4FM02");
     }
 
     [Fact]

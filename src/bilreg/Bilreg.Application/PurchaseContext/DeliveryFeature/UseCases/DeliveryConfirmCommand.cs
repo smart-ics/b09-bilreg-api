@@ -94,7 +94,7 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
                 $"Surat Jalan Vendor '{model.SuratJalanNo}' dari pemasok '{model.Supplier.PartnerId}' sudah pernah diterima.");
         }
 
-        // 5. Validate PO Receiving Cap and Destination Warehouse (TD-07)
+        // 5. Validate PO Receiving Cap (TD-07, TD-17)
         var poId = model.PoId?.Trim() ?? string.Empty;
         var hasPo = !string.IsNullOrWhiteSpace(poId);
         List<PoQuotaDto> poQuotas = [];
@@ -108,12 +108,6 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
                     $"Surat Pesanan '{poId}' tidak ditemukan atau tidak memiliki item aktif.");
             }
 
-            var poLayananId = poQuotas.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.LayananId))?.LayananId;
-            if (!string.IsNullOrWhiteSpace(poLayananId) && !string.Equals(poLayananId, model.Gudang.LayananId, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    $"Gudang penerima '{model.Gudang.LayananId}' tidak sesuai dengan gudang tujuan PO '{poLayananId}'.");
-            }
 
             // Receiving Cap for non-bonus items
             var nonBonusItems = model.ListItem.Where(x => !x.Inspection.IsBonus).ToList();

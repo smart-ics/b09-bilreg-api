@@ -53,7 +53,7 @@ public class DeliveryUpdateDraftCommandTest
             _clockMock.Object);
     }
 
-    private static List<PoQuotaDto> CreateSamplePoQuotas(string layananId = GudangId)
+    private static List<PoQuotaDto> CreateSamplePoQuotas()
     {
         return
         [
@@ -67,7 +67,6 @@ public class DeliveryUpdateDraftCommandTest
                 qtyDo: 0m,
                 sisaQty: 10m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 50000m,
                 diskon: 0m),
@@ -81,7 +80,6 @@ public class DeliveryUpdateDraftCommandTest
                 qtyDo: 5m,
                 sisaQty: 15m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 75000m,
                 diskon: 0m)
@@ -465,33 +463,37 @@ public class DeliveryUpdateDraftCommandTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tidak ditemukan pada Surat Pesanan*");
     }
-
     [Fact]
-    public async Task Handle_WhenDestinationWarehouseMismatch_ThrowsInvalidOperationException()
+    public async Task Handle_WhenWarehouseDifferentFromPo_SuccessfullyUpdatesDraftWithSpecifiedWarehouse()
     {
         // Arrange
         var existingModel = CreateSampleDraftModel();
         _repoMock.Setup(r => r.LoadEntity(It.IsAny<IDeliveryOrderKey>()))
             .Returns(MayBe.From(existingModel));
         _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId))
-            .Returns(CreateSamplePoQuotas(layananId: "GDFAR"));
+            .Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? capturedSavedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => capturedSavedModel = m);
 
         var command = new DeliveryUpdateDraftCommand(
             DeliveryOrderId: DoId,
             SuratJalanNo: SuratJalan,
             PoId: PoId,
             SupplierId: SupplierId,
-            GudangId: "GUDANG_LAIN", // Mismatch dengan GDFAR
+            GudangId: "GDLOG",
             Keterangan: Keterangan,
             UserId: UserId,
             Items: CreateSampleItems());
 
         // Act
-        var act = async () => await _sut.Handle(command, CancellationToken.None);
+        var result = await _sut.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*tidak sesuai dengan gudang tujuan PO*");
+        result.Should().NotBeNull();
+        capturedSavedModel.Should().NotBeNull();
+        capturedSavedModel!.Gudang.LayananId.Should().Be("GDLOG");
+        _repoMock.Verify(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()), Times.Once);
     }
 
     [Fact]

@@ -61,7 +61,7 @@ public class DeliveryConfirmCommandTest
             _clockMock.Object);
     }
 
-    private static List<PoQuotaDto> CreateSamplePoQuotas(string layananId = GudangId)
+    private static List<PoQuotaDto> CreateSamplePoQuotas()
     {
         return
         [
@@ -75,7 +75,6 @@ public class DeliveryConfirmCommandTest
                 qtyDo: 0m,
                 sisaQty: 10m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 50000m,
                 diskon: 5000m),
@@ -89,7 +88,6 @@ public class DeliveryConfirmCommandTest
                 qtyDo: 5m,
                 sisaQty: 15m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 75000m,
                 diskon: 0m)
@@ -322,23 +320,24 @@ public class DeliveryConfirmCommandTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Surat Pesanan*tidak ditemukan atau tidak memiliki item aktif*");
     }
-
     [Fact]
-    public async Task Handle_WhenGudangDoesNotMatchPo_ThrowsInvalidOperationException()
+    public async Task Handle_WhenGudangDifferentFromPo_ConfirmsDocumentSuccessfully()
     {
         // ARRANGE
-        var model = CreateDraftModel();
-        _repoMock.Setup(r => r.LoadEntity(It.IsAny<IDeliveryOrderKey>()))
+        var model = CreateDraftModel(layananId: "GDLOG");
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
             .Returns(MayBe<DeliveryOrderModel>.Some(model));
         _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId))
-            .Returns(CreateSamplePoQuotas(layananId: "GDFAR_OTHER"));
+            .Returns(CreateSamplePoQuotas());
 
         var command = new DeliveryConfirmCommand(DoId, UserId);
 
-        // ACT & ASSERT
-        var act = () => _sut.Handle(command, CancellationToken.None);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*tidak sesuai dengan gudang tujuan PO*");
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Status.Should().Be("Confirmed");
+        _repoMock.Verify(r => r.SaveChanges(model), Times.Once);
     }
 
     [Fact]

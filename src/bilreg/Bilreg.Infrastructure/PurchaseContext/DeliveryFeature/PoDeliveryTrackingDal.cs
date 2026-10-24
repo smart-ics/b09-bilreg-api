@@ -30,13 +30,11 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
                 po2.fn_qty_do AS QtyDo,
                 (po2.fn_qty - po2.fn_qty_do) AS SisaQty,
                 po2.fb_closed_po AS IsClosed,
-                ISNULL(pm.fs_kd_layanan, '') AS LayananId,
                 po2.fn_konversi AS Konversi,
                 po2.fn_harga AS Harga,
                 po2.fn_diskon AS Diskon
             FROM tb_trs_po2 po2
             JOIN tb_trs_po po ON po2.fs_kd_trs = po.fs_kd_trs
-            LEFT JOIN tb_trs_permintaan pm ON po.fs_kd_permintaan = pm.fs_kd_trs
             LEFT JOIN tb_barang brg ON po2.fs_kd_barang = brg.fs_kd_barang
             WHERE po2.fs_kd_trs = @PoId AND po2.fb_void = 0
             ORDER BY po2.fn_no_urut
@@ -114,8 +112,6 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
                 po.fd_tgl_trs AS PoDate,
                 po.fs_kd_iii AS SupplierId,
                 ISNULL(sup.fs_nm_iii, '') AS SupplierName,
-                ISNULL(pm.fs_kd_layanan, '') AS LayananId,
-                ISNULL(lay.fs_nm_layanan, '') AS LayananName,
                 po.fs_keterangan AS Keterangan,
                 po.fn_status_do AS StatusDo,
                 CAST(po2.fn_no_urut AS INT) AS NoUrut,
@@ -132,8 +128,6 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
             FROM tb_trs_po po
             JOIN tb_trs_po2 po2 ON po.fs_kd_trs = po2.fs_kd_trs
             LEFT JOIN t_iii sup ON po.fs_kd_iii = sup.fs_kd_iii
-            LEFT JOIN tb_trs_permintaan pm ON po.fs_kd_permintaan = pm.fs_kd_trs
-            LEFT JOIN ta_layanan lay ON pm.fs_kd_layanan = lay.fs_kd_layanan
             LEFT JOIN tb_barang brg ON po2.fs_kd_barang = brg.fs_kd_barang
             LEFT JOIN tb_satuan sat ON po2.fs_kd_satuan = sat.fs_kd_satuan
             WHERE po.fd_tgl_void = '3000-01-01'

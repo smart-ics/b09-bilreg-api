@@ -18,11 +18,7 @@ public class DeliveryOrderDalTest
 
     public DeliveryOrderDalTest()
     {
-        var opt = Options.Create(new DatabaseOptions
-        {
-            ServerName = "dev.smart-ics.com",
-            DbName = "HOSPITAL_PKL"
-        });
+        var opt = ConnStringHelper.GetTestEnv();
         _orderDal = new DeliveryOrderDal(opt);
         _itemDal = new DeliveryOrderItemDal(opt);
         _inspectionDal = new DeliveryInspectionDal(opt);

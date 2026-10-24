@@ -11,13 +11,44 @@ public class PoQuotaDto
     public decimal QtyDo { get; set; }
     public decimal SisaQty { get; set; }
     public bool IsClosed { get; set; }
-    public string LayananId { get; set; } = string.Empty;
     public decimal Konversi { get; set; }
     public decimal Harga { get; set; }
     public decimal Diskon { get; set; }
 
+    [Obsolete("Decoupled in TD-17 (PUR-TERIMA-BRG-BUG-019). LayananId is no longer retrieved. Kept for transitional compatibility with command handlers.")]
+    public string LayananId { get; set; } = string.Empty;
+
     public PoQuotaDto() { }
 
+    public PoQuotaDto(
+        string poId,
+        int noUrut,
+        string brgId,
+        string brgName,
+        string satuanId,
+        decimal qtyPo,
+        decimal qtyDo,
+        decimal sisaQty,
+        bool isClosed,
+        decimal konversi,
+        decimal harga,
+        decimal diskon)
+    {
+        PoId = poId;
+        NoUrut = noUrut;
+        BrgId = brgId;
+        BrgName = brgName;
+        SatuanId = satuanId;
+        QtyPo = qtyPo;
+        QtyDo = qtyDo;
+        SisaQty = sisaQty;
+        IsClosed = isClosed;
+        Konversi = konversi;
+        Harga = harga;
+        Diskon = diskon;
+    }
+
+    [Obsolete("Transitional constructor. Use 12-parameter constructor without layananId. Will be removed in P2-S02.")]
     public PoQuotaDto(
         string poId,
         int noUrut,
@@ -32,20 +63,9 @@ public class PoQuotaDto
         decimal konversi,
         decimal harga,
         decimal diskon)
+        : this(poId, noUrut, brgId, brgName, satuanId, qtyPo, qtyDo, sisaQty, isClosed, konversi, harga, diskon)
     {
-        PoId = poId;
-        NoUrut = noUrut;
-        BrgId = brgId;
-        BrgName = brgName;
-        SatuanId = satuanId;
-        QtyPo = qtyPo;
-        QtyDo = qtyDo;
-        SisaQty = sisaQty;
-        IsClosed = isClosed;
         LayananId = layananId;
-        Konversi = konversi;
-        Harga = harga;
-        Diskon = diskon;
     }
 }
 
@@ -55,7 +75,9 @@ public class PoPendingItemDto
     public string PoDate { get; set; } = string.Empty;
     public string SupplierId { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;
+    [Obsolete("Decoupled in TD-17 (PUR-TERIMA-BRG-BUG-019). LayananId is no longer retrieved.")]
     public string LayananId { get; set; } = string.Empty;
+    [Obsolete("Decoupled in TD-17 (PUR-TERIMA-BRG-BUG-019). LayananName is no longer retrieved from ta_layanan.")]
     public string LayananName { get; set; } = string.Empty;
     public string Keterangan { get; set; } = string.Empty;
     public decimal StatusDo { get; set; }

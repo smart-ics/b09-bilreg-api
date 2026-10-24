@@ -50,7 +50,7 @@ public class DeliveryCreateDraftCommandTest
             _clockMock.Object);
     }
 
-    private static List<PoQuotaDto> CreateSamplePoQuotas(string layananId = GudangId)
+    private static List<PoQuotaDto> CreateSamplePoQuotas()
     {
         return
         [
@@ -64,7 +64,6 @@ public class DeliveryCreateDraftCommandTest
                 qtyDo: 0m,
                 sisaQty: 10m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 50000m,
                 diskon: 0m),
@@ -78,7 +77,6 @@ public class DeliveryCreateDraftCommandTest
                 qtyDo: 5m,
                 sisaQty: 15m,
                 isClosed: false,
-                layananId: layananId,
                 konversi: 10,
                 harga: 75000m,
                 diskon: 0m)
@@ -268,12 +266,14 @@ public class DeliveryCreateDraftCommandTest
 
         _repoMock.Verify(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()), Times.Never);
     }
-
     [Fact]
-    public async Task Handle_WhenWarehouseDoesNotMatchPo_ThrowsInvalidOperationException()
+    public async Task Handle_WhenWarehouseDifferentFromPo_SuccessfullyCreatesDraftWithSpecifiedWarehouse()
     {
-        // ARRANGE: PO target warehouse is GDFAR, command has GDLOG
-        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas(layananId: "GDFAR"));
+        // ARRANGE: Receiving warehouse is GDLOG, independent from PO
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
 
         var command = new DeliveryCreateDraftCommand(
             SuratJalanNo: SuratJalan,
@@ -286,13 +286,13 @@ public class DeliveryCreateDraftCommandTest
             DeliveryOrderDate: _now);
 
         // ACT
-        var act = async () => await _sut.Handle(command, CancellationToken.None);
+        var response = await _sut.Handle(command, CancellationToken.None);
 
         // ASSERT
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"*GDLOG*tidak sesuai dengan gudang tujuan PO*GDFAR*");
-
-        _repoMock.Verify(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()), Times.Never);
+        response.Should().NotBeNull();
+        savedModel.Should().NotBeNull();
+        savedModel!.Gudang.LayananId.Should().Be("GDLOG");
+        _repoMock.Verify(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()), Times.Once);
     }
 
     [Fact]

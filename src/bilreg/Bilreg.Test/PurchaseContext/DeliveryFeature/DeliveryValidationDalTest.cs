@@ -18,11 +18,7 @@ public class DeliveryValidationDalTest
 
     public DeliveryValidationDalTest()
     {
-        _dbOptions = Options.Create(new DatabaseOptions
-        {
-            ServerName = "dev.smart-ics.com",
-            DbName = "HOSPITAL_PKL"
-        });
+        _dbOptions = ConnStringHelper.GetTestEnv();
         _sut = new DeliveryValidationDal(_dbOptions);
     }
 
