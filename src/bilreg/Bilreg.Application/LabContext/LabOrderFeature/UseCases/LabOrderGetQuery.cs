@@ -220,6 +220,10 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             var fallbackOpt = _nilaiTarifRepo.LoadEntity(fallbackKey);
             if (fallbackOpt.HasValue)
                 return fallbackOpt.Value.Nilai;
+
+            var firstActiveOpt = _nilaiTarifRepo.LoadFirstActiveRate(tarifKey);
+            if (firstActiveOpt.HasValue)
+                return firstActiveOpt.Value.Nilai;
         }
         catch
         {

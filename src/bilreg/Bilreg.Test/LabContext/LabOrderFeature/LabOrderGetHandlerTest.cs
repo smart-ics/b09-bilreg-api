@@ -272,4 +272,39 @@ public class LabOrderGetHandlerTest
         result.Items.Should().HaveCount(1);
         result.Items.First().TarifPrice.Should().Be(0m);
     }
+
+    [Fact]
+    public async Task Handle_WhenCompositeNotFound_FallsBackToFirstActiveRate()
+    {
+        // Arrange
+        var order = CreateSampleOrder();
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        var sampleNilaiTarif = new NilaiTarifType(
+            nilaiTarifId: "NT-003",
+            tarifId: "TRF-CKMB",
+            tarifName: "Pemeriksaan CK-MB",
+            tipeTarif: new TipeTarifReff("RJ", "Rawat Jalan"),
+            kelas: new KelasReff("I", "Kelas 1"),
+            nilai: 175000m,
+            listKomponen: []);
+
+        var nilaiTarifRepoMock = new Mock<INilaiTarifRepo>();
+        nilaiTarifRepoMock
+            .Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe<NilaiTarifType>.None);
+        nilaiTarifRepoMock
+            .Setup(r => r.LoadFirstActiveRate(It.Is<ITarifKey>(k => k.TarifId == "TRF-CKMB")))
+            .Returns(MayBe.From(sampleNilaiTarif));
+
+        var sut = new LabOrderGetHandler(_repo.Object, nilaiTarifRepoMock.Object);
+
+        // Act
+        var result = await sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.Items.Should().HaveCount(1);
+        result.Items.First().TarifPrice.Should().Be(175000m);
+    }
 }
