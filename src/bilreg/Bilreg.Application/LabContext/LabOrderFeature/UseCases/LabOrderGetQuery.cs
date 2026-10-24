@@ -55,7 +55,8 @@ public record LabOrderGetResponse(
     string LayananPerujukName = "",
     string ClinicalNote = "",
     int Urgency = 1,
-    bool IsCito = false);
+    bool IsCito = false,
+    string CrtDate = "");
 
 public record LabOrderItemResponse(
     int ItemNo,
@@ -176,7 +177,8 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             LayananPerujukName: order.LayananPerujukName,
             ClinicalNote: order.ClinicalNote,
             Urgency: (int)order.Urgency,
-            IsCito: order.IsCito);
+            IsCito: order.IsCito,
+            CrtDate: order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
 
         return Task.FromResult(response);
     }

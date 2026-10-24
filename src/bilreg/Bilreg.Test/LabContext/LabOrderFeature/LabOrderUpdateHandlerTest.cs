@@ -176,4 +176,143 @@ public class LabOrderUpdateHandlerTest
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task Handle_WhenDuplicatesInOtherOrdersAndNotConfirmed_ThrowsDuplicateWarning()
+    {
+        // Arrange
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>()))
+            .Returns(MayBe.From(order));
+
+        var item1 = LabOrderTestSupport.SampleItem("LTD001", "HB", "Hemoglobin", "TRF01", "T-HB", "Tarif HB", VacutainerTypeEnum.Edta, "Blood", 1);
+        var comp1 = LabOrderTestSupport.SampleComponent("CMP01", "HB", "Hemoglobin", LabResultTypeEnum.Numeric, "g/dL", "12-16", 1);
+        var resolvedLine = new ResolvedLabOrderLine(item1, [comp1]);
+
+        _resolutionService
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Returns([resolvedLine]);
+
+        var dalMock = new Mock<ILabOrderDal>();
+        dalMock
+            .Setup(d => d.ListActiveTestsByPatientWithinHours(order.Patient.PatientId, 24, It.IsAny<DateTime>()))
+            .Returns([
+                new LabOrderActiveTestDto(
+                    OrderId: "OTHER_ORDER_01",
+                    OrderNo: "ORD-001",
+                    TestDefinitionId: "LTD001",
+                    LabTestCode: "HB",
+                    LabTestName: "Hemoglobin",
+                    OrderDate: DateTime.Now.AddHours(-2),
+                    LabOrderStatus: 1)
+            ]);
+
+        var sut = new LabOrderUpdateHandler(_repo.Object, _resolutionService.Object, TestTglJamProvider.Instance, dalMock.Object);
+
+        var cmd = new LabOrderUpdateCmd(
+            OrderId: order.OrderId,
+            UserId: "USER01",
+            Items: [new LabOrderTarifItemInput("TRF01", "Tarif HB", 0)],
+            AllowDuplicateConfirmation: false);
+
+        // Act
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<DuplicateLabOrderWarningException>();
+        ex.Which.DuplicateTestNames.Should().Contain("Hemoglobin");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDuplicatesInOtherOrdersAndConfirmed_SavesSuccessfully()
+    {
+        // Arrange
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>()))
+            .Returns(MayBe.From(order));
+
+        var item1 = LabOrderTestSupport.SampleItem("LTD001", "HB", "Hemoglobin", "TRF01", "T-HB", "Tarif HB", VacutainerTypeEnum.Edta, "Blood", 1);
+        var comp1 = LabOrderTestSupport.SampleComponent("CMP01", "HB", "Hemoglobin", LabResultTypeEnum.Numeric, "g/dL", "12-16", 1);
+        var resolvedLine = new ResolvedLabOrderLine(item1, [comp1]);
+
+        _resolutionService
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Returns([resolvedLine]);
+
+        var dalMock = new Mock<ILabOrderDal>();
+        dalMock
+            .Setup(d => d.ListActiveTestsByPatientWithinHours(order.Patient.PatientId, 24, It.IsAny<DateTime>()))
+            .Returns([
+                new LabOrderActiveTestDto(
+                    OrderId: "OTHER_ORDER_01",
+                    OrderNo: "ORD-001",
+                    TestDefinitionId: "LTD001",
+                    LabTestCode: "HB",
+                    LabTestName: "Hemoglobin",
+                    OrderDate: DateTime.Now.AddHours(-2),
+                    LabOrderStatus: 1)
+            ]);
+
+        var sut = new LabOrderUpdateHandler(_repo.Object, _resolutionService.Object, TestTglJamProvider.Instance, dalMock.Object);
+
+        var cmd = new LabOrderUpdateCmd(
+            OrderId: order.OrderId,
+            UserId: "USER01",
+            Items: [new LabOrderTarifItemInput("TRF01", "Tarif HB", 0)],
+            AllowDuplicateConfirmation: true);
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDuplicatesOnlyBelongToCurrentOrder_DoesNotThrowDuplicateWarning()
+    {
+        // Arrange
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>()))
+            .Returns(MayBe.From(order));
+
+        var item1 = LabOrderTestSupport.SampleItem("LTD001", "HB", "Hemoglobin", "TRF01", "T-HB", "Tarif HB", VacutainerTypeEnum.Edta, "Blood", 1);
+        var comp1 = LabOrderTestSupport.SampleComponent("CMP01", "HB", "Hemoglobin", LabResultTypeEnum.Numeric, "g/dL", "12-16", 1);
+        var resolvedLine = new ResolvedLabOrderLine(item1, [comp1]);
+
+        _resolutionService
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Returns([resolvedLine]);
+
+        var dalMock = new Mock<ILabOrderDal>();
+        dalMock
+            .Setup(d => d.ListActiveTestsByPatientWithinHours(order.Patient.PatientId, 24, It.IsAny<DateTime>()))
+            .Returns([
+                new LabOrderActiveTestDto(
+                    OrderId: order.OrderId,
+                    OrderNo: order.OrderNo,
+                    TestDefinitionId: "LTD001",
+                    LabTestCode: "HB",
+                    LabTestName: "Hemoglobin",
+                    OrderDate: DateTime.Now.AddHours(-1),
+                    LabOrderStatus: 1)
+            ]);
+
+        var sut = new LabOrderUpdateHandler(_repo.Object, _resolutionService.Object, TestTglJamProvider.Instance, dalMock.Object);
+
+        var cmd = new LabOrderUpdateCmd(
+            OrderId: order.OrderId,
+            UserId: "USER01",
+            Items: [new LabOrderTarifItemInput("TRF01", "Tarif HB", 0)],
+            AllowDuplicateConfirmation: false);
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
 }

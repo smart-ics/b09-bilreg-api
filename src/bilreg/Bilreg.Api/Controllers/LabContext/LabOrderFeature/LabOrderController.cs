@@ -89,7 +89,8 @@ public class LabOrderController : ControllerBase
             dto.UserId,
             dto.Items,
             (LabOrderUrgencyEnum)dto.Urgency,
-            dto.ClinicalNote ?? string.Empty);
+            dto.ClinicalNote ?? string.Empty,
+            dto.AllowDuplicateConfirmation);
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
@@ -149,4 +150,5 @@ public record LabOrderUpdateDto(
     string UserId,
     List<LabOrderTarifItemInput> Items,
     int Urgency = 0,
-    string ClinicalNote = "");
+    string ClinicalNote = "",
+    bool AllowDuplicateConfirmation = false);
