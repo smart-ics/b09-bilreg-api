@@ -1,9 +1,10 @@
-﻿using System.Text;
+using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Controllers.ApotekContext;
 using Bilreg.Api.Filters;
 using Bilreg.Api.SignalR;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -95,7 +96,8 @@ public static class PresentationService
                     var accessToken = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
                     if (!string.IsNullOrEmpty(accessToken) &&
-                        path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath))
+                        (path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath) ||
+                         path.StartsWithSegments(WardCockpitContracts.HubPath)))
                     {
                         context.Token = accessToken;
                     }
@@ -155,6 +157,7 @@ public static class PresentationService
         });
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSignalR();
+        services.AddScoped<IWardCockpitEventPublisher, SignalRWardCockpitEventPublisher>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<ApotekExceptionFilter>();
         services.AddScoped<AdmisiRanapEnabledFilter>();

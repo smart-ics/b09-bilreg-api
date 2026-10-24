@@ -16,6 +16,7 @@ public interface IPakaiBedDal :
     IGetData<PakaiBedDto, IPakaiBed>,
     IListData<PakaiBedDto, IRegKey>
 {
+    PakaiBedDto? GetActiveByBed(string bedId);
 }
 
 public class PakaiBedDal : IPakaiBedDal
@@ -149,6 +150,21 @@ public class PakaiBedDal : IPakaiBedDal
         return conn.Read<PakaiBedDto>(sql, dp);
     }
 
+    public PakaiBedDto? GetActiveByBed(string bedId)
+    {
+        var sql = $"""
+            {SELECT_FROM}
+            WHERE aa.fs_kd_bed = @fs_kd_bed
+              AND (aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01' OR aa.fd_tgl_out IS NULL)
+              AND (aa.fd_tgl_void = '' OR aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void IS NULL)
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_bed", bedId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+    }
+
     private static DynamicParameters BuildParams(PakaiBedDto dto)
     {
         var dp = new DynamicParameters();
@@ -174,4 +190,3 @@ public class PakaiBedDal : IPakaiBedDal
         return dp;
     }
 }
-

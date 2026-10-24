@@ -34,6 +34,7 @@ app
 
 app.MapControllers();
 app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath);
+app.MapHub<WardCockpitHub>(WardCockpitContracts.HubPath);
 
 app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 
@@ -49,4 +50,3 @@ app
 app.Run();
 
 public partial class Program { }
-

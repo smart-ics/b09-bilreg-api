@@ -1,6 +1,7 @@
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.PakaiBedFeature;
@@ -37,4 +38,12 @@ public class PakaiBedRepo : IPakaiBedRepo
     public IEnumerable<PakaiBedModel> ListData(IRegKey filter)
         => (_dal.ListData(filter)?.ToList() ?? [])
             .Select(x => x.ToModel());
+
+    public MayBe<PakaiBedModel> GetActiveOccupant(IBedKey bedKey)
+    {
+        var dto = _dal.GetActiveByBed(bedKey.BedId);
+        return dto is null
+            ? MayBe<PakaiBedModel>.None
+            : MayBe.From(dto.ToModel());
+    }
 }

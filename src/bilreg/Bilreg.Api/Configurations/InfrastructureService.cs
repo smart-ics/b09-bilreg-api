@@ -57,6 +57,8 @@ using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
@@ -134,6 +136,11 @@ public static class InfrastructureService
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<Bilreg.Application.BedUsageContext.WaitingListFeature.IWaitingListWorklistDal, Bilreg.Infrastructure.BedUsageContext.WaitingListFeature.WaitingListWorklistDal>()
             .AddScoped<Bilreg.Application.BedUsageContext.WaitingListFeature.IWaitingListRepo, Bilreg.Infrastructure.BedUsageContext.WaitingListFeature.WaitingListRepo>()
+            .AddScoped<Bilreg.Application.BedUsageContext.WardCockpitFeature.IWardCockpitDal, Bilreg.Infrastructure.BedUsageContext.WardCockpitFeature.WardCockpitDal>()
+            .AddScoped<IBedOperationalDal, BedOperationalDal>()
+            .AddScoped<IBedReadinessTransactionDal, BedReadinessTransactionDal>()
+            .AddScoped<IBedReadinessCorrectionDal, BedReadinessCorrectionDal>()
+            .AddScoped<IBedOperationalRepo, BedOperationalRepo>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
             .AddScoped<IRegistrationHistoryReader, RegistrationHistoryReader>()

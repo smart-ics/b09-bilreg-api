@@ -142,6 +142,28 @@ public record BedOperationalModel : IBedOperationalKey
             OccupancyEpoch);
     }
 
+    public BedOperationalModel SetCleaningRequired(
+        string reason,
+        string responsibleActorId,
+        DateTime occurredAt,
+        DateTime recordedAt,
+        string sourceFactId = "",
+        string requestId = "")
+    {
+        var reqId = string.IsNullOrWhiteSpace(requestId) ? Nuna.Lib.AutoNumberHelper.NunaId.New("REQ") : requestId;
+        var rsn = string.IsNullOrWhiteSpace(reason) ? "Pembersihan tempat tidur (Cleaning Required)" : reason;
+        return RecordReadiness(
+            BedReadinessStatusEnum.CleaningRequired,
+            BedRestrictionTypeEnum.Cleaning,
+            rsn,
+            evidenceReference: string.Empty,
+            responsibleActorId: responsibleActorId,
+            occurredAt: occurredAt,
+            recordedAt: recordedAt,
+            sourceFactId: sourceFactId,
+            requestId: reqId);
+    }
+
     public BedOperationalModel VerifyReady(
         string reason,
         string evidenceReference,
