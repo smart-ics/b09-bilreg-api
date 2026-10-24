@@ -221,6 +221,7 @@ public class LabOrderCreateFromEmrHandlerTest
         var ex = await act.Should().ThrowAsync<DuplicateLabOrderWarningException>();
         ex.WithMessage("*EX-05*");
         ex.Which.DuplicateTestNames.Should().Contain("Hemoglobin");
+        ex.Which.DuplicateTestNames.Should().Contain("Tarif HB");
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 

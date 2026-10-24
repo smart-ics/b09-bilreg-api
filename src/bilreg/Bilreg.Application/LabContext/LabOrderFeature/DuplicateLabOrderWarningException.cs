@@ -14,4 +14,12 @@ public class DuplicateLabOrderWarningException : InvalidOperationException
         DuplicateTestNames = duplicateTestNames?.ToList() ?? [];
         PreviousOrderIds = previousOrderIds?.ToList() ?? [];
     }
+
+    public DuplicateLabOrderWarningException(
+        IEnumerable<string> duplicateTestNames,
+        IEnumerable<string> previousOrderIds,
+        string message)
+        : this(message, duplicateTestNames, previousOrderIds)
+    {
+    }
 }

@@ -132,14 +132,21 @@ public class LabOrderCreateExternalPatientHandler
 
             if (duplicates.Count > 0 && !request.AllowDuplicateConfirmation)
             {
-                var dupNames = duplicates.Select(d => d.LabTestName).Distinct().ToList();
+                var matchingLines = lines.Where(l => duplicates.Any(a =>
+                    (!string.IsNullOrWhiteSpace(a.TestDefinitionId) && a.TestDefinitionId == l.Item.TestDefinitionId) ||
+                    (!string.IsNullOrWhiteSpace(a.LabTestCode) && a.LabTestCode == l.Item.LabTestCode))).ToList();
+                var dupNames = duplicates.Select(d => d.LabTestName)
+                    .Concat(matchingLines.Select(l => l.Item.TarifName))
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct()
+                    .ToList();
                 var dupOrderNos = duplicates.Select(d => string.IsNullOrWhiteSpace(d.OrderNo) ? d.OrderId : d.OrderNo).Distinct().ToList();
                 var namesJoined = string.Join(", ", dupNames);
                 var ordersJoined = string.Join(", ", dupOrderNos);
                 throw new DuplicateLabOrderWarningException(
-                    $"EX-05: Peringatan duplikasi tes laboratorium dalam 24 jam terakhir untuk tes [{namesJoined}] pada order [{ordersJoined}]. Konfirmasi klinis diperlukan.",
                     dupNames,
-                    dupOrderNos);
+                    dupOrderNos,
+                    $"EX-05: Peringatan duplikasi tes laboratorium dalam 24 jam terakhir untuk pasien ini. Pemeriksaan '{namesJoined}' telah dipesan pada order sebelumnya: {ordersJoined}. Konfirmasikan atau berikan justifikasi medis.");
             }
         }
 
