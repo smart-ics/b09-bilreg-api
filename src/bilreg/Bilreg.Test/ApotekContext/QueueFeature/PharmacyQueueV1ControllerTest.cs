@@ -66,7 +66,7 @@ public class PharmacyQueueV1ControllerTest
     }
 
     [Fact]
-    public void Controller_ExposesAllTwelveDocumentedEndpoints()
+    public void Controller_ExposesAllFourteenDocumentedEndpoints()
     {
         var methods = typeof(PharmacyQueueV1Controller)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
@@ -78,6 +78,11 @@ public class PharmacyQueueV1ControllerTest
 
         var getTemplates = methods
             .Select(m => m.GetCustomAttribute<HttpGetAttribute>()?.Template)
+            .Where(t => t is not null)
+            .ToList();
+
+        var putTemplates = methods
+            .Select(m => m.GetCustomAttribute<HttpPutAttribute>()?.Template)
             .Where(t => t is not null)
             .ToList();
 
@@ -96,7 +101,12 @@ public class PharmacyQueueV1ControllerTest
 
         getTemplates.Should().Contain([
             "worklist",
-            "service-points"
+            "service-points",
+            "lokets/{loketKey}/service-points"
+        ]);
+
+        putTemplates.Should().Contain([
+            "lokets/{loketKey}/service-points"
         ]);
     }
 
@@ -108,6 +118,28 @@ public class PharmacyQueueV1ControllerTest
 
         intakeMethod.Should().NotBeNull();
         intakeMethod!.GetCustomAttribute<AllowAnonymousAttribute>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ListServicePointsEndpoint_AllowsAnonymousKioskAccess()
+    {
+        var method = typeof(PharmacyQueueV1Controller)
+            .GetMethod(nameof(PharmacyQueueV1Controller.ListServicePoints));
+
+        method.Should().NotBeNull();
+        method!.GetCustomAttribute<AllowAnonymousAttribute>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void UpdateLoketServicePointsEndpoint_RestrictedToAdministratorAndApotekerSupervisor()
+    {
+        var method = typeof(PharmacyQueueV1Controller)
+            .GetMethod(nameof(PharmacyQueueV1Controller.UpdateLoketServicePoints));
+
+        method.Should().NotBeNull();
+        var auth = method!.GetCustomAttribute<AuthorizeAttribute>();
+        auth.Should().NotBeNull();
+        auth!.Roles.Should().Be("Administrator,ApotekerSupervisor");
     }
 
     #endregion
@@ -151,11 +183,49 @@ public class PharmacyQueueV1ControllerTest
     }
 
     [Fact]
+    public async Task Intake_WithRegId_DispatchesCommandWithRegId()
+    {
+        // Arrange
+        PharmacyQueueIntakeCmd? capturedCmd = null;
+        var expectedResponse = new PharmacyQueueIntakeResponse(
+            AntrianId: "ANT002",
+            NoUrut: 6,
+            QueueLabel: "A006",
+            ServicePointId: "SP-FAR-BPJS",
+            ServicePointName: "Farmasi BPJS",
+            QueuePrefix: "A",
+            ApotekPhase: ApotekPhaseEnum.TAKEN,
+            TakenAt: DateTime.Now,
+            WaitingAheadCount: 1,
+            PatientName: "Tn. Budi",
+            MedicalRecordNo: "RM001",
+            Penjamin: "BPJS");
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<PharmacyQueueIntakeCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<PharmacyQueueIntakeResponse>, CancellationToken>((req, _) =>
+                capturedCmd = (PharmacyQueueIntakeCmd)req)
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Intake(new PharmacyQueueIntakeRequest(RegId: "REG001"));
+
+        // Assert
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = ok.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.RegId.Should().Be("REG001");
+        capturedCmd.UserId.Should().Be("PETUGAS_01");
+    }
+
+    [Fact]
     public async Task Intake_WhenServicePointIdEmpty_ThrowsApotekDomainException()
     {
         var act = () => _sut.Intake(new PharmacyQueueIntakeRequest(""));
         await act.Should().ThrowAsync<ApotekDomainException>()
-            .WithMessage("*Service point ID wajib diisi*");
+            .WithMessage("*Service point ID*");
     }
 
     [Fact]
@@ -188,6 +258,35 @@ public class PharmacyQueueV1ControllerTest
         capturedQry!.DepoFarmasiId.Should().Be("DEPO01");
         capturedQry.FilterTab.Should().Be("Menunggu");
         capturedQry.Phase.Should().Be(ApotekPhaseEnum.TAKEN);
+    }
+
+    [Fact]
+    public async Task Worklist_WithServicePointIds_DispatchesQueryWithServicePointFilter()
+    {
+        // Arrange
+        PharmacyQueueWorklistQry? capturedQry = null;
+        var expectedResponse = new PharmacyQueueWorklistResponse(
+            DepoFarmasiId: "DEPO01",
+            Items: [],
+            TotalCount: 0,
+            WaitingCount: 0,
+            PreparedCount: 0);
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<PharmacyQueueWorklistQry>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<PharmacyQueueWorklistResponse>, CancellationToken>((req, _) =>
+                capturedQry = (PharmacyQueueWorklistQry)req)
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var filterPoints = new[] { "SP-FAR-BPJS", "SP-FAR-UMUM" };
+        var result = await _sut.Worklist("DEPO01", null, "Menunggu", ApotekPhaseEnum.TAKEN, filterPoints);
+
+        // Assert
+        result.Should().BeOfType<OkObjectResult>();
+        capturedQry.Should().NotBeNull();
+        capturedQry!.DepoFarmasiId.Should().Be("DEPO01");
+        capturedQry.ServicePointIds.Should().BeEquivalentTo(filterPoints);
     }
 
     [Fact]
@@ -515,6 +614,95 @@ public class PharmacyQueueV1ControllerTest
         capturedQry.Should().NotBeNull();
         capturedQry!.DepoFarmasiId.Should().Be("DEPO01");
         capturedQry.ActiveOnly.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetLoketServicePoints_WhenValid_DispatchesQueryAndReturnsJSendOk()
+    {
+        // Arrange
+        GetLoketServicePointsQry? capturedQry = null;
+        var rowVersion = new byte[] { 1, 2, 3, 4 };
+        var expectedResponse = new LoketServicePointsResponse(
+            LoketKey: "APT-RCV-01",
+            ServicePointIds: ["SP-FAR-BPJS", "SP-FAR-UMUM"],
+            RowVersion: rowVersion);
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<GetLoketServicePointsQry>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<LoketServicePointsResponse>, CancellationToken>((req, _) =>
+                capturedQry = (GetLoketServicePointsQry)req)
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.GetLoketServicePoints("APT-RCV-01");
+
+        // Assert
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = ok.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        capturedQry.Should().NotBeNull();
+        capturedQry!.LoketKey.Should().Be("APT-RCV-01");
+    }
+
+    [Fact]
+    public async Task GetLoketServicePoints_WhenLoketKeyEmpty_ThrowsApotekDomainException()
+    {
+        var act = () => _sut.GetLoketServicePoints("");
+        await act.Should().ThrowAsync<ApotekDomainException>()
+            .WithMessage("*Loket Key wajib diisi*");
+    }
+
+    [Fact]
+    public async Task UpdateLoketServicePoints_WhenValid_DispatchesCommandAndReturnsJSendOk()
+    {
+        // Arrange
+        UpdateLoketServicePointsCmd? capturedCmd = null;
+        var rowVersion = new byte[] { 1, 2, 3, 4 };
+        var expectedResponse = new LoketServicePointsResponse(
+            LoketKey: "APT-RCV-01",
+            ServicePointIds: ["SP-FAR-BPJS"],
+            RowVersion: rowVersion);
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<UpdateLoketServicePointsCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<LoketServicePointsResponse>, CancellationToken>((req, _) =>
+                capturedCmd = (UpdateLoketServicePointsCmd)req)
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.UpdateLoketServicePoints(
+            "APT-RCV-01",
+            new PharmacyQueueUpdateLoketServicePointsRequest(
+                ServicePointIds: ["SP-FAR-BPJS"],
+                RowVersion: Convert.ToBase64String(rowVersion)));
+
+        // Assert
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = ok.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.LoketKey.Should().Be("APT-RCV-01");
+        capturedCmd.ServicePointIds.Should().ContainSingle().Which.Should().Be("SP-FAR-BPJS");
+        capturedCmd.RowVersion.Should().Equal(rowVersion);
+        capturedCmd.UserId.Should().Be("PETUGAS_01");
+    }
+
+    [Fact]
+    public async Task UpdateLoketServicePoints_WhenLoketKeyEmpty_ThrowsApotekDomainException()
+    {
+        var act = () => _sut.UpdateLoketServicePoints("", new PharmacyQueueUpdateLoketServicePointsRequest());
+        await act.Should().ThrowAsync<ApotekDomainException>()
+            .WithMessage("*Loket Key wajib diisi*");
+    }
+
+    [Fact]
+    public async Task UpdateLoketServicePoints_WhenRowVersionMissing_ThrowsApotekDomainException()
+    {
+        var act = () => _sut.UpdateLoketServicePoints("APT-RCV-01", new PharmacyQueueUpdateLoketServicePointsRequest(ServicePointIds: []));
+        await act.Should().ThrowAsync<ApotekDomainException>()
+            .WithMessage("*RowVersion token wajib diisi*");
     }
 
     #endregion

@@ -20,6 +20,7 @@ public class PharmacyQueueLoket1CommandsTest
     private readonly Mock<IPharmacyQueuePublisher> _publisher = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
     private readonly Mock<ITglJamProvider> _clock = new();
+    private readonly Mock<IPharmacyLoketServicePointRepo> _loketServicePoints = new();
     private readonly AllowAllAuth _auth = new();
 
     private readonly DateTime _now = new(2026, 10, 18, 10, 0, 0);
@@ -31,8 +32,8 @@ public class PharmacyQueueLoket1CommandsTest
         _clock.Setup(x => x.Now).Returns(_now);
     }
 
-    private PharmacyQueueCallPenerimaanCmdHandler CreateCallHandler()
-        => new(_operations.Object, _queueEntries.Object, _publisher.Object, _auditRepo.Object, _clock.Object, _auth);
+    private PharmacyQueueCallPenerimaanCmdHandler CreateCallHandler(IPharmacyLoketServicePointRepo? loketServicePoints = null)
+        => new(_operations.Object, _queueEntries.Object, _publisher.Object, _auditRepo.Object, _clock.Object, _auth, loketServicePoints ?? _loketServicePoints.Object);
 
     private PharmacyQueueRecallPenerimaanCmdHandler CreateRecallHandler()
         => new(_operations.Object, _queueEntries.Object, _publisher.Object, _auditRepo.Object, _clock.Object, _auth);
@@ -221,6 +222,108 @@ public class PharmacyQueueLoket1CommandsTest
             new PharmacyQueueCallPenerimaanCmd("APT-RCV-01", null, null, null, "officer-1"),
             CancellationToken.None);
 
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No tickets with phase TAKEN*");
+    }
+
+    [Fact]
+    public async Task CallPenerimaan_NextTicket_FiltersByAssignedServicePoints_WhenConfigured()
+    {
+        // Arrange: Loket APT-RCV-01 only serves SP-BPJS
+        var idleLoket = CreateIdleLoket("APT-RCV-01", "DEP-RJ");
+        _operations.Setup(x => x.GetLoket("APT-RCV-01")).Returns(MayBe.From(idleLoket));
+        _loketServicePoints.Setup(x => x.ListServicePointsByLoket("APT-RCV-01")).Returns(["SP-BPJS"]);
+
+        // Depot has Ticket 1 (SP-UMUM) and Ticket 2 (SP-BPJS)
+        var ticket1Umum = CreateQueueEntry("ANT-001", 1, "B", "SP-UMUM", ApotekPhaseEnum.TAKEN);
+        var ticket2Bpjs = CreateQueueEntry("ANT-001", 2, "A", "SP-BPJS", ApotekPhaseEnum.TAKEN);
+        _queueEntries.Setup(x => x.ListByPhase("DEP-RJ", ApotekPhaseEnum.TAKEN))
+            .Returns([ticket1Umum, ticket2Bpjs]);
+
+        _operations.Setup(x => x.TryCallLoket("APT-RCV-01", "ANT-001", 2, _tokenV1, "officer-1", _now))
+            .Returns(true);
+
+        var updatedLoket = new PharmacyLoketSession(
+            "APT-RCV-01", LoketTypeEnum.PenerimaanResep, "Loket Penerimaan 1", "DEP-RJ",
+            "ANT-001", 2, LoketClaimStateEnum.Called, true, 1,
+            _now, ApotekDate.Empty, ApotekDate.Empty, _tokenV2);
+        _operations.SetupSequence(x => x.GetLoket("APT-RCV-01"))
+            .Returns(MayBe.From(idleLoket))
+            .Returns(MayBe.From(updatedLoket));
+
+        var sut = CreateCallHandler();
+
+        // Act
+        var result = await sut.Handle(
+            new PharmacyQueueCallPenerimaanCmd("APT-RCV-01", null, null, null, "officer-1"),
+            CancellationToken.None);
+
+        // Assert: Ticket 2 (BPJS) called, skipping Ticket 1 (UMUM)
+        result.Success.Should().BeTrue();
+        result.AntrianId.Should().Be("ANT-001");
+        result.NoUrut.Should().Be(2);
+        result.QueueLabel.Should().Be("A002");
+    }
+
+    [Fact]
+    public async Task CallPenerimaan_NextTicket_FallsBackToAllServicePoints_WhenAssignedServicePoints_Empty()
+    {
+        // Arrange: Loket APT-RCV-01 has no specific SP configured (empty)
+        var idleLoket = CreateIdleLoket("APT-RCV-01", "DEP-RJ");
+        _operations.Setup(x => x.GetLoket("APT-RCV-01")).Returns(MayBe.From(idleLoket));
+        _loketServicePoints.Setup(x => x.ListServicePointsByLoket("APT-RCV-01")).Returns([]);
+
+        // Depot has Ticket 1 (SP-UMUM) and Ticket 2 (SP-BPJS)
+        var ticket1Umum = CreateQueueEntry("ANT-001", 1, "B", "SP-UMUM", ApotekPhaseEnum.TAKEN);
+        var ticket2Bpjs = CreateQueueEntry("ANT-001", 2, "A", "SP-BPJS", ApotekPhaseEnum.TAKEN);
+        _queueEntries.Setup(x => x.ListByPhase("DEP-RJ", ApotekPhaseEnum.TAKEN))
+            .Returns([ticket1Umum, ticket2Bpjs]);
+
+        _operations.Setup(x => x.TryCallLoket("APT-RCV-01", "ANT-001", 1, _tokenV1, "officer-1", _now))
+            .Returns(true);
+
+        var updatedLoket = new PharmacyLoketSession(
+            "APT-RCV-01", LoketTypeEnum.PenerimaanResep, "Loket Penerimaan 1", "DEP-RJ",
+            "ANT-001", 1, LoketClaimStateEnum.Called, true, 1,
+            _now, ApotekDate.Empty, ApotekDate.Empty, _tokenV2);
+        _operations.SetupSequence(x => x.GetLoket("APT-RCV-01"))
+            .Returns(MayBe.From(idleLoket))
+            .Returns(MayBe.From(updatedLoket));
+
+        var sut = CreateCallHandler();
+
+        // Act
+        var result = await sut.Handle(
+            new PharmacyQueueCallPenerimaanCmd("APT-RCV-01", null, null, null, "officer-1"),
+            CancellationToken.None);
+
+        // Assert: Ticket 1 (smallest NoUrut) called because fallback serves all
+        result.Success.Should().BeTrue();
+        result.AntrianId.Should().Be("ANT-001");
+        result.NoUrut.Should().Be(1);
+        result.QueueLabel.Should().Be("B001");
+    }
+
+    [Fact]
+    public async Task CallPenerimaan_NextTicket_Throws_When_NoTicketsMatchAssignedServicePoints()
+    {
+        // Arrange: Loket only serves SP-BPJS, but depot only has SP-UMUM waiting
+        var idleLoket = CreateIdleLoket("APT-RCV-01", "DEP-RJ");
+        _operations.Setup(x => x.GetLoket("APT-RCV-01")).Returns(MayBe.From(idleLoket));
+        _loketServicePoints.Setup(x => x.ListServicePointsByLoket("APT-RCV-01")).Returns(["SP-BPJS"]);
+
+        var ticket1Umum = CreateQueueEntry("ANT-001", 1, "B", "SP-UMUM", ApotekPhaseEnum.TAKEN);
+        _queueEntries.Setup(x => x.ListByPhase("DEP-RJ", ApotekPhaseEnum.TAKEN))
+            .Returns([ticket1Umum]);
+
+        var sut = CreateCallHandler();
+
+        // Act
+        var act = () => sut.Handle(
+            new PharmacyQueueCallPenerimaanCmd("APT-RCV-01", null, null, null, "officer-1"),
+            CancellationToken.None);
+
+        // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*No tickets with phase TAKEN*");
     }

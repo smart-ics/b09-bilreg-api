@@ -18,9 +18,17 @@ namespace Bilreg.Api.Controllers.ApotekContext;
 /// HTTP Request body untuk endpoint intake tiket kiosk mandiri antrean farmasi.
 /// </summary>
 public record PharmacyQueueIntakeRequest(
-    string ServicePointId,
+    string? ServicePointId = null,
     string? DepoFarmasiId = null,
-    string? UserId = null);
+    string? UserId = null,
+    string? RegId = null);
+
+/// <summary>
+/// HTTP Request body untuk pembaruan daftar titik layanan (Service Point) yang dilayani loket fisik.
+/// </summary>
+public record PharmacyQueueUpdateLoketServicePointsRequest(
+    IReadOnlyList<string>? ServicePointIds = null,
+    object? RowVersion = null);
 
 /// <summary>
 /// HTTP Request body untuk operasi pemanggilan loket fisik (Call Next dan Call Serah).
@@ -126,21 +134,26 @@ public class PharmacyQueueV1Controller : ControllerBase
     /// <summary>
     /// POST /api/v1/pharmacy-queue/intake: Endpoint intake tiket mesin kiosk mandiri.
     /// Mengalokasikan nomor antrean sekuensial on-demand langsung berstatus TAKEN.
+    /// Mendukung alur scan nomor registrasi (RegId) untuk klasifikasi otomatis BPJS/Umum.
     /// </summary>
     [HttpPost("intake")]
     [AllowAnonymous]
     public async Task<IActionResult> Intake([FromBody] PharmacyQueueIntakeRequest request)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.ServicePointId))
-            throw new ApotekDomainException("Service point ID wajib diisi.");
+        if (request == null)
+            throw new ApotekDomainException("Request body intake wajib diisi.");
+
+        if (string.IsNullOrWhiteSpace(request.ServicePointId) && string.IsNullOrWhiteSpace(request.RegId))
+            throw new ApotekDomainException("Service point ID atau Reg ID wajib diisi.");
 
         var actor = !string.IsNullOrWhiteSpace(request.UserId) && request.UserId != "KIOSK"
             ? request.UserId
             : (User?.Identity?.IsAuthenticated == true ? AptActor.Require(_user) : "KIOSK");
 
         var cmd = new PharmacyQueueIntakeCmd(
-            ServicePointId: request.ServicePointId,
+            ServicePointId: request.ServicePointId ?? string.Empty,
             DepoFarmasiId: request.DepoFarmasiId ?? string.Empty,
+            RegId: request.RegId ?? string.Empty,
             UserId: actor);
 
         var result = await _mediator.Send(cmd);
@@ -150,19 +163,25 @@ public class PharmacyQueueV1Controller : ControllerBase
     /// <summary>
     /// GET /api/v1/pharmacy-queue/worklist: Endpoint pemuatan worklist antrean aktif petugas farmasi.
     /// Mendukung filter tab: Menunggu, Menunggu Telaah, Dilewati, Siap Penjualan, Siap Serah.
+    /// Mendukung penyaringan daftar titik layanan spesifik loket (servicePointIds).
     /// </summary>
     [HttpGet("worklist")]
     public async Task<IActionResult> Worklist(
         [FromQuery] string? depoFarmasiId,
         [FromQuery] string? depoId,
         [FromQuery] string? filterTab,
-        [FromQuery] ApotekPhaseEnum? phase)
+        [FromQuery] ApotekPhaseEnum? phase,
+        [FromQuery] string[]? servicePointIds = null)
     {
         var targetDepo = !string.IsNullOrWhiteSpace(depoFarmasiId) ? depoFarmasiId : depoId;
         if (string.IsNullOrWhiteSpace(targetDepo))
             throw new ApotekDomainException("Depo Farmasi ID wajib diisi.");
 
-        var result = await _mediator.Send(new PharmacyQueueWorklistQry(targetDepo, filterTab, phase));
+        var result = await _mediator.Send(new PharmacyQueueWorklistQry(
+            targetDepo,
+            filterTab,
+            phase,
+            servicePointIds));
         return Ok(new JSendOk(result));
     }
 
@@ -373,8 +392,10 @@ public class PharmacyQueueV1Controller : ControllerBase
 
     /// <summary>
     /// GET /api/v1/pharmacy-queue/service-points: Mengembalikan daftar service point titik layanan depo farmasi.
+    /// Dapat diakses secara publik oleh mesin kiosk mandiri antrean farmasi.
     /// </summary>
     [HttpGet("service-points")]
+    [AllowAnonymous]
     public async Task<IActionResult> ListServicePoints(
         [FromQuery] string? depoFarmasiId,
         [FromQuery] string? depoId,
@@ -382,6 +403,47 @@ public class PharmacyQueueV1Controller : ControllerBase
     {
         var targetDepo = !string.IsNullOrWhiteSpace(depoFarmasiId) ? depoFarmasiId : depoId;
         var result = await _mediator.Send(new PharmacyQueueServicePointsQry(targetDepo, activeOnly));
+        return Ok(new JSendOk(result));
+    }
+
+    /// <summary>
+    /// GET /api/v1/pharmacy-queue/lokets/{loketKey}/service-points: Membaca daftar service point yang dilayani oleh suatu loket fisik.
+    /// </summary>
+    [HttpGet("lokets/{loketKey}/service-points")]
+    public async Task<IActionResult> GetLoketServicePoints([FromRoute] string loketKey)
+    {
+        if (string.IsNullOrWhiteSpace(loketKey))
+            throw new ApotekDomainException("Loket Key wajib diisi.");
+
+        var result = await _mediator.Send(new GetLoketServicePointsQry(loketKey));
+        return Ok(new JSendOk(result));
+    }
+
+    /// <summary>
+    /// PUT /api/v1/pharmacy-queue/lokets/{loketKey}/service-points: Memperbarui daftar titik layanan (Service Point) yang dilayani loket fisik.
+    /// Dibatasi hanya untuk peran Administrator dan ApotekerSupervisor.
+    /// </summary>
+    [HttpPut("lokets/{loketKey}/service-points")]
+    [Authorize(Roles = "Administrator,ApotekerSupervisor")]
+    public async Task<IActionResult> UpdateLoketServicePoints(
+        [FromRoute] string loketKey,
+        [FromBody] PharmacyQueueUpdateLoketServicePointsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(loketKey))
+            throw new ApotekDomainException("Loket Key wajib diisi.");
+        if (request == null)
+            throw new ApotekDomainException("Request body wajib diisi.");
+
+        var rowVersion = ParseRowVersion(request.RowVersion)
+            ?? throw new ApotekDomainException("RowVersion token wajib diisi.");
+
+        var cmd = new UpdateLoketServicePointsCmd(
+            LoketKey: loketKey,
+            ServicePointIds: request.ServicePointIds ?? [],
+            RowVersion: rowVersion,
+            UserId: AptActor.Require(_user));
+
+        var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
 

@@ -1,9 +1,18 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
 using Bilreg.Application.ApotekContext.QueueFeature.UseCases;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.Shared;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
@@ -24,6 +33,9 @@ public class PharmacyQueueIntakeHandlerTest
     private readonly Mock<IPharmacyQueuePublisher> _publisher = new();
     private readonly Mock<ITglJamProvider> _clock = new();
     private readonly AllowAllAuth _auth = new();
+    private readonly Mock<IRegRepo> _regRepo = new();
+    private readonly Mock<IResepRepo> _resepRepo = new();
+    private readonly Mock<IPharmacyQueueMappingRepo> _mappingRepo = new();
 
     private readonly DateTime _now = new(2026, 10, 18, 9, 30, 0);
 
@@ -41,15 +53,22 @@ public class PharmacyQueueIntakeHandlerTest
             _sequencer.Object,
             _publisher.Object,
             _clock.Object,
-            _auth);
+            _auth,
+            _regRepo.Object,
+            _resepRepo.Object,
+            _mappingRepo.Object);
 
     [Fact]
-    public async Task Handle_Throws_When_ServicePointId_NullOrWhiteSpace()
+    public async Task Handle_Throws_When_RegId_NotFound()
     {
-        var sut = CreateSut();
-        var act = () => sut.Handle(new PharmacyQueueIntakeCmd(""), CancellationToken.None);
+        _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-INVALID")))
+            .Returns(MayBe<RegModel>.None);
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        var sut = CreateSut();
+        var act = () => sut.Handle(new PharmacyQueueIntakeCmd(RegId: "REG-INVALID"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage("*REG-INVALID*");
     }
 
     [Fact]
@@ -239,5 +258,210 @@ public class PharmacyQueueIntakeHandlerTest
         result.NoUrut.Should().Be(3);
         result.QueueLabel.Should().Be("A003");
         callCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_RegId_Bpjs_Issues_PrefixA_And_Maps_Active_Prescriptions()
+    {
+        // Arrange
+        var servicePointBpjs = PharmacyServicePointModel.Create("SP-FAR-BPJS", "DEPO-FAR-01", "Antrean Resep BPJS", "A");
+        _servicePoints.Setup(x => x.Get("SP-FAR-BPJS")).Returns(MayBe.From(servicePointBpjs));
+
+        var dokterReff = new DokterReff("D01", "dr. Budi, Sp.A");
+        var layananReff = new LayananReff("L01", "Poli Anak");
+
+        var regBpjs = new RegModel(
+            "REG-BPJS-01",
+            DateOnly.FromDateTime(_now),
+            null!, null!, null!, null!,
+            JenisRegEnum.RegJalan,
+            new PasienReff("RM-001", "Budi Santoso", new DateOnly(1985, 5, 20), "L"),
+            new TipeJaminanReff("1", "BPJS Kesehatan"),
+            null!, null!, null!, null!,
+            new PpaReff("D01", "dr. Budi, Sp.A"),
+            layananReff,
+            null!, null!, []);
+
+        _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-BPJS-01")))
+            .Returns(MayBe.From(regBpjs));
+
+        var resep1 = new ResepModel(
+            "KP001",
+            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
+            null!,
+            dokterReff,
+            layananReff,
+            UrgenitasType.Load("1", "CITO"),
+            new TipeBrgReff("TB01", "BPJS Fornas"),
+            0, "Resep 1", null!, []);
+
+        var resep2 = new ResepModel(
+            "KP002",
+            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
+            null!,
+            dokterReff,
+            layananReff,
+            UrgenitasType.Load("0", "Normal"),
+            new TipeBrgReff("TB01", "BPJS Fornas"),
+            0, "Resep 2", null!, []);
+
+        // voided resep should be excluded
+        var resepVoid = new ResepModel(
+            "KP003",
+            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
+            null!,
+            dokterReff,
+            layananReff,
+            UrgenitasType.Load("0", "Normal"),
+            new TipeBrgReff("TB01", "BPJS Fornas"),
+            0, "Resep 3", null!, []);
+        resepVoid.Void("petugas1", "Salah input", _now);
+
+        _resepRepo.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BPJS-01")))
+            .Returns([resep1, resep2, resepVoid]);
+
+        var businessDate = DateOnly.FromDateTime(_now);
+        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
+
+        var queue = new AntrianModel(
+            "ANT-BPJS-01", businessDate, TimeOnly.MinValue, TimeOnly.MaxValue,
+            "AN2610180000_SP-FAR-BPJS", "Antrean Resep BPJS",
+            new ServicePointType("SP-FAR-BPJS", "Antrean Resep BPJS"),
+            [], _sequencer.Object);
+
+        _antrianFactory.Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate)).Returns(queue);
+        _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(1);
+        _queueEntries.Setup(x => x.ListByPhase("DEPO-FAR-01", ApotekPhaseEnum.TAKEN)).Returns([]);
+        _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _mappingRepo.Setup(x => x.GetByDemand(It.IsAny<QueueDemandKindEnum>(), It.IsAny<string>()))
+            .Returns(MayBe<QueueMappingModel>.None);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new PharmacyQueueIntakeCmd(RegId: "REG-BPJS-01"), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ServicePointId.Should().Be("SP-FAR-BPJS");
+        result.QueuePrefix.Should().Be("A");
+        result.QueueLabel.Should().Be("A001");
+        result.NoUrut.Should().Be(1);
+        result.PatientName.Should().Be("Budi Santoso");
+        result.MedicalRecordNo.Should().Be("RM-001");
+        result.Penjamin.Should().Be("BPJS Kesehatan");
+
+        // Verify auto-mapping for KP001 and KP002, but not for voided KP003
+        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m =>
+            m.DemandId == "KP001" &&
+            m.DemandKind == QueueDemandKindEnum.ResepKerja &&
+            m.MappingMethod == QueueMappingMethodEnum.Tracker &&
+            m.AntrianId == "ANT-BPJS-01" &&
+            m.NoUrut == 1)), Times.Once);
+
+        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m =>
+            m.DemandId == "KP002" &&
+            m.DemandKind == QueueDemandKindEnum.ResepKerja &&
+            m.MappingMethod == QueueMappingMethodEnum.Tracker &&
+            m.AntrianId == "ANT-BPJS-01" &&
+            m.NoUrut == 1)), Times.Once);
+
+        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m => m.DemandId == "KP003")), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_RegId_Umum_Allocates_SP_FAR_UMUM_PrefixB()
+    {
+        // Arrange
+        var servicePointUmum = PharmacyServicePointModel.Create("SP-FAR-UMUM", "DEPO-FAR-01", "Antrean Obat Umum", "B");
+        _servicePoints.Setup(x => x.Get("SP-FAR-UMUM")).Returns(MayBe.From(servicePointUmum));
+
+        var regUmum = new RegModel(
+            "REG-UMUM-01",
+            DateOnly.FromDateTime(_now),
+            null!, null!, null!, null!,
+            JenisRegEnum.RegJalan,
+            new PasienReff("RM-002", "Siti Aminah", new DateOnly(1995, 3, 12), "P"),
+            new TipeJaminanReff("00000", "Bayar Sendiri"),
+            null!, null!, null!, null!,
+            new PpaReff("D02", "dr. Siti, Sp.PD"),
+            new LayananReff("L02", "Poli Penyakit Dalam"),
+            null!, null!, []);
+
+        _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-UMUM-01")))
+            .Returns(MayBe.From(regUmum));
+
+        _resepRepo.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-UMUM-01")))
+            .Returns([]);
+
+        var businessDate = DateOnly.FromDateTime(_now);
+        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
+
+        var queue = new AntrianModel(
+            "ANT-UMUM-01", businessDate, TimeOnly.MinValue, TimeOnly.MaxValue,
+            "AN2610180000_SP-FAR-UMUM", "Antrean Obat Umum",
+            new ServicePointType("SP-FAR-UMUM", "Antrean Obat Umum"),
+            [], _sequencer.Object);
+
+        _antrianFactory.Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate)).Returns(queue);
+        _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(2);
+        _queueEntries.Setup(x => x.ListByPhase("DEPO-FAR-01", ApotekPhaseEnum.TAKEN)).Returns([]);
+        _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new PharmacyQueueIntakeCmd(RegId: "REG-UMUM-01"), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ServicePointId.Should().Be("SP-FAR-UMUM");
+        result.QueuePrefix.Should().Be("B");
+        result.QueueLabel.Should().Be("B002");
+        result.NoUrut.Should().Be(2);
+        result.PatientName.Should().Be("Siti Aminah");
+        result.MedicalRecordNo.Should().Be("RM-002");
+        result.Penjamin.Should().Be("Bayar Sendiri");
+        _mappingRepo.Verify(x => x.Save(It.IsAny<QueueMappingModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_Antrean_Umum_Without_RegId_Allocates_SP_FAR_UMUM_PrefixB()
+    {
+        // Arrange
+        var servicePointUmum = PharmacyServicePointModel.Create("SP-FAR-UMUM", "DEPO-FAR-01", "Antrean Obat Umum", "B");
+        _servicePoints.Setup(x => x.Get("SP-FAR-UMUM")).Returns(MayBe.From(servicePointUmum));
+
+        var businessDate = DateOnly.FromDateTime(_now);
+        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
+
+        var queue = new AntrianModel(
+            "ANT-UMUM-02", businessDate, TimeOnly.MinValue, TimeOnly.MaxValue,
+            "AN2610180000_SP-FAR-UMUM", "Antrean Obat Umum",
+            new ServicePointType("SP-FAR-UMUM", "Antrean Obat Umum"),
+            [], _sequencer.Object);
+
+        _antrianFactory.Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate)).Returns(queue);
+        _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(3);
+        _queueEntries.Setup(x => x.ListByPhase("DEPO-FAR-01", ApotekPhaseEnum.TAKEN)).Returns([]);
+        _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateSut();
+
+        // Act - Intake without RegId and without ServicePointId
+        var result = await sut.Handle(new PharmacyQueueIntakeCmd(), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ServicePointId.Should().Be("SP-FAR-UMUM");
+        result.QueuePrefix.Should().Be("B");
+        result.QueueLabel.Should().Be("B003");
+        result.NoUrut.Should().Be(3);
+        result.PatientName.Should().BeEmpty();
+        _mappingRepo.Verify(x => x.Save(It.IsAny<QueueMappingModel>()), Times.Never);
     }
 }

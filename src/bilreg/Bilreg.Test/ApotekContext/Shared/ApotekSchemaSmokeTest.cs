@@ -28,6 +28,7 @@ public class ApotekSchemaSmokeTest
         "BILRG_AptJualBebas.sql",
         "BILRG_AptJualBebasItem.sql",
         "BILRG_AptLoketCurrentCall.sql",
+        "BILRG_AptLoketServicePoint.sql",
         "BILRG_AptQueueClose.sql",
         "BILRG_AptQueueEntry.sql",
         "BILRG_AptQueueMapping.sql",
@@ -64,20 +65,30 @@ public class ApotekSchemaSmokeTest
             conn.Open();
             var sqlRoot = FindSqlRoot();
 
+            EnsureTablesDeployed(conn, sqlRoot);
+
             foreach (var script in TableScripts)
             {
                 var tableName = Path.GetFileNameWithoutExtension(script);
-                if (conn.ExecuteScalar<int>(
-                        "SELECT COUNT(1) FROM sys.tables WHERE name = @tableName",
-                        new { tableName }) != 0)
-                    continue;
-
-                ExecuteScript(conn, Path.Combine(sqlRoot, script));
                 conn.ExecuteScalar<int>(
                         "SELECT COUNT(1) FROM sys.tables WHERE name = @tableName",
                         new { tableName })
                     .Should().Be(1, $"deploying {script} should create {tableName}");
             }
+        }
+    }
+
+    private static void EnsureTablesDeployed(SqlConnection conn, string sqlRoot)
+    {
+        foreach (var script in TableScripts)
+        {
+            var tableName = Path.GetFileNameWithoutExtension(script);
+            if (conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM sys.tables WHERE name = @tableName",
+                    new { tableName }) != 0)
+                continue;
+
+            ExecuteScript(conn, Path.Combine(sqlRoot, script));
         }
     }
 
@@ -114,13 +125,16 @@ public class ApotekSchemaSmokeTest
             var opt = ConnStringHelper.GetTestEnv();
             using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
             conn.Open();
+            var sqlRoot = FindSqlRoot();
+            EnsureTablesDeployed(conn, sqlRoot);
 
             var expectedTables = new[]
             {
                 "BILRG_AptServicePoint",
                 "BILRG_AptQueueEntry",
                 "BILRG_AptLoketCurrentCall",
-                "BILRG_AptDisplayLoket"
+                "BILRG_AptDisplayLoket",
+                "BILRG_AptLoketServicePoint"
             };
 
             foreach (var table in expectedTables)
@@ -151,6 +165,44 @@ public class ApotekSchemaSmokeTest
                 WHERE c.object_id = OBJECT_ID('BILRG_AptLoketCurrentCall') AND c.name = 'RowVersion'
                 """);
             rowVersionType.Should().Be("timestamp", "BILRG_AptLoketCurrentCall must have RowVersion of type timestamp/rowversion");
+        }
+    }
+
+    [Fact]
+    public void Service_points_jaminan_seed_script_exists_and_deploys_to_test_database()
+    {
+        lock (SchemaLock)
+        {
+            var opt = ConnStringHelper.GetTestEnv();
+            using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+            conn.Open();
+            var sqlRoot = FindSqlRoot();
+            EnsureTablesDeployed(conn, sqlRoot);
+
+            var seedPath = Path.Combine(sqlRoot, "BILRG_Apt_Seed_ServicePoints_Jaminan.sql");
+            File.Exists(seedPath).Should().BeTrue("BILRG_Apt_Seed_ServicePoints_Jaminan.sql should exist");
+
+            ExecuteScript(conn, seedPath);
+
+            var spBpjs = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM BILRG_AptServicePoint WHERE ServicePointId = 'SP-FAR-BPJS' AND QueuePrefix = 'A'");
+            spBpjs.Should().Be(1, "SP-FAR-BPJS with prefix A should exist");
+
+            var spUmum = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM BILRG_AptServicePoint WHERE ServicePointId = 'SP-FAR-UMUM' AND QueuePrefix = 'B'");
+            spUmum.Should().Be(1, "SP-FAR-UMUM with prefix B should exist");
+
+            var loket = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM BILRG_AptLoketCurrentCall WHERE LoketKey = 'APT-RCV-01'");
+            loket.Should().Be(1, "Default loket APT-RCV-01 should exist");
+
+            var mappingBpjs = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM BILRG_AptLoketServicePoint WHERE LoketKey = 'APT-RCV-01' AND ServicePointId = 'SP-FAR-BPJS'");
+            mappingBpjs.Should().Be(1, "APT-RCV-01 to SP-FAR-BPJS mapping should exist");
+
+            var mappingUmum = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM BILRG_AptLoketServicePoint WHERE LoketKey = 'APT-RCV-01' AND ServicePointId = 'SP-FAR-UMUM'");
+            mappingUmum.Should().Be(1, "APT-RCV-01 to SP-FAR-UMUM mapping should exist");
         }
     }
 

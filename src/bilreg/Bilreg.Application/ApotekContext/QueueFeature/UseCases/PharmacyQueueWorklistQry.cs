@@ -53,6 +53,14 @@ public class PharmacyQueueWorklistHandler : IRequestHandler<PharmacyQueueWorklis
 
         var activeEntries = _queueEntryRepo.ListActiveByDepo(request.DepoFarmasiId);
 
+        if (request.ServicePointIds is { Count: > 0 })
+        {
+            var allowedSpSet = new HashSet<string>(
+                request.ServicePointIds.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+            activeEntries = activeEntries.Where(e => allowedSpSet.Contains(e.ServicePointId)).ToList();
+        }
+
         var servicePoints = _servicePointRepo.ListByDepo(request.DepoFarmasiId)
             .ToDictionary(x => x.ServicePointId, StringComparer.OrdinalIgnoreCase);
 

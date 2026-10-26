@@ -13,6 +13,9 @@ public static class ApotekQueueInfrastructureServiceRegistration
         services.AddScoped<IPharmacyServicePointDal, PharmacyServicePointDal>();
         services.AddScoped<IPharmacyServicePointRepo, PharmacyServicePointRepo>();
 
+        services.AddScoped<IPharmacyLoketServicePointDal, PharmacyLoketServicePointDal>();
+        services.AddScoped<IPharmacyLoketServicePointRepo, PharmacyLoketServicePointRepo>();
+
         services.AddScoped<IPharmacyDisplayLoketDal, PharmacyDisplayLoketDal>();
         services.AddScoped<IPharmacyDisplayLoketRepo, PharmacyDisplayLoketRepo>();
 

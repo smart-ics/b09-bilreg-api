@@ -331,4 +331,60 @@ public class PharmacyQueueWorklistHandlerTest
         row.PasienHadirAt.Should().Be(_testTime.AddMinutes(5));
         row.DemandIds.Should().ContainSingle().Which.Should().Be("KP007");
     }
+
+    [Fact]
+    public async Task Handle_Filters_By_ServicePointIds_When_Provided()
+    {
+        // Arrange
+        var spBpjs = PharmacyServicePointModel.Create("SP-FAR-BPJS", "DEPO-RJ", "Resep BPJS", "A");
+        var spUmum = PharmacyServicePointModel.Create("SP-FAR-UMUM", "DEPO-RJ", "Resep Umum", "B");
+        _servicePointRepo.Setup(x => x.ListByDepo("DEPO-RJ")).Returns([spBpjs, spUmum]);
+
+        var itemBpjs = ApotekQueueEntryModel.Create("ANT-1", 1, "SP-FAR-BPJS", "A", _testTime);
+        var itemUmum = ApotekQueueEntryModel.Create("ANT-1", 2, "SP-FAR-UMUM", "B", _testTime);
+
+        _queueEntryRepo.Setup(x => x.ListActiveByDepo("DEPO-RJ")).Returns([itemBpjs, itemUmum]);
+        _mappingRepo.Setup(x => x.ListByQueue(It.IsAny<string>(), It.IsAny<int>())).Returns([]);
+
+        var sut = CreateSut();
+
+        // Act: Filter specifically for SP-FAR-BPJS
+        var result = await sut.Handle(
+            new PharmacyQueueWorklistQry("DEPO-RJ", ServicePointIds: ["SP-FAR-BPJS"]),
+            CancellationToken.None);
+
+        // Assert: Only BPJS item is returned
+        result.TotalCount.Should().Be(1);
+        result.WaitingCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items[0].QueueLabel.Should().Be("A001");
+        result.Items[0].ServicePointId.Should().Be("SP-FAR-BPJS");
+    }
+
+    [Fact]
+    public async Task Handle_Returns_All_ServicePoints_When_ServicePointIds_NullOrEmpty()
+    {
+        // Arrange
+        var spBpjs = PharmacyServicePointModel.Create("SP-FAR-BPJS", "DEPO-RJ", "Resep BPJS", "A");
+        var spUmum = PharmacyServicePointModel.Create("SP-FAR-UMUM", "DEPO-RJ", "Resep Umum", "B");
+        _servicePointRepo.Setup(x => x.ListByDepo("DEPO-RJ")).Returns([spBpjs, spUmum]);
+
+        var itemBpjs = ApotekQueueEntryModel.Create("ANT-1", 1, "SP-FAR-BPJS", "A", _testTime);
+        var itemUmum = ApotekQueueEntryModel.Create("ANT-1", 2, "SP-FAR-UMUM", "B", _testTime);
+
+        _queueEntryRepo.Setup(x => x.ListActiveByDepo("DEPO-RJ")).Returns([itemBpjs, itemUmum]);
+        _mappingRepo.Setup(x => x.ListByQueue(It.IsAny<string>(), It.IsAny<int>())).Returns([]);
+
+        var sut = CreateSut();
+
+        // Act: No servicePointIds filter passed
+        var result = await sut.Handle(
+            new PharmacyQueueWorklistQry("DEPO-RJ", ServicePointIds: null),
+            CancellationToken.None);
+
+        // Assert: All items returned
+        result.TotalCount.Should().Be(2);
+        result.Items.Should().HaveCount(2);
+        result.Items.Select(x => x.QueueLabel).Should().BeEquivalentTo(["A001", "B002"]);
+    }
 }

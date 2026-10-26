@@ -1,8 +1,12 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.Shared;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.PatternHelper;
@@ -13,14 +17,21 @@ namespace Bilreg.Application.ApotekContext.QueueFeature.UseCases;
 
 /// <summary>
 /// Command intake tiket antrean farmasi dari mesin kiosk mandiri.
+/// Mendukung alur scan nomor registrasi (RegId) dengan klasifikasi otomatis BPJS/Umum,
+/// serta fallback antrean umum mandiri.
 /// </summary>
 public record PharmacyQueueIntakeCmd(
-    string ServicePointId,
+    string ServicePointId = "",
     string DepoFarmasiId = "",
+    string RegId = "",
     string UserId = "KIOSK") : IRequest<PharmacyQueueIntakeResponse>
 {
     public PharmacyQueueIntakeCmd(PharmacyQueueIntakeReq req)
-        : this(req.ServicePointId, req.DepoFarmasiId, string.IsNullOrWhiteSpace(req.UserId) ? "KIOSK" : req.UserId)
+        : this(
+            ServicePointId: req.ServicePointId ?? "",
+            DepoFarmasiId: req.DepoFarmasiId ?? "",
+            RegId: req.RegId ?? "",
+            UserId: string.IsNullOrWhiteSpace(req.UserId) ? "KIOSK" : req.UserId)
     {
     }
 }
@@ -28,11 +39,16 @@ public record PharmacyQueueIntakeCmd(
 /// <summary>
 /// Handler untuk use case alokasi on-demand tiket antrean farmasi di kiosk mandiri.
 /// Mengalokasikan nomor antrean sekuensial on-demand via ISequencer tanpa membuat baris OPEN,
+/// mengevaluasi tipe jaminan pasien (BPJS prefix A vs Umum prefix B),
+/// melakukan auto demand mapping untuk e-resep aktif milik registrasi ke BILRG_AptQueueMapping,
 /// membuat entri generik BILRG_AntrianEntry (Waiting = 0) dan entri apotek BILRG_AptQueueEntry (ApotekPhase = TAKEN),
 /// serta menyiarkan notifikasi SignalR ke worklist Loket 1.
 /// </summary>
 public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd, PharmacyQueueIntakeResponse>
 {
+    public const string ServicePointBpjsId = "SP-FAR-BPJS";
+    public const string ServicePointUmumId = "SP-FAR-UMUM";
+
     private readonly IPharmacyServicePointRepo _servicePoints;
     private readonly IApotekQueueEntryRepo _queueEntries;
     private readonly IAntrianRepo _antrianRepo;
@@ -41,6 +57,9 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
     private readonly IPharmacyQueuePublisher _publisher;
     private readonly ITglJamProvider _clock;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IRegRepo? _regRepo;
+    private readonly IResepRepo? _resepRepo;
+    private readonly IPharmacyQueueMappingRepo? _mappingRepo;
 
     public PharmacyQueueIntakeHandler(
         IPharmacyServicePointRepo servicePoints,
@@ -50,7 +69,10 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         ISequencer sequencer,
         IPharmacyQueuePublisher publisher,
         ITglJamProvider clock,
-        IAptAuthorizationPolicy auth)
+        IAptAuthorizationPolicy auth,
+        IRegRepo? regRepo = null,
+        IResepRepo? resepRepo = null,
+        IPharmacyQueueMappingRepo? mappingRepo = null)
     {
         _servicePoints = servicePoints;
         _queueEntries = queueEntries;
@@ -60,6 +82,9 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         _publisher = publisher;
         _clock = clock;
         _auth = auth;
+        _regRepo = regRepo;
+        _resepRepo = resepRepo;
+        _mappingRepo = mappingRepo;
     }
 
     public async Task<PharmacyQueueIntakeResponse> Handle(
@@ -67,16 +92,38 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(PharmacyQueueIntakeCmd), request.UserId);
-        Guard.Against.NullOrWhiteSpace(request.ServicePointId, nameof(request.ServicePointId));
 
-        var occurredAt = _clock.Now;
-        var businessDate = DateOnly.FromDateTime(occurredAt);
+        RegModel? reg = null;
+        string targetServicePointId;
+        List<ResepModel> activeReseps = [];
 
-        var servicePoint = _servicePoints.Get(request.ServicePointId)
-            .GetValueOrThrow($"Pharmacy service point '{request.ServicePointId}' not found");
+        if (!string.IsNullOrWhiteSpace(request.RegId))
+        {
+            var regKey = RegModel.Key(request.RegId.Trim());
+            reg = _regRepo.LoadEntity(regKey)
+                .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
+
+            targetServicePointId = IsBpjs(reg) ? ServicePointBpjsId : ServicePointUmumId;
+
+            activeReseps = (_resepRepo.ListData(regKey) ?? [])
+                .Where(x => !x.IsVoid)
+                .ToList();
+        }
+        else
+        {
+            targetServicePointId = !string.IsNullOrWhiteSpace(request.ServicePointId)
+                ? request.ServicePointId.Trim()
+                : ServicePointUmumId;
+        }
+
+        var servicePoint = _servicePoints.Get(targetServicePointId)
+            .GetValueOrThrow($"Pharmacy service point '{targetServicePointId}' not found");
 
         if (!servicePoint.Active)
             throw new InvalidOperationException($"Pharmacy service point '{servicePoint.ServicePointId}' is not active.");
+
+        var occurredAt = _clock.Now;
+        var businessDate = DateOnly.FromDateTime(occurredAt);
 
         var reference = new ServicePointType(servicePoint.ServicePointId, servicePoint.DisplayName);
         var sequenceTag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue, reference);
@@ -86,17 +133,38 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         PharmacyQueueIntakeResponse response;
         try
         {
-            response = CommitIntake(queue, servicePoint, sequenceTag, occurredAt);
+            response = CommitIntake(queue, servicePoint, sequenceTag, occurredAt, reg, activeReseps, request.UserId);
         }
         catch (AdmissionQueueSessionRaceException)
         {
             // One-winner reload jika terjadi balapan pembentukan header sesi antrean
             var winner = ReloadWinnerSession(businessDate, sequenceTag);
-            response = CommitIntake(winner, servicePoint, sequenceTag, occurredAt);
+            response = CommitIntake(winner, servicePoint, sequenceTag, occurredAt, reg, activeReseps, request.UserId);
         }
 
-        await _publisher.PublishWorklistRefresh(servicePoint.DepoFarmasiId);
+        var broadcastDepo = !string.IsNullOrWhiteSpace(servicePoint.DepoFarmasiId)
+            ? servicePoint.DepoFarmasiId
+            : request.DepoFarmasiId;
+
+        await _publisher.PublishWorklistRefresh(broadcastDepo, cancellationToken);
         return response;
+    }
+
+    private static bool IsBpjs(RegModel reg)
+    {
+        if (reg.TipeJaminan is null)
+            return false;
+
+        var id = reg.TipeJaminan.TipeJaminanId?.Trim() ?? string.Empty;
+        var name = reg.TipeJaminan.TipeJaminanName?.Trim() ?? string.Empty;
+
+        if (id == "1" || id.Contains("BPJS", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (name.Contains("BPJS", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 
     private AntrianModel ResolveOrCreateQueue(
@@ -129,7 +197,10 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         AntrianModel queue,
         PharmacyServicePointModel servicePoint,
         string sequenceTag,
-        DateTime occurredAt)
+        DateTime occurredAt,
+        RegModel? reg,
+        IReadOnlyList<ResepModel> activeReseps,
+        string userId)
     {
         var genericEntry = queue.AddEntry(occurredAt);
 
@@ -143,6 +214,37 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
         using var trans = TransHelper.NewScope();
         _antrianRepo.SaveNewEntry(queue, genericEntry);
         _queueEntries.Save(aptEntry);
+
+        foreach (var resep in activeReseps)
+        {
+            var existingOpt = _mappingRepo.GetByDemand(QueueDemandKindEnum.ResepKerja, resep.ResepId);
+            QueueMappingModel mapping;
+            if (existingOpt.HasValue)
+            {
+                mapping = existingOpt.Value;
+                mapping.Correct(
+                    queue.AntrianId,
+                    aptEntry.NoUrut,
+                    mapping.PasienTrackerId,
+                    userId,
+                    occurredAt);
+            }
+            else
+            {
+                mapping = QueueMappingModel.Create(
+                    QueueDemandKindEnum.ResepKerja,
+                    resep.ResepId,
+                    queue.AntrianId,
+                    aptEntry.NoUrut,
+                    pasienTrackerId: string.Empty,
+                    QueueMappingMethodEnum.Tracker,
+                    mappedBy: userId,
+                    mappedAt: occurredAt);
+            }
+
+            _mappingRepo.Save(mapping);
+        }
+
         trans.Complete();
 
         var waitingAheadCount = _queueEntries.ListByPhase(servicePoint.DepoFarmasiId, ApotekPhaseEnum.TAKEN)
@@ -157,6 +259,9 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
             QueuePrefix: servicePoint.QueuePrefix,
             ApotekPhase: aptEntry.ApotekPhase,
             TakenAt: aptEntry.TakenAt,
-            WaitingAheadCount: waitingAheadCount);
+            WaitingAheadCount: waitingAheadCount,
+            PatientName: reg?.Pasien?.PasienName ?? string.Empty,
+            MedicalRecordNo: reg?.Pasien?.PasienId ?? string.Empty,
+            Penjamin: reg?.TipeJaminan?.TipeJaminanName ?? string.Empty);
     }
 }

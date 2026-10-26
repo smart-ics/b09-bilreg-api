@@ -9,9 +9,10 @@ namespace Bilreg.Application.ApotekContext.QueueFeature;
 /// Permintaan cetak / pengambilan nomor tiket antrean farmasi dari mesin kiosk mandiri.
 /// </summary>
 public record PharmacyQueueIntakeReq(
-    string ServicePointId,
+    string ServicePointId = "",
     string DepoFarmasiId = "",
-    string UserId = "KIOSK");
+    string UserId = "KIOSK",
+    string RegId = "");
 
 /// <summary>
 /// Data tiket hasil alokasi on-demand mesin antrean farmasi.
@@ -25,7 +26,10 @@ public record PharmacyQueueIntakeResponse(
     string QueuePrefix,
     ApotekPhaseEnum ApotekPhase,
     DateTime TakenAt,
-    int WaitingAheadCount);
+    int WaitingAheadCount,
+    string PatientName = "",
+    string MedicalRecordNo = "",
+    string Penjamin = "");
 
 #endregion
 
@@ -37,7 +41,8 @@ public record PharmacyQueueIntakeResponse(
 public record PharmacyQueueWorklistQry(
     string DepoFarmasiId,
     string? FilterTab = null,
-    ApotekPhaseEnum? Phase = null) : IRequest<PharmacyQueueWorklistResponse>;
+    ApotekPhaseEnum? Phase = null,
+    IReadOnlyList<string>? ServicePointIds = null) : IRequest<PharmacyQueueWorklistResponse>;
 
 /// <summary>
 /// Baris item ringkasan tiket antrean pada panel worklist petugas apotek.
@@ -239,6 +244,26 @@ public record PharmacyServicePointResponse(
     string DisplayName,
     string QueuePrefix,
     bool Active);
+
+#endregion
+
+#region Loket Service Point DTOs
+
+/// <summary>
+/// Data konfigurasi daftar titik layanan yang dilayani oleh suatu loket fisik.
+/// </summary>
+public record LoketServicePointsResponse(
+    string LoketKey,
+    IReadOnlyList<string> ServicePointIds,
+    byte[] RowVersion);
+
+/// <summary>
+/// Permintaan pembaruan daftar service point yang dilayani loket fisik.
+/// </summary>
+public record UpdateLoketServicePointsReq(
+    IReadOnlyList<string> ServicePointIds,
+    byte[] RowVersion,
+    string UserId = "");
 
 #endregion
 

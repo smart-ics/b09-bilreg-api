@@ -104,6 +104,7 @@ public class PharmacyQueueCallPenerimaanCmdHandler
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _clock;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IPharmacyLoketServicePointRepo? _loketServicePoints;
 
     public PharmacyQueueCallPenerimaanCmdHandler(
         IPharmacyQueueOperationRepo operations,
@@ -111,7 +112,8 @@ public class PharmacyQueueCallPenerimaanCmdHandler
         IPharmacyQueuePublisher publisher,
         IAuditRepo auditRepo,
         ITglJamProvider clock,
-        IAptAuthorizationPolicy auth)
+        IAptAuthorizationPolicy auth,
+        IPharmacyLoketServicePointRepo? loketServicePoints = null)
     {
         _operations = operations;
         _queueEntries = queueEntries;
@@ -119,6 +121,7 @@ public class PharmacyQueueCallPenerimaanCmdHandler
         _auditRepo = auditRepo;
         _clock = clock;
         _auth = auth;
+        _loketServicePoints = loketServicePoints;
     }
 
     public async Task<PharmacyQueueLoketCallResponse> Handle(
@@ -162,6 +165,14 @@ public class PharmacyQueueCallPenerimaanCmdHandler
         else
         {
             var waitingTickets = _queueEntries.ListByPhase(loket.DepoFarmasiId, ApotekPhaseEnum.TAKEN);
+
+            var assignedServicePoints = _loketServicePoints?.ListServicePointsByLoket(request.LoketKey);
+            if (assignedServicePoints is { Count: > 0 })
+            {
+                var allowedSet = new HashSet<string>(assignedServicePoints, StringComparer.OrdinalIgnoreCase);
+                waitingTickets = waitingTickets.Where(t => allowedSet.Contains(t.ServicePointId)).ToList();
+            }
+
             var nextTicket = waitingTickets.OrderBy(t => t.NoUrut).FirstOrDefault()
                 ?? throw new InvalidOperationException(
                     $"No tickets with phase TAKEN waiting in pharmacy depot '{loket.DepoFarmasiId}'.");
