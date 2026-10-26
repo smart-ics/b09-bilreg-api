@@ -80,7 +80,8 @@ public record DeliveryGetItemResponse(
     decimal Total,
     string NoBatch,
     string TglEd,
-    DeliveryGetInspectionResponse Inspection
+    DeliveryGetInspectionResponse Inspection,
+    decimal Het = 0m
 );
 
 public record DeliveryGetInspectionResponse(
@@ -145,7 +146,8 @@ public class DeliveryGetHandler : IRequestHandler<DeliveryGetQuery, DeliveryGetR
                 item.Inspection.NoSuratJaminan,
                 item.Inspection.PoId,
                 item.Inspection.PoNoUrut
-            )
+            ),
+            item.Het
         )).ToList();
 
         var confirmedAtStr = model.Confirmed.Timestamp != default && model.Confirmed.Timestamp.Year < 3000

@@ -83,7 +83,7 @@ public class DeliveryCreateDraftCommandTest
         ];
     }
 
-    private List<DeliveryCreateDraftItemCommand> CreateSampleItems(DateTime? edDate = null)
+    private List<DeliveryCreateDraftItemCommand> CreateSampleItems(DateTime? edDate = null, decimal het = 0m)
     {
         var ed = edDate ?? _now.AddMonths(24);
         return
@@ -106,7 +106,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: het)
         ];
     }
 
@@ -321,7 +322,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: 0m)
         };
 
         var command = new DeliveryCreateDraftCommand(
@@ -370,7 +372,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1),
+                PoNoUrut: 1,
+                Het: 0m),
             new(
                 BrgId: "BRG001",
                 SatuanId: "BOX",
@@ -389,7 +392,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: 0m)
         };
 
         var command = new DeliveryCreateDraftCommand(
@@ -438,7 +442,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1),
+                PoNoUrut: 1,
+                Het: 0m),
             new(
                 BrgId: "BRG001",
                 SatuanId: "BOX",
@@ -457,7 +462,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: true,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: 0m)
         };
 
         var command = new DeliveryCreateDraftCommand(
@@ -553,7 +559,8 @@ public class DeliveryCreateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: 0m)
         };
 
         var command = new DeliveryCreateDraftCommand(
@@ -601,5 +608,36 @@ public class DeliveryCreateDraftCommandTest
         savedModel.Should().NotBeNull();
         savedModel!.DeliveryOrderDate.Should().Be(new DateTime(2026, 10, 21, 10, 0, 0));
         savedModel.DeliveryOrderDate.TimeOfDay.Should().Be(_now.TimeOfDay);
+    }
+
+    [Fact]
+    public async Task Handle_WhenValidDraftWithHet_PassesHetToDomainModel()
+    {
+        // ARRANGE
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
+
+        var command = new DeliveryCreateDraftCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: CreateSampleItems(het: 65000m),
+            SupplierName: SupplierName,
+            GudangName: GudangName,
+            DeliveryOrderDate: _now);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        savedModel.Should().NotBeNull();
+        savedModel!.ListItem.Should().HaveCount(1);
+        savedModel.ListItem.First().Het.Should().Be(65000m);
     }
 }

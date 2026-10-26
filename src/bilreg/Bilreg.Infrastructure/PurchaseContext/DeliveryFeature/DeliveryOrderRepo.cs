@@ -100,7 +100,8 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
                 itemDto.Total,
                 itemDto.NoBatch,
                 itemDto.TglEd,
-                inspection
+                inspection,
+                itemDto.Het
             );
             items.Add(item);
         }
@@ -293,7 +294,7 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             TglEd = item.TglEd,
             IsVoid = status == DeliveryOrderStatusEnum.Voided,
             Konversi = item.Konversi,
-            Het = 0m,
+            Het = item.Het,
             Biaya = 0m
         };
     }

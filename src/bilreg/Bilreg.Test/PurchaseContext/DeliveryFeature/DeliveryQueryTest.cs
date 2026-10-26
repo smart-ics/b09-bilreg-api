@@ -57,6 +57,7 @@ public class DeliveryQueryTest
             noBatch: "BATCH123",
             tglEd: refDate.AddYears(2),
             inspection: inspection,
+            het: 55000m,
             referenceDate: refDate
         );
 
@@ -112,6 +113,7 @@ public class DeliveryQueryTest
         item.NoBatch.Should().Be("BATCH123");
         item.TglEd.Should().Be(new DateTime(2028, 10, 15).ToString("yyyy-MM-dd"));
 
+        item.Het.Should().Be(55000m);
         item.Inspection.Should().NotBeNull();
         item.Inspection.QtyKirim.Should().Be(10m);
         item.Inspection.QtyDiterima.Should().Be(8m);

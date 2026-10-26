@@ -17,8 +17,12 @@ public record DeliveryOrderItemType
         decimal total,
         string noBatch,
         DateTime tglEd,
-        DeliveryInspectionType inspection)
+        DeliveryInspectionType inspection,
+        decimal het = 0m)
     {
+        if (het < 0)
+            throw new ArgumentException("HET tidak boleh bernilai negatif.", nameof(het));
+
         NoUrut = noUrut;
         Brg = brg;
         Satuan = satuan;
@@ -32,6 +36,7 @@ public record DeliveryOrderItemType
         NoBatch = noBatch;
         TglEd = tglEd;
         Inspection = inspection;
+        Het = het;
     }
 
     public static DeliveryOrderItemType Create(
@@ -45,6 +50,7 @@ public record DeliveryOrderItemType
         string noBatch,
         DateTime tglEd,
         DeliveryInspectionType inspection,
+        decimal het = 0m,
         DateTime? referenceDate = null)
     {
         if (brg == null || string.IsNullOrWhiteSpace(brg.BrgId))
@@ -61,6 +67,8 @@ public record DeliveryOrderItemType
             throw new ArgumentException("Diskon per satuan tidak boleh melebihi harga satuan.", nameof(diskon));
         if (taxPercentage < 0)
             throw new ArgumentException("Persentase pajak tidak boleh bernilai negatif.", nameof(taxPercentage));
+        if (het < 0)
+            throw new ArgumentException("HET tidak boleh bernilai negatif.", nameof(het));
         if (string.IsNullOrWhiteSpace(noBatch))
             throw new ArgumentException("Nomor lot/batch tidak boleh kosong.", nameof(noBatch));
         if (inspection == null)
@@ -98,8 +106,35 @@ public record DeliveryOrderItemType
             total,
             noBatch.Trim(),
             tglEd,
-            inspection);
+            inspection,
+            het);
     }
+
+    public static DeliveryOrderItemType Create(
+        int noUrut,
+        BrgReff brg,
+        SatuanType satuan,
+        int konversi,
+        decimal harga,
+        decimal diskon,
+        decimal taxPercentage,
+        string noBatch,
+        DateTime tglEd,
+        DeliveryInspectionType inspection,
+        DateTime? referenceDate)
+        => Create(
+            noUrut,
+            brg,
+            satuan,
+            konversi,
+            harga,
+            diskon,
+            taxPercentage,
+            noBatch,
+            tglEd,
+            inspection,
+            0m,
+            referenceDate);
 
     public static DeliveryOrderItemType Create(
         int noUrut,
@@ -112,6 +147,7 @@ public record DeliveryOrderItemType
         string noBatch,
         DateTime tglEd,
         DeliveryInspectionType inspection,
+        decimal het = 0m,
         DateTime? referenceDate = null)
         => Create(
             noUrut,
@@ -124,6 +160,33 @@ public record DeliveryOrderItemType
             noBatch,
             tglEd,
             inspection,
+            het,
+            referenceDate);
+
+    public static DeliveryOrderItemType Create(
+        int noUrut,
+        IBrg brg,
+        SatuanType satuan,
+        int konversi,
+        decimal harga,
+        decimal diskon,
+        decimal taxPercentage,
+        string noBatch,
+        DateTime tglEd,
+        DeliveryInspectionType inspection,
+        DateTime? referenceDate)
+        => Create(
+            noUrut,
+            brg?.ToReff() ?? throw new ArgumentNullException(nameof(brg)),
+            satuan,
+            konversi,
+            harga,
+            diskon,
+            taxPercentage,
+            noBatch,
+            tglEd,
+            inspection,
+            0m,
             referenceDate);
 
     public int NoUrut { get; private set; }
@@ -139,6 +202,7 @@ public record DeliveryOrderItemType
     public string NoBatch { get; init; }
     public DateTime TglEd { get; init; }
     public DeliveryInspectionType Inspection { get; init; }
+    public decimal Het { get; init; }
 
     public decimal Qty => Inspection.QtyDiterima;
     public decimal QtyDiterima => Inspection.QtyDiterima;

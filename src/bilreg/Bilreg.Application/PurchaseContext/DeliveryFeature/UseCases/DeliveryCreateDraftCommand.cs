@@ -41,7 +41,8 @@ public record DeliveryCreateDraftItemCommand(
     bool IsBonus = false,
     bool HasJaminanRetur = false,
     string NoSuratJaminan = "",
-    int PoNoUrut = 0
+    int PoNoUrut = 0,
+    decimal Het = 0m
 );
 
 public record DeliveryCreateDraftResponse(string DeliveryOrderId)
@@ -213,6 +214,7 @@ public class DeliveryCreateDraftHandler : IRequestHandler<DeliveryCreateDraftCom
                 item.NoBatch,
                 item.TglEd,
                 inspection,
+                item.Het,
                 occuredAt);
         }
 

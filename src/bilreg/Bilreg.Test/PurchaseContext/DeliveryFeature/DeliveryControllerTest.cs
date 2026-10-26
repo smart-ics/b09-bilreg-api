@@ -46,7 +46,12 @@ public class DeliveryControllerTest
             "GDFAR",
             "Penerimaan barang batch 1",
             "USR01",
-            new List<DeliveryCreateDraftItemCommand>()
+            new List<DeliveryCreateDraftItemCommand>
+            {
+                new DeliveryCreateDraftItemCommand(
+                    "BRG01", "BOX", 1, 50000m, 0m, 11m, "BATCH01", DateTime.Today.AddYears(1),
+                    10, 10, 0, Het: 60000m)
+            }
         );
         var expectedResponse = new DeliveryCreateDraftResponse("DM001");
 
@@ -78,7 +83,12 @@ public class DeliveryControllerTest
             "GDFAR",
             "Update draft keterangan",
             "USR01",
-            new List<DeliveryUpdateDraftItemCommand>()
+            new List<DeliveryUpdateDraftItemCommand>
+            {
+                new DeliveryUpdateDraftItemCommand(
+                    "BRG01", "BOX", 1, 50000m, 0m, 11m, "BATCH01", DateTime.Today.AddYears(1),
+                    10, 10, 0, Het: 60000m)
+            }
         );
         var expectedResponse = new DeliveryUpdateDraftResponse(doId);
 
@@ -130,7 +140,12 @@ public class DeliveryControllerTest
             "GDFAR",
             "Direct confirm",
             "USR01",
-            new List<DeliveryDirectConfirmItemCommand>()
+            new List<DeliveryDirectConfirmItemCommand>
+            {
+                new DeliveryDirectConfirmItemCommand(
+                    "BRG01", "BOX", 1, 50000m, 0m, 11m, "BATCH01", DateTime.Today.AddYears(1),
+                    10, 10, 0, Het: 60000m)
+            }
         );
         var expectedResponse = new DeliveryDirectConfirmResponse("DM001", "Confirmed");
 
@@ -193,7 +208,14 @@ public class DeliveryControllerTest
             0m,
             111000m,
             new DeliveryGetConfirmedResponse("", ""),
-            new List<DeliveryGetItemResponse>()
+            new List<DeliveryGetItemResponse>
+            {
+                new DeliveryGetItemResponse(
+                    1, "BRG01", "Paracetamol", "BOX", "Box", 1, 50000m, 0m, 50000m, 11m, 5500m, 55500m,
+                    "BATCH01", "2027-10-01",
+                    new DeliveryGetInspectionResponse(10, 10, 0, "", false, false, "", "PO-001", 1),
+                    Het: 60000m)
+            }
         );
 
         _mediatorMock

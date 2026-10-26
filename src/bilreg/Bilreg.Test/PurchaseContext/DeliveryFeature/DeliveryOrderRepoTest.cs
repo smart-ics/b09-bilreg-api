@@ -78,6 +78,7 @@ public class DeliveryOrderRepoTest
                 noBatch: $"BATCH-00{i}",
                 tglEd: refDate.AddMonths(24),
                 inspection: inspection,
+                het: 65000m,
                 referenceDate: refDate);
 
             model.AddItem(item, refDate);
@@ -134,7 +135,7 @@ public class DeliveryOrderRepoTest
                 TglEd = new DateTime(2028, 10, 15),
                 IsVoid = false,
                 Konversi = 10,
-                Het = 0m,
+                Het = 65000m,
                 Biaya = 0m
             }
         ];
@@ -219,6 +220,7 @@ public class DeliveryOrderRepoTest
         capturedItems.Should().HaveCount(1);
         capturedItems!.First().BrgId.Should().Be("BRG0001");
         capturedItems!.First().Qty.Should().Be(10m);
+        capturedItems!.First().Het.Should().Be(65000m);
 
         capturedInspections.Should().NotBeNull();
         capturedInspections.Should().HaveCount(1);
@@ -381,6 +383,7 @@ public class DeliveryOrderRepoTest
         item.SubTotal.Should().Be(450000m);
         item.Tax.Should().Be(49500m);
         item.Total.Should().Be(499500m);
+        item.Het.Should().Be(65000m);
 
         item.Inspection.Should().NotBeNull();
         item.Inspection.QtyKirim.Should().Be(10m);

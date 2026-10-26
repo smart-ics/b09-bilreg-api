@@ -92,7 +92,7 @@ public class DeliveryDirectConfirmCommandTest
         ];
     }
 
-    private List<DeliveryDirectConfirmItemCommand> CreateSampleItems(DateTime? edDate = null)
+    private List<DeliveryDirectConfirmItemCommand> CreateSampleItems(DateTime? edDate = null, decimal het = 0m)
     {
         var ed = edDate ?? _now.AddMonths(24);
         return
@@ -115,7 +115,8 @@ public class DeliveryDirectConfirmCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: het)
         ];
     }
 
@@ -575,5 +576,35 @@ public class DeliveryDirectConfirmCommandTest
         savedModel.Should().NotBeNull();
         savedModel!.DeliveryOrderDate.Should().Be(new DateTime(2026, 10, 21, 10, 0, 0));
         savedModel.DeliveryOrderDate.TimeOfDay.Should().Be(_now.TimeOfDay);
+    }
+
+    [Fact]
+    public async Task Handle_WhenValidDirectConfirmWithHet_PassesHetToDomainModel()
+    {
+        // ARRANGE
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
+
+        var command = new DeliveryDirectConfirmCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: CreateSampleItems(het: 80000m),
+            SupplierName: SupplierName,
+            GudangName: GudangName);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        savedModel.Should().NotBeNull();
+        savedModel!.ListItem.Should().HaveCount(1);
+        savedModel.ListItem.First().Het.Should().Be(80000m);
     }
 }

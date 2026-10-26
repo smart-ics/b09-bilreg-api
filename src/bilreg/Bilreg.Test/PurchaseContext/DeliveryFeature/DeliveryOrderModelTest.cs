@@ -611,4 +611,71 @@ public class DeliveryOrderModelTest
             .WithMessage("*berstatus Confirmed*");
     }
     #endregion
+
+    #region Invariant 6: HET (Harga Eceran Tertinggi)
+    [Fact]
+    public void AddItem_WithValidHet_ShouldAssignHetToItem()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        var insp = DeliveryInspectionType.Create(10, 10, 0, "");
+
+        // Act
+        sut.AddItem(_brg1, _satuanBox, 10, 50000, 0, 11, "LOT-HET-01", ed, insp, het: 65000m, referenceDate: _baseDate);
+
+        // Assert
+        sut.ListItem.Should().HaveCount(1);
+        var item = sut.ListItem.First();
+        item.Het.Should().Be(65000m);
+    }
+
+    [Fact]
+    public void AddItem_WithoutHet_ShouldDefaultHetToZero()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        var insp = DeliveryInspectionType.Create(10, 10, 0, "");
+
+        // Act
+        sut.AddItem(_brg1, _satuanBox, 10, 50000, 0, 11, "LOT-HET-02", ed, insp, _baseDate);
+
+        // Assert
+        sut.ListItem.Should().HaveCount(1);
+        var item = sut.ListItem.First();
+        item.Het.Should().Be(0m);
+    }
+
+    [Fact]
+    public void AddItem_WithNegativeHet_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        var insp = DeliveryInspectionType.Create(10, 10, 0, "");
+
+        // Act
+        var act = () => sut.AddItem(_brg1, _satuanBox, 10, 50000, 0, 11, "LOT-HET-03", ed, insp, het: -1000m, referenceDate: _baseDate);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*HET tidak boleh bernilai negatif*");
+    }
+
+    [Fact]
+    public void DeliveryOrderItemType_Constructor_WithNegativeHet_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var insp = DeliveryInspectionType.Create(10, 10, 0, "");
+
+        // Act
+        var act = () => new DeliveryOrderItemType(
+            1, _brg1, _satuanBox, 1, 1000, 0, 1000, 11, 110, 1110, "BATCH-01", _baseDate.AddMonths(24), insp, -500m);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*HET tidak boleh bernilai negatif*");
+    }
+    #endregion
 }

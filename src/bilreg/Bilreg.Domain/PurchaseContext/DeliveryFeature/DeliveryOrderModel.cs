@@ -188,14 +188,28 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         string noBatch,
         DateTime tglEd,
         DeliveryInspectionType inspection,
+        decimal het = 0m,
         DateTime? referenceDate = null)
     {
         var refDate = referenceDate ?? DeliveryOrderDate;
         var nextNoUrut = _listItem.Select(x => x.NoUrut).DefaultIfEmpty(0).Max() + 1;
         var item = DeliveryOrderItemType.Create(
-            nextNoUrut, brg, satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, refDate);
+            nextNoUrut, brg, satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, het, refDate);
         AddItem(item, refDate);
     }
+
+    public void AddItem(
+        BrgReff brg,
+        SatuanType satuan,
+        int konversi,
+        decimal harga,
+        decimal diskon,
+        decimal taxPercentage,
+        string noBatch,
+        DateTime tglEd,
+        DeliveryInspectionType inspection,
+        DateTime? referenceDate)
+        => AddItem(brg, satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, 0m, referenceDate);
 
     public void AddItem(
         IBrg brg,
@@ -207,8 +221,22 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         string noBatch,
         DateTime tglEd,
         DeliveryInspectionType inspection,
+        decimal het = 0m,
         DateTime? referenceDate = null)
-        => AddItem(brg?.ToReff() ?? throw new ArgumentNullException(nameof(brg)), satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, referenceDate);
+        => AddItem(brg?.ToReff() ?? throw new ArgumentNullException(nameof(brg)), satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, het, referenceDate);
+
+    public void AddItem(
+        IBrg brg,
+        SatuanType satuan,
+        int konversi,
+        decimal harga,
+        decimal diskon,
+        decimal taxPercentage,
+        string noBatch,
+        DateTime tglEd,
+        DeliveryInspectionType inspection,
+        DateTime? referenceDate)
+        => AddItem(brg?.ToReff() ?? throw new ArgumentNullException(nameof(brg)), satuan, konversi, harga, diskon, taxPercentage, noBatch, tglEd, inspection, 0m, referenceDate);
 
     public void RemoveItem(int noUrut)
     {

@@ -86,7 +86,7 @@ public class DeliveryUpdateDraftCommandTest
         ];
     }
 
-    private List<DeliveryUpdateDraftItemCommand> CreateSampleItems(DateTime? edDate = null)
+    private List<DeliveryUpdateDraftItemCommand> CreateSampleItems(DateTime? edDate = null, decimal het = 0m)
     {
         var ed = edDate ?? _now.AddMonths(24);
         return
@@ -109,7 +109,8 @@ public class DeliveryUpdateDraftCommandTest
                 IsBonus: false,
                 HasJaminanRetur: false,
                 NoSuratJaminan: "",
-                PoNoUrut: 1)
+                PoNoUrut: 1,
+                Het: het)
         ];
     }
 
@@ -700,5 +701,41 @@ public class DeliveryUpdateDraftCommandTest
         capturedSavedModel.Should().NotBeNull();
         capturedSavedModel!.DeliveryOrderDate.Should().Be(new DateTime(2026, 10, 22, 10, 0, 0));
         capturedSavedModel.DeliveryOrderDate.TimeOfDay.Should().Be(_now.TimeOfDay);
+    }
+
+    [Fact]
+    public async Task Handle_WhenValidDraftWithHet_PassesHetToDomainModel()
+    {
+        // Arrange
+        var existingModel = CreateSampleDraftModel();
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns(MayBe.From(existingModel));
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId))
+            .Returns(CreateSamplePoQuotas());
+
+        DeliveryOrderModel? capturedSavedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => capturedSavedModel = m);
+
+        var command = new DeliveryUpdateDraftCommand(
+            DeliveryOrderId: DoId,
+            SuratJalanNo: "SJ-UPDATED-99",
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: "Catatan terupdate",
+            UserId: "USR02",
+            Items: CreateSampleItems(het: 75000m),
+            SupplierName: SupplierName,
+            GudangName: GudangName);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        capturedSavedModel.Should().NotBeNull();
+        capturedSavedModel!.ListItem.Should().HaveCount(1);
+        capturedSavedModel.ListItem.First().Het.Should().Be(75000m);
     }
 }
