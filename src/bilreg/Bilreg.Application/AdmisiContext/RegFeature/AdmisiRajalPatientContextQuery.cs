@@ -283,9 +283,9 @@ public sealed class AdmisiRajalPatientContextHandler :
             .ThenByDescending(x => x.VisitDate)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var bookings = request.Scope is PatientContextScope.Patient
+        List<AdmisiRajalPatientContextResult> bookings = request.Scope is PatientContextScope.Patient
                 or PatientContextScope.Registration
-            ? []
+            ? ([])
             : bookingViews
                 .Where(x => Real(x.Reg.RegId) is not { } registrationId
                     || !bookingSuccessorIds.Contains(registrationId))

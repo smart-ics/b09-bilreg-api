@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 public class AuditTrailType
 {
@@ -7,7 +7,7 @@ public class AuditTrailType
         Created = created;
         Modified = modified;
         Voided = voided;
-        IsVoided = false;
+        IsVoided = !string.IsNullOrWhiteSpace(voided.UserId) && voided.Timestamp.Date != new DateTime(3000, 1, 1);
     }
     public AuditInfoType Created { get; init; }
     public AuditInfoType Modified { get; private set; }
