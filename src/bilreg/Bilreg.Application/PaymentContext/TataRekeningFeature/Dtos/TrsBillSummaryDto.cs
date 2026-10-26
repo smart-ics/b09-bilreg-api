@@ -7,4 +7,9 @@ public record TrsBillSummaryDto(
     string RegId,
     BillModulGroup ModulGroup,
     decimal NilaiTotal,
-    decimal FinancialTotal);
+    decimal FinancialTotal,
+    DateTime TglTrs,
+    string LayananName,
+    string Keterangan,
+    string RefBiaya,
+    string RekapCetakName);

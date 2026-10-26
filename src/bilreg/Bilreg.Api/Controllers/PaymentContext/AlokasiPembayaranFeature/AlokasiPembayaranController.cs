@@ -11,6 +11,7 @@ namespace Bilreg.Api.Controllers.PaymentContext.AlokasiPembayaranFeature;
 /// Alokasi Pembayaran &amp; Pertanggungan API (SOP-TR-06 through SOP-TR-08, SOP-TR-10).
 /// </summary>
 [Route("api/alokasipembayaran")]
+[Route("api/tatarekening")]
 [ApiController]
 [Authorize]
 public class AlokasiPembayaranController : ControllerBase

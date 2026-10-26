@@ -81,6 +81,58 @@ public class RegRepoTest
     }
 
     [Fact]
+    public void GivenNonExistentReg_WhenLoadReff_ThenReturnsNone()
+    {
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+
+        var result = CreateSut().LoadReff(RegModel.Key("RG_NONEXISTENT"));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenVoidReg_WhenLoadReff_ThenReturnsNone()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap) with { fd_tgl_void = "2026-07-08" };
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenDischargedReg_WhenLoadReff_ThenReturnsNone()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap) with { fd_tgl_keluar = "2026-07-08" };
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenActiveRegInap_WhenLoadReff_ThenReturnsRegReffAndDoesNotCallBangsalRepo()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg =>
+            {
+                reg.RegId.Should().Be(dto.fs_kd_reg);
+                reg.PasienId.Should().Be(dto.fs_mr);
+                reg.PasienName.Should().Be(dto.fs_nm_pasien);
+            },
+            onNone: () => Assert.Fail("Expected RegReff"));
+        _bangsalRepo.Verify(x => x.ListData(It.IsAny<ILayananKey>()), Times.Never);
+    }
+
+    [Fact]
     public void GivenRegWithSyncFields_WhenSaveChanges_ThenRegDtoStillUsesLegacyRegistrationFields()
     {
         RegDto? inserted = null;

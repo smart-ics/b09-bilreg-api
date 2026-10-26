@@ -7,6 +7,7 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -89,6 +90,96 @@ public class AlokasiPembayaranCommandTests
         result.Projection.Should().HaveCount(1);
         _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
         _trsBillingRepo.Verify(r => r.SaveChanges(bill), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDepositGreaterThanBill_WhenAllocatePartialDeposit_ThenSucceedsAndGeneratesProjection()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 3_000_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 10_000_000m, 0m, 10_000_000m));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYDPU", "Deposit", false, 3_000_000m, 0m, "COA-DPU", "DPU")
+        };
+
+        var handler = new AllocateFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
+
+        var result = await handler.Handle(
+            new AllocateFinancialResponsibilityCommand(RegId, payments),
+            CancellationToken.None);
+
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
+        result.Projection.Should().HaveCount(1);
+        result.Projection[0].NilaiJasa.Should().Be(3_000_000m);
+        _depositRepo.Verify(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
+        _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(bill), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDepositAllocationExceedsSaldo_WhenAllocate_ThenThrowsInvalidOperationException()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 200_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 100_000m, 0m, 100_000m));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYDPU", "Deposit", false, 150_000m, 0m, "COA-DPU", "DPU"),
+            new("BYKAS", "KAS", false, 50_000m, 0m, "COA-KAS", "KAS")
+        };
+
+        var handler = new AllocateFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
+
+        var act = () => handler.Handle(
+            new AllocateFinancialResponsibilityCommand(RegId, payments),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Alokasi deposit (150,000) melebihi saldo deposit aktif yang tersedia (100,000).*");
+    }
+
+    [Fact]
+    public async Task GivenDepositAllocationExceedsTotalBill_WhenAllocate_ThenThrowsInvalidOperationException()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 200_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 500_000m, 0m, 500_000m));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYDPU", "Deposit", false, 300_000m, 0m, "COA-DPU", "DPU"),
+            new("BYKAS", "KAS", false, -100_000m, 0m, "COA-KAS", "KAS")
+        };
+
+        var handler = new AllocateFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
+
+        var act = () => handler.Handle(
+            new AllocateFinancialResponsibilityCommand(RegId, payments),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Alokasi deposit (300,000) melebihi total tagihan kunjungan (200,000).*");
     }
 
     [Fact]

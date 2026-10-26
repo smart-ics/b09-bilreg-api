@@ -34,6 +34,10 @@ public class DepositVoidHandler : IRequestHandler<DepositVoidCmd>
         if (deposit.Audit.IsVoided)
             throw new InvalidOperationException($"Deposit {request.DepositId} sudah dibatalkan.");
 
+        var saldo = _depositRepo.GetSaldo(deposit.Reg);
+        if (saldo?.TotalTerpakai > 0)
+            throw new InvalidOperationException($"Deposit tidak dapat dibatalkan karena telah digunakan dalam alokasi pembayaran pada registrasi {deposit.Reg.RegId}.");
+
         deposit.Audit.Batal(request.UserId, _tglJamProvider.Now);
         _depositRepo.SaveChanges(deposit);
 

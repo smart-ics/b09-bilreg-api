@@ -249,7 +249,7 @@ public record RegKomponenType(
 public record RegReff(
     string RegId,
     string PasienId,
-    string PasienName);
+    string PasienName) : IRegKey;
 public record RegEligibilityType(
     string SjpId,
     string SjpNo,

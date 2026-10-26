@@ -1,8 +1,9 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature;
@@ -14,6 +15,7 @@ public interface IRegRepo :
     IListData<RegView, Periode, ILayananKey>
 {
     bool IsPasienAktifReg(IPasienKey pasien);
+    MayBe<RegReff> LoadReff(IRegKey key);
 }
 
 public record RegView(

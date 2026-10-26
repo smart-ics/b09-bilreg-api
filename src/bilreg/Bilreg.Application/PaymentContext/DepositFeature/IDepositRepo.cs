@@ -9,4 +9,5 @@ public interface IDepositRepo :
     ILoadEntity<DepositModel, IDepositId>,
     IListData<DepositModel, IRegKey>
 {
+    DepositSaldoModel GetSaldo(IRegKey key);
 }

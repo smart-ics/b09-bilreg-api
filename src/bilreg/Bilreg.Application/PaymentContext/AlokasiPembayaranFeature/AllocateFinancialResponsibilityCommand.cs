@@ -79,12 +79,23 @@ public class AllocateFinancialResponsibilityHandler
             .Where(x => x.PaymentId == PaymentType.ByDpu.PaymentId || x.PaymentId == PaymentType.ByDpk.PaymentId)
             .Sum(x => x.NilaiJasa + x.NilaiObat);
 
-        if (hasDepositPayment || totalDepositAllocated != 0)
+        if (hasDepositPayment || totalDepositAllocated > 0)
         {
-            var deposits = _depositRepo.ListData(request)?.ToList() ?? [];
-            var saldoAktifDeposit = deposits.Where(d => !d.Audit.IsVoided).Sum(d => d.NilaiDeposit);
-            if (totalDepositAllocated != saldoAktifDeposit)
-                throw new InvalidOperationException($"Alokasi deposit harus sejumlah penuh saldo aktif ({saldoAktifDeposit:N0}), saat ini ({totalDepositAllocated:N0}).");
+            var saldo = _depositRepo.GetSaldo(request);
+            var saldoAktifDeposit = saldo?.SaldoAktif ?? 0m;
+
+            if (totalDepositAllocated > saldoAktifDeposit)
+            {
+                throw new InvalidOperationException(
+                    $"Alokasi deposit ({totalDepositAllocated:N0}) melebihi saldo deposit aktif yang tersedia ({saldoAktifDeposit:N0}).");
+            }
+
+            var totalTagihan = tataRekening.ListTrsBill.Sum(b => b.FinancialTotal);
+            if (totalDepositAllocated > totalTagihan)
+            {
+                throw new InvalidOperationException(
+                    $"Alokasi deposit ({totalDepositAllocated:N0}) melebihi total tagihan kunjungan ({totalTagihan:N0}).");
+            }
         }
 
         var listPayment = request.Payments

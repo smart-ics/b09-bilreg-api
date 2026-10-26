@@ -8,7 +8,9 @@ public record OpenTataRekeningApiResponse(
     TataRekeningSummaryDto Summary,
     IReadOnlyList<TrsBillSummaryDto> Bills,
     IReadOnlyList<PaymentProjectionDto> Projection,
-    IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests);
+    IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests,
+    TataRekeningPatientContextDto? PatientContext = null,
+    TataRekeningBillingBreakdownDto? SummaryBreakdown = null);
 
 public record TataRekeningMutationApiResponse(TataRekeningSummaryDto Summary);
 
@@ -26,7 +28,7 @@ public record FinancialAdjustmentApiResponse(
 public static class TataRekeningApiMapper
 {
     public static OpenTataRekeningApiResponse ToApiResponse(OpenTataRekeningResponse response) =>
-        new(response.Summary, response.Bills, response.Projection, response.PendingMergeRequests);
+        new(response.Summary, response.Bills, response.Projection, response.PendingMergeRequests, response.PatientContext, response.SummaryBreakdown);
 
     public static TataRekeningMutationApiResponse ToApiResponse(CloseBillResponse response) =>
         new(response.Summary);

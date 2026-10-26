@@ -8,6 +8,7 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using FluentAssertions;
@@ -58,8 +59,11 @@ public class TataRekeningPhase3ApplicationTest
         _mergeRequestRepo.Setup(r => r.ListPendingByPatient(It.IsAny<string>()))
             .Returns([]);
 
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 0m, 0m, 0m));
+
         var handler = new OpenTataRekeningHandler(
-            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object);
+            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object, _depositRepo.Object);
 
         var result = await handler.Handle(new OpenTataRekeningQuery(RegId), CancellationToken.None);
 
@@ -68,6 +72,10 @@ public class TataRekeningPhase3ApplicationTest
         result.Bills[0].TrsBillingId.Should().Be("BILL-01");
         result.PendingMergeRequests.Should().HaveCount(1);
         result.PendingMergeRequests[0].MergeRequestId.Should().Be("MR-01");
+        result.PatientContext.Should().NotBeNull();
+        result.PatientContext!.PasienId.Should().Be(RegModel.Default.Pasien.PasienId);
+        result.SummaryBreakdown.Should().NotBeNull();
+        result.SummaryBreakdown!.GrandTotalKewajiban.Should().Be(50_000m);
     }
 
     [Fact]
@@ -77,7 +85,7 @@ public class TataRekeningPhase3ApplicationTest
             .Returns(MayBe<TataRekeningModel>.None);
 
         var handler = new OpenTataRekeningHandler(
-            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object);
+            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object, _depositRepo.Object);
 
         var act = () => handler.Handle(new OpenTataRekeningQuery(RegId), CancellationToken.None);
 

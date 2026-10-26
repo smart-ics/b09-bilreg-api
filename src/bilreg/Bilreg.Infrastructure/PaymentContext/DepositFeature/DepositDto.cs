@@ -28,9 +28,15 @@ public record DepositDto(
     string updtgl,
     string updjam,
     string updusr,
-    string fs_mr,
-    string fs_nm_pasien,
-    string fs_nm_layanan)
+    string fs_mr = "",
+    string fs_nm_pasien = "",
+    string fs_nm_layanan = "",
+    string fs_no_kwitansi = "",
+    decimal fn_kas = 0,
+    decimal fn_bank = 0,
+    decimal fn_kartu_kredit = 0,
+    string fs_kd_petugas_kasir = "",
+    string fs_terima_dari = "")
 {
     private const string EmptyDate = "3000-01-01";
     private const string EmptyJam = "00:00:00";
@@ -60,23 +66,36 @@ public record DepositDto(
             updusr: model.Audit.Modified.UserId,
             fs_mr: string.Empty,
             fs_nm_pasien: string.Empty,
-            fs_nm_layanan: string.Empty);
+            fs_nm_layanan: string.Empty,
+            fs_no_kwitansi: string.Empty,
+            fn_kas: 0,
+            fn_bank: 0,
+            fn_kartu_kredit: 0,
+            fs_kd_petugas_kasir: string.Empty,
+            fs_terima_dari: string.Empty);
 
     public DepositModel ToModel()
     {
+        var crtTgl = string.IsNullOrWhiteSpace(crttgl) ? "3000-01-01" : crttgl;
+        var crtJam = string.IsNullOrWhiteSpace(crtjam) ? "00:00:00" : crtjam;
+        var updTgl = string.IsNullOrWhiteSpace(updtgl) ? "3000-01-01" : updtgl;
+        var updJam = string.IsNullOrWhiteSpace(updjam) ? "00:00:00" : updjam;
+        var tglVoid = string.IsNullOrWhiteSpace(fd_tgl_void) ? "3000-01-01" : fd_tgl_void;
+        var jamVoid = string.IsNullOrWhiteSpace(fs_jam_void) ? "00:00:00" : fs_jam_void;
+
         var auditTrail = new AuditTrailType(
-            new AuditInfoType(crtusr, crttgl, crtjam),
-            new AuditInfoType(updusr, updtgl, updjam),
-            new AuditInfoType(fs_kd_petugas_void, fd_tgl_void, fs_jam_void));
-        var tglJamVoid = $"{fd_tgl_void} {fs_jam_void}".Trim();
-        if (fd_tgl_void != "3000-01-01" && !string.IsNullOrEmpty(tglJamVoid))
+            new AuditInfoType(crtusr, crtTgl, crtJam),
+            new AuditInfoType(updusr, updTgl, updJam),
+            new AuditInfoType(fs_kd_petugas_void, tglVoid, jamVoid));
+        var tglJamVoid = $"{tglVoid} {jamVoid}".Trim();
+        if (tglVoid != "3000-01-01" && !string.IsNullOrEmpty(tglJamVoid))
             auditTrail.Batal(fs_kd_petugas_void, DateTime.Parse(tglJamVoid));
 
         return new DepositModel(
             depositId: fs_kd_trs,
             depositDate: string.IsNullOrWhiteSpace(fd_tgl_jam_trs) ? default : DateTime.Parse(fd_tgl_jam_trs),
-            reg: new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien),
-            layanan: new LayananReff(fs_kd_layanan, fs_nm_layanan),
+            reg: new RegReff(fs_kd_reg, fs_mr ?? string.Empty, fs_nm_pasien ?? string.Empty),
+            layanan: new LayananReff(fs_kd_layanan, fs_nm_layanan ?? string.Empty),
             ketarangan: fs_keterangan,
             nilaiDeposit: fn_nilai_deposit,
             audit: auditTrail);

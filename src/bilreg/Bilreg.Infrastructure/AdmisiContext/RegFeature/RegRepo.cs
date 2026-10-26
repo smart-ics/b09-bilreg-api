@@ -107,6 +107,19 @@ public class RegRepo : IRegRepo
         return MayBe.From(result);
     }
 
+    public MayBe<RegReff> LoadReff(IRegKey key)
+    {
+        var regDto = _regDal.GetData(key);
+        if (regDto is null)
+            return MayBe<RegReff>.None;
+
+        if (regDto.fd_tgl_void != "3000-01-01" || regDto.fd_tgl_keluar != "3000-01-01")
+            return MayBe<RegReff>.None;
+
+        var result = new RegReff(regDto.fs_kd_reg, regDto.fs_mr, regDto.fs_nm_pasien);
+        return MayBe.From(result);
+    }
+
     public void Delete(IRegKey key)
     {
         _regDal.Delete(key);
