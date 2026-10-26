@@ -21,7 +21,7 @@ public class LabExternalQueryHandlersTest
     }
 
     private static LabExternalModel CreateSampleModel(
-        string regExternalId = "LEX26A14B8C1D",
+        string regExternalId = "LX26A14B8C",
         string externalMrNo = "EXT-202610-00001",
         string patientName = "Jane Doe",
         string nik = "3171012345670001",

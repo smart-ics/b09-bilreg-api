@@ -71,7 +71,7 @@ public class LabBillingIntegrationTest
             new RegEligibilityType("-", "-", "-"),
             []);
 
-    private static LabExternalModel SampleLabExternal(string regExternalId = "LEX26A14B8C1D") =>
+    private static LabExternalModel SampleLabExternal(string regExternalId = "LX26A14B8C") =>
         LabExternalModel.Create(
             regExternalId,
             "EXT-202610-00001",
@@ -131,7 +131,7 @@ public class LabBillingIntegrationTest
     {
         var sut = CreateSut();
         var snapshot = new PatientSnapshotType(
-            "LEX26A14B8C1D", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
         var item = LabOrderTestSupport.SampleItem();
         var order = LabOrderModel.CreateExternal(
             null,
@@ -141,7 +141,7 @@ public class LabBillingIntegrationTest
             new AuditInfoType("U1", DateTime.Now));
 
         _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
-            .Returns(MayBe.From(SampleLabExternal("LEX26A14B8C1D")));
+            .Returns(MayBe.From(SampleLabExternal("LX26A14B8C")));
         _jaminanRepo.Setup(r => r.LoadEntity(It.IsAny<IJaminanKey>()))
             .Returns(MayBe.From(JaminanType.Umum));
         _tarifRepo.Setup(r => r.LoadEntity(It.IsAny<ITarifKey>()))
@@ -160,12 +160,57 @@ public class LabBillingIntegrationTest
         _addBillAppService.Verify(a => a.FromLabOrderItem(
             order,
             It.IsAny<LabOrderItemModel>(),
-            It.Is<RegModel>(reg => reg.RegId == "LEX26A14B8C1D"),
+            It.Is<RegModel>(reg => reg.RegId == "LX26A14B8C" && reg.RegId.Length == 10),
             It.IsAny<JaminanType>(),
             It.IsAny<TarifType>(),
             It.IsAny<NilaiTarifType>(),
             It.IsAny<IEnumerable<KomponenType>>(),
             It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Fact]
+    public void ChargeOrder_ExternalPatient_RegIdWithin10Chars_FitsLegacyBillingSchema()
+    {
+        var sut = CreateSut();
+        var snapshot = new PatientSnapshotType(
+            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+        var item = LabOrderTestSupport.SampleItem();
+        var order = LabOrderModel.CreateExternal(
+            null,
+            snapshot,
+            [LabOrderTestSupport.ResolvedLine(item)],
+            "LAB00000002",
+            new AuditInfoType("U1", DateTime.Now));
+
+        _labExternalRepo.Setup(r => r.LoadEntity(It.IsAny<ILabExternalKey>()))
+            .Returns(MayBe.From(SampleLabExternal("LX26A14B8C")));
+        _jaminanRepo.Setup(r => r.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(JaminanType.Umum));
+        _tarifRepo.Setup(r => r.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default));
+        _nilaiTarifRepo.Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe.From(NilaiTarifType.Default));
+        _komponenRepo.Setup(r => r.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+
+        RegModel? capturedReg = null;
+        _addBillAppService.Setup(a => a.FromLabOrderItem(
+            order,
+            It.IsAny<LabOrderItemModel>(),
+            It.IsAny<RegModel>(),
+            It.IsAny<JaminanType>(),
+            It.IsAny<TarifType>(),
+            It.IsAny<NilaiTarifType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<DateTime>()))
+            .Callback<LabOrderModel, LabOrderItemModel, RegModel, JaminanType, TarifType, NilaiTarifType, IEnumerable<KomponenType>, DateTime>(
+                (_, _, reg, _, _, _, _, _) => capturedReg = reg);
+
+        sut.ChargeOrder(order, "U1", DateTime.Now);
+
+        capturedReg.Should().NotBeNull();
+        capturedReg!.RegId.Should().StartWith(LabExternalModel.IdPrefix);
+        capturedReg.RegId.Length.Should().Be(10);
     }
 
     [Fact]

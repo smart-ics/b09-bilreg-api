@@ -39,7 +39,7 @@ public class LabOrderChargeHandlerTest
     private static LabOrderModel ExternalOrderedOrder()
     {
         var snapshot = new PatientSnapshotType(
-            "LEX26A14B8C1D", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
         var item = LabOrderTestSupport.SampleItem();
         return LabOrderModel.CreateExternal(
             null,
@@ -106,6 +106,8 @@ public class LabOrderChargeHandlerTest
         persisted.Should().NotBeNull();
         persisted!.LabOrderStatus.Should().Be(LabOrderStatusEnum.Charged);
         persisted.BillingTindakanId.Should().Be("TDK-EXT-0001");
+        persisted.Patient.RegId.Should().Be("LX26A14B8C");
+        persisted.Patient.RegId.Length.Should().Be(10);
         _billingIntegration.Verify(
             i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()),
             Times.Once);
