@@ -60,8 +60,10 @@ using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
+using Bilreg.Application.PurchaseContext.DeliveryFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
+using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.SalesContext.ResepFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -237,6 +239,13 @@ public static class InfrastructureService
         services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
 
         services.AddBrgFeature();
+
+        services.AddScoped<IDeliveryOrderDal, DeliveryOrderDal>();
+        services.AddScoped<IDeliveryOrderItemDal, DeliveryOrderItemDal>();
+        services.AddScoped<IDeliveryInspectionDal, DeliveryInspectionDal>();
+        services.AddScoped<IPoDeliveryTrackingDal, PoDeliveryTrackingDal>();
+        services.AddScoped<IDeliveryValidationDal, DeliveryValidationDal>();
+        services.AddScoped<IDeliveryOrderRepo, DeliveryOrderRepo>();
 
         services
             .Scan(selector => selector
