@@ -5,7 +5,7 @@ namespace Bilreg.Domain.LabContext.LabExternalFeature;
 
 public class LabExternalModel : ILabExternalKey
 {
-    public const string IdPrefix = "LEX";
+    public const string IdPrefix = "LX";
     public static readonly DateTime EmptyDate = new(3000, 1, 1);
 
     public string RegExternalId { get; private set; }

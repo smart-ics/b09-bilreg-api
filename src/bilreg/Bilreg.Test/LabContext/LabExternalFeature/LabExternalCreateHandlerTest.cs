@@ -60,14 +60,14 @@ public class LabExternalCreateHandlerTest
 
         // Assert
         result.Should().NotBeNull();
-        result.RegExternalId.Should().StartWith("LEX");
-        result.RegExternalId.Length.Should().Be(12);
+        result.RegExternalId.Should().StartWith("LX");
+        result.RegExternalId.Length.Should().Be(10);
         result.ExternalMrNo.Should().Be("EXT-202610-00001");
         result.BillingAccountId.Should().Be(result.RegExternalId);
 
         savedBilling.Should().NotBeNull();
         savedBilling!.RegId.Should().Be(result.RegExternalId);
-        savedBilling.RegId.Length.Should().Be(12);
+        savedBilling.RegId.Length.Should().Be(10);
         savedBilling.Status.Should().Be(TataRekeningStatusEnum.Opened);
 
         savedExternal.Should().NotBeNull();
@@ -334,18 +334,18 @@ public class LabExternalCreateHandlerTest
     }
 
     [Fact]
-    public void NumberHelper_GenerateRegExternalId_GeneratesLexPrefixedId()
+    public void NumberHelper_GenerateRegExternalId_GeneratesLxPrefixedId()
     {
         var id = LabExternalNumberHelper.GenerateRegExternalId();
         id.Should().NotBeNullOrWhiteSpace();
-        id.Should().StartWith("LEX");
-        id.Length.Should().Be(12);
+        id.Should().StartWith("LX");
+        id.Length.Should().Be(10);
     }
 
     [Fact]
-    public async Task Handle_Generates12CharRegExternalId_MapsToTataRekeningRegIdWithStatusOpened()
+    public async Task Handle_Generates10CharRegExternalId_MapsToTataRekeningRegIdWithStatusOpened()
     {
-        // AC-ARCH-09 & TD-09: Verify regExternalId 12 characters (NunaId.New("LEX")) is properly mapped to TataRekeningModel.RegId and saved with status Opened
+        // AC-ARCH-09 & TD-10: Verify regExternalId 10 characters (NunaId.NewLegacyCompact("LX")) is properly mapped to TataRekeningModel.RegId and saved with status Opened
         _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(10);
         TataRekeningModel? savedBilling = null;
         LabExternalModel? savedExternal = null;
@@ -371,17 +371,17 @@ public class LabExternalCreateHandlerTest
         var result = await _sut.Handle(cmd, CancellationToken.None);
 
         result.Should().NotBeNull();
-        result.RegExternalId.Should().StartWith("LEX");
-        result.RegExternalId.Length.Should().Be(12);
+        result.RegExternalId.Should().StartWith("LX");
+        result.RegExternalId.Length.Should().Be(10);
 
         savedBilling.Should().NotBeNull();
         savedBilling!.RegId.Should().Be(result.RegExternalId);
-        savedBilling.RegId.Length.Should().Be(12);
+        savedBilling.RegId.Length.Should().Be(10);
         savedBilling.Status.Should().Be(TataRekeningStatusEnum.Opened);
 
         savedExternal.Should().NotBeNull();
         savedExternal!.RegExternalId.Should().Be(result.RegExternalId);
-        savedExternal.RegExternalId.Length.Should().Be(12);
+        savedExternal.RegExternalId.Length.Should().Be(10);
         savedExternal.BillingAccountId.Should().Be(result.RegExternalId);
     }
 }

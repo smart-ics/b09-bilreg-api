@@ -18,6 +18,6 @@ public static class LabExternalNumberHelper
 
     public static string GenerateRegExternalId()
     {
-        return NunaId.New(LabExternalModel.IdPrefix);
+        return NunaId.NewLegacyCompact(LabExternalModel.IdPrefix);
     }
 }
