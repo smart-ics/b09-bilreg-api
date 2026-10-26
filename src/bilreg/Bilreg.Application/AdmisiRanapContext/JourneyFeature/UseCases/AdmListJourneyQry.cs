@@ -25,9 +25,9 @@ public sealed class AdmListJourneyHandler : IRequestHandler<AdmListJourneyQry, J
     public AdmListJourneyHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
-    public Task<JourneyListResult> Handle(AdmListJourneyQry request, CancellationToken cancellationToken)
+    public async Task<JourneyListResult> Handle(AdmListJourneyQry request, CancellationToken cancellationToken)
     {
-        var result = _dal.List(new JourneyListFilter(
+        var filter = new JourneyListFilter(
             request.Scope,
             request.Stage,
             request.SearchTerm,
@@ -39,8 +39,9 @@ public sealed class AdmListJourneyHandler : IRequestHandler<AdmListJourneyQry, J
             request.DateFrom,
             request.DateTo,
             request.Cursor,
-            request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, 200)), _tglJamProvider.Now);
-        return Task.FromResult(result);
+            request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, 200));
+
+        return await _dal.ListAsync(filter, _tglJamProvider.Now, cancellationToken);
     }
 }
 
@@ -54,12 +55,12 @@ public sealed class AdmGetJourneyHandler : IRequestHandler<AdmGetJourneyQry, Jou
     public AdmGetJourneyHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
-    public Task<JourneyDetailWorkspace?> Handle(AdmGetJourneyQry request, CancellationToken cancellationToken)
+    public async Task<JourneyDetailWorkspace?> Handle(AdmGetJourneyQry request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.JourneyId))
-            return Task.FromResult<JourneyDetailWorkspace?>(null);
+            return null;
 
-        return Task.FromResult(_dal.GetByJourneyId(request.JourneyId.Trim(), _tglJamProvider.Now));
+        return await _dal.GetByJourneyIdAsync(request.JourneyId.Trim(), _tglJamProvider.Now, cancellationToken);
     }
 }
 
@@ -76,8 +77,8 @@ public sealed class AdmResolveJourneyLegacyRecordHandler
     public AdmResolveJourneyLegacyRecordHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
-    public Task<JourneyLegacyResolution?> Handle(
+    public async Task<JourneyLegacyResolution?> Handle(
         AdmResolveJourneyLegacyRecordQry request,
         CancellationToken cancellationToken) =>
-        Task.FromResult(_dal.ResolveLegacyRecord(request.RecordType, request.RecordId, _tglJamProvider.Now));
+        await _dal.ResolveLegacyRecordAsync(request.RecordType, request.RecordId, _tglJamProvider.Now, cancellationToken);
 }
