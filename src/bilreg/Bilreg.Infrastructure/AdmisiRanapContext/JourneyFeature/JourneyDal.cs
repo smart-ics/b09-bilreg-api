@@ -26,11 +26,11 @@ public sealed partial class JourneyDal : IJourneyDal
     private static readonly DateTime VoidSentinel = new(3000, 1, 1);
     private const int CommandTimeoutSeconds = 60;
 
-    /// <summary>Fixed list round-trips when the page is non-empty: facet, page, sources+admissions, wl+reg extras.</summary>
-    public const int FixedListRoundTripsWithPage = 4;
+    /// <summary>Fixed list round-trips when the page is non-empty: facet+page batch, sources+admissions, wl+reg extras.</summary>
+    public const int FixedListRoundTripsWithPage = 3;
 
-    /// <summary>Fixed list round-trips when the page is empty: facet + page only.</summary>
-    public const int FixedListRoundTripsEmptyPage = 2;
+    /// <summary>Fixed list round-trips when the page is empty: facet+page batch only.</summary>
+    public const int FixedListRoundTripsEmptyPage = 1;
 
     private readonly DatabaseOptions _opt;
     private readonly ILogger<JourneyDal> _logger;
@@ -49,7 +49,10 @@ public sealed partial class JourneyDal : IJourneyDal
         _cancellationEligibility = cancellationEligibility;
     }
 
-    public JourneyListResult List(JourneyListFilter filter, DateTime businessNow = default)
+    public async Task<JourneyListResult> ListAsync(
+        JourneyListFilter filter,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         var asOf = businessNow;
         _businessDate = DateOnly.FromDateTime(businessNow);
@@ -57,7 +60,7 @@ public sealed partial class JourneyDal : IJourneyDal
         var swTotal = System.Diagnostics.Stopwatch.StartNew();
         var roundTrips = 0;
 
-        using var conn = Open();
+        await using var conn = await OpenAsync(cancellationToken);
         var dp = BuildCommonParams(filter);
         dp.AddParam("@PageSize", pageSize + 1, SqlDbType.Int);
 
@@ -74,19 +77,15 @@ public sealed partial class JourneyDal : IJourneyDal
             dp.AddParam("@HasCursor", 0, SqlDbType.Int);
         }
 
-        var facetSql = BuildFacetSql(filter);
-        var pageSql = BuildPageSql(filter);
+        var batchSql = BuildFacetAndPageSql(filter);
 
         var swFacetPage = System.Diagnostics.Stopwatch.StartNew();
-        var facets = (conn.Query<FacetRowDto>(
-                new CommandDefinition(facetSql, dp, commandTimeout: CommandTimeoutSeconds))
-            ?? []).ToList();
+        using var multi = await conn.QueryMultipleAsync(
+            new CommandDefinition(batchSql, dp, commandTimeout: CommandTimeoutSeconds, cancellationToken: cancellationToken));
         roundTrips++;
 
-        var pageKeys = (conn.Query<JourneyPageKeyDto>(
-                new CommandDefinition(pageSql, dp, commandTimeout: CommandTimeoutSeconds))
-            ?? []).ToList();
-        roundTrips++;
+        var facets = (await multi.ReadAsync<FacetRowDto>() ?? []).ToList();
+        var pageKeys = (await multi.ReadAsync<JourneyPageKeyDto>() ?? []).ToList();
         swFacetPage.Stop();
 
         string? nextCursor = null;
@@ -100,7 +99,9 @@ public sealed partial class JourneyDal : IJourneyDal
         var totalMatches = facets.Sum(f => f.Cnt);
 
         var swBatch = System.Diagnostics.Stopwatch.StartNew();
-        var bagsByJourneyId = BatchLoadFactBags(conn, pageKeys, ref roundTrips);
+        var bagsByJourneyId = await BatchLoadFactBagsAsync(conn, pageKeys, cancellationToken);
+        if (pageKeys.Count > 0)
+            roundTrips += 2;
         swBatch.Stop();
 
         var swResolve = System.Diagnostics.Stopwatch.StartNew();
@@ -149,7 +150,13 @@ public sealed partial class JourneyDal : IJourneyDal
             JourneyProjectionVersions.Release1);
     }
 
-    public JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow = default)
+    public JourneyListResult List(JourneyListFilter filter, DateTime businessNow = default) =>
+        ListAsync(filter, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    public async Task<JourneyDetailWorkspace?> GetByJourneyIdAsync(
+        string journeyId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(journeyId))
             return null;
@@ -157,8 +164,8 @@ public sealed partial class JourneyDal : IJourneyDal
         var asOf = businessNow;
         _businessDate = DateOnly.FromDateTime(businessNow);
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var conn = Open();
-        var bag = LoadFactBag(conn, journeyId.Trim());
+        await using var conn = await OpenAsync(cancellationToken);
+        var bag = await LoadFactBagAsync(conn, journeyId.Trim(), cancellationToken);
         if (bag is null)
             return null;
 
@@ -167,7 +174,7 @@ public sealed partial class JourneyDal : IJourneyDal
         if (!string.IsNullOrWhiteSpace(resolution.Identity.RegId)
             && resolution.CandidateAdmisiActions.Any(a => a.Code == JourneyActionCode.CancelAdmission))
         {
-            hasBilling = QueryHasBillingItems(conn, resolution.Identity.RegId!);
+            hasBilling = await QueryHasBillingItemsAsync(conn, resolution.Identity.RegId!, cancellationToken);
         }
 
         var detail = MapDetail(bag, resolution, asOf, hasBilling);
@@ -181,7 +188,14 @@ public sealed partial class JourneyDal : IJourneyDal
         return detail;
     }
 
-    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow = default)
+    public JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow = default) =>
+        GetByJourneyIdAsync(journeyId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    public async Task<JourneyLegacyResolution?> ResolveLegacyRecordAsync(
+        string recordType,
+        string recordId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(recordType) || string.IsNullOrWhiteSpace(recordId))
             return null;
@@ -190,10 +204,10 @@ public sealed partial class JourneyDal : IJourneyDal
         var id = recordId.Trim();
         JourneyDetailWorkspace? detail = type switch
         {
-            "opnamerequest" or "opname" or "opn" => GetByJourneyId(JourneyIdFactory.FromOpnameRequest(id), businessNow),
-            "reservation" or "rsv" => GetByJourneyId(JourneyIdFactory.FromReservation(id), businessNow),
-            "admission" or "registration" or "reg" => GetByJourneyId(JourneyIdFactory.FromRegId(id), businessNow),
-            "waitinglist" or "wl" or "wtl" => ResolveWaitingList(id, businessNow),
+            "opnamerequest" or "opname" or "opn" => await GetByJourneyIdAsync(JourneyIdFactory.FromOpnameRequest(id), businessNow, cancellationToken),
+            "reservation" or "rsv" => await GetByJourneyIdAsync(JourneyIdFactory.FromReservation(id), businessNow, cancellationToken),
+            "admission" or "registration" or "reg" => await GetByJourneyIdAsync(JourneyIdFactory.FromRegId(id), businessNow, cancellationToken),
+            "waitinglist" or "wl" or "wtl" => await ResolveWaitingListAsync(id, businessNow, cancellationToken),
             _ => null
         };
 
@@ -207,31 +221,44 @@ public sealed partial class JourneyDal : IJourneyDal
             detail.ReconciliationIssues);
     }
 
-    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId, DateTime businessNow)
+    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow = default) =>
+        ResolveLegacyRecordAsync(recordType, recordId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyDetailWorkspace?> ResolveWaitingListAsync(
+        string waitingListId,
+        DateTime businessNow,
+        CancellationToken cancellationToken = default)
     {
-        using var conn = Open();
-        var regId = conn.ExecuteScalar<string?>(new CommandDefinition(
+        await using var conn = await OpenAsync(cancellationToken);
+        var regId = await conn.ExecuteScalarAsync<string?>(new CommandDefinition(
             """
             SELECT RegId
             FROM BILRG_BedWaitingList
             WHERE VodDate = @VodDate AND WaitingListId = @WaitingListId
             """,
             new { VodDate = VoidSentinel, WaitingListId = waitingListId },
-            commandTimeout: CommandTimeoutSeconds));
+            commandTimeout: CommandTimeoutSeconds,
+            cancellationToken: cancellationToken));
 
         return string.IsNullOrWhiteSpace(regId)
             ? null
-            : GetByJourneyId(JourneyIdFactory.FromRegId(regId), businessNow);
+            : await GetByJourneyIdAsync(JourneyIdFactory.FromRegId(regId), businessNow, cancellationToken);
     }
 
+    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId, DateTime businessNow) =>
+        ResolveWaitingListAsync(waitingListId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
     /// <summary>
-    /// Single-journey fact load (detail path and batch-parity oracle). Prefer <see cref="BatchLoadFactBags"/> for lists.
+    /// Single-journey fact load (detail path and batch-parity oracle). Prefer <see cref="BatchLoadFactBagsAsync"/> for lists.
     /// </summary>
-    internal JourneyFactBag? LoadFactBagForTests(string journeyId)
+    internal async Task<JourneyFactBag?> LoadFactBagForTestsAsync(string journeyId, CancellationToken cancellationToken = default)
     {
-        using var conn = Open();
-        return LoadFactBag(conn, journeyId);
+        await using var conn = await OpenAsync(cancellationToken);
+        return await LoadFactBagAsync(conn, journeyId, cancellationToken);
     }
+
+    internal JourneyFactBag? LoadFactBagForTests(string journeyId) =>
+        LoadFactBagForTestsAsync(journeyId).GetAwaiter().GetResult();
 
     private static JourneyListItem MapListItem(
         JourneyFactBag bag,
@@ -322,30 +349,47 @@ public sealed partial class JourneyDal : IJourneyDal
             JourneyProjectionVersions.Release1);
     }
 
-    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
-        conn.ExecuteScalar<bool>(
+    private static async Task<bool> QueryHasBillingItemsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        await conn.ExecuteScalarAsync<bool>(
             new CommandDefinition(
                 RegistrationCancellationEligibilityDal.HasBillingItemsSql,
                 new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
-    private JourneyFactBag? LoadFactBag(IDbConnection conn, string journeyId)
+    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
+        QueryHasBillingItemsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadFactBagAsync(
+        IDbConnection conn,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
         if (!JourneyIdFactory.TryParse(journeyId, out var prefix, out var domainId))
             return null;
 
         return prefix switch
         {
-            JourneyIdFactory.OpnamePrefix => LoadOpnameJourney(conn, domainId, journeyId),
-            JourneyIdFactory.ReservationPrefix => LoadReservationJourney(conn, domainId, journeyId),
-            JourneyIdFactory.RegPrefix => LoadRegJourney(conn, domainId, journeyId),
+            JourneyIdFactory.OpnamePrefix => await LoadOpnameJourneyAsync(conn, domainId, journeyId, cancellationToken),
+            JourneyIdFactory.ReservationPrefix => await LoadReservationJourneyAsync(conn, domainId, journeyId, cancellationToken),
+            JourneyIdFactory.RegPrefix => await LoadRegJourneyAsync(conn, domainId, journeyId, cancellationToken),
             _ => null
         };
     }
 
-    private JourneyFactBag? LoadOpnameJourney(IDbConnection conn, string opnameRequestId, string journeyId)
+    private JourneyFactBag? LoadFactBag(IDbConnection conn, string journeyId) =>
+        LoadFactBagAsync(conn, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadOpnameJourneyAsync(
+        IDbConnection conn,
+        string opnameRequestId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var opn = conn.QueryFirstOrDefault<OpnameRowDto>(
+        var opn = await conn.QueryFirstOrDefaultAsync<OpnameRowDto>(
             new CommandDefinition(
                 """
                 SELECT o.OpnameRequestId, o.OpnameRequestStatus, o.FulfilledRegId, o.PasienId,
@@ -358,14 +402,15 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE o.VodDate = @VodDate AND o.OpnameRequestId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = opnameRequestId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (opn is null)
             return null;
 
         // Prefer registered episode when Admission links this source.
-        var admission = FindAdmissionByOpname(conn, opnameRequestId, opn.FulfilledRegId);
+        var admission = await FindAdmissionByOpnameAsync(conn, opnameRequestId, opn.FulfilledRegId, cancellationToken);
         if (admission is not null)
-            return LoadAdmissionBag(conn, admission, JourneyOriginKind.OpnameRequest, opn, reservation: null);
+            return await LoadAdmissionBagAsync(conn, admission, JourneyOriginKind.OpnameRequest, opn, reservation: null, cancellationToken);
 
         var patient = BuildPatient(opn.PasienId, opn.PasienName, opn.Gender, opn.TglLahir);
         var facts = new JourneyNormalizedFacts(
@@ -397,9 +442,16 @@ public sealed partial class JourneyDal : IJourneyDal
             AddressSummary: null);
     }
 
-    private JourneyFactBag? LoadReservationJourney(IDbConnection conn, string reservationId, string journeyId)
+    private JourneyFactBag? LoadOpnameJourney(IDbConnection conn, string opnameRequestId, string journeyId) =>
+        LoadOpnameJourneyAsync(conn, opnameRequestId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadReservationJourneyAsync(
+        IDbConnection conn,
+        string reservationId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var rsv = conn.QueryFirstOrDefault<ReservationRowDto>(
+        var rsv = await conn.QueryFirstOrDefaultAsync<ReservationRowDto>(
             new CommandDefinition(
                 """
                 SELECT r.ReservationId, r.ReservationStatus, r.RealizedRegId, r.PasienId,
@@ -409,13 +461,14 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE r.VodDate = @VodDate AND r.ReservationId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = reservationId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (rsv is null)
             return null;
 
-        var admission = FindAdmissionByReservation(conn, reservationId, rsv.RealizedRegId);
+        var admission = await FindAdmissionByReservationAsync(conn, reservationId, rsv.RealizedRegId, cancellationToken);
         if (admission is not null)
-            return LoadAdmissionBag(conn, admission, JourneyOriginKind.Reservation, opname: null, rsv);
+            return await LoadAdmissionBagAsync(conn, admission, JourneyOriginKind.Reservation, opname: null, rsv, cancellationToken);
 
         var patient = BuildPatient(rsv.PasienId, rsv.PasienName, rsv.Gender, rsv.TglLahir);
         var facts = new JourneyNormalizedFacts(
@@ -447,9 +500,16 @@ public sealed partial class JourneyDal : IJourneyDal
             AddressSummary: null);
     }
 
-    private JourneyFactBag? LoadRegJourney(IDbConnection conn, string regId, string journeyId)
+    private JourneyFactBag? LoadReservationJourney(IDbConnection conn, string reservationId, string journeyId) =>
+        LoadReservationJourneyAsync(conn, reservationId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadRegJourneyAsync(
+        IDbConnection conn,
+        string regId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var admission = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var admission = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
                 """
                 SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
@@ -462,7 +522,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE a.VodDate = @VodDate AND a.RegId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (admission is null)
             return null;
 
@@ -470,11 +531,27 @@ public sealed partial class JourneyDal : IJourneyDal
         OpnameRowDto? opn = null;
         ReservationRowDto? rsv = null;
         if (HasId(admission.OpnameRequestId))
-            opn = LoadOpnameRow(conn, admission.OpnameRequestId);
+            opn = await LoadOpnameRowAsync(conn, admission.OpnameRequestId, cancellationToken);
         if (HasId(admission.ReservationId))
-            rsv = LoadReservationRow(conn, admission.ReservationId);
+            rsv = await LoadReservationRowAsync(conn, admission.ReservationId, cancellationToken);
 
-        return LoadAdmissionBag(conn, admission, origin, opn, rsv);
+        return await LoadAdmissionBagAsync(conn, admission, origin, opn, rsv, cancellationToken);
+    }
+
+    private JourneyFactBag? LoadRegJourney(IDbConnection conn, string regId, string journeyId) =>
+        LoadRegJourneyAsync(conn, regId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag> LoadAdmissionBagAsync(
+        IDbConnection conn,
+        AdmissionRowDto admission,
+        JourneyOriginKind origin,
+        OpnameRowDto? opname,
+        ReservationRowDto? reservation,
+        CancellationToken cancellationToken = default)
+    {
+        var wlRows = await LoadWaitingListRowsAsync(conn, admission.RegId, cancellationToken);
+        var regExtras = await LoadRegistrationExtrasAsync(conn, admission.RegId, cancellationToken);
+        return AssembleAdmissionBag(admission, origin, opname, reservation, wlRows, regExtras);
     }
 
     private JourneyFactBag LoadAdmissionBag(
@@ -482,12 +559,8 @@ public sealed partial class JourneyDal : IJourneyDal
         AdmissionRowDto admission,
         JourneyOriginKind origin,
         OpnameRowDto? opname,
-        ReservationRowDto? reservation)
-    {
-        var wlRows = LoadWaitingListRows(conn, admission.RegId);
-        var regExtras = LoadRegistrationExtras(conn, admission.RegId);
-        return AssembleAdmissionBag(admission, origin, opname, reservation, wlRows, regExtras);
-    }
+        ReservationRowDto? reservation) =>
+        LoadAdmissionBagAsync(conn, admission, origin, opname, reservation, CancellationToken.None).GetAwaiter().GetResult();
 
     private JourneyFactBag AssembleAdmissionBag(
         AdmissionRowDto admission,
@@ -611,9 +684,13 @@ public sealed partial class JourneyDal : IJourneyDal
             regExtras.AddressSummary);
     }
 
-    private AdmissionRowDto? FindAdmissionByOpname(IDbConnection conn, string opnameRequestId, string? fulfilledRegId)
+    private async Task<AdmissionRowDto?> FindAdmissionByOpnameAsync(
+        IDbConnection conn,
+        string opnameRequestId,
+        string? fulfilledRegId,
+        CancellationToken cancellationToken = default)
     {
-        var bySource = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var bySource = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
                 """
                 SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
@@ -627,14 +704,15 @@ public sealed partial class JourneyDal : IJourneyDal
                 ORDER BY a.AdmissionDate DESC
                 """,
                 new { VodDate = VoidSentinel, OpnameRequestId = opnameRequestId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (bySource is not null)
             return bySource;
 
         if (!HasId(fulfilledRegId))
             return null;
 
-        return conn.QueryFirstOrDefault<AdmissionRowDto>(
+        return await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
                 """
                 SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
@@ -647,12 +725,20 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE a.VodDate = @VodDate AND a.RegId = @RegId
                 """,
                 new { VodDate = VoidSentinel, RegId = fulfilledRegId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
     }
 
-    private AdmissionRowDto? FindAdmissionByReservation(IDbConnection conn, string reservationId, string? realizedRegId)
+    private AdmissionRowDto? FindAdmissionByOpname(IDbConnection conn, string opnameRequestId, string? fulfilledRegId) =>
+        FindAdmissionByOpnameAsync(conn, opnameRequestId, fulfilledRegId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<AdmissionRowDto?> FindAdmissionByReservationAsync(
+        IDbConnection conn,
+        string reservationId,
+        string? realizedRegId,
+        CancellationToken cancellationToken = default)
     {
-        var bySource = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var bySource = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
                 """
                 SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
@@ -666,14 +752,15 @@ public sealed partial class JourneyDal : IJourneyDal
                 ORDER BY a.AdmissionDate DESC
                 """,
                 new { VodDate = VoidSentinel, ReservationId = reservationId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (bySource is not null)
             return bySource;
 
         if (!HasId(realizedRegId))
             return null;
 
-        return conn.QueryFirstOrDefault<AdmissionRowDto>(
+        return await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
                 """
                 SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
@@ -686,11 +773,18 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE a.VodDate = @VodDate AND a.RegId = @RegId
                 """,
                 new { VodDate = VoidSentinel, RegId = realizedRegId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
     }
 
-    private OpnameRowDto? LoadOpnameRow(IDbConnection conn, string id) =>
-        conn.QueryFirstOrDefault<OpnameRowDto>(
+    private AdmissionRowDto? FindAdmissionByReservation(IDbConnection conn, string reservationId, string? realizedRegId) =>
+        FindAdmissionByReservationAsync(conn, reservationId, realizedRegId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<OpnameRowDto?> LoadOpnameRowAsync(
+        IDbConnection conn,
+        string id,
+        CancellationToken cancellationToken = default) =>
+        await conn.QueryFirstOrDefaultAsync<OpnameRowDto>(
             new CommandDefinition(
                 """
                 SELECT o.OpnameRequestId, o.OpnameRequestStatus, o.FulfilledRegId, o.PasienId,
@@ -703,10 +797,17 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE o.VodDate = @VodDate AND o.OpnameRequestId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = id },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
-    private ReservationRowDto? LoadReservationRow(IDbConnection conn, string id) =>
-        conn.QueryFirstOrDefault<ReservationRowDto>(
+    private OpnameRowDto? LoadOpnameRow(IDbConnection conn, string id) =>
+        LoadOpnameRowAsync(conn, id, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<ReservationRowDto?> LoadReservationRowAsync(
+        IDbConnection conn,
+        string id,
+        CancellationToken cancellationToken = default) =>
+        await conn.QueryFirstOrDefaultAsync<ReservationRowDto>(
             new CommandDefinition(
                 """
                 SELECT r.ReservationId, r.ReservationStatus, r.RealizedRegId, r.PasienId,
@@ -716,10 +817,17 @@ public sealed partial class JourneyDal : IJourneyDal
                 WHERE r.VodDate = @VodDate AND r.ReservationId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = id },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
-    private IReadOnlyList<WaitingListJourneyFact> LoadWaitingLists(IDbConnection conn, string regId) =>
-        LoadWaitingListRows(conn, regId)
+    private ReservationRowDto? LoadReservationRow(IDbConnection conn, string id) =>
+        LoadReservationRowAsync(conn, id, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<IReadOnlyList<WaitingListJourneyFact>> LoadWaitingListsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        (await LoadWaitingListRowsAsync(conn, regId, cancellationToken))
             .Select(r => new WaitingListJourneyFact(
                 r.WaitingListId,
                 r.RegId,
@@ -729,8 +837,14 @@ public sealed partial class JourneyDal : IJourneyDal
                 r.BangsalName))
             .ToList();
 
-    private IReadOnlyList<WaitingListRowDto> LoadWaitingListRows(IDbConnection conn, string regId) =>
-        (conn.Query<WaitingListRowDto>(
+    private IReadOnlyList<WaitingListJourneyFact> LoadWaitingLists(IDbConnection conn, string regId) =>
+        LoadWaitingListsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<IReadOnlyList<WaitingListRowDto>> LoadWaitingListRowsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        ((await conn.QueryAsync<WaitingListRowDto>(
             new CommandDefinition(
                 """
                 SELECT WaitingListId, RegId, WaitingListStatus, BangsalId, BangsalName,
@@ -740,11 +854,18 @@ public sealed partial class JourneyDal : IJourneyDal
                 ORDER BY CASE WHEN UpdDate = @VodDate THEN CrtDate ELSE UpdDate END ASC, WaitingListId ASC
                 """,
                 new { VodDate = VoidSentinel, RegId = regId },
-                commandTimeout: CommandTimeoutSeconds)) ?? []).ToList();
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken))) ?? []).ToList();
 
-    private RegExtras LoadRegistrationExtras(IDbConnection conn, string regId)
+    private IReadOnlyList<WaitingListRowDto> LoadWaitingListRows(IDbConnection conn, string regId) =>
+        LoadWaitingListRowsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<RegExtras> LoadRegistrationExtrasAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default)
     {
-        var row = conn.QueryFirstOrDefault<RegExtrasRowDto>(
+        var row = await conn.QueryFirstOrDefaultAsync<RegExtrasRowDto>(
             new CommandDefinition(
                 """
                 SELECT
@@ -771,7 +892,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
                 """,
                 new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
         if (row is null)
             return RegExtras.Empty;
@@ -785,12 +907,18 @@ public sealed partial class JourneyDal : IJourneyDal
             null);
     }
 
-    private SqlConnection Open()
+    private RegExtras LoadRegistrationExtras(IDbConnection conn, string regId) =>
+        LoadRegistrationExtrasAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken = default)
     {
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Open();
+        await conn.OpenAsync(cancellationToken);
         return conn;
     }
+
+    private SqlConnection Open() =>
+        OpenAsync(CancellationToken.None).GetAwaiter().GetResult();
 
     private DynamicParameters BuildCommonParams(JourneyListFilter filter)
     {
@@ -849,6 +977,13 @@ public sealed partial class JourneyDal : IJourneyDal
 
         return dp;
     }
+
+    private static string BuildFacetAndPageSql(JourneyListFilter filter) =>
+        $"""
+        {BuildFacetSql(filter)};
+
+        {BuildPageSql(filter)};
+        """;
 
     private static string BuildFacetSql(JourneyListFilter filter) =>
         $"""
@@ -1123,16 +1258,16 @@ public sealed partial class JourneyDal : IJourneyDal
             LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = a.RegId
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
             LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
-            LEFT JOIN (
-                SELECT h.fs_kd_reg,
-                       MAX(h.fs_kd_dokter) AS DokterId,
-                       MAX(ISNULL(p.fs_nm_peg,'')) AS DokterName
+            OUTER APPLY (
+                SELECT TOP 1 h.fs_kd_dokter AS DokterId, ISNULL(p.fs_nm_peg, '') AS DokterName
                 FROM ta_reg_history_dokter h
                 LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
-                WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-                GROUP BY h.fs_kd_reg
-            ) hd ON hd.fs_kd_reg = a.RegId
+                WHERE h.fs_kd_reg = a.RegId
+                  AND ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
+                ORDER BY h.fd_tgl_mulai DESC
+            ) hd
             WHERE a.VodDate = @VodDate
+              AND (@ScopeActive = 0 OR a.AdmissionStatus <> 4)
         ),
         JourneyUnion AS (
             SELECT * FROM ProspectiveOpname

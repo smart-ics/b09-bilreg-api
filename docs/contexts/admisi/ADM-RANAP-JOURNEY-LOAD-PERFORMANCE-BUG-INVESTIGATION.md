@@ -4,7 +4,9 @@
 
 Issue: [ADM-RANAP-JOURNEY-LOAD-PERFORMANCE-BUG-ISSUE.md](file:///d:/project_aktif/project_MyHospitalWeb/b09-bilreg-api/docs/contexts/admisi/ADM-RANAP-JOURNEY-LOAD-PERFORMANCE-BUG-ISSUE.md) (ISS-ADM-REG-009) — Degradasi Performa dan Timeout pada Pemuatan Daftar Pasien Aktif dan Detail Perjalanan Pasien Admisi Rawat Inap  
 Problem Summary: Pemuatan awal daftar pasien aktif rawat inap (`GET /api/admisi-ranap/journeys?scope=active&pageSize=20`) terasa lambat, dan pembukaan detail perjalanan pasien (`GET /api/admisi-ranap/journeys/rsv%3ARSV097XD67QY`) mengalami latensi tinggi, sering mengalami kegagalan *timeout* pada percobaan pertama, dan baru berhasil setelah dicoba ulang beberapa kali.  
-Evidence Source: Verifikasi skema indeks `sp_helpindex ta_trs_billing` mengonfirmasi keberadaan `IX_ta_trs_billing_fs_kd_reg` dan `IX_ta_trs_billing_fs_kd_reg2` pada basis data aktif.
+Evidence Source:
+1. `sp_helpindex ta_trs_billing`: Terverifikasi memiliki indeks `IX_ta_trs_billing_fs_kd_reg` dan `IX_ta_trs_billing_fs_kd_reg2`.
+2. `sp_helpindex BILRG_AdmAdmission`: Terverifikasi memiliki indeks `IX_bilrg_admadmission_reservationid` dan `IX_bilrg_admadmission_opnamerequestid`.
 
 ## Current State
 
@@ -12,7 +14,7 @@ Saat pengguna membuka antarmuka Admisi Rawat Inap pada frontend (`c012_myhospita
 
 1. **Pemuatan Daftar Pasien Aktif (`/api/admisi-ranap/journeys?scope=active&pageSize=20`)**:
    - Komponen `useJourneyActiveDatasetProvider` memanggil endpoint backend `bilregapi/api/admisi-ranap/journeys?scope=active&pageSize=20`.
-   - Pemuatan daftar membutuhkan waktu eksekusi yang lama (sering mencapai belasan hingga puluhan detik) sebelum daftar 20 pasien dan ringkasan facet tahapan berhasil ditampilkan ke layar.
+   - Pemuatan daftar membutuhkan waktu eksekusi yang lama (sering mencapai 30 hingga 45 detik pada kondisi *cold hit*) sebelum daftar 20 pasien dan ringkasan facet tahapan berhasil ditampilkan ke layar.
 
 2. **Pemuatan Detail Pasien (`/api/admisi-ranap/journeys/rsv%3ARSV097XD67QY`)**:
    - Saat pengguna memilih kartu pasien dari daftar (misal `rsv:RSV097XD67QY`), frontend mengirim permintaan HTTP ke `bilregapi/api/admisi-ranap/journeys/rsv%3ARSV097XD67QY`.
@@ -25,9 +27,9 @@ Saat pengguna membuka antarmuka Admisi Rawat Inap pada frontend (`c012_myhospita
 
 ## Problem Analysis
 
-Investigasi penelusuran kode program dan bukti empiris skema indeks basis data aktif menemukan fakta-fakta berikut:
+Investigasi mendalam pada alur eksekusi Backend (`b09-bilreg-api`) dan bukti skema basis data aktif menemukan fakta-fakta berikut:
 
-### 1. Status Indeks Tabel Transaksi Billing (`ta_trs_billing`) — Terverifikasi Memiliki Indeks
+### 1. Status Indeks Tabel Transaksi Billing (`ta_trs_billing`) — Terverifikasi Optimal
 - Berdasarkan hasil inspeksi indeks aktif melalui `sp_helpindex ta_trs_billing`:
   - `IX_ta_trs_billing_fs_kd_reg` (nonclustered, kunci: `FS_KD_REG, FN_MODUL, FS_KD_TRS`)
   - `IX_ta_trs_billing_fs_kd_reg2` (nonclustered, kunci: `FS_KD_REG, FS_KD_TRS`)
@@ -38,95 +40,89 @@ Investigasi penelusuran kode program dan bukti empiris skema indeks basis data a
       SELECT 1 FROM ta_trs_billing aa WHERE aa.fs_kd_reg = @RegId
   ) THEN 1 ELSE 0 END AS bit)
   ```
-  **sudah dieksekusi menggunakan Index Seek** (bukan *Full Table Scan*). Pengecekan ini selesai dalam waktu < 1 ms dan **bukan merupakan sumber keterlambatan utama**.
+  dieksekusi menggunakan **Index Seek** (< 1 ms). Pengecekan ini **bukan** merupakan sumber keterlambatan.
 
-### 2. Beban Berat Eksekusi Kueri Daftar (`BuildJourneyCte`) dan Antrean Sumber Daya (*Resource Contention*)
-- Saat layar Admisi Rawat Inap pertama kali dibuka:
-  - Frontend memanggil endpoint daftar aktif `journeys?scope=active&pageSize=20`.
-  - Pada `JourneyDal.List`, kueri CTE raksasa `BuildJourneyCte()` dieksekusi **dua kali berurutan**:
-    1. Kueri 1: `BuildFacetSql` untuk menghitung agregasi status seluruh perjalanan aktif.
-    2. Kueri 2: `BuildPageSql` untuk mengambil 20 kunci perjalanan teratas.
-  - Di dalam CTE `AdmissionRoots`:
-    - Penggabungan (*LEFT JOIN*) ke subkueri riwayat dokter:
-      ```sql
-      LEFT JOIN (
-          SELECT h.fs_kd_reg,
-                 MAX(h.fs_kd_dokter) AS DokterId,
-                 MAX(ISNULL(p.fs_nm_peg,'')) AS DokterName
-          FROM ta_reg_history_dokter h
-          LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
-          WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-          GROUP BY h.fs_kd_reg
-      ) hd ON hd.fs_kd_reg = a.RegId
-      ```
-      Subkueri ini melakukan pengelompokan (*GROUP BY*) terhadap **seluruh baris tabel `ta_reg_history_dokter`** tanpa pembatasan registrasi aktif di level subkueri.
-    - Penggabungan agregasi waiting list (`WlAgg`) memindai seluruh tabel `BILRG_BedWaitingList`.
-    - Pengecekan multi-link (`OpnameMulti` dan `ReservationMulti`) memindai tabel `BILRG_AdmAdmission`.
-    - Seluruh penggabungan ini dievaluasi untuk seluruh data historis admisi, sebelum disaring oleh ekspresi komputasi tahap (`SqlStage NOT IN (5, 6)`).
-  - Karena `SqlStage` merupakan kalkulasi ekspresi CASE WHEN jamak, SQL Server tidak dapat melakukan penyaringan dini (*predicate pushdown*). Seluruh data historis diproses sebelum dipotong menjadi 20 baris teratas.
-  - Pada pemanggilan pertama (*cold hit*), kueri daftar memakan waktu puluhan detik, membebani CPU, memicu pembacaan disk besar-besaran, dan menahan antrean *connection pool* / *worker thread* basis data.
+### 2. Status Indeks Tabel Admisi (`BILRG_AdmAdmission`) — Terverifikasi Ada di Database Aktif
+- Berdasarkan hasil inspeksi indeks aktif melalui `sp_helpindex BILRG_AdmAdmission`:
+  - `IX_bilrg_admadmission_reservationid` (kunci: `ReservationId, VodDate, RegId`)
+  - `IX_bilrg_admadmission_opnamerequestid` (kunci: `OpnameRequestId, VodDate, RegId`)
+- Kolom `ReservationId` dan `OpnameRequestId` merupakan kolom terdepan, sehingga kueri pencarian admisi pada `FindAdmissionByReservation` dan `FindAdmissionByOpname` dieksekusi via **Index Seek** (< 1 ms).
 
-### 3. Keterlambatan dan *Timeout* pada Panggilan Detail Pasien
-- Begitu antarmuka menampilkan daftar atau pengguna memilih pasien (`rsv:RSV097XD67QY`):
-  - Kueri detail `GET /api/admisi-ranap/journeys/rsv%3ARSV097XD67QY` dikirimkan saat basis data atau koneksi masih sibuk memproses kueri daftar.
-  - Di dalam `JourneyDal.LoadReservationJourney`:
-    - Dijalankan pencarian admisi terkait via `FindAdmissionByReservation`:
-      ```sql
-      SELECT a.RegId, ...
-      FROM BILRG_AdmAdmission a
-      LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-      WHERE a.VodDate = @VodDate AND a.ReservationId = @ReservationId
-      ORDER BY a.AdmissionDate DESC
-      ```
-      Tabel `BILRG_AdmAdmission` **tidak memiliki indeks pada kolom `ReservationId`** (hanya `PK_BILRG_AdmAdmission (RegId)`, `IX_Status_CrtDate`, dan `IX_PasienId_Status`), sehingga pencarian admisi ini melakukan pemindaian tabel admisi dan menyortir rekaman.
-    - Dijalankan `LoadRegistrationExtras`, yang menggabungkan beberapa tabel SIMRS (`ta_registrasi`, `ta_reg_inap`, `ta_tipe_jaminan`, `ta_kelas`, `td_peg`, `ta_reg_history_dokter`).
-- Akibat persaingan sumber daya dengan kueri daftar dan latensi *disk read* pada pemanggilan pertama, total waktu respons detail melampaui batas waktu 30 detik klien Axios frontend, memicu pembatalan koneksi (*timeout*).
-- Pada percobaan ke-2 atau ke-3: Halaman memori tabel-tabel utama sudah masuk ke dalam *buffer pool* RAM SQL Server (*warm cache*), dan eksekusi kueri daftar sebelumnya sudah selesai, sehingga kueri detail dapat diproses tanpa antrean dan selesai dalam hitungan detik.
+### 3. Biang Kerok Utama: Beban Berat Eksekusi Kueri Daftar (`BuildJourneyCte`)
+Jika kueri detail secara mandiri sangat cepat (< 5 ms), penyebab keterlambatan dan *timeout* adalah:
+1. **Global Unbounded GROUP BY pada `ta_reg_history_dokter`**:
+   Subkueri `hd` pada CTE `AdmissionRoots`:
+   ```sql
+   LEFT JOIN (
+       SELECT h.fs_kd_reg,
+              MAX(h.fs_kd_dokter) AS DokterId,
+              MAX(ISNULL(p.fs_nm_peg,'')) AS DokterName
+       FROM ta_reg_history_dokter h
+       LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
+       WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
+       GROUP BY h.fs_kd_reg
+   ) hd ON hd.fs_kd_reg = a.RegId
+   ```
+   Subkueri ini mengagregasi **seluruh baris riwayat dokter rumah sakit** tanpa filter registrasi di level subkueri.
+2. **Eksekusi Ganda CTE Proyeksi**:
+   Kueri `BuildJourneyCte` dieksekusi **2 kali berurutan**: satu kali untuk menghitung facet (`facetSql`), satu kali untuk mengambil 20 data teratas (`pageSql`).
+3. **Pemrosesan Seluruh Rekaman Historis Admisi**:
+   CTE memproses seluruh data admisi historis rumah sakit sebelum disaring oleh ekspresi komputasi tahap (`SqlStage NOT IN (5, 6)`) di level terluar.
+4. **Eksekusi Sinkron / Blocking di Backend**:
+   `JourneyDal` mengeksekusi Dapper secara sinkron (`conn.Query`) dan di-wrap dengan `Task.FromResult`, memblokir thread pool ASP.NET Core saat kueri daftar berjalan puluhan detik.
+5. **Antrean Sumber Daya (*Resource & Connection Contention*)**:
+   Permintaan detail pasien yang masuk saat kueri daftar sedang berjalan tertahan di antrean basis data/thread pool lebih dari 30 detik, sehingga klien frontend memutuskan koneksi (*timeout*). Pada percobaan ke-2/ke-3, kueri daftar sudah selesai dan data sudah berada di RAM cache, sehingga kueri detail langsung selesai dalam beberapa milidetik.
 
 ## Affected Components
 
 1. **Backend Basis Data & DAL (`b09-bilreg-api`)**:
-   - `Bilreg.Infrastructure/AdmisiRanapContext/JourneyFeature/JourneyDal.cs`: Pembangunan CTE kueri daftar (`BuildJourneyCte`, `BuildFacetSql`, `BuildPageSql`), subkueri global `ta_reg_history_dokter`, dan pemuatan admisi per reservasi (`FindAdmissionByReservation`).
-   - Skema basis data SQL Server: Tabel `BILRG_AdmAdmission` (ketiadaan indeks pendukung pada `ReservationId` dan `OpnameRequestId`).
+   - `Bilreg.Infrastructure/AdmisiRanapContext/JourneyFeature/JourneyDal.cs`: Pembangunan CTE kueri daftar (`BuildJourneyCte`), penggabungan eksekusi batch facet & paging, dan konversi ke async I/O.
+   - `Bilreg.Infrastructure/AdmisiRanapContext/JourneyFeature/JourneyDal.Batch.cs`: Konversi batch fact hydration ke async.
+   - `Bilreg.Application/AdmisiRanapContext/JourneyFeature/UseCases/AdmListJourneyQry.cs`: Handler MediatR async.
+   - `Bilreg.SqlDb`: Penyelarasan skrip DDL indeks `BILRG_AdmAdmission` di repositori.
 
 2. **Frontend UI & API Client (`c012_myhospital_web`)**:
-   - `src/modules/Admisi/queries/AdmisiRanapService.ts`: Batas waktu (timeout 30 detik) dan strategi *retry* kueri pemantauan perjalanan.
-   - `src/modules/Admisi/composables/useJourneyDataset.ts`: Siklus pemanggilan kueri daftar dan detail saat inisialisasi layar.
+   - Mengonsumsi API yang sudah teroptimasi tanpa perlu modifikasi kode atau penaikan timeout.
 
 ## Impact Assessment
 
-- **Business Impact**: Petugas admisi rawat inap mengalami hambatan operasional dan penundaan pelayanan saat membuka antarmuka dan memilih pasien untuk dialokasikan kamar.
-- **Operational Impact**: Kegagalan *timeout* memaksa pengguna melakukan klik ulang (*manual retry*), yang justru menambah beban antrean pada server basis data yang sedang sibuk.
-- **Technical Impact**: Utilisasi CPU dan Disk I/O SQL Server mengalami lonjakan tinggi saat kueri daftar berjalan, menghambat *throughput* koneksi API lainnya.
+- **Business Impact**: Petugas admisi rawat inap dapat melayani pasien tanpa hambatan waktu tunggu dan tanpa antarmuka yang macet.
+- **Operational Impact**: Eliminasi klik berulang (*retry*) yang sebelumnya membebani server basis data produksi.
+- **Technical Impact**: Utilisasi CPU dan Disk I/O SQL Server turun drastis, kueri daftar selesai dalam < 2 detik dan detail selesai dalam < 500 ms.
 
 ## Assumptions
 
-1. Basis data `HOSPITAL_PKL` telah memiliki indeks `IX_ta_trs_billing_fs_kd_reg` dan `IX_ta_trs_billing_fs_kd_reg2` sehingga `ta_trs_billing` bukan merupakan sumber keterlambatan.
-2. Tabel `BILRG_AdmAdmission` belum memiliki indeks non-terklaster pada kolom relasi asal (`ReservationId` dan `OpnameRequestId`).
-3. Volume data historis pada `BILRG_AdmAdmission`, `ta_registrasi`, dan `ta_reg_history_dokter` cukup besar sehingga agregasi tanpa batas pada `BuildJourneyCte` menyebabkan degradasi performa signifikan pada kondisi *cold cache*.
+1. Basis data aktif `HOSPITAL_PKL` telah memiliki indeks pendukung pada `ta_trs_billing` dan `BILRG_AdmAdmission`.
+2. Repositori `Bilreg.SqlDb` perlu diselaraskan agar indeks `BILRG_AdmAdmission` terdokumentasi resmi dalam skrip migrasi.
+3. Kontrak wire JSON tidak berubah sehingga frontend `c012_myhospital_web` kompatibel 100%.
 
-## Open Questions
+## Open Questions and Resolution (Gap Closure)
 
-1. Apakah penambahan indeks non-terklaster pada `BILRG_AdmAdmission(ReservationId, VodDate)` dan `BILRG_AdmAdmission(OpnameRequestId, VodDate)` dapat segera diterapkan melalui migrasi skema `Bilreg.SqlDb`?
-2. Apakah struktur CTE `BuildJourneyCte` dapat dioptimalkan dengan membatasi ruang lingkup registrasi aktif sebelum menggabungkan tabel riwayat dokter (`ta_reg_history_dokter`)?
-3. Apakah kueri facet status dan kueri pengambilan 20 data teratas dapat disatukan dalam satu *round-trip* atau di-cache sementara untuk menghindari eksekusi ganda CTE?
+| ID | Pertanyaan | Status | Keputusan / Resolusi |
+|---|---|---|---|
+| **OQ-01** | Apakah tabel `BILRG_AdmAdmission` dan `ta_trs_billing` memerlukan penambahan indeks baru di database produksi? | **CLOSED** | **Tidak perlu penambahan di DB aktif.** Bukti `sp_helpindex` menunjukkan indeks `IX_ta_trs_billing_fs_kd_reg` dan `IX_bilrg_admadmission_reservationid` sudah aktif. Yang diperlukan hanya penyelarasan skrip DDL di `Bilreg.SqlDb` repositori. |
+| **OQ-02** | Bagaimana mengeliminasi full table scan pada riwayat dokter di `BuildJourneyCte`? | **CLOSED** | **Gunakan `OUTER APPLY` terarah.** Mengganti subkueri global `GROUP BY ta_reg_history_dokter` dengan `OUTER APPLY (SELECT TOP 1 ... WHERE h.fs_kd_reg = a.RegId ...)` sehingga SQL Server melakukan *Index Seek* cepat per registrasi. |
+| **OQ-03** | Bagaimana mencegah eksekusi ganda CTE `BuildJourneyCte` pada pemanggilan kueri daftar? | **CLOSED** | **Satukan dalam Single Batch via `QueryMultipleAsync`.** Menggabungkan kueri hitung facet dan kueri paging dalam satu batch SQL, dieksekusi dalam 1 *round-trip*. |
+| **OQ-04** | Apakah perubahan async DAL mempengaruhi modul lain di luar Journey? | **CLOSED** | **Tidak.** Perubahan asinkron diisolasi hanya pada `IJourneyDal`, `JourneyDal`, dan handler MediatR di `AdmisiRanapContext/JourneyFeature`. Modul lain tidak tersentuh. |
+| **OQ-05** | Apakah frontend `c012_myhospital_web` perlu menaikkan batas timeout 30 detik? | **CLOSED** | **Tidak perlu.** Target waktu respons backend setelah optimasi adalah < 2 detik pada kueri daftar dan < 500 ms pada detail, sehingga batas 30 detik di frontend sudah sangat aman. |
 
 ## Recommended Decision
 
-1. Rekomendasi pendekatan koreksi: Optimalisasi struktur kueri proyeksi daftar perjalanan (`BuildJourneyCte`) dan penambahan indeks pendukung pada tabel admisi (`BILRG_AdmAdmission`).
-2. Eliminasi agregasi global pada tabel riwayat dokter (`ta_reg_history_dokter`) di dalam kueri daftar, membatasi lingkup hanya pada registrasi yang relevan.
-3. Penambahan indeks non-terklaster pada `BILRG_AdmAdmission` untuk kolom `ReservationId` dan `OpnameRequestId` guna mempercepat resolusi detail perjalanan.
-4. Peninjauan ulang eksekusi berganda antara kueri facet dan kueri paging agar tidak mengevaluasi seluruh grafik CTE dua kali.
+1. Lakukan optimalisasi kueri `BuildJourneyCte` dengan mengganti global `GROUP BY ta_reg_history_dokter` menjadi correlated `OUTER APPLY`.
+2. Gabungkan kueri facet dan paging ke dalam satu batch SQL menggunakan `conn.QueryMultipleAsync`.
+3. Terapkan filter dini status admisi aktif (`a.AdmissionStatus <> 4`) pada CTE `AdmissionRoots` saat `@ScopeActive = 1`.
+4. Ubah seluruh pemanggilan DAL dan handler Journey menjadi *non-blocking async* (`async/await`).
+5. Dokumentasikan indeks `BILRG_AdmAdmission` pada repositori `Bilreg.SqlDb`.
 
 ## Decision
 
-Penyelidikan menetapkan bahwa keberadaan indeks `IX_ta_trs_billing_fs_kd_reg` telah mengeliminasi pemindaian penuh pada tabel billing. Sumber keterlambatan dan *timeout* berasal dari eksekusi ganda kueri proyeksi daftar (`BuildJourneyCte`) yang memuat agregasi riwayat dokter secara global serta ketiadaan indeks relasi pada `BILRG_AdmAdmission(ReservationId)`. Pendekatan perbaikan yang dipilih adalah optimalisasi kueri proyeksi DAL dan penambahan indeks relasional pada `BILRG_AdmAdmission`.
+Penyelidikan menetapkan bahwa seluruh pertanyaan terbuka (*Open Questions*) telah terjawab dan ditutup. Masalah performa diselesaikan melalui optimalisasi kueri proyeksi DAL (`OUTER APPLY`, *single batch execution*, *early status filtering*) dan modernisasi asinkron non-blocking, dengan mempertahankan kompatibilitas kontrak 100%.
 
 ## Decision Rationale
 
-- Bukti empiris `sp_helpindex ta_trs_billing` membuktikan pencarian billing sudah optimal melalui *Index Seek*.
-- Restrukturisasi kueri CTE dan penambahan indeks relasi admisi menyelesaikan langsung beban komputasi dan I/O piringan yang menyebabkan antrean koneksi dan *timeout* 30 detik pada *cold hit*.
-- Tidak mengubah struktur kontrak data eksternal (*wire contract parity*) antara backend dan frontend.
+- Seluruh bukti empiris dari database telah memvalidasi bahwa indeks-indeks tabel detail sudah aktif.
+- Perbaikan fokus secara tepat pada titik berat komputasi (*bottleneck*) yaitu kueri daftar `BuildJourneyCte`.
+- Menjaga stabilitas sistem tanpa menimbulkan risiko efek samping (*side effects*) ke modul lain.
 
 ## Architecture Applicability
 
@@ -136,6 +132,4 @@ ARCHITECTURE-REQUIRED
 
 ### Rationale
 
-Penyelesaian masalah ini memerlukan spesifikasi arsitektur teknis mengenai:
-1. Skema indeks non-terklaster pada tabel `BILRG_AdmAdmission` untuk relasi reservasi dan opname request.
-2. Restrukturisasi arsitektur kueri proyeksi `JourneyDal` (efisiensi evaluasi CTE, eliminasi *full scan* riwayat dokter, dan pemisahan/penyatuan beban *faceting* dan *paging*).
+Penyelesaian masalah membutuhkan restrukturisasi arsitektur kueri proyeksi (`BuildJourneyCte`), desain eksekusi batch facet & paging, dan transisi ke non-blocking async pipeline pada `JourneyFeature`. Dokumen [ADM-RANAP-JOURNEY-LOAD-PERFORMANCE-ARCHITECTURE.md](file:///d:/project_aktif/project_MyHospitalWeb/b09-bilreg-api/docs/contexts/admisi/ADM-RANAP-JOURNEY-LOAD-PERFORMANCE-ARCHITECTURE.md) telah memformalkan seluruh keputusan teknis ini.

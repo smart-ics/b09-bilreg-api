@@ -2,6 +2,25 @@ namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
 public interface IJourneyDal
 {
+    Task<JourneyListResult> ListAsync(
+        JourneyListFilter filter,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(List(filter, businessNow));
+
+    Task<JourneyDetailWorkspace?> GetByJourneyIdAsync(
+        string journeyId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(GetByJourneyId(journeyId, businessNow));
+
+    Task<JourneyLegacyResolution?> ResolveLegacyRecordAsync(
+        string recordType,
+        string recordId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ResolveLegacyRecord(recordType, recordId, businessNow));
+
     JourneyListResult List(JourneyListFilter filter, DateTime businessNow);
 
     JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow);
