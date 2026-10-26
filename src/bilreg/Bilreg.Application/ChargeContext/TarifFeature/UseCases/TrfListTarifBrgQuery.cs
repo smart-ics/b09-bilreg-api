@@ -18,7 +18,10 @@ public record TrfListTarif(string TarifId, string TarifName, decimal Harga)
     : TrfListTarifBrgResponseBase(TarifName);
 
 public record TrfListBrg(string BrgId, string BrgName, decimal Stok, string SatuanId, string SatuanName)
-    : TrfListTarifBrgResponseBase(BrgName);
+    : TrfListTarifBrgResponseBase(BrgName)
+{
+    public string Satuan => SatuanName;
+}
 
 public class TrfListTarifBrgHandler 
     : IRequestHandler<TrfListTarifBrgQuery, IEnumerable<TrfListTarifBrgResponseBase>>

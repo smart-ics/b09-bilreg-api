@@ -33,7 +33,11 @@ public record PostInternalConsumptionLineResult(
     string BrgMasukReffId,
     string LegacyBukuId,
     string LegacyStokId,
-    decimal QtyOut);
+    decimal QtyOut,
+    string NoBatch = "",
+    DateTime TglEd = default,
+    decimal Hpp = 0m,
+    decimal StokCurrent = 0m);
 
 public record PostInternalConsumptionConsequenceResult(
     PostInternalConsumptionOutcomeEnum Outcome,
@@ -86,25 +90,29 @@ public class PostInternalConsumptionConsequenceHandler
         if (request.Qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.Qty), "Qty must be positive.");
 
-        var priorMutasi = _mutasiRepo.ListByTrsReffId(request.TrsReffId).ToList();
-        if (priorMutasi.Count > 0)
+        var allPriorMutasi = _mutasiRepo.ListByTrsReffId(request.TrsReffId).ToList();
+        if (allPriorMutasi.Count > 0)
         {
-            if (priorMutasi.Any(x => x.MovementKind != MovementKind))
+            if (allPriorMutasi.Any(x => x.MovementKind != MovementKind))
             {
                 throw new InvalidOperationException(
                     $"TrsReffId={request.TrsReffId} already has non-internal-consumption movements " +
                     $"(expected only {MovementKind}).");
             }
 
-            if (!TryValidatePriorConsumptionLines(request, priorMutasi, out var validated))
+            var priorForBrg = allPriorMutasi.Where(x => x.BrgId == request.BrgId).ToList();
+            if (priorForBrg.Count > 0)
             {
-                throw new InvalidOperationException(
-                    $"Partial internal-consumption idempotency for TrsReffId={request.TrsReffId}: " +
-                    "some InternalConsumption legs exist but qty/location do not match the request " +
-                    "(unexpected after atomic UoW).");
-            }
+                if (!TryValidatePriorConsumptionLines(request, priorForBrg, out var validated))
+                {
+                    throw new InvalidOperationException(
+                        $"Partial internal-consumption idempotency for TrsReffId={request.TrsReffId}, BrgId={request.BrgId}: " +
+                        "some InternalConsumption legs exist but qty/location do not match the request " +
+                        "(unexpected after atomic UoW).");
+                }
 
-            return BuildIdempotentResult(validated);
+                return BuildIdempotentResult(validated);
+            }
         }
 
         var candidates = _batchRepo.ListAllocationCandidates(request.BrgId, request.LayananId)
@@ -185,6 +193,7 @@ public class PostInternalConsumptionConsequenceHandler
 
             var noBatch = lokasi.NoBatch;
             var hpp = batch.Hpp;
+            var stokCurrent = lokasi.QtySisa;
 
             var after = batch.DecreaseLokasi(
                 request.LayananId,
@@ -253,7 +262,11 @@ public class PostInternalConsumptionConsequenceHandler
                 line.BrgMasukReffId,
                 legacyBukuId,
                 legacyStokId,
-                line.QtyAllocated));
+                line.QtyAllocated,
+                noBatch,
+                line.TglEd,
+                hpp,
+                stokCurrent));
         }
 
         var draft = new StockConsequenceDraft(
@@ -308,6 +321,19 @@ public class PostInternalConsumptionConsequenceHandler
         foreach (var mutasi in priorConsumption)
         {
             var binding = _bindingRepo.FindByStokMutasiId(mutasi.StokMutasiId);
+            var batchMaybe = _batchRepo.LoadEntity(StockBatchModel.Key(mutasi.StokBatchId));
+            var noBatch = string.Empty;
+            var stokCurrent = 0m;
+            if (batchMaybe.HasValue)
+            {
+                var loc = batchMaybe.Value.ListLokasi.FirstOrDefault(x => x.StokLokasiId == mutasi.StokLokasiId);
+                if (loc != null)
+                {
+                    noBatch = loc.NoBatch;
+                    stokCurrent = loc.QtySisa;
+                }
+            }
+
             results.Add(new PostInternalConsumptionLineResult(
                 mutasi.StokMutasiId,
                 mutasi.StokLokasiId,
@@ -315,7 +341,11 @@ public class PostInternalConsumptionConsequenceHandler
                 mutasi.BrgMasukReffId,
                 binding.HasValue ? binding.Value.LegacyBukuId : string.Empty,
                 binding.HasValue ? binding.Value.LegacyStokId : string.Empty,
-                mutasi.QtyOut));
+                mutasi.QtyOut,
+                noBatch,
+                mutasi.TglEd,
+                mutasi.Hpp,
+                stokCurrent));
         }
 
         return new PostInternalConsumptionConsequenceResult(

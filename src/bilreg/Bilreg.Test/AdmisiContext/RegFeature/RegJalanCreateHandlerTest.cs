@@ -20,6 +20,7 @@ using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -206,6 +207,76 @@ public class RegJalanCreateHandlerTest
             It.IsAny<It.IsAnyType>(),
             It.IsAny<Exception>(),
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenWalkInRegistration_EnqueuesEmrPayloadWithRuangPrefix()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulWalkIn(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var ruang = new RuangType("R01", "Ruang Kebidanan", "OB");
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            Ruang = ruang
+        };
+        _jadwalPraktekRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        EmrAntrianOutboundQueueModel? savedQueue = null;
+        _emrQueueRepo.Setup(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()))
+            .Callback<EmrAntrianOutboundQueueModel>(q => savedQueue = q);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.RegId.Should().Be("RG00000001");
+        savedQueue.Should().NotBeNull();
+        savedQueue!.SourceId.Should().Be("RG00000001");
+        savedQueue.MessageType.Should().Be(EmrAntrianOutboundQueueModel.MessageTypeAddReg);
+
+        var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue.PayloadJson);
+        payload.PrefixAntrian.Should().Be("OB");
+    }
+
+    [Theory]
+    [InlineData(" A ", "A")]
+    [InlineData("POLIKLINIK", "PO")]
+    [InlineData("  ", "")]
+    [InlineData(null, "")]
+    public async Task Handle_WhenWalkInRegistrationWithVariousRuangPrefixes_NormalizesDefensively(string? rawPrefix, string expectedPrefix)
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulWalkIn(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var ruang = new RuangType("R01", "Ruang Test", rawPrefix!);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            Ruang = ruang
+        };
+        _jadwalPraktekRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        EmrAntrianOutboundQueueModel? savedQueue = null;
+        _emrQueueRepo.Setup(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()))
+            .Callback<EmrAntrianOutboundQueueModel>(q => savedQueue = q);
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        savedQueue.Should().NotBeNull();
+        var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue!.PayloadJson);
+        payload.PrefixAntrian.Should().Be(expectedPrefix);
     }
 
     private static RegJalanWalkInCommand CreateCommand() =>

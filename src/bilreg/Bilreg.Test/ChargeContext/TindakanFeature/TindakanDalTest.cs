@@ -10,7 +10,7 @@ namespace Bilreg.Test.ChargeContext.TindakanFeature;
 public class TindakanDalTest
 {
     private readonly TindakanDal _sut = new(ConnStringHelper.GetTestEnv());
-    private static TindakanDto Faker()
+    private static TindakanDto Faker(int qty = 1)
         => new TindakanDto(
             TindakanId: "TND001",
             TindakanDate: new DateTime(2025, 12, 30),
@@ -26,7 +26,8 @@ public class TindakanDalTest
             TipeTarifName: "Tipe Tarif A",
             TarifId: "TRF001",
             TarifName: "Tarif A",
-            Total: 150000,
+            Qty: qty,
+            Total: 150000 * qty,
             CrtUser: "USR001",
             CrtDate: new DateTime(2025,2,3),
             UpdUser: "USR001",
@@ -78,5 +79,18 @@ public class TindakanDalTest
         _sut.Insert(Faker());
         var actual = _sut.ListData(FakerRegKey());
         actual.Should().ContainEquivalentOf(Faker());
+    }
+
+    [Fact]
+    public void InsertAndGetData_WithCustomQty_ShouldPersistAndReadQty()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = Faker(qty: 3);
+        _sut.Insert(dto);
+        var kompDal = new TindakanKomponenDal(ConnStringHelper.GetTestEnv());
+        kompDal.Insert([new TindakanKomponenDto(dto.TindakanId, 0, "K01", "Komp 1", "", "", 3, 150000, 450000)]);
+        var actual = _sut.GetData(FakerKey());
+        actual.Qty.Should().Be(3);
+        actual.Total.Should().Be(450000);
     }
 }

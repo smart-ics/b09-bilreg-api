@@ -46,12 +46,12 @@ public record OrderTdkModel : IOrderTdkKey
             throw new Exception("Dokter order harus dokter");
         
         var newId = Ulid.NewUlid().ToString();
-        
-        return new OrderTdkModel(newId, orderedAt,
+        var orderDate = orderedAt == default ? DateTime.Now : orderedAt;
+        return new OrderTdkModel(newId, orderDate,
             pasien.ToReff(), RegModel.Default.ToReff(), 
             dokter.ToReff(), layanan.ToReff(), tarif.ToReff(), "-", 
             StatusOrderEnum.Ordered,
-            AuditTrailType.Create(userId, orderedAt));
+            AuditTrailType.Create(userId, orderDate));
     }
     
     public static OrderTdkModel Create(PasienModel pasien, PpaType dokter, 
@@ -66,11 +66,11 @@ public record OrderTdkModel : IOrderTdkKey
             throw new Exception("Dokter order harus dokter");
         
         var newId = Ulid.NewUlid().ToString();
-        
-        return new OrderTdkModel(newId, orderedAt,
+        var orderDate = orderedAt == default ? DateTime.Now : orderedAt;
+        return new OrderTdkModel(newId, orderDate,
             pasien.ToReff(), RegModel.Default.ToReff(), 
             dokter.ToReff(), layanan.ToReff(), TarifType.Default.ToReff(), freeTextOrder, 
-            StatusOrderEnum.Ordered, AuditTrailType.Create(userId, orderedAt));
+            StatusOrderEnum.Ordered, AuditTrailType.Create(userId, orderDate));
     }
     public static OrderTdkModel Create(RegModel reg, PpaType dokter, 
         LayananType layanan, TarifType tarif, string userId, DateTime orderedAt = default)
@@ -85,11 +85,11 @@ public record OrderTdkModel : IOrderTdkKey
         if (!reg.IsAktif)
             throw new ArgumentException("Pasien sudah tidak aktif");            
         var newId = Ulid.NewUlid().ToString();
-        
-        return new OrderTdkModel(newId, orderedAt, reg.Pasien,
+        var orderDate = orderedAt == default ? DateTime.Now : orderedAt;
+        return new OrderTdkModel(newId, orderDate, reg.Pasien,
             reg.ToReff(), dokter.ToReff(), 
             layanan.ToReff(), tarif.ToReff(), "-", StatusOrderEnum.Ordered, 
-            AuditTrailType.Create(userId, orderedAt));
+            AuditTrailType.Create(userId, orderDate));
     }
 
     public static OrderTdkModel Create(RegModel reg, PpaType dokter, 
@@ -105,11 +105,11 @@ public record OrderTdkModel : IOrderTdkKey
         if (!reg.IsAktif)
             throw new ArgumentException("Pasien sudah tidak aktif");            
         var newId = Ulid.NewUlid().ToString();
-        
-        return new OrderTdkModel(newId, orderedAt, reg.Pasien,
+        var orderDate = orderedAt == default ? DateTime.Now : orderedAt;
+        return new OrderTdkModel(newId, orderDate, reg.Pasien,
             reg.ToReff(), dokter.ToReff(), 
             layanan.ToReff(), TarifType.Default.ToReff(), freeTextOrder, StatusOrderEnum.Ordered, 
-            AuditTrailType.Create(userId, orderedAt));
+            AuditTrailType.Create(userId, orderDate));
     }
 
     public static OrderTdkModel Default => new(

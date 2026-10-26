@@ -9,7 +9,6 @@ public class AuditTrailType
         Created = created;
         Modified = modified;
         Voided = voided;
-        IsVoided = false;
     }
     public AuditInfoType Created { get; init; }
     public AuditInfoType Modified { get; private set; }
@@ -55,6 +54,7 @@ public record AuditInfoType(string UserId, DateTime Timestamp)
             ParseTimestampOrSentinel(userId, tgl, jam))
     {
     }
+};
 
     private static DateTime ParseTimestampOrSentinel(string userId, string tgl, string jam)
     {
