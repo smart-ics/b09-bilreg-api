@@ -54,7 +54,6 @@ public record AuditInfoType(string UserId, DateTime Timestamp)
             ParseTimestampOrSentinel(userId, tgl, jam))
     {
     }
-};
 
     private static DateTime ParseTimestampOrSentinel(string userId, string tgl, string jam)
     {

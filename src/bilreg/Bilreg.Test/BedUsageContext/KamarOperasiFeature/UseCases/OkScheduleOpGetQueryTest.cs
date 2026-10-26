@@ -218,6 +218,12 @@ public class OkScheduleOpGetQueryTest
         result.AlasanBatal.Should().Be("Alasan batal uji");
         result.TurnoverBuffer.Should().Be(45);
         result.ListPpa.Should().HaveCount(1);
+        var ppa = result.ListPpa.First();
+        ppa.NoUrut.Should().Be(1);
+        ppa.PpaId.Should().Be("DOC-02");
+        ppa.PpaName.Should().Be("dr. Baru");
+        ppa.ProfesiId.Should().Be("DOK");
+        ppa.ProfesiName.Should().Be("Dokter");
 
         result.History.Should().HaveCount(1);
         var hist = result.History.First();
@@ -239,6 +245,98 @@ public class OkScheduleOpGetQueryTest
         hist.OverrideReason.Should().Be("Disetujui Ka. OK");
         hist.UserId.Should().Be("user1");
         hist.CrtDate.Should().Be(new DateTime(2026, 10, 19, 14, 0, 0));
+        hist.ChangeType.Should().Be("RESCHEDULE");
+    }
+
+    [Fact]
+    public async Task Handle_WhenScheduleHasMultiplePpaAndAssignLeaderHistory_ShouldMapPpaDetailsAndChangeTypeCorrectly()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp("ORD-002", "PAS-002");
+        var hist = new ScheduleOpHistType(
+            1,
+            new DateTime(2026, 10, 21, 8, 0, 0),
+            new DateTime(2026, 10, 21, 8, 0, 0),
+            60,
+            60,
+            new KamarReff("KAMAR-1", "OK 1"),
+            new KamarReff("KAMAR-1", "OK 1"),
+            new PpaReff("DOC-01", "dr. Lama"),
+            new PpaReff("DOC-02", "dr. Baru"),
+            "Pergantian Operator",
+            false,
+            "",
+            "user2",
+            new DateTime(2026, 10, 20, 9, 0, 0),
+            "ASSIGN_LEADER");
+
+        var ppaDoctor = new ScheduleOpPpaType(1, new PpaReff("DOC-02", "dr. Baru"), ProfesiType.Dokter, GroupSpesialisType.Default);
+        var ppaNurse = new ScheduleOpPpaType(2, new PpaReff("PRW-01", "Ns. Asisten"), ProfesiType.Perawat, GroupSpesialisType.Default);
+
+        var scheduleOp = new ScheduleOpModel(
+            "SCH-002",
+            new DateTime(2026, 10, 16),
+            AuditTrailType.Create("u1", new DateTime(2026, 10, 16)),
+            new OrderOpReff("ORD-002", new DateTime(2026, 10, 16), "Apendektomi"),
+            new PasienReff("PAS-002", "Pasien Dua", new DateOnly(1995, 5, 5), "P"),
+            UrgencyLevelEnum.Cito,
+            60,
+            new DateTime(2026, 10, 21, 8, 0, 0),
+            new KamarReff("KAMAR-1", "OK 1"),
+            new RegReff("REG-002", "PAS-002", "Pasien Dua"),
+            new PpaReff("DOC-02", "dr. Baru"),
+            new DateTime(2026, 10, 21, 8, 0, 0),
+            new DateTime(2026, 10, 21, 9, 0, 0),
+            OpCaseStateEnum.Scheduled,
+            [ppaDoctor, ppaNurse],
+            "",
+            30,
+            [hist]);
+
+        var scheduleView = new ScheduleOpView(
+            "SCH-002",
+            new PasienReff("PAS-002", "Pasien Dua", new DateOnly(1995, 5, 5), "P"),
+            new OrderOpReff("ORD-002", new DateTime(2026, 10, 16), "Apendektomi"),
+            UrgencyLevelEnum.Cito,
+            new DateTime(2026, 10, 21, 8, 0, 0),
+            60,
+            new PpaReff("DOC-02", "dr. Baru"),
+            new KamarReff("KAMAR-1", "OK 1"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            30);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-002")))
+            .Returns(MayBe.From(orderOp));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "PAS-002")))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-002")))
+            .Returns(MayBe.From(scheduleOp));
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new OkScheduleOpGetQuery("ORD-002"), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ListPpa.Should().HaveCount(2);
+
+        var listPpa = result.ListPpa.ToList();
+        listPpa[0].NoUrut.Should().Be(1);
+        listPpa[0].PpaId.Should().Be("DOC-02");
+        listPpa[0].PpaName.Should().Be("dr. Baru");
+        listPpa[0].ProfesiId.Should().Be("DOK");
+        listPpa[0].ProfesiName.Should().Be("Dokter");
+
+        listPpa[1].NoUrut.Should().Be(2);
+        listPpa[1].PpaId.Should().Be("PRW-01");
+        listPpa[1].PpaName.Should().Be("Ns. Asisten");
+        listPpa[1].ProfesiId.Should().Be("PRW");
+        listPpa[1].ProfesiName.Should().Be("Perawat");
+
+        result.History.Should().HaveCount(1);
+        result.History.First().ChangeType.Should().Be("ASSIGN_LEADER");
     }
 
     [Theory]

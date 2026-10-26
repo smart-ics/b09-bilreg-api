@@ -27,10 +27,17 @@ public record ScheduleOpGetResponse(
     string DokterId,
     string DokterName,
     string StatusOp,
-    IEnumerable<PpaReff> ListPpa,
+    IEnumerable<OkScheduleOpPpaDto> ListPpa,
     string AlasanBatal,
     int TurnoverBuffer,
     IEnumerable<OkScheduleOpHistDto> History);
+
+public record OkScheduleOpPpaDto(
+    int NoUrut,
+    string PpaId,
+    string PpaName,
+    string ProfesiId,
+    string ProfesiName);
 
 public record OkScheduleOpHistDto(
     int NoUrut,
@@ -50,7 +57,8 @@ public record OkScheduleOpHistDto(
     bool IsOverride,
     string OverrideReason,
     string UserId,
-    DateTime CrtDate);
+    DateTime CrtDate,
+    string ChangeType = "RESCHEDULE");
 
 public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, ScheduleOpGetResponse>
 {
@@ -98,7 +106,16 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             h.IsOverride,
             h.OverrideReason,
             h.UserId,
-            h.CrtDate
+            h.CrtDate,
+            h.ChangeType
+        )).ToList() ?? [];
+
+        var ppaList = scheduleOp.ListPpa?.Select(x => new OkScheduleOpPpaDto(
+            x.NoUrut,
+            x.Ppa?.PpaId ?? string.Empty,
+            x.Ppa?.PpaName ?? string.Empty,
+            x.Profesi?.ProfesiId ?? string.Empty,
+            x.Profesi?.ProfesiName ?? string.Empty
         )).ToList() ?? [];
 
         var response = new ScheduleOpGetResponse(
@@ -120,7 +137,7 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             scheduleOp.TeamLead.PpaId,
             scheduleOp.TeamLead.PpaName,
             TranslateState(scheduleOp.OrderOpState),
-            scheduleOp.ListPpa.Select(x => new PpaReff(x.Ppa.PpaId, x.Ppa.PpaName)),
+            ppaList,
             scheduleOp.AlasanBatal,
             scheduleOp.TurnoverBuffer,
             historyList);

@@ -289,7 +289,8 @@ public class ScheduleOpControllerTest
                 IsOverride: true,
                 OverrideReason: "Disetujui komite medik",
                 UserId: "admin",
-                CrtDate: new DateTime(2026, 10, 19, 14, 0, 0))
+                CrtDate: new DateTime(2026, 10, 19, 14, 0, 0),
+                ChangeType: "RESCHEDULE")
         };
 
         var response = new ScheduleOpGetResponse(
@@ -311,7 +312,7 @@ public class ScheduleOpControllerTest
             DokterId: "DOC-02",
             DokterName: "dr. Operator 2",
             StatusOp: "Scheduled",
-            ListPpa: new List<PpaReff>(),
+            ListPpa: new List<OkScheduleOpPpaDto>(),
             AlasanBatal: "",
             TurnoverBuffer: 30,
             History: history);
@@ -341,7 +342,7 @@ public class ScheduleOpControllerTest
         const string tgl = "2026-10-20";
         var expectedResponse = new List<OkListScheduleResponse>
         {
-            new("PAS-01", "Budi", "1990-01-01", "ORD-001", "SCH-001", "Apendektomi", "Elective", 60, "08:00", "Scheduled", "DOC-01", "dr. Operator", "KMR-01", "OK 1")
+            new("PAS-01", "Budi", "1990-01-01", "ORD-001", "SCH-001", "Apendektomi", "Elective", 60, "08:00", "Scheduled", "DOC-01", "dr. Operator", "KMR-01", "OK 1", 30)
         };
 
         _mediatorMock
