@@ -346,4 +346,45 @@ public class LabBillingIntegrationTest
         result.Code.Should().Be(BillingReleaseValidationCode.Blocked);
         result.Message.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public void ChargeOrder_AdmissionPatient_WhenExactRateNotFound_UsesFallbackAndChargesSuccessfully()
+    {
+        var sut = CreateSut();
+        var order = LabOrderTestSupport.CreateEmrOrder();
+
+        _regRepo.Setup(r => r.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(SampleReg(order.Patient.RegId)));
+        _jaminanRepo.Setup(r => r.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(JaminanType.Umum));
+        _tarifRepo.Setup(r => r.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default));
+
+        // Exact composite key returns None
+        _nilaiTarifRepo.Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe<NilaiTarifType>.None);
+
+        // First active rate returns valid rate with Nilai > 0
+        var activeRate = NilaiTarifType.Default with { Nilai = 29500m };
+        _nilaiTarifRepo.Setup(r => r.LoadFirstActiveRate(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(activeRate));
+
+        _komponenRepo.Setup(r => r.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+
+        var billingId = sut.ChargeOrder(order, "U1", DateTime.Now);
+
+        var expectedId = order.OrderId.Length > 12 ? order.OrderId[..12] : order.OrderId;
+        billingId.Should().Be(expectedId);
+
+        _addBillAppService.Verify(a => a.FromLabOrderItem(
+            order,
+            It.IsAny<LabOrderItemModel>(),
+            It.IsAny<RegModel>(),
+            It.IsAny<JaminanType>(),
+            It.IsAny<TarifType>(),
+            It.Is<NilaiTarifType>(nt => nt.Nilai == 29500m),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<DateTime>()), Times.Exactly(order.Items.Count));
+    }
 }

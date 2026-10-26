@@ -206,8 +206,7 @@ public class LabBillingIntegration : ILabBillingIntegration
         {
             var tarifKey = TarifType.Key(item.TarifId);
             var tarif = LoadTarif(tarifKey);
-            var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, kelasKey);
-            var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
+            var nilaiTarif = ResolveNilaiTarif(tarifKey, tipeTarifKey, kelasKey);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
             _ = _addBillAppService!.FromLabOrderItem(order, item, externalReg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
         }
@@ -228,8 +227,7 @@ public class LabBillingIntegration : ILabBillingIntegration
             var tarifKey = TarifType.Key(item.TarifId);
             var tarif = LoadTarif(tarifKey);
             var tipeTarifKey = ResolveTipe(reg.JenisReg, jaminan);
-            var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
-            var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
+            var nilaiTarif = ResolveNilaiTarif(tarifKey, tipeTarifKey, reg.Kelas);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
             _ = _addBillAppService!.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
         }
@@ -268,14 +266,52 @@ public class LabBillingIntegration : ILabBillingIntegration
         return tarif;
     }
 
-    private NilaiTarifType LoadNilaiTarif(INilaiTarifCompositKey nilaiTarifKey)
+    private NilaiTarifType ResolveNilaiTarif(ITarifKey tarifKey, ITipeTarifKey tipeTarifKey, IKelasKey kelasKey)
     {
-        var nilaiTarif = _nilaiTarifRepo!.LoadEntity(nilaiTarifKey)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Nilai Tarif invalid")
-            );
-        return nilaiTarif;
+        // 1. Exact match (Tarif + TipeTarif Pasien + Kelas Pasien)
+        var primaryKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, kelasKey);
+        var primaryOpt = _nilaiTarifRepo!.LoadEntity(primaryKey);
+        if (primaryOpt.HasValue && primaryOpt.Value.Nilai > 0)
+            return primaryOpt.Value;
+
+        // 2. Patient's Kelas with standard UMUM
+        var umumKelasKey = NilaiTarifType.KeyComposite(tarifKey, TipeTarifType.Key("UMUM"), kelasKey);
+        var umumKelasOpt = _nilaiTarifRepo.LoadEntity(umumKelasKey);
+        if (umumKelasOpt.HasValue && umumKelasOpt.Value.Nilai > 0)
+            return umumKelasOpt.Value;
+
+        // 3. Standard UMUM / Kelas III
+        var umumK3Key = NilaiTarifType.KeyComposite(tarifKey, TipeTarifType.Key("UMUM"), KelasType.Key("III"));
+        var umumK3Opt = _nilaiTarifRepo.LoadEntity(umumK3Key);
+        if (umumK3Opt.HasValue && umumK3Opt.Value.Nilai > 0)
+            return umumK3Opt.Value;
+
+        // 4. Standard RJ / Kelas III
+        var rjK3Key = NilaiTarifType.KeyComposite(tarifKey, TipeTarifType.Key("RJ"), KelasType.Key("III"));
+        var rjK3Opt = _nilaiTarifRepo.LoadEntity(rjK3Key);
+        if (rjK3Opt.HasValue && rjK3Opt.Value.Nilai > 0)
+            return rjK3Opt.Value;
+
+        // 5. Default/Default ("-", "-")
+        var fallbackKey = NilaiTarifType.KeyComposite(tarifKey, TipeTarifType.Default, KelasType.Default);
+        var fallbackOpt = _nilaiTarifRepo.LoadEntity(fallbackKey);
+        if (fallbackOpt.HasValue && fallbackOpt.Value.Nilai > 0)
+            return fallbackOpt.Value;
+
+        // 6. First active rate in master for this Tarif
+        var firstActiveOpt = _nilaiTarifRepo.LoadFirstActiveRate(tarifKey);
+        if (firstActiveOpt.HasValue && firstActiveOpt.Value.Nilai > 0)
+            return firstActiveOpt.Value;
+
+        // Fallback to whichever was found (even if 0) before giving up
+        if (primaryOpt.HasValue) return primaryOpt.Value;
+        if (umumKelasOpt.HasValue) return umumKelasOpt.Value;
+        if (umumK3Opt.HasValue) return umumK3Opt.Value;
+        if (rjK3Opt.HasValue) return rjK3Opt.Value;
+        if (fallbackOpt.HasValue) return fallbackOpt.Value;
+        if (firstActiveOpt.HasValue) return firstActiveOpt.Value;
+
+        throw new KeyNotFoundException($"Nilai Tarif invalid");
     }
 
     private static TipeTarifReff ResolveTipe(JenisRegEnum jenisReg, JaminanType jaminan)
