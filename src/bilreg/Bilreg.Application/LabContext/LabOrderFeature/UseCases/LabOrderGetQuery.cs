@@ -178,7 +178,9 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             ClinicalNote: order.ClinicalNote,
             Urgency: (int)order.Urgency,
             IsCito: order.IsCito,
-            CrtDate: order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
+            CrtDate: order.AuditTrail.Created.Timestamp == DateTime.MinValue
+                ? ""
+                : order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss"));
 
         return Task.FromResult(response);
     }
