@@ -44,6 +44,8 @@ public class StokDal : IStokDal
                bb.fs_nm_barang,
                bb.fs_kd_sat_jual,
                cc.fs_nm_satuan
+           HAVING
+               SUM(aa.fn_qty) > 0
            """;
         
         var dp = new DynamicParameters();
