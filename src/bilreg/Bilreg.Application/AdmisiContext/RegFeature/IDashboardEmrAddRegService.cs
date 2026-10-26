@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature;
@@ -18,5 +18,6 @@ public record AddAntrianEmrByRegCommand
     string DokterId,
     string TglBerobat,
     string JamJadwal,
-    int NoAntrian
+    int NoAntrian,
+    string PrefixAntrian = ""
 );
