@@ -57,12 +57,14 @@ public record DeliveryGetResponse(
 
 public record DeliveryGetAuditResponse(
     string UserId,
-    string Timestamp
+    string Timestamp,
+    string UserName = ""
 );
 
 public record DeliveryGetConfirmedResponse(
     string UserId,
-    string Timestamp
+    string Timestamp,
+    string UserName = ""
 );
 
 public record DeliveryGetItemResponse(
@@ -175,9 +177,9 @@ public class DeliveryGetHandler : IRequestHandler<DeliveryGetQuery, DeliveryGetR
             model.BiayaLain,
             model.DiskonLain,
             model.GrandTotal,
-            new DeliveryGetConfirmedResponse(model.Confirmed.UserId, confirmedAtStr),
+            new DeliveryGetConfirmedResponse(model.Confirmed.UserId, confirmedAtStr, model.ConfirmedUserName),
             listItem,
-            new DeliveryGetAuditResponse(createdUser, createdStr),
+            new DeliveryGetAuditResponse(createdUser, createdStr, model.CreatedUserName),
             model.PoDate
         );
     }

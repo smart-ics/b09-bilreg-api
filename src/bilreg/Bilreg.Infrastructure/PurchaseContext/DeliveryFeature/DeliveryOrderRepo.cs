@@ -178,6 +178,16 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
 
         var supplier = new PartnerReff(orderDto.SupplierId, orderDto.SupplierName);
         var gudang = new LayananReff(orderDto.LayananId, orderDto.LayananName);
+        var createdUserName = orderDto.PetugasName ?? string.Empty;
+        var confirmedUserName = orderDto.ConfirmedByName ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(confirmedUserName) && listInspectionDtos.Any())
+        {
+            var firstConfirmed = listInspectionDtos.FirstOrDefault(x => x.ConfirmedAt.HasValue);
+            if (firstConfirmed != null && !string.IsNullOrWhiteSpace(firstConfirmed.ConfirmedByName))
+            {
+                confirmedUserName = firstConfirmed.ConfirmedByName;
+            }
+        }
 
         var model = new DeliveryOrderModel(
             orderDto.DoId,
@@ -198,7 +208,9 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             confirmedAudit,
             auditTrail,
             items,
-            orderDto.PoDate
+            orderDto.PoDate,
+            createdUserName,
+            confirmedUserName
         );
 
         return MayBe.From(model);
