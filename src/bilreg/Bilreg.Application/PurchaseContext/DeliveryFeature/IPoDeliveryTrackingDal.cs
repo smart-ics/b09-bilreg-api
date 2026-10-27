@@ -81,6 +81,8 @@ public class PoPendingItemDto
     public string LayananName { get; set; } = string.Empty;
     public string Keterangan { get; set; } = string.Empty;
     public decimal StatusDo { get; set; }
+    public string ActiveDraftDoId { get; set; } = string.Empty;
+    public string ActiveDraftSuratJalan { get; set; } = string.Empty;
 
     public int NoUrut { get; set; }
     public string BrgId { get; set; } = string.Empty;

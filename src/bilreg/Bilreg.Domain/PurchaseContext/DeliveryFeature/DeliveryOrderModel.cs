@@ -135,10 +135,11 @@ public class DeliveryOrderModel : IDeliveryOrderKey
 
     private void Recalculate()
     {
-        SubTotal = _listItem.Sum(item => item.SubTotal);
-        TaxTotal = _listItem.Sum(item => item.Tax);
-        DiskonTotal = _listItem.Sum(item => item.Diskon * item.Inspection.QtyDiterima);
-        Total = _listItem.Sum(item => item.Total);
+        var commercialItems = _listItem.Where(item => item.Inspection?.IsBonus != true);
+        SubTotal = commercialItems.Sum(item => item.SubTotal);
+        TaxTotal = commercialItems.Sum(item => item.Tax);
+        DiskonTotal = commercialItems.Sum(item => item.Diskon * item.Inspection.QtyDiterima);
+        Total = commercialItems.Sum(item => item.Total);
         GrandTotal = Total + BiayaLain - DiskonLain;
     }
 
