@@ -205,6 +205,7 @@ public class OkScheduleOpGetQueryTest
         result.ScheduleOpId.Should().Be("SCH-001");
         result.NamaOperasi.Should().Be("Herniotomi");
         result.Urgency.Should().Be("Elective");
+        result.Durasi.Should().Be(90);
         result.PasienId.Should().Be("PAS-001");
         result.PasienName.Should().Be("Pasien Test");
         result.RegId.Should().Be("REG-001");

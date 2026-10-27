@@ -298,6 +298,7 @@ public class ScheduleOpControllerTest
             ScheduleOpId: "SCH-001",
             NamaOperasi: "Laparotomi",
             Urgency: "Elektif",
+            Durasi: 90,
             PasienId: "PAS-01",
             PasienName: "Budi",
             RegId: "REG-01",
