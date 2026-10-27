@@ -86,8 +86,9 @@ public class MutasiBerkasWorklistDalTest
     public void QueryWorklist_IgnoresVoidedRows()
     {
         using var trans = TransHelper.NewScope();
-        var activeDto = Faker("MK26100091", "RG26100091", "00-99-88-71", layananId: "POL91", tglVoid: "3000-01-01");
-        var voidedDto = Faker("MK26100092", "RG26100092", "00-99-88-72", layananId: "POL91", tglVoid: "2026-10-17");
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var activeDto = Faker("MK26100091", "RG26100091", "00-99-88-71", layananId: "POL91", tglPraktek: today, tglVoid: "3000-01-01");
+        var voidedDto = Faker("MK26100092", "RG26100092", "00-99-88-72", layananId: "POL91", tglPraktek: today, tglVoid: "2026-10-17");
 
         _mutasiDal.Insert(activeDto);
         _mutasiDal.Insert(voidedDto);
@@ -97,6 +98,50 @@ public class MutasiBerkasWorklistDalTest
 
         results.Should().Contain(x => x.MutasiId == "MK26100091");
         results.Should().NotContain(x => x.MutasiId == "MK26100092");
+    }
+
+    [Fact]
+    public void QueryWorklist_NullOrEmptyTglPraktek_DefaultsToToday()
+    {
+        using var trans = TransHelper.NewScope();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
+
+        var todayDto = Faker("MK26100071", "RG26100071", "00-77-66-51", layananId: "POL71", tglPraktek: today);
+        var pastDto = Faker("MK26100072", "RG26100072", "00-77-66-52", layananId: "POL71", tglPraktek: yesterday);
+
+        _mutasiDal.Insert(todayDto);
+        _mutasiDal.Insert(pastDto);
+
+        var filter = new MutasiBerkasWorklistFilter(LayananId: "POL71");
+        var results = _sut.QueryWorklist(filter).ToList();
+
+        results.Should().Contain(x => x.MutasiId == "MK26100071");
+        results.Should().NotContain(x => x.MutasiId == "MK26100072");
+    }
+
+    [Fact]
+    public void QueryHistori_WithOrWithoutDashes_ReturnsAllHistory()
+    {
+        using var trans = TransHelper.NewScope();
+        var mrDashed = "00-14-37-71";
+        var mrPlain = "00143771";
+
+        var dto1 = Faker("MK26100061", "RG26100061", mrDashed, jamMutasi: "08:00:00");
+        var dto2 = Faker("MK26100062", "RG26100062", mrPlain, jamMutasi: "09:00:00");
+
+        _mutasiDal.Insert(dto1);
+        _mutasiDal.Insert(dto2);
+
+        // Query with plain MR
+        var resultsWithPlain = _sut.QueryHistori(mrPlain).ToList();
+        resultsWithPlain.Should().Contain(x => x.MutasiId == "MK26100061");
+        resultsWithPlain.Should().Contain(x => x.MutasiId == "MK26100062");
+
+        // Query with dashed MR
+        var resultsWithDashed = _sut.QueryHistori(mrDashed).ToList();
+        resultsWithDashed.Should().Contain(x => x.MutasiId == "MK26100061");
+        resultsWithDashed.Should().Contain(x => x.MutasiId == "MK26100062");
     }
 
     [Fact]

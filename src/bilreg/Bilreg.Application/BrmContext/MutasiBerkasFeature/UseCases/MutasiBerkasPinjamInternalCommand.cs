@@ -85,10 +85,10 @@ public class MutasiBerkasPinjamInternalHandler : IRequestHandler<MutasiBerkasPin
         // 3. Generate Mutasi ID (prefix MK)
         var mutasiId = _idGenerator.Generate(MutasiBerkasStatusEnum.Dispatched);
 
-        // 4. Generate transaction number & timestamps
+        // 4. Generate transaction number & timestamps (max 10 chars for VARCHAR(10) column)
         var tglMutasi = request.TglPinjam ?? DateOnly.FromDateTime(DateTime.Now);
         var jamMutasi = request.JamPinjam ?? TimeOnly.FromDateTime(DateTime.Now);
-        var trsBuatId = $"PINJAM-{tglMutasi:yyyyMMdd}{jamMutasi:HHmmss}";
+        var trsBuatId = $"P{tglMutasi:yyMMdd}{DateTime.Now:fff}";
 
         // 5. Build domain aggregate
         var volume = VolumeBerkasType.CreatePinjam(qtyRi: 0m, qtyRj: 1m);

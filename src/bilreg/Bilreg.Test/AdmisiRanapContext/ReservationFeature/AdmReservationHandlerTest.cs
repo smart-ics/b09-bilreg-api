@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
@@ -18,6 +19,7 @@ public class AdmReservationHandlerTest
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
+    private readonly Mock<IPasienTrackerInpatientCoordinator> _trackerCoordinatorMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesReservation()
@@ -32,7 +34,8 @@ public class AdmReservationHandlerTest
             _reservationRepoMock.Object,
             _patientGatewayMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object, TestTglJamProvider.Instance);
+            _auditRepoMock.Object, TestTglJamProvider.Instance,
+            _trackerCoordinatorMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateReservationCmd(
@@ -47,6 +50,9 @@ public class AdmReservationHandlerTest
         saved.Should().NotBeNull();
         saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Reserved);
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
+        _trackerCoordinatorMock.Verify(x => x.RecordReservationCreated(
+            It.Is<ReservationModel>(r => r.ReservationId == response.ReservationId),
+            It.IsAny<DateTime>()), Times.Once);
     }
 
     [Fact]

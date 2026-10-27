@@ -1,4 +1,4 @@
-﻿CREATE TABLE BILRG_Tindakan
+CREATE TABLE BILRG_Tindakan
 (
     TindakanId       VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanId DEFAULT(''),
     TindakanDate     DATETIME      NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanDate DEFAULT('3000-01-01'),
@@ -17,6 +17,7 @@
 	TipeTarifName    VARCHAR(30)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TipeTarifName DEFAULT(''),
 	TarifId          VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifId DEFAULT(''),
     TarifName        VARCHAR(55)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifName DEFAULT(''),
+    Qty              INT           NOT NULL CONSTRAINT DF_BILRG_Tindakan_Qty DEFAULT(1),
     Total            DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_Tindakan_Total DEFAULT(0),
     
 	CrtUser          VARCHAR(50)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_CrtUser DEFAULT(''),

@@ -85,7 +85,8 @@ public class MutasiBerkasPinjamInternalCommandTest
         // Assert
         result.Should().NotBeNull();
         result.MutasiId.Should().Be("MK26100001");
-        result.TrsBuatId.Should().Be("PINJAM-20261021083000");
+        result.TrsBuatId.Length.Should().BeLessOrEqualTo(10);
+        result.TrsBuatId.Should().StartWith($"P{cmd.TglPinjam:yyMMdd}");
         result.MrId.Should().Be("00-12-34-56");
         result.Status.Should().Be((int)MutasiBerkasStatusEnum.Dispatched);
         result.TotalPinjam.Should().Be(1m);
@@ -97,7 +98,8 @@ public class MutasiBerkasPinjamInternalCommandTest
         _idGeneratorMock.Verify(x => x.Generate(MutasiBerkasStatusEnum.Dispatched), Times.Once);
         _mutasiRepoMock.Verify(x => x.SaveChanges(It.Is<MutasiBerkasModel>(m =>
             m.MutasiBerkasId == "MK26100001" &&
-            m.TrsBuatId == "PINJAM-20261021083000" &&
+            m.TrsBuatId.Length <= 10 &&
+            m.TrsBuatId.StartsWith("P261021") &&
             m.PasienId == "00-12-34-56" &&
             m.Status == MutasiBerkasStatusEnum.Dispatched &&
             m.PetugasId == "PET_FILING" &&
@@ -208,7 +210,8 @@ public class MutasiBerkasPinjamInternalCommandTest
         // Assert
         result.Should().NotBeNull();
         result.MutasiId.Should().Be("MK26100005");
-        result.TrsBuatId.Should().StartWith("PINJAM-");
+        result.TrsBuatId.Length.Should().BeLessOrEqualTo(10);
+        result.TrsBuatId.Should().StartWith("P");
         result.TotalPinjam.Should().Be(1m);
         _mutasiRepoMock.Verify(x => x.SaveChanges(It.Is<MutasiBerkasModel>(m =>
             m.MutasiBerkasId == "MK26100005" &&
@@ -216,6 +219,27 @@ public class MutasiBerkasPinjamInternalCommandTest
             m.JadwalPelayanan.LayananId == "AUDIT" &&
             m.JadwalPelayanan.DokterId == "PET_AUDIT"
         )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenValidCommand_GeneratesTrsBuatId_WithTenCharactersOrLess_ForDbColumnCompliance()
+    {
+        // Arrange
+        var cmd = CreateValidCommand();
+        _mutasiRepoMock.Setup(x => x.GetLatestActiveByMr(cmd.MrId))
+            .Returns(MayBe<MutasiBerkasModel>.None);
+        _idGeneratorMock.Setup(x => x.Generate(MutasiBerkasStatusEnum.Dispatched))
+            .Returns("MK26100001");
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.TrsBuatId.Should().NotBeNullOrEmpty();
+        result.TrsBuatId.Length.Should().Be(10);
+        result.TrsBuatId.Should().MatchRegex(@"^P\d{6}\d{3}$");
     }
 
     [Fact]

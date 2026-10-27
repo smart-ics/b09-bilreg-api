@@ -1,9 +1,12 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
@@ -22,16 +25,20 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly ITataRekeningRepo _tataRekeningRepo;
+
     public TindakanVoidHandler(ITindakanRepo tdkRepo,
         IAuditRepo auditRepo, ITglJamProvider tglJamProvider, 
         ITrsBillingRepo trsBillingRepo, 
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        ITataRekeningRepo tataRekeningRepo)
     {
         _tdkRepo = tdkRepo;
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
         _trsBillingRepo = trsBillingRepo;
         _jurnalRepo = jurnalRepo;
+        _tataRekeningRepo = tataRekeningRepo;
     }
 
     public Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
@@ -46,12 +53,27 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
                 onNone: () => throw new KeyNotFoundException($"Tindakan {request.TindakanId} not found") 
             );
 
+        var regKey = RegModel.Key(tdk.Reg.RegId);
+        var tataRekening = _tataRekeningRepo.LoadEntity(regKey).Match(
+            onSome: x => x,
+            onNone: () => (TataRekeningModel?)null
+        );
+
+        if (tataRekening is not null)
+        {
+            tataRekening.DeleteBill(tdk.TindakanId);
+        }
+
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
         var occurredAt = _tglJamProvider.Now;
         tdk.Void(request.UserId, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _tdkRepo.SaveChanges(tdk);
+        if (tataRekening is not null)
+        {
+            _tataRekeningRepo.SaveChanges(tataRekening);
+        }
         _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
         _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
 

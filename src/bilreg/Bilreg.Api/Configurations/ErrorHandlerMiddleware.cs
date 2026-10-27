@@ -2,6 +2,7 @@ using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -38,6 +39,11 @@ public class ErrorHandlerMiddleware
         }
         catch (Exception error)
         {
+            while (error is TargetInvocationException tie && tie.InnerException is not null)
+            {
+                error = tie.InnerException;
+            }
+
             var response = context.Response;
             response.ContentType = "application/json";
 

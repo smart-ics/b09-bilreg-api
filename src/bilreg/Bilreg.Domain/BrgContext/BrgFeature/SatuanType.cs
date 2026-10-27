@@ -22,6 +22,8 @@ public record SatuanType : ISatuanKey
     public static SatuanType Default => new("-", "-");
 
     public static ISatuanKey Key(string id) => Default with { SatuanId = id };
+
+    public SatuanReff ToReff() => new(SatuanId, SatuanName);
     #endregion
 
     #region PROPERTIES
@@ -33,4 +35,9 @@ public record SatuanType : ISatuanKey
 public interface ISatuanKey
 {
     string SatuanId { get; }
+}
+
+public record SatuanReff(string SatuanId, string SatuanName) : ISatuanKey
+{
+    public static SatuanReff Default => new("-", "-");
 }

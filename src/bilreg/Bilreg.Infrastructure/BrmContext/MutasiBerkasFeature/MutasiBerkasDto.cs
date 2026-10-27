@@ -24,6 +24,11 @@ public record MutasiBerkasDto : IMutasiBerkasKey
     public string fs_jam_void { get; init; } = string.Empty;
     public string fs_kd_petugas_void { get; init; } = string.Empty;
 
+    // Enriched demographics from TC_MR (DEF-004, DEC-012)
+    public string PasienName { get; init; } = string.Empty;
+    public string JenisKelamin { get; init; } = string.Empty;
+    public string TglLahir { get; init; } = string.Empty;
+
     // Legacy Audit Fields
     public string CRTTGL { get; init; } = string.Empty;
     public string CRTJAM { get; init; } = string.Empty;

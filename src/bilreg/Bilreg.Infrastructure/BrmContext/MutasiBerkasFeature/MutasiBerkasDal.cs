@@ -251,15 +251,20 @@ public class MutasiBerkasDal : IMutasiBerkasDal
     {
         const string sql = """
             SELECT TOP 1
-                FS_KD_TRS_BUAT, FS_MR, FS_KD_MUTASI, FD_TGL_MUTASI, FS_JAM_MUTASI,
-                FS_KD_PETUGAS_MEDIS, FS_KD_LAYANAN, FD_TGL_PRAKTEK, FS_JAM_PRAKTEK, FS_KD_SESION_POLI,
-                FN_STATUS, FS_KD_PETUGAS, FN_CETAK, FS_KD_PETUGAS_CETAK, fd_tgl_cetak,
-                fs_jam_cetak, fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR,
-                UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
-            FROM TA_TRS_MR_MUTASI
-            WHERE FS_MR = @FS_MR AND fd_tgl_void = '3000-01-01'
-            ORDER BY FD_TGL_MUTASI DESC, FS_JAM_MUTASI DESC
+                aa.FS_KD_TRS_BUAT, aa.FS_MR, aa.FS_KD_MUTASI, aa.FD_TGL_MUTASI, aa.FS_JAM_MUTASI,
+                aa.FS_KD_PETUGAS_MEDIS, aa.FS_KD_LAYANAN, aa.FD_TGL_PRAKTEK, aa.FS_JAM_PRAKTEK, aa.FS_KD_SESION_POLI,
+                aa.FN_STATUS, aa.FS_KD_PETUGAS, aa.FN_CETAK, aa.FS_KD_PETUGAS_CETAK, aa.fd_tgl_cetak,
+                aa.fs_jam_cetak, aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_petugas_void,
+                ISNULL(bb.FS_NM_PASIEN, '') AS PasienName,
+                ISNULL(bb.FS_JNS_KELAMIN, '') AS JenisKelamin,
+                ISNULL(bb.FD_TGL_LAHIR, '') AS TglLahir,
+                aa.CRTTGL, aa.CRTJAM, aa.CRTIPA, aa.CRTVER, aa.CRTUSR,
+                aa.UPDTGL, aa.UPDJAM, aa.UPDIPA, aa.UPDVER, aa.UPDUSR
+            FROM TA_TRS_MR_MUTASI aa
+            LEFT JOIN TC_MR bb ON REPLACE(aa.FS_MR, '-', '') = REPLACE(bb.FS_MR, '-', '')
+            WHERE (aa.FS_MR = @FS_MR OR REPLACE(aa.FS_MR, '-', '') = REPLACE(@FS_MR, '-', '')) 
+              AND aa.fd_tgl_void = '3000-01-01'
+            ORDER BY aa.FD_TGL_MUTASI DESC, aa.FS_JAM_MUTASI DESC
             """;
 
         var dp = new DynamicParameters();

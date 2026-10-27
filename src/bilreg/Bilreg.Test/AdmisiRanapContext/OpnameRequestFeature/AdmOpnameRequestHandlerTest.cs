@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
@@ -18,6 +19,7 @@ public class AdmOpnameRequestHandlerTest
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IDoctorServiceGateway> _doctorGatewayMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
+    private readonly Mock<IPasienTrackerInpatientCoordinator> _trackerCoordinatorMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesOpnameRequest()
@@ -37,7 +39,9 @@ public class AdmOpnameRequestHandlerTest
             _opnameRepoMock.Object,
             _patientGatewayMock.Object,
             _doctorGatewayMock.Object,
-            _auditRepoMock.Object, TestTglJamProvider.Instance);
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance,
+            _trackerCoordinatorMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Catatan", "user1", "CH0001"),
@@ -47,6 +51,9 @@ public class AdmOpnameRequestHandlerTest
         saved.Should().NotBeNull();
         saved!.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Requested);
         _opnameRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Once);
+        _trackerCoordinatorMock.Verify(x => x.RecordOpnameRequestCreated(
+            It.Is<OpnameRequestModel>(m => m.OpnameRequestId == response.OpnameRequestId),
+            It.IsAny<DateTime>()), Times.Once);
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 

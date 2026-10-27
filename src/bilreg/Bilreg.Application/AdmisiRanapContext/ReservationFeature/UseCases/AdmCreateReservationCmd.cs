@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
@@ -24,19 +25,22 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IPasienTrackerInpatientCoordinator _trackerCoordinator;
 
     public AdmCreateReservationHandler(
         IReservationRepo reservationRepo,
         IPatientAdministrationGateway patientGateway,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IPasienTrackerInpatientCoordinator trackerCoordinator)
     {
         _reservationRepo = reservationRepo;
         _patientGateway = patientGateway;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
+        _trackerCoordinator = trackerCoordinator;
     }
 
     public Task<AdmCreateReservationResponse> Handle(
@@ -63,6 +67,8 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
             occurredAt);
 
         _reservationRepo.SaveChanges(reservation);
+
+        _trackerCoordinator.RecordReservationCreated(reservation, occurredAt);
 
         _auditRepo.SaveChanges(AuditLog.Create(
             reservation.AuditTrail.Created,

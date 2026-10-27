@@ -88,7 +88,16 @@ public class TelaahStartHandler : IRequestHandler<TelaahStartCmd, TelaahResponse
         TelaahResepModel telaah;
         if (existing.HasValue)
         {
-            telaah = existing.Value;
+            var existingTelaah = existing.Value;
+            if (existingTelaah.TelaahStatus == TelaahStatusEnum.UnderReview)
+            {
+                return Task.FromResult(new TelaahResponse(
+                    existingTelaah.TelaahResepId,
+                    existingTelaah.TelaahStatus,
+                    existingTelaah.Version));
+            }
+
+            telaah = existingTelaah;
             if (request.ExpectedVersion > 0)
                 telaah.AssertExpectedVersion(request.ExpectedVersion);
         }

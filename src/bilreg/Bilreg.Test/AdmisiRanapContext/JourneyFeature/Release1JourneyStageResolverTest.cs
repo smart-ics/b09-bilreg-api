@@ -19,21 +19,28 @@ public class Release1JourneyStageResolverTest
     private static OpnameRequestJourneyFact Opname(
         string id,
         OpnameRequestStatusEnum status,
-        string fulfilledRegId = "-") =>
-        new(id, status, fulfilledRegId, T0);
+        string fulfilledRegId = "-",
+        DateTime? statusAt = null,
+        DateTime? createdAt = null) =>
+        new(id, status, fulfilledRegId, statusAt ?? T0, createdAt);
 
     private static ReservationJourneyFact Reservation(
         string id,
         ReservationStatusEnum status,
-        string realizedRegId = "-") =>
-        new(id, status, realizedRegId, T0);
+        string realizedRegId = "-",
+        DateTime? statusAt = null,
+        DateTime? createdAt = null) =>
+        new(id, status, realizedRegId, statusAt ?? T0, createdAt);
 
     private static AdmissionJourneyFact Admission(
         string regId,
         AdmissionStatusEnum status,
         string opnameRequestId = "-",
-        string reservationId = "-") =>
-        new(regId, status, opnameRequestId, reservationId, T1, "B01", "Bangsal Melati");
+        string reservationId = "-",
+        DateTime? admissionAt = null,
+        DateTime? createdAt = null,
+        DateTime? updatedAt = null) =>
+        new(regId, status, opnameRequestId, reservationId, admissionAt ?? T1, "B01", "Bangsal Melati", createdAt, updatedAt);
 
     private static WaitingListJourneyFact WaitingList(
         string id,
@@ -533,6 +540,94 @@ public class Release1JourneyStageResolverTest
 
         JourneyIdFactory.ResolveLegacyRecord("admission", "RG1", facts)
             .Should().Be("opn:OPN1");
+    }
+
+    [Fact]
+    public void Timeline_ReservationWithTimeDisparity_ResolvesCreatedAndRealizedTimestampsAccurately()
+    {
+        var t0 = new DateTime(2026, 10, 19, 9, 16, 57, DateTimeKind.Utc);
+        var t1 = new DateTime(2026, 10, 19, 9, 18, 51, DateTimeKind.Utc);
+
+        var facts = Facts(
+            JourneyOriginKind.Reservation,
+            rsv: Reservation("RSV1", ReservationStatusEnum.Realized, realizedRegId: "RG1", statusAt: t1, createdAt: t0),
+            admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, reservationId: "RSV1")]);
+
+        var result = Release1JourneyStageResolver.Resolve(facts);
+
+        var createdEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.ReservationCreated).Subject;
+        createdEvent.OccurredAt.Should().Be(t0);
+        createdEvent.RelatedRecordId.Should().Be("RSV1");
+
+        var realizedEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.ReservationRealized).Subject;
+        realizedEvent.OccurredAt.Should().Be(t1);
+        realizedEvent.RelatedRecordId.Should().Be("RSV1");
+    }
+
+    [Fact]
+    public void Timeline_OpnameRequestWithTimeDisparity_ResolvesRequestedAndFulfilledTimestampsAccurately()
+    {
+        var t0 = new DateTime(2026, 10, 19, 8, 30, 0, DateTimeKind.Utc);
+        var t1 = new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc);
+
+        var facts = Facts(
+            JourneyOriginKind.OpnameRequest,
+            opn: Opname("OPN1", OpnameRequestStatusEnum.Fulfilled, fulfilledRegId: "RG1", statusAt: t1, createdAt: t0),
+            admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, opnameRequestId: "OPN1")]);
+
+        var result = Release1JourneyStageResolver.Resolve(facts);
+
+        var requestedEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.OpnameRequested).Subject;
+        requestedEvent.OccurredAt.Should().Be(t0);
+        requestedEvent.RelatedRecordId.Should().Be("OPN1");
+
+        var fulfilledEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.OpnameFulfilled).Subject;
+        fulfilledEvent.OccurredAt.Should().Be(t1);
+        fulfilledEvent.RelatedRecordId.Should().Be("OPN1");
+    }
+
+    [Fact]
+    public void Timeline_AdmissionUpdatedWithTimeDisparity_ResolvesRegisteredAndUpdatedTimestampsAccurately()
+    {
+        var t1 = new DateTime(2026, 10, 19, 10, 0, 0, DateTimeKind.Utc);
+        var t2 = new DateTime(2026, 10, 19, 11, 30, 0, DateTimeKind.Utc);
+
+        var facts = Facts(
+            JourneyOriginKind.DirectOrLegacyAdmission,
+            admissions: [Admission("RG1", AdmissionStatusEnum.Updated, admissionAt: t1, updatedAt: t2)]);
+
+        var result = Release1JourneyStageResolver.Resolve(facts);
+
+        var registeredEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.AdmissionRegistered).Subject;
+        registeredEvent.OccurredAt.Should().Be(t1);
+        registeredEvent.RelatedRecordId.Should().Be("RG1");
+
+        var updatedEvent = result.Timeline.Should().ContainSingle(e => e.Kind == JourneyTimelineEventKind.AdmissionUpdated).Subject;
+        updatedEvent.OccurredAt.Should().Be(t2);
+        updatedEvent.RelatedRecordId.Should().Be("RG1");
+    }
+
+    [Fact]
+    public void Timeline_WhenCreationOrUpdateTimestampIsNull_FallsBackGracefully()
+    {
+        var tFallback = new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc);
+
+        var facts = Facts(
+            JourneyOriginKind.OpnameRequest,
+            opn: Opname("OPN1", OpnameRequestStatusEnum.Fulfilled, fulfilledRegId: "RG1", statusAt: tFallback, createdAt: null),
+            rsv: Reservation("RSV1", ReservationStatusEnum.Realized, realizedRegId: "RG1", statusAt: tFallback, createdAt: null),
+            admissions: [Admission("RG1", AdmissionStatusEnum.Updated, opnameRequestId: "OPN1", reservationId: "RSV1", admissionAt: tFallback, updatedAt: null)]);
+
+        var result = Release1JourneyStageResolver.Resolve(facts);
+
+        var opnRequested = result.Timeline.First(e => e.Kind == JourneyTimelineEventKind.OpnameRequested);
+        opnRequested.OccurredAt.Should().Be(tFallback);
+
+        var rsvCreated = result.Timeline.First(e => e.Kind == JourneyTimelineEventKind.ReservationCreated);
+        rsvCreated.OccurredAt.Should().Be(tFallback);
+
+        var admUpdated = result.Timeline.First(e => e.Kind == JourneyTimelineEventKind.AdmissionUpdated);
+        admUpdated.OccurredAt.Should().Be(tFallback);
     }
 
     private static List<(string Name, JourneyNormalizedFacts Facts)> BuildExhaustiveCases() =>

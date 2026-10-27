@@ -63,11 +63,11 @@ public class MutasiBerkasWorklistDal : IMutasiBerkasWorklistDal
 
         var dp = new DynamicParameters();
 
-        if (!string.IsNullOrWhiteSpace(filter.TglPraktek))
-        {
-            sql.AppendLine("  AND aa.FD_TGL_PRAKTEK = @TglPraktek");
-            dp.AddParam("@TglPraktek", filter.TglPraktek, SqlDbType.VarChar);
-        }
+        var tglPraktek = string.IsNullOrWhiteSpace(filter.TglPraktek)
+            ? DateTime.Today.ToString("yyyy-MM-dd")
+            : filter.TglPraktek;
+        sql.AppendLine("  AND aa.FD_TGL_PRAKTEK = @TglPraktek");
+        dp.AddParam("@TglPraktek", tglPraktek, SqlDbType.VarChar);
 
         if (!string.IsNullOrWhiteSpace(filter.LayananId))
         {
@@ -131,7 +131,7 @@ public class MutasiBerkasWorklistDal : IMutasiBerkasWorklistDal
             FROM TA_TRS_MR_MUTASI aa
             LEFT JOIN TA_LAYANAN bb ON aa.FS_KD_LAYANAN = bb.FS_KD_LAYANAN
             LEFT JOIN TD_PEG cc ON aa.FS_KD_PETUGAS_MEDIS = cc.FS_KD_PEG
-            WHERE aa.FS_MR = @MrId
+            WHERE REPLACE(aa.FS_MR, '-', '') = REPLACE(@MrId, '-', '')
             ORDER BY aa.FD_TGL_MUTASI DESC, aa.FS_JAM_MUTASI DESC
             """;
 

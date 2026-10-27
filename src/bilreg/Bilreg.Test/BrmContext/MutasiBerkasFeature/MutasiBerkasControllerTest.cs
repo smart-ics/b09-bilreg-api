@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text.Json;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.BrmContext;
 using Bilreg.Application.BrmContext;
@@ -9,9 +11,11 @@ using Bilreg.Infrastructure.BrmContext.MutasiBerkasFeature;
 using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Nuna.Lib.ActionResultHelper;
 using Xunit;
@@ -458,5 +462,165 @@ public class MutasiBerkasControllerTest
         sp.GetService<IRequestHandler<MutasiBerkasHistoriQuery, IEnumerable<MutasiBerkasHistoriItemDto>>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBerkasPosisiGetQuery, MutasiBerkasPosisiResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<LokasiBerkasF12Query, IEnumerable<LokasiBerkasDto>>>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ControllerAction_WhenMediatRThrowsTargetInvocationExceptionWithArgumentException_ErrorHandlerMiddleware_UnwrapsTo400BadRequest()
+    {
+        // ARRANGE
+        var cmd = new MutasiBerkasPinjamInternalCommand(
+            "", "CASEMIX", "PET02", "PET01", "Audit Berkas Medis", "2026-10-17", "09:00");
+        const string expectedErrorMessage = "Nomor Rekam Medis wajib diisi.";
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TargetInvocationException(
+                "Exception has been thrown by the target of an invocation.",
+                new ArgumentException(expectedErrorMessage)));
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = async ctx =>
+        {
+            await _sut.PinjamInternal(cmd);
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be(expectedErrorMessage);
+    }
+
+    [Fact]
+    public async Task ControllerAction_WhenMediatRThrowsDirectArgumentException_ErrorHandlerMiddleware_Returns400BadRequest()
+    {
+        // ARRANGE
+        var cmd = new MutasiBerkasKirimCommand(
+            "", "00000001", "DOK01", "POLI01", "2026-10-17", "08:00", "PAGI", "PET01", 1, 0);
+        const string expectedErrorMessage = "ID Registrasi Kunjungan wajib diisi.";
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ArgumentException(expectedErrorMessage));
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = async ctx =>
+        {
+            await _sut.Kirim(cmd);
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be(expectedErrorMessage);
+    }
+
+    [Fact]
+    public async Task ControllerAction_WhenMediatRThrowsNestedTargetInvocationException_ErrorHandlerMiddleware_UnwrapsTo400BadRequest()
+    {
+        // ARRANGE
+        var cmd = new MutasiBerkasTerimaCommand("MK00000001", "");
+        const string expectedErrorMessage = "Petugas terima wajib diisi.";
+
+        var nestedException = new TargetInvocationException(
+            "Outer wrapper",
+            new TargetInvocationException(
+                "Inner wrapper",
+                new ArgumentException(expectedErrorMessage)));
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(nestedException);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = async ctx =>
+        {
+            await _sut.Terima(cmd);
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be(expectedErrorMessage);
+    }
+
+    [Fact]
+    public async Task ErrorHandlerMiddleware_WhenTargetInvocationExceptionHasNoInnerException_Returns500InternalServerError()
+    {
+        // ARRANGE
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = ctx =>
+        {
+            throw new TargetInvocationException("Empty wrapper", null);
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("500");
+        root.GetProperty("status").GetString().Should().Be("Internal Server Error");
     }
 }

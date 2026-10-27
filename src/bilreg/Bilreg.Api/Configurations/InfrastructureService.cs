@@ -31,12 +31,14 @@ using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.Integration;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
@@ -58,9 +60,11 @@ using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
+using Bilreg.Application.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.BrmContext;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
+using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.SalesContext.ResepFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -230,8 +234,20 @@ public static class InfrastructureService
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
 
+        // PakaiBrgFeature (tb_trs_pakai, tb_trs_pakai2)
+        services.AddScoped<IPakaiBrgDal, PakaiBrgDal>();
+        services.AddScoped<IPakaiBrgItemDal, PakaiBrgItemDal>();
+        services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
+
         services.AddBrgFeature();
         services.AddBrmInfrastructure();
+
+        services.AddScoped<IDeliveryOrderDal, DeliveryOrderDal>();
+        services.AddScoped<IDeliveryOrderItemDal, DeliveryOrderItemDal>();
+        services.AddScoped<IDeliveryInspectionDal, DeliveryInspectionDal>();
+        services.AddScoped<IPoDeliveryTrackingDal, PoDeliveryTrackingDal>();
+        services.AddScoped<IDeliveryValidationDal, DeliveryValidationDal>();
+        services.AddScoped<IDeliveryOrderRepo, DeliveryOrderRepo>();
 
         services
             .Scan(selector => selector

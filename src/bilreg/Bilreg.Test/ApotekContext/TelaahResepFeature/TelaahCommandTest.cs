@@ -241,6 +241,22 @@ public class TelaahCommandTest
         item2.PrescribedQty.Should().Be(5m);
     }
 
+    [Fact]
+    public async Task TelaahStart_returns_existing_response_when_already_under_review()
+    {
+        var resep = SeedResep(("A", "Drug A", 10m));
+        var first = await Start(resep.ResepId);
+
+        first.Status.Should().Be(TelaahStatusEnum.UnderReview);
+
+        var second = await Start(resep.ResepId);
+
+        second.Should().BeEquivalentTo(first);
+        second.TelaahResepId.Should().Be(first.TelaahResepId);
+        second.Status.Should().Be(TelaahStatusEnum.UnderReview);
+        second.Version.Should().Be(first.Version);
+    }
+
     private ResepModel SeedResep(params (string brgId, string brgName, decimal qty)[] items)
     {
         var resep = ResepModel.Create(

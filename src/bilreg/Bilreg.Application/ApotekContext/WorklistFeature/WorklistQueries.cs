@@ -5,10 +5,11 @@ using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ApotekContext.WorklistFeature;
 
-public record TelaahWorklistQuery : IRequest<IReadOnlyList<TelaahWorklistItem>>;
+public record TelaahWorklistQuery(DateOnly? BusinessDate = null) : IRequest<IReadOnlyList<TelaahWorklistItem>>;
 
 public record TelaahWorklistItem(
     string ResepId,
@@ -92,7 +93,8 @@ public record UnifiedSalesReportItem(
 
 public interface IAptWorklistDal
 {
-    IReadOnlyList<TelaahWorklistItem> ListTelaah();
+    IReadOnlyList<TelaahWorklistItem> ListTelaah(DateOnly businessDate);
+    IReadOnlyList<TelaahWorklistItem> ListTelaah() => ListTelaah(DateOnly.FromDateTime(DateTime.Today));
     IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut, DateOnly businessDate);
     IReadOnlyList<DispensingWorklistItem> ListDispensing();
     IReadOnlyList<SerahWorklistItem> ListSerah(DateTime asOf, int collectionWindowDays);
@@ -103,9 +105,19 @@ public interface IAptWorklistDal
 public class TelaahWorklistHandler : IRequestHandler<TelaahWorklistQuery, IReadOnlyList<TelaahWorklistItem>>
 {
     private readonly IAptWorklistDal _dal;
-    public TelaahWorklistHandler(IAptWorklistDal dal) => _dal = dal;
+    private readonly ITglJamProvider _tglJamProvider;
+
+    public TelaahWorklistHandler(IAptWorklistDal dal, ITglJamProvider tglJamProvider)
+    {
+        _dal = dal;
+        _tglJamProvider = tglJamProvider;
+    }
+
     public Task<IReadOnlyList<TelaahWorklistItem>> Handle(TelaahWorklistQuery request, CancellationToken cancellationToken)
-        => Task.FromResult(_dal.ListTelaah());
+    {
+        var businessDate = request.BusinessDate ?? DateOnly.FromDateTime(_tglJamProvider.Now);
+        return Task.FromResult(_dal.ListTelaah(businessDate));
+    }
 }
 
 public class PelayananWorklistHandler : IRequestHandler<PelayananWorklistQuery, IReadOnlyList<PelayananWorklistItem>>
