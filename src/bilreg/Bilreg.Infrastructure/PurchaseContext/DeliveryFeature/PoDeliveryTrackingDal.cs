@@ -114,6 +114,8 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
                 ISNULL(sup.fs_nm_iii, '') AS SupplierName,
                 po.fs_keterangan AS Keterangan,
                 po.fn_status_do AS StatusDo,
+                ISNULL(active_do.ActiveDraftDoId, '') AS ActiveDraftDoId,
+                ISNULL(active_do.ActiveDraftSuratJalan, '') AS ActiveDraftSuratJalan,
                 CAST(po2.fn_no_urut AS INT) AS NoUrut,
                 po2.fs_kd_barang AS BrgId,
                 ISNULL(brg.fs_nm_barang, '') AS BrgName,
@@ -130,6 +132,15 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
             LEFT JOIN t_iii sup ON po.fs_kd_iii = sup.fs_kd_iii
             LEFT JOIN tb_barang brg ON po2.fs_kd_barang = brg.fs_kd_barang
             LEFT JOIN tb_satuan sat ON po2.fs_kd_satuan = sat.fs_kd_satuan
+            OUTER APPLY (
+                SELECT TOP 1 do.fs_kd_trs AS ActiveDraftDoId, do.fs_kd_do_asli AS ActiveDraftSuratJalan
+                FROM TB_TRS_DO do
+                JOIN BILRG_DoInspeksi insp ON do.fs_kd_trs = insp.DoId
+                WHERE do.fs_kd_po = po.fs_kd_trs
+                  AND do.fd_tgl_void = '3000-01-01'
+                  AND insp.[Status] = 'Draft'
+                ORDER BY do.CRTTGL DESC, do.fs_kd_trs DESC
+            ) active_do
             WHERE po.fd_tgl_void = '3000-01-01'
               AND po.fb_closed = 0
               AND po.fn_status_do IN (0, 1)

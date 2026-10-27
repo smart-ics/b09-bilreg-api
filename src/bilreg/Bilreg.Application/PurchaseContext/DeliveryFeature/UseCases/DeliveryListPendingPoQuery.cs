@@ -18,7 +18,9 @@ public record DeliveryPendingPoResponse(
     string LayananName,
     string Keterangan,
     decimal StatusDo,
-    IReadOnlyList<DeliveryPendingPoItemResponse> Items
+    IReadOnlyList<DeliveryPendingPoItemResponse> Items,
+    string ActiveDraftDoId = "",
+    string ActiveDraftSuratJalan = ""
 );
 
 public record DeliveryPendingPoItemResponse(
@@ -58,7 +60,9 @@ public class DeliveryListPendingPoHandler : IRequestHandler<DeliveryListPendingP
                 x.LayananId,
                 x.LayananName,
                 x.Keterangan,
-                x.StatusDo
+                x.StatusDo,
+                x.ActiveDraftDoId,
+                x.ActiveDraftSuratJalan
             })
             .Select(g => new DeliveryPendingPoResponse(
                 g.Key.PoId,
@@ -81,7 +85,9 @@ public class DeliveryListPendingPoHandler : IRequestHandler<DeliveryListPendingP
                     i.Konversi,
                     i.Harga,
                     i.Diskon
-                )).ToList()
+                )).ToList(),
+                g.Key.ActiveDraftDoId,
+                g.Key.ActiveDraftSuratJalan
             ));
 
         return Task.FromResult(response);

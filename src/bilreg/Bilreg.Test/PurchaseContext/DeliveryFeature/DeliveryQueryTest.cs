@@ -432,6 +432,54 @@ public class DeliveryQueryTest
         _poDeliveryTrackingDalMock.Verify(x => x.ListPendingPoItems(tglAwal, tglAkhir, search, limit), Times.Once);
     }
 
+    [Fact]
+    public async Task DeliveryListPendingPo_WhenItemsHaveActiveDraft_MapsActiveDraftFieldsToResponse()
+    {
+        // Arrange
+        var pendingItems = new List<PoPendingItemDto>
+        {
+            new()
+            {
+                PoId = "PO26100001",
+                PoDate = "2026-10-14",
+                SupplierId = "SUP01",
+                SupplierName = "PT Kimia Sehat",
+                LayananId = "GDFAR",
+                LayananName = "Gudang Farmasi",
+                Keterangan = "PO Draft Active",
+                StatusDo = 0m,
+                ActiveDraftDoId = "DMA8A5CNHA",
+                ActiveDraftSuratJalan = "SJ-DRAFT-001",
+                NoUrut = 1,
+                BrgId = "BRG001",
+                BrgName = "Paracetamol",
+                SatuanId = "BOX",
+                SatuanName = "Box",
+                QtyPo = 100m,
+                QtyDo = 0m,
+                SisaQty = 100m,
+                Konversi = 100m,
+                Harga = 45000m,
+                Diskon = 0m
+            }
+        };
+
+        _poDeliveryTrackingDalMock.Setup(x => x.ListPendingPoItems(null, null, null, 100))
+            .Returns(pendingItems);
+
+        var sut = new DeliveryListPendingPoHandler(_poDeliveryTrackingDalMock.Object);
+        var query = new DeliveryListPendingPoQuery();
+
+        // Act
+        var result = (await sut.Handle(query, CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].PoId.Should().Be("PO26100001");
+        result[0].ActiveDraftDoId.Should().Be("DMA8A5CNHA");
+        result[0].ActiveDraftSuratJalan.Should().Be("SJ-DRAFT-001");
+    }
+
     // DeliveryValidateSuratJalanQuery Tests
     // ==========================================
 

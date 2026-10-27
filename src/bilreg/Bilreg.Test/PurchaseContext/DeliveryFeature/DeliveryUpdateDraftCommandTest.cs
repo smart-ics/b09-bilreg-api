@@ -738,4 +738,90 @@ public class DeliveryUpdateDraftCommandTest
         capturedSavedModel!.ListItem.Should().HaveCount(1);
         capturedSavedModel.ListItem.First().Het.Should().Be(75000m);
     }
+
+    [Fact]
+    public async Task Handle_WithBonusItem_PreservesZeroCommercialTotal()
+    {
+        // Arrange
+        var existingModel = CreateSampleDraftModel();
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns(MayBe.From(existingModel));
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId))
+            .Returns(CreateSamplePoQuotas());
+
+        DeliveryOrderModel? capturedSavedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => capturedSavedModel = m);
+
+        var ed = _now.AddMonths(20);
+        var items = new List<DeliveryUpdateDraftItemCommand>
+        {
+            new DeliveryUpdateDraftItemCommand(
+                BrgId: "BRG001",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 50000m,
+                Diskon: 0m,
+                TaxPercentage: 11m,
+                NoBatch: "OLD-BATCH-001",
+                TglEd: ed,
+                QtyKirim: 5m,
+                QtyDiterima: 5m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Paracetamol 500mg",
+                SatuanName: "BOX",
+                IsBonus: false,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 1,
+                Het: 0m),
+            new DeliveryUpdateDraftItemCommand(
+                BrgId: "BRG002",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 75000m,
+                Diskon: 0m,
+                TaxPercentage: 0m,
+                NoBatch: "BATCH-BONUS-01",
+                TglEd: ed,
+                QtyKirim: 1m,
+                QtyDiterima: 1m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Amoxicillin 500mg Bonus",
+                SatuanName: "BOX",
+                IsBonus: true,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 2,
+                Het: 0m)
+        };
+
+        var command = new DeliveryUpdateDraftCommand(
+            DeliveryOrderId: DoId,
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: items,
+            SupplierName: SupplierName,
+            GudangName: GudangName);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        capturedSavedModel.Should().NotBeNull();
+        capturedSavedModel!.Total.Should().Be(277500m);
+        capturedSavedModel.GrandTotal.Should().Be(277500m);
+
+        var bonusItem = capturedSavedModel.ListItem.Single(x => x.Inspection.IsBonus);
+        bonusItem.Total.Should().Be(0m);
+        bonusItem.SubTotal.Should().Be(0m);
+        bonusItem.Diskon.Should().Be(75000m);
+    }
 }

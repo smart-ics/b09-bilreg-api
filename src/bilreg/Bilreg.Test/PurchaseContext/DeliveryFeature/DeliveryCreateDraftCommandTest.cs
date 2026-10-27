@@ -640,4 +640,141 @@ public class DeliveryCreateDraftCommandTest
         savedModel!.ListItem.Should().HaveCount(1);
         savedModel.ListItem.First().Het.Should().Be(65000m);
     }
+
+    [Fact]
+    public async Task Handle_WithBonusItem_PersistsZeroCommercialSubTotalInDeliveryOrderModel()
+    {
+        // ARRANGE
+        var poQuotas = new List<PoQuotaDto>
+        {
+            new PoQuotaDto(
+                poId: PoId,
+                noUrut: 1,
+                brgId: "BRG001",
+                brgName: "Aminofusin L-600",
+                satuanId: "BOX",
+                qtyPo: 10m,
+                qtyDo: 0m,
+                sisaQty: 10m,
+                isClosed: false,
+                konversi: 10,
+                harga: 272323.92m,
+                diskon: 0m),
+            new PoQuotaDto(
+                poId: PoId,
+                noUrut: 2,
+                brgId: "BRG002",
+                brgName: "Aminoleban",
+                satuanId: "BOX",
+                qtyPo: 10m,
+                qtyDo: 0m,
+                sisaQty: 10m,
+                isClosed: false,
+                konversi: 10,
+                harga: 272323.92m,
+                diskon: 0m)
+        };
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(poQuotas);
+
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
+
+        var ed = _now.AddMonths(24);
+        var items = new List<DeliveryCreateDraftItemCommand>
+        {
+            // Item 1 (Commercial): 4 BOX @ Rp 272.323,92 = Rp 1.089.295,68
+            new DeliveryCreateDraftItemCommand(
+                BrgId: "BRG001",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 272323.92m,
+                Diskon: 0m,
+                TaxPercentage: 0m,
+                NoBatch: "BATCH-COMM-01",
+                TglEd: ed,
+                QtyKirim: 4m,
+                QtyDiterima: 4m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Aminofusin L-600",
+                SatuanName: "BOX",
+                IsBonus: false,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 1,
+                Het: 0m),
+            // Item 2 (Commercial): 6 BOX @ Rp 272.323,92 = Rp 1.633.943,52
+            new DeliveryCreateDraftItemCommand(
+                BrgId: "BRG002",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 272323.92m,
+                Diskon: 0m,
+                TaxPercentage: 0m,
+                NoBatch: "BATCH-COMM-02",
+                TglEd: ed,
+                QtyKirim: 6m,
+                QtyDiterima: 6m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Aminoleban",
+                SatuanName: "BOX",
+                IsBonus: false,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 2,
+                Het: 0m),
+            // Item 3 (Bonus): 1 BOX @ Rp 272.323,92
+            new DeliveryCreateDraftItemCommand(
+                BrgId: "BRG003",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 272323.92m,
+                Diskon: 0m,
+                TaxPercentage: 0m,
+                NoBatch: "BATCH-BONUS-01",
+                TglEd: ed,
+                QtyKirim: 1m,
+                QtyDiterima: 1m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Barang Bonus Rekanan",
+                SatuanName: "BOX",
+                IsBonus: true,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 0,
+                Het: 0m)
+        };
+
+        var command = new DeliveryCreateDraftCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: items,
+            SupplierName: SupplierName,
+            GudangName: GudangName,
+            BiayaLain: 0m,
+            DiskonLain: 0m,
+            DeliveryOrderDate: _now);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        savedModel.Should().NotBeNull();
+        savedModel!.GrandTotal.Should().Be(2723239.20m);
+        savedModel.Total.Should().Be(2723239.20m);
+
+        var bonusItem = savedModel.ListItem.Single(x => x.Inspection.IsBonus);
+        bonusItem.Total.Should().Be(0m);
+        bonusItem.SubTotal.Should().Be(0m);
+        bonusItem.Tax.Should().Be(0m);
+        bonusItem.Diskon.Should().Be(272323.92m);
+    }
 }

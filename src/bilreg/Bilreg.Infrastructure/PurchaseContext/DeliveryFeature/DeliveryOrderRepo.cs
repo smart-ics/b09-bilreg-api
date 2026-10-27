@@ -86,18 +86,24 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
                 );
             }
 
-            var taxPercentage = itemDto.SubTotal > 0 ? (itemDto.Tax * 100m / itemDto.SubTotal) : 0m;
+            var isBonus = inspection.IsBonus;
+            var itemHarga = itemDto.Harga;
+            var itemDiskon = isBonus ? itemHarga : itemDto.Diskon;
+            var itemSubTotal = isBonus ? 0m : itemDto.SubTotal;
+            var itemTax = isBonus ? 0m : itemDto.Tax;
+            var itemTotal = isBonus ? 0m : itemDto.Total;
+            var taxPercentage = !isBonus && itemSubTotal > 0 ? (itemTax * 100m / itemSubTotal) : 0m;
             var item = new DeliveryOrderItemType(
                 itemDto.NoUrut,
                 new BrgReff(itemDto.BrgId, itemDto.BrgName),
                 new SatuanType(itemDto.SatuanId, itemDto.SatuanName),
                 itemDto.Konversi > 0 ? itemDto.Konversi : 1,
-                itemDto.Harga,
-                itemDto.Diskon,
-                itemDto.SubTotal,
+                itemHarga,
+                itemDiskon,
+                itemSubTotal,
                 taxPercentage,
-                itemDto.Tax,
-                itemDto.Total,
+                itemTax,
+                itemTotal,
                 itemDto.NoBatch,
                 itemDto.TglEd,
                 inspection,
@@ -161,10 +167,11 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             auditTrail.Batal(voidedAudit.UserId, voidedAudit.Timestamp);
         }
 
-        var subTotal = items.Sum(x => x.SubTotal);
-        var taxTotal = items.Sum(x => x.Tax);
-        var diskonTotal = items.Sum(x => x.Diskon * x.Inspection.QtyDiterima);
-        var total = items.Sum(x => x.Total);
+        var commercialItems = items.Where(x => !x.Inspection.IsBonus);
+        var subTotal = commercialItems.Sum(x => x.SubTotal);
+        var taxTotal = commercialItems.Sum(x => x.Tax);
+        var diskonTotal = commercialItems.Sum(x => x.Diskon * x.Inspection.QtyDiterima);
+        var total = commercialItems.Sum(x => x.Total);
         var grandTotal = orderDto.Total != 0 ? orderDto.Total : total;
         var biayaLain = grandTotal > total ? grandTotal - total : 0m;
         var diskonLain = total > grandTotal ? total - grandTotal : 0m;
@@ -276,6 +283,7 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
 
     private static DeliveryOrderItemDto MapToItemDto(string doId, DeliveryOrderItemType item, DeliveryOrderStatusEnum status)
     {
+        var isBonus = item.Inspection.IsBonus;
         return new DeliveryOrderItemDto
         {
             DoId = doId,
@@ -283,13 +291,13 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             BrgId = item.Brg.BrgId,
             BrgName = item.Brg.BrgName,
             Harga = item.Harga,
-            Diskon = item.Diskon,
+            Diskon = isBonus ? item.Harga : item.Diskon,
             Qty = item.Inspection.QtyDiterima,
             SatuanId = item.Satuan.SatuanId,
             SatuanName = item.Satuan.SatuanName,
-            SubTotal = item.SubTotal,
-            Tax = item.Tax,
-            Total = item.Total,
+            SubTotal = isBonus ? 0m : item.SubTotal,
+            Tax = isBonus ? 0m : item.Tax,
+            Total = isBonus ? 0m : item.Total,
             NoBatch = item.NoBatch,
             TglEd = item.TglEd,
             IsVoid = status == DeliveryOrderStatusEnum.Voided,
