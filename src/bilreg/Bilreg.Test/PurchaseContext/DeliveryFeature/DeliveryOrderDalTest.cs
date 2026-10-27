@@ -1,3 +1,5 @@
+using System.Data.SqlClient;
+using Dapper;
 using Bilreg.Domain.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -113,6 +115,8 @@ public class DeliveryOrderDalTest
         actual.Should().NotBeNull();
         actual.DoId.Should().Be(expected.DoId);
         actual.PetugasId.Should().Be(expected.PetugasId);
+        actual.PetugasName.Should().Be(expected.PetugasId);
+        actual.ConfirmedByName.Should().BeEmpty();
         actual.PoId.Should().Be(expected.PoId);
         actual.SuratJalanNo.Should().Be(expected.SuratJalanNo);
         actual.LayananId.Should().Be(expected.LayananId);
@@ -308,6 +312,7 @@ public class DeliveryOrderDalTest
         actual.NoSuratJaminan.Should().Be("SURAT-RETUR-01");
         actual.Status.Should().Be("Confirmed");
         actual.ConfirmedBy.Should().Be("APOTEKER01");
+        actual.ConfirmedByName.Should().Be("APOTEKER01");
     }
 
     [Fact]
@@ -325,5 +330,33 @@ public class DeliveryOrderDalTest
 
         var list = _inspectionDal.ListData(FakerKey("DO_IN03"));
         list.Should().BeEmpty();
+    }
+    [Fact]
+    public void Order_GetData_WhenInTdPeg_ShouldResolvePegawaiNames()
+    {
+        using var trans = TransHelper.NewScope();
+        var opt = ConnStringHelper.GetTestEnv();
+        using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+        conn.Execute("IF NOT EXISTS (SELECT 1 FROM td_peg WHERE fs_kd_peg = 'PEG_CRT01') INSERT INTO td_peg (fs_kd_peg, fs_nm_peg) VALUES ('PEG_CRT01', 'Petugas Pengadaan Gudang')");
+        conn.Execute("IF NOT EXISTS (SELECT 1 FROM td_peg WHERE fs_kd_peg = 'PEG_CONF01') INSERT INTO td_peg (fs_kd_peg, fs_nm_peg) VALUES ('PEG_CONF01', 'Kepala Farmasi Rumah Sakit')");
+
+        var order = FakerOrder("DO_PEG01");
+        order.PetugasId = "PEG_CRT01";
+        _orderDal.Insert(order);
+
+        var insp = FakerInspection("DO_PEG01", 1);
+        insp.Status = "Confirmed";
+        insp.ConfirmedAt = new DateTime(2026, 10, 15, 12, 0, 0);
+        insp.ConfirmedBy = "PEG_CONF01";
+        _inspectionDal.Insert(insp);
+
+        var actual = _orderDal.GetData(FakerKey("DO_PEG01"));
+        actual.Should().NotBeNull();
+        actual.PetugasName.Should().Be("Petugas Pengadaan Gudang");
+        actual.ConfirmedByName.Should().Be("Kepala Farmasi Rumah Sakit");
+
+        var actualInsp = _inspectionDal.GetData(FakerKey("DO_PEG01"), 1);
+        actualInsp.Should().NotBeNull();
+        actualInsp!.ConfirmedByName.Should().Be("Kepala Farmasi Rumah Sakit");
     }
 }

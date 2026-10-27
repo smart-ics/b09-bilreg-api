@@ -454,4 +454,108 @@ public class DeliveryOrderRepoTest
         _inspectionDalMock.Verify(x => x.Delete(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)), Times.Once);
         _orderDalMock.Verify(x => x.Delete(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)), Times.Once);
     }
+
+    [Fact]
+    public void MapToItemDto_WhenItemIsBonus_MapsZeroSubTotalAndTotal()
+    {
+        // Arrange
+        var refDate = new DateTime(2026, 10, 15, 10, 0, 0);
+        var supplier = new PartnerReff(SupplierId, SupplierName);
+        var gudang = new LayananReff(LayananId, LayananName);
+
+        var model = new DeliveryOrderModel(
+            DoId,
+            SuratJalan,
+            PoId,
+            refDate,
+            supplier,
+            gudang,
+            "Pengiriman Reguler",
+            DeliveryOrderStatusEnum.Draft,
+            0m, 0m, 0m, 0m, 0m, 0m, 0m,
+            AuditInfoType.Default,
+            AuditTrailType.Create(UserId, refDate),
+            []);
+
+        var inspBonus = DeliveryInspectionType.Create(
+            qtyKirim: 1m,
+            qtyDiterima: 1m,
+            qtyDitolak: 0m,
+            alasanTolak: string.Empty,
+            isBonus: true,
+            hasJaminanRetur: false,
+            noSuratJaminan: string.Empty,
+            poId: PoId,
+            poNoUrut: 1);
+
+        var item = DeliveryOrderItemType.Create(
+            noUrut: 1,
+            brg: new BrgReff("BRG0001", "Barang Bonus"),
+            satuan: new SatuanType("BOX", "Box"),
+            konversi: 10,
+            harga: 272323.92m,
+            diskon: 0m,
+            taxPercentage: 11m,
+            noBatch: "BATCH-BONUS-01",
+            tglEd: refDate.AddMonths(24),
+            inspection: inspBonus,
+            het: 0m,
+            referenceDate: refDate);
+
+        model.AddItem(item, refDate);
+
+        _orderDalMock
+            .Setup(x => x.GetData(It.IsAny<IDeliveryOrderKey>()))
+            .Returns((DeliveryOrderDto)null!);
+
+        IEnumerable<DeliveryOrderItemDto>? capturedItems = null;
+        _itemDalMock
+            .Setup(x => x.Insert(It.IsAny<IEnumerable<DeliveryOrderItemDto>>()))
+            .Callback<IEnumerable<DeliveryOrderItemDto>>(items => capturedItems = items);
+
+        // Act
+        _sut.SaveChanges(model);
+
+        // Assert
+        capturedItems.Should().NotBeNull();
+        var itemDto = capturedItems!.Single();
+        itemDto.Harga.Should().Be(272323.92m);
+        itemDto.Diskon.Should().Be(272323.92m);
+        itemDto.SubTotal.Should().Be(0m);
+        itemDto.Tax.Should().Be(0m);
+        itemDto.Total.Should().Be(0m);
+    }
+    [Fact]
+    public void GivenDeliveryOrderWithSignerNames_WhenLoadEntity_ThenMapSignerNamesToModel()
+    {
+        // Arrange
+        var key = new DeliveryOrderKey(DoId);
+        var orderDto = BuildOrderDto(DeliveryOrderStatusEnum.Confirmed);
+        orderDto.PetugasName = "Apoteker Pengadaan";
+        orderDto.ConfirmedByName = "Kepala Bagian Farmasi";
+
+        var inspectionDtos = BuildInspectionDtos("Confirmed");
+        inspectionDtos[0].ConfirmedAt = new DateTime(2026, 10, 15, 11, 0, 0);
+        inspectionDtos[0].ConfirmedBy = "KABAG01";
+        inspectionDtos[0].ConfirmedByName = "Kepala Bagian Farmasi";
+
+        _orderDalMock
+            .Setup(x => x.GetData(key))
+            .Returns(orderDto);
+        _itemDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(BuildItemDtos());
+        _inspectionDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(inspectionDtos);
+
+        // Act
+        var result = _sut.LoadEntity(key);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        var actual = result.Value;
+        actual.CreatedUserName.Should().Be("Apoteker Pengadaan");
+        actual.ConfirmedUserName.Should().Be("Kepala Bagian Farmasi");
+    }
 }

@@ -314,6 +314,87 @@ public class DeliveryOrderModelTest
         item.Inspection.IsBonus.Should().BeTrue();
         item.Hpp.Should().Be(0m);
     }
+
+    [Fact]
+    public void AddItem_WhenItemIsBonus_EnforcesZeroSubTotalTaxAndTotal()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+        var inspBonus = DeliveryInspectionType.Create(1, 1, 0, "", isBonus: true);
+
+        // Act - Call AddItem with IsBonus = true, Harga = 272323.92m, Diskon = 0m
+        sut.AddItem(_brg1, _satuanBox, 10, 272323.92m, 0m, 11m, "BATCH-BONUS-01", ed, inspBonus, _baseDate);
+
+        // Assert
+        var item = sut.ListItem.Single();
+        item.Harga.Should().Be(272323.92m);
+        item.Diskon.Should().Be(272323.92m);
+        item.SubTotal.Should().Be(0m);
+        item.Tax.Should().Be(0m);
+        item.Total.Should().Be(0m);
+        item.Hpp.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Recalculate_WithMixedCommercialAndBonusItems_ExcludesBonusFromTotalAndGrandTotal()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var ed = _baseDate.AddMonths(24);
+
+        // 2 commercial items:
+        // Item 1: 4 BOX @ Rp 272.323,92 = Rp 1.089.295,68
+        var inspCommercial1 = DeliveryInspectionType.Create(4, 4, 0, "", isBonus: false);
+        sut.AddItem(_brg1, _satuanBox, 10, 272323.92m, 0m, 0m, "BATCH-COMM-01", ed, inspCommercial1, _baseDate);
+
+        // Item 2: 6 BOX @ Rp 272.323,92 = Rp 1.633.943,52
+        var inspCommercial2 = DeliveryInspectionType.Create(6, 6, 0, "", isBonus: false);
+        sut.AddItem(_brg2, _satuanBox, 10, 272323.92m, 0m, 0m, "BATCH-COMM-02", ed, inspCommercial2, _baseDate);
+
+        // 1 bonus item: 1 BOX @ Rp 272.323,92
+        var inspBonus = DeliveryInspectionType.Create(1, 1, 0, "", isBonus: true);
+        var brg3 = new BrgReff("BRG003", "Aminofusin Hepar");
+        sut.AddItem(brg3, _satuanBox, 10, 272323.92m, 0m, 0m, "BATCH-BONUS-01", ed, inspBonus, _baseDate);
+
+        // Assert
+        sut.SubTotal.Should().Be(2723239.20m);
+        sut.DiskonTotal.Should().Be(0m);
+        sut.Total.Should().Be(2723239.20m);
+        sut.GrandTotal.Should().Be(2723239.20m);
+    }
+
+    [Fact]
+    public void Constructor_WhenRehydratedWithLegacyData_EnforcesZeroSubTotalAndTotal()
+    {
+        // Arrange - Simulate legacy data in database with positive subTotal and total on a bonus item
+        var ed = _baseDate.AddMonths(24);
+        var inspBonus = DeliveryInspectionType.Create(1, 1, 0, "", isBonus: true);
+
+        // Act
+        var item = new DeliveryOrderItemType(
+            noUrut: 1,
+            brg: _brg1,
+            satuan: _satuanBox,
+            konversi: 10,
+            harga: 272323.92m,
+            diskon: 0m,
+            subTotal: 272323.92m,
+            taxPercentage: 0m,
+            tax: 0m,
+            total: 272323.92m,
+            noBatch: "BATCH-LEGACY-01",
+            tglEd: ed,
+            inspection: inspBonus,
+            het: 0m);
+
+        // Assert
+        item.Diskon.Should().Be(272323.92m);
+        item.SubTotal.Should().Be(0m);
+        item.Tax.Should().Be(0m);
+        item.Total.Should().Be(0m);
+        item.Hpp.Should().Be(0m);
+    }
     #endregion
 
     #region Invariant 5: Status Lifecycle & Immutability

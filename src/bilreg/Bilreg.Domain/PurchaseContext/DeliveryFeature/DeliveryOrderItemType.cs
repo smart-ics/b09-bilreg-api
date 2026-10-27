@@ -28,14 +28,26 @@ public record DeliveryOrderItemType
         Satuan = satuan;
         Konversi = konversi;
         Harga = harga;
-        Diskon = diskon;
-        SubTotal = subTotal;
+
+        if (inspection?.IsBonus == true)
+        {
+            Diskon = harga;
+            SubTotal = 0m;
+            Tax = 0m;
+            Total = 0m;
+        }
+        else
+        {
+            Diskon = diskon;
+            SubTotal = subTotal;
+            Tax = tax;
+            Total = total;
+        }
+
         TaxPercentage = taxPercentage;
-        Tax = tax;
-        Total = total;
         NoBatch = noBatch;
         TglEd = tglEd;
-        Inspection = inspection;
+        Inspection = inspection ?? throw new ArgumentNullException(nameof(inspection));
         Het = het;
     }
 
@@ -63,7 +75,9 @@ public record DeliveryOrderItemType
             throw new ArgumentException("Harga satuan tidak boleh bernilai negatif.", nameof(harga));
         if (diskon < 0)
             throw new ArgumentException("Diskon satuan tidak boleh bernilai negatif.", nameof(diskon));
-        if (diskon > harga)
+        if (inspection == null)
+            throw new ArgumentException("Data kendali mutu inspeksi wajib disertakan.", nameof(inspection));
+        if (!inspection.IsBonus && diskon > harga)
             throw new ArgumentException("Diskon per satuan tidak boleh melebihi harga satuan.", nameof(diskon));
         if (taxPercentage < 0)
             throw new ArgumentException("Persentase pajak tidak boleh bernilai negatif.", nameof(taxPercentage));
@@ -71,8 +85,6 @@ public record DeliveryOrderItemType
             throw new ArgumentException("HET tidak boleh bernilai negatif.", nameof(het));
         if (string.IsNullOrWhiteSpace(noBatch))
             throw new ArgumentException("Nomor lot/batch tidak boleh kosong.", nameof(noBatch));
-        if (inspection == null)
-            throw new ArgumentException("Data kendali mutu inspeksi wajib disertakan.", nameof(inspection));
 
         var today = (referenceDate ?? DateTime.Today).Date;
         if (tglEd.Date <= today)
@@ -89,9 +101,23 @@ public record DeliveryOrderItemType
                     nameof(inspection));
         }
 
-        var subTotal = (harga - diskon) * inspection.QtyDiterima;
-        var tax = subTotal * taxPercentage / 100m;
-        var total = subTotal + tax;
+        decimal subTotal;
+        decimal tax;
+        decimal total;
+
+        if (inspection.IsBonus)
+        {
+            diskon = harga;
+            subTotal = 0m;
+            tax = 0m;
+            total = 0m;
+        }
+        else
+        {
+            subTotal = (harga - diskon) * inspection.QtyDiterima;
+            tax = subTotal * taxPercentage / 100m;
+            total = subTotal + tax;
+        }
 
         return new DeliveryOrderItemType(
             noUrut,

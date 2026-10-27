@@ -29,7 +29,9 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         AuditInfoType confirmed,
         AuditTrailType auditTrail,
         IEnumerable<DeliveryOrderItemType> items,
-        string poDate = "")
+        string poDate = "",
+        string createdUserName = "",
+        string confirmedUserName = "")
     {
         DeliveryOrderId = id;
         SuratJalanNo = suratJalanNo;
@@ -50,6 +52,8 @@ public class DeliveryOrderModel : IDeliveryOrderKey
         AuditTrail = auditTrail;
         _listItem = [.. items];
         PoDate = poDate ?? string.Empty;
+        CreatedUserName = createdUserName ?? string.Empty;
+        ConfirmedUserName = confirmedUserName ?? string.Empty;
     }
 
     public static IDeliveryOrderKey Key(string id) => new DeliveryOrderModel(
@@ -130,15 +134,18 @@ public class DeliveryOrderModel : IDeliveryOrderKey
 
     public AuditInfoType Confirmed { get; private set; }
     public AuditTrailType AuditTrail { get; private set; }
+    public string CreatedUserName { get; private set; } = string.Empty;
+    public string ConfirmedUserName { get; private set; } = string.Empty;
 
     public IEnumerable<DeliveryOrderItemType> ListItem => _listItem;
 
     private void Recalculate()
     {
-        SubTotal = _listItem.Sum(item => item.SubTotal);
-        TaxTotal = _listItem.Sum(item => item.Tax);
-        DiskonTotal = _listItem.Sum(item => item.Diskon * item.Inspection.QtyDiterima);
-        Total = _listItem.Sum(item => item.Total);
+        var commercialItems = _listItem.Where(item => item.Inspection?.IsBonus != true);
+        SubTotal = commercialItems.Sum(item => item.SubTotal);
+        TaxTotal = commercialItems.Sum(item => item.Tax);
+        DiskonTotal = commercialItems.Sum(item => item.Diskon * item.Inspection.QtyDiterima);
+        Total = commercialItems.Sum(item => item.Total);
         GrandTotal = Total + BiayaLain - DiskonLain;
     }
 
@@ -358,6 +365,16 @@ public class DeliveryOrderModel : IDeliveryOrderKey
     public void SetPoDate(string poDate)
     {
         PoDate = poDate?.Trim() ?? string.Empty;
+    }
+
+    public void SetCreatedUserName(string createdUserName)
+    {
+        CreatedUserName = createdUserName ?? string.Empty;
+    }
+
+    public void SetConfirmedUserName(string confirmedUserName)
+    {
+        ConfirmedUserName = confirmedUserName ?? string.Empty;
     }
 
     public void SetModified(string userId, DateTime modifiedAt)

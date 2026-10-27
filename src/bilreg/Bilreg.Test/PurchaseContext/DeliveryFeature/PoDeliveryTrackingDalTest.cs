@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
@@ -75,6 +75,50 @@ public class PoDeliveryTrackingDalTest
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
         conn.Execute(sql, new { PoId = poId, NoUrut = noUrut, BrgId = brgId, Qty = qty, QtyDo = qtyDo, IsClosed = isClosed, IsVoid = isVoid });
+    }
+
+    private static string NewTestDoId() => $"DMT{Random.Shared.Next(1000000, 9999999)}";
+
+    private void InsertTestDo(string doId, string poId, string suratJalanNo, string tglVoid = "3000-01-01", string tglTrs = "2026-10-15")
+    {
+        const string sql = """
+            INSERT INTO TB_TRS_DO (
+                fs_kd_trs, fd_tgl_trs, fs_jam_trs, fs_kd_petugas, fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
+                fs_kd_po, fs_kd_tb, fs_kd_do_asli, fs_kd_layanan, fs_kd_iii, fs_kd_bap, fn_total,
+                fs_kd_trs_hna, fb_pembelian_bebas, fs_keterangan, fn_genkeu, fs_kd_trs_fk, fn_status_bridge,
+                CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
+            ) VALUES (
+                @DoId, @TglTrs, '10:00:00', 'TEST', @TglVoid, '00:00:00', '',
+                @PoId, '', @SuratJalanNo, '4FM02', 'SUP01', '', 1000,
+                '', 0, '', 0, '', 0,
+                @TglTrs, '10:00:00', '', '', 'TEST', '3000-01-01', '00:00:00', '', '', ''
+            );
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        conn.Execute(sql, new { DoId = doId, PoId = poId, SuratJalanNo = suratJalanNo, TglVoid = tglVoid, TglTrs = tglTrs });
+    }
+
+    private void InsertTestDoInspection(string doId, int noUrut, string poId, string status = "Draft")
+    {
+        const string sql = """
+            INSERT INTO BILRG_DoInspeksi (
+                DoId, NoUrut, BrgId, PoId, PoNoUrut,
+                QtyKirim, QtyDiterima, QtyDitolak, AlasanTolak,
+                IsBonus, HasJaminanRetur, NoSuratJaminan, Status,
+                ConfirmedAt, ConfirmedBy, VoidedAt, VoidedBy,
+                CreatedAt, CreatedBy, UpdatedAt, UpdatedBy
+            ) VALUES (
+                @DoId, @NoUrut, '1.DUMI.2', @PoId, 1,
+                10, 10, 0, '',
+                0, 0, '', @Status,
+                '3000-01-01', '', '3000-01-01', '',
+                '2026-10-15', 'TEST', '3000-01-01', ''
+            );
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
+        conn.Execute(sql, new { DoId = doId, NoUrut = noUrut, PoId = poId, Status = status });
     }
 
     [Fact]
@@ -266,4 +310,46 @@ public class PoDeliveryTrackingDalTest
         actual.Should().HaveCount(2);
         actual.Should().OnlyContain(x => x.PoId == poId);
     }
+
+    [Fact]
+    public void ListPendingPoItems_WhenPoHasActiveDraft_ReturnsActiveDraftDoIdAndSuratJalan()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+        var doId = NewTestDoId();
+        var suratJalanNo = $"SJ-{Random.Shared.Next(10000, 99999)}";
+
+        InsertTestPo(poId, tglTrs: DateTime.Today.ToString("yyyy-MM-dd"));
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+        InsertTestDo(doId, poId, suratJalanNo);
+        InsertTestDoInspection(doId, 1, poId, status: "Draft");
+
+        var actual = _sut.ListPendingPoItems(search: poId).ToList();
+
+        actual.Should().NotBeEmpty();
+        var item = actual.First();
+        item.PoId.Should().Be(poId);
+        item.ActiveDraftDoId.Should().Be(doId);
+        item.ActiveDraftSuratJalan.Should().Be(suratJalanNo);
+    }
+
+    [Fact]
+    public void ListPendingPoItems_WhenPoHasNoDraft_ReturnsEmptyActiveDraftFields()
+    {
+        using var trans = TransHelper.NewScope();
+        var poId = NewTestPoId();
+
+        InsertTestPo(poId, tglTrs: DateTime.Today.ToString("yyyy-MM-dd"));
+        InsertTestPoItem(poId, 1, "1.DUMI.2", qty: 10, qtyDo: 0, isClosed: false);
+
+        var actual = _sut.ListPendingPoItems(search: poId).ToList();
+
+        actual.Should().NotBeEmpty();
+        var item = actual.First();
+        item.PoId.Should().Be(poId);
+        item.ActiveDraftDoId.Should().Be(string.Empty);
+        item.ActiveDraftSuratJalan.Should().Be(string.Empty);
+    }
+
+
 }
