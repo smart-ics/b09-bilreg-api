@@ -134,6 +134,25 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPut("displays/{displayId}/polis")]
+    public async Task<IActionResult> ReplacePolis(
+        string displayId, [FromBody] ReplacePolisBody body, CancellationToken ct)
+    {
+        var polis = new List<AdmissionDisplayPoliDtoResponse>();
+        if (body.Polis is not null && body.Polis.Count > 0)
+        {
+            polis.AddRange(body.Polis.Select(x => new AdmissionDisplayPoliDtoResponse(x.PoliId, x.SortOrder)));
+        }
+        else if (body.PoliIds is not null && body.PoliIds.Count > 0)
+        {
+            polis.AddRange(body.PoliIds.Select((p, idx) => new AdmissionDisplayPoliDtoResponse(p, idx + 1)));
+        }
+
+        var result = await _mediator.Send(new ReplaceDisplayPolisCmd(
+            displayId, polis, body.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("displays/{displayId}/activate")]
     public async Task<IActionResult> ActivateDisplay(
         string displayId, [FromBody] RowVersionBody? body, CancellationToken ct)
@@ -279,6 +298,8 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
 
     public sealed record ReplaceLoketsBody(string RowVersion, List<LoketMapBody>? Lokets);
     public sealed record LoketMapBody(string LoketKey, int SortOrder = 0);
+    public sealed record ReplacePolisBody(string RowVersion, List<PoliMapBody>? Polis = null, List<string>? PoliIds = null);
+    public sealed record PoliMapBody(string PoliId, int SortOrder = 0);
     public sealed record CreateKioskBody(
         string StationId,
         string DisplayName,

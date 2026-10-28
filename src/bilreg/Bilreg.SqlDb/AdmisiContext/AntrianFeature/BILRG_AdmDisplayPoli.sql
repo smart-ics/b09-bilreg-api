@@ -1,0 +1,13 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+
+CREATE TABLE BILRG_AdmDisplayPoli
+(
+    DisplayId VARCHAR(50) NOT NULL,
+    PoliId    VARCHAR(20) NOT NULL,
+    SortOrder INT         NOT NULL CONSTRAINT DF_BILRG_AdmDisplayPoli_SortOrder DEFAULT(0),
+    CONSTRAINT PK_BILRG_AdmDisplayPoli PRIMARY KEY CLUSTERED (DisplayId, PoliId)
+);
+
+CREATE INDEX IX_BILRG_AdmDisplayPoli_PoliId
+    ON BILRG_AdmDisplayPoli(PoliId);

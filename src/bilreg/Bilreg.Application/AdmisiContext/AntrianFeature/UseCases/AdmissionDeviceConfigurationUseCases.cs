@@ -21,6 +21,7 @@ public record AdmissionWorkstationDtoResponse(
     string RowVersion);
 
 public record AdmissionDisplayLoketDtoResponse(string LoketKey, int SortOrder);
+public record AdmissionDisplayPoliDtoResponse(string PoliId, int SortOrder);
 
 public record AdmissionQueueDisplayDtoResponse(
     string DisplayId,
@@ -36,7 +37,8 @@ public record AdmissionQueueDisplayDtoResponse(
     string? CreatedBy,
     string? UpdatedAt,
     string? UpdatedBy,
-    string RowVersion);
+    string RowVersion,
+    IReadOnlyList<AdmissionDisplayPoliDtoResponse>? Polis = null);
 
 public record WorkstationContextDtoResponse(
     string WorkstationKey,
@@ -56,7 +58,8 @@ public record DisplayBootConfigDtoResponse(
     bool AudioEnabled,
     string? LayoutKey,
     string? UpdatedAt,
-    string? RowVersion);
+    string? RowVersion,
+    IReadOnlyList<string>? PoliIds = null);
 
 public record ConfigurationSummaryDtoResponse(
     int ActiveWorkstationCount,
@@ -156,6 +159,12 @@ public record ReplaceDisplayLoketsCmd(
     string RowVersion,
     string UserId) : IRequest<AdmissionQueueDisplayDtoResponse>;
 
+public record ReplaceDisplayPolisCmd(
+    string DisplayId,
+    IReadOnlyList<AdmissionDisplayPoliDtoResponse> Polis,
+    string RowVersion,
+    string UserId) : IRequest<AdmissionQueueDisplayDtoResponse>;
+
 public record SetDisplayActiveCmd(
     string DisplayId,
     bool Active,
@@ -200,7 +209,8 @@ public static class DeviceConfigurationMapping
         model.CreatedBy,
         model.UpdatedAt.ToString("O"),
         model.UpdatedBy,
-        model.RowVersion.ToString());
+        model.RowVersion.ToString(),
+        model.Polis.Select(x => new AdmissionDisplayPoliDtoResponse(x.PoliId, x.SortOrder)).ToList());
 
     public static long ParseRowVersion(string rowVersion)
     {
@@ -517,6 +527,66 @@ public sealed class ReplaceDisplayLoketsHandler : IRequestHandler<ReplaceDisplay
     }
 }
 
+public sealed class ReplaceDisplayPolisHandler : IRequestHandler<ReplaceDisplayPolisCmd, AdmissionQueueDisplayDtoResponse>
+{
+    private readonly IAdmissionQueueDisplayRepo _repo;
+    private readonly IClinicQueueOperationDal _clinicQueueDal;
+    private readonly ITglJamProvider _clock;
+
+    public ReplaceDisplayPolisHandler(
+        IAdmissionQueueDisplayRepo repo,
+        IClinicQueueOperationDal clinicQueueDal,
+        ITglJamProvider clock)
+    {
+        _repo = repo;
+        _clinicQueueDal = clinicQueueDal;
+        _clock = clock;
+    }
+
+    public Task<AdmissionQueueDisplayDtoResponse> Handle(ReplaceDisplayPolisCmd request, CancellationToken cancellationToken)
+    {
+        Guard.Against.NullOrWhiteSpace(request.DisplayId, nameof(request.DisplayId));
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+
+        var existing = _repo.LoadEntity(AdmissionQueueDisplayModel.Key(request.DisplayId));
+        if (!existing.HasValue)
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.DisplayNotFound,
+                $"Display '{request.DisplayId}' was not found.");
+
+        try
+        {
+            var polis = (request.Polis ?? Array.Empty<AdmissionDisplayPoliDtoResponse>())
+                .Select(x => new AdmissionDisplayPoliMapping(x.PoliId, x.SortOrder));
+
+            var model = existing.Value.ReplacePolis(
+                polis,
+                DeviceConfigurationMapping.ParseRowVersion(request.RowVersion),
+                request.UserId,
+                _clock.Now);
+
+            _repo.SaveChanges(model);
+
+            _clinicQueueDal.ReplaceDisplayPolis(
+                request.DisplayId,
+                model.Polis.Select(x => x.PoliId));
+
+            return Task.FromResult(DeviceConfigurationMapping.ToDto(model));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("stale", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.Concurrency, ex.Message);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("requires at least one poli", StringComparison.OrdinalIgnoreCase) ||
+                                                    ex.Message.Contains("no poli", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired, ex.Message);
+        }
+    }
+}
+
 public sealed class SetDisplayActiveHandler : IRequestHandler<SetDisplayActiveCmd, AdmissionQueueDisplayDtoResponse>
 {
     private readonly IAdmissionQueueDisplayRepo _repo;
@@ -588,7 +658,16 @@ public sealed class GetDisplayHandler : IRequestHandler<GetDisplayQry, Admission
 public sealed class GetDisplayBootConfigHandler : IRequestHandler<GetDisplayBootConfigQry, DisplayBootConfigDtoResponse>
 {
     private readonly IAdmissionQueueDisplayRepo _repo;
-    public GetDisplayBootConfigHandler(IAdmissionQueueDisplayRepo repo) => _repo = repo;
+    private readonly IClinicQueueOperationDal? _clinicQueueDal;
+
+    public GetDisplayBootConfigHandler(
+        IAdmissionQueueDisplayRepo repo,
+        IClinicQueueOperationDal? clinicQueueDal = null)
+    {
+        _repo = repo;
+        _clinicQueueDal = clinicQueueDal;
+    }
+
     public Task<DisplayBootConfigDtoResponse> Handle(GetDisplayBootConfigQry request, CancellationToken cancellationToken)
     {
         var existing = _repo.LoadEntity(AdmissionQueueDisplayModel.Key(request.DisplayId));
@@ -596,22 +675,41 @@ public sealed class GetDisplayBootConfigHandler : IRequestHandler<GetDisplayBoot
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayNotFound,
                 $"Display '{request.DisplayId}' was not found.");
+
+        var x = existing.Value;
+        if (x.IsClinicLayout && x.Polis.Count == 0 && _clinicQueueDal is not null)
+        {
+            var mappedPolis = _clinicQueueDal.GetDisplayPolis(request.DisplayId);
+            if (mappedPolis.Count > 0)
+            {
+                x = x.ReplacePolis(mappedPolis.Select(p => new AdmissionDisplayPoliMapping(p.PoliId, p.SortOrder)), x.RowVersion, x.UpdatedBy, x.UpdatedAt);
+            }
+        }
+
         try
         {
-            existing.Value.EnsureCanBoot();
+            x.EnsureCanBoot();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("inactive", StringComparison.OrdinalIgnoreCase))
         {
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayInactive, ex.Message);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("no loket", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("no loket", StringComparison.OrdinalIgnoreCase) ||
+                                                    ex.Message.Contains("no poli", StringComparison.OrdinalIgnoreCase))
         {
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired, ex.Message);
         }
 
-        var x = existing.Value;
+        var poliIds = x.Polis.Select(p => p.PoliId).ToList();
+        if (x.IsClinicLayout && poliIds.Count == 0 && _clinicQueueDal is not null)
+        {
+            var fromDal = _clinicQueueDal.GetPolisByDisplayId(request.DisplayId);
+            if (fromDal is not null && fromDal.Count > 0)
+                poliIds = fromDal.ToList();
+        }
+
         return Task.FromResult(new DisplayBootConfigDtoResponse(
             x.DisplayId, "display", x.DisplayName,
             string.IsNullOrWhiteSpace(x.LocationName) ? null : x.LocationName,
@@ -619,7 +717,8 @@ public sealed class GetDisplayBootConfigHandler : IRequestHandler<GetDisplayBoot
             x.PollIntervalMs, x.AudioEnabled,
             string.IsNullOrWhiteSpace(x.LayoutKey) ? null : x.LayoutKey,
             x.UpdatedAt.ToString("O"),
-            x.RowVersion.ToString()));
+            x.RowVersion.ToString(),
+            x.IsClinicLayout ? (poliIds.Count > 0 ? poliIds : null) : null));
     }
 }
 
@@ -628,13 +727,19 @@ public sealed class GetPublicDisplaySnapshotHandler
 {
     private readonly IAdmissionQueueDisplayRepo _displays;
     private readonly IAdmissionQueueOperationalProjection _projection;
+    private readonly IClinicQueueOperationDal? _clinicQueueDal;
+    private readonly IAntrianRepo? _antrianRepo;
 
     public GetPublicDisplaySnapshotHandler(
         IAdmissionQueueDisplayRepo displays,
-        IAdmissionQueueOperationalProjection projection)
+        IAdmissionQueueOperationalProjection projection,
+        IClinicQueueOperationDal? clinicQueueDal = null,
+        IAntrianRepo? antrianRepo = null)
     {
         _displays = displays;
         _projection = projection;
+        _clinicQueueDal = clinicQueueDal;
+        _antrianRepo = antrianRepo;
     }
 
     public Task<IReadOnlyList<CurrentLoketDisplayItem>> Handle(
@@ -656,13 +761,55 @@ public sealed class GetPublicDisplaySnapshotHandler
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayInactive, ex.Message);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("no loket", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("no loket", StringComparison.OrdinalIgnoreCase) ||
+                                                    ex.Message.Contains("no poli", StringComparison.OrdinalIgnoreCase))
         {
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired, ex.Message);
         }
 
-        var displayLokets = existing.Value.Lokets
+        var display = existing.Value;
+        if (display.IsClinicLayout)
+        {
+            var poliIds = display.Polis.Select(p => p.PoliId).ToList();
+            if (poliIds.Count == 0 && _clinicQueueDal is not null)
+            {
+                poliIds = _clinicQueueDal.GetPolisByDisplayId(display.DisplayId).ToList();
+            }
+
+            var activeCalls = _clinicQueueDal?.GetActiveCallsByPoliIds(poliIds) ?? Array.Empty<ClinicQueueCallDto>();
+            var results = new List<CurrentLoketDisplayItem>();
+
+            foreach (var call in activeCalls)
+            {
+                var queueLabel = call.NoUrut.ToString();
+                if (_antrianRepo is not null)
+                {
+                    var queOpt = _antrianRepo.LoadEntity(AntrianModel.Key(call.AntrianId));
+                    if (queOpt.HasValue)
+                    {
+                        var que = queOpt.Value;
+                        queueLabel = $"{que.QueuePrefixSnapshot}{call.NoUrut:D4}";
+                    }
+                }
+
+                results.Add(new CurrentLoketDisplayItem(
+                    string.IsNullOrWhiteSpace(call.RuangId) ? call.PoliId : call.RuangId,
+                    call.AntrianId,
+                    call.NoUrut,
+                    queueLabel,
+                    call.PoliId,
+                    AdmissionQueueClaimState.InService,
+                    call.CallCount,
+                    call.CalledAt,
+                    call.CalledAt,
+                    Array.Empty<byte>()));
+            }
+
+            return Task.FromResult<IReadOnlyList<CurrentLoketDisplayItem>>(results);
+        }
+
+        var displayLokets = display.Lokets
             .Select(x => x.LoketKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
