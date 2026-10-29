@@ -8,7 +8,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 
-public record AdmCancelReservationCmd(string ReservationId, string UserId) : IRequest, IReservationKey;
+public record AdmCancelReservationCmd(string ReservationId, string UserId, string Reason) : IRequest, IReservationKey;
 
 public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationCmd>
 {
@@ -27,6 +27,7 @@ public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationC
     {
         Guard.Against.NullOrWhiteSpace(request.ReservationId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.Reason);
 
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation {request.ReservationId} not found");
@@ -40,6 +41,7 @@ public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationC
             "VOID",
             nameof(ReservationModel),
             cancelled.ReservationId,
+            reason: request.Reason,
             originalDataJson: snapshotJson));
 
         return Task.CompletedTask;
