@@ -63,7 +63,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 |---|---|---|---|---|---|---|
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
 | **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IMPLEMENTED | GO | 3/3 |
-| **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | IMPLEMENTED | GO | 1/1 |
 | **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | NOT-STARTED | NOT-REVIEWED | 0/3 |
 
 ---
@@ -242,13 +242,13 @@ Review Status: GO
 
 ## P3 - Frontend Action Visibility & Status UX (`c012_myhospital_web`)
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P3-S07
 - **Title**: Penyelarasan Visibilitas Aksi & Indikator Status OWARE di Frontend
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menyelaraskan aturan visibilitas tombol aksi pada workbench laboratorium (`lab-workflow-actions.config.ts`), merapikan guard `canEnqueueOware` agar tombol manual hanya tampil jika belum terantre, memastikan `canRetryOware` aktif saat status `Failed`, serta menambahkan indikator/tooltip `lastError` pada `LabOwareStatusBadge.vue` dan `LabOrderDetailPanel.vue`.
 - **Depends On**: P2-S06
 - **Repository**: `c012_myhospital_web`
@@ -257,7 +257,16 @@ Review Status: NOT-REVIEWED
   - `canRetryOware(order)` memastikan tombol retry aktif hanya jika `order.owareStatus === OwareStatus.Failed`.
   - `LabOwareStatusBadge.vue` dan strip integrasi di `LabOrderDetailPanel.vue` menampilkan tooltip atau deskripsi pesan kesalahan teknis (`lastError`) saat status order adalah `Failed`.
   - Mematuhi working directory `c012_myhospital_web`, diformat dengan Prettier, lulus type-check `pnpm tc:app`, lulus targeted test `pnpm test src/modules/Laboratory/__tests__/lab-workflow-actions.config.spec.ts`, dan lulus `pnpm lint`.
-- **Notes**: Operasi frontend murni di repositori `c012_myhospital_web`.
+- **Notes**: 
+  - Operasi frontend murni di repositori `c012_myhospital_web`.
+  - Changed / created files:
+    - [`lab-workflow-actions.config.ts`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/configs/lab-workflow-actions.config.ts) (Penyelarasan `canEnqueueOware` agar hanya aktif saat `owareStatus === 0`, dan `canRetryOware` saat `owareStatus === Failed`)
+    - [`LabOwareStatusBadge.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/integration/LabOwareStatusBadge.vue) (Dukungan prop `lastError` dan penambahan tooltip / title detail kesalahan teknis)
+    - [`LabOrderDetailPanel.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/workspace/LabOrderDetailPanel.vue) (Penampilan pesan kesalahan teknis OWARE pada strip integrasi panel detail)
+    - [`lab-order.schema.ts`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/types/lab-order.schema.ts) (Penambahan properti opsional `owareLastError` & `lastError`)
+    - [`lab-workflow-actions.config.spec.ts`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/__tests__/lab-workflow-actions.config.spec.ts) (Unit test eligibility & visibility OWARE: 10 passed)
+    - [`LabOrderDetailPanel.spec.ts`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/__tests__/LabOrderDetailPanel.spec.ts) (Unit test render detail error OWARE: 27 passed)
+  - Verification: Prettier formatted; `pnpm tc:app` sukses tanpa error; targeted tests 100% lulus (10 passed di `lab-workflow-actions.config.spec.ts`, 27 passed di `LabOrderDetailPanel.spec.ts`); eslint dan oxlint pada seluruh file yang diubah lulus dengan 0 warning dan 0 error.
 
 ---
 
