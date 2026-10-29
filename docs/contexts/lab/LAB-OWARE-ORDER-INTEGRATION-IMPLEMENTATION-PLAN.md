@@ -64,7 +64,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
 | **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IMPLEMENTED | GO | 3/3 |
 | **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | IMPLEMENTED | GO | 1/1 |
-| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | NOT-STARTED | NOT-REVIEWED | 0/3 |
+| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | IN-PROGRESS | NOT-REVIEWED | 1/3 |
 
 ---
 
@@ -272,13 +272,13 @@ Review Status: GO
 
 ## P4 - Unit Testing & End-to-End Verification
 
-Implementation Status: NOT-STARTED
+Implementation Status: IN-PROGRESS
 Review Status: NOT-REVIEWED
 
 ### P4-S08
 - **Title**: Unit & Integration Testing LWF Outbound di Bilreg
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menyusun dan memverifikasi unit test suite untuk seluruh komponen baru/termodifikasi di `b09-bilreg-api`.
 - **Depends On**: P2-S06
 - **Repository**: `b09-bilreg-api`
@@ -288,7 +288,9 @@ Review Status: NOT-REVIEWED
   - Test suite `LabOrderCancelHandlerTest` memverifikasi pembentukan antrean pembatalan jika `OwareStatus == Sent`.
   - Test suite `LabOwareQueueProcessorTest` memverifikasi transisi status antrean (`Succeeded`/`Failed`) dan status order (`Sent`/`Failed`).
   - Seluruh targeted test lulus tanpa regresi pada test suite lab lainnya.
-- **Notes**: Menggunakan xUnit dan Moq di proyek `Bilreg.Test`.
+- **Notes**: 
+  - Menggunakan xUnit dan Moq di proyek `Bilreg.Test`.
+  - Verification: Seluruh 47 unit test pada targeted suites (`LabOwareIntegrationTest`, `LabOrderChargeHandlerTest`, `LabOrderCancelHandlerTest`, `LabOwareQueueProcessorTest`, `LabOwareOutboundWorkerTest`) lulus 100%; `LabOrderWorklistDalTest` lulus 100% (5/5); dan seluruh suite `LabContext` di `Bilreg.Test` lulus 100% (445 passed, 0 failed, 0 skipped) tanpa regresi.
 
 ---
 
