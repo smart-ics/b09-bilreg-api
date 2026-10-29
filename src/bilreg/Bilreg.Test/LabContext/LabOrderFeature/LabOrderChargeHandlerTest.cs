@@ -1,11 +1,6 @@
-using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
-using Bilreg.Application.AdmisiContext.RegFeature;
-using Bilreg.Application.ChargeContext.TarifFeature;
-using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
-using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -18,19 +13,15 @@ namespace Bilreg.Test.LabContext.LabOrderFeature;
 public class LabOrderChargeHandlerTest
 {
     private readonly Mock<ILabOrderRepo> _repo = new();
-    private readonly Mock<IRegRepo> _regRepo = new();
-    private readonly Mock<ITarifRepo> _tarifRepo = new();
-    private readonly Mock<INilaiTarifRepo> _nilaiTarifRepo = new();
-    private readonly Mock<IKomponenRepo> _komponenRepo = new();
-    private readonly Mock<IJaminanRepo> _jaminanRepo = new();
-    private readonly Mock<IAddBillAppService> _addBillAppService = new();
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
     private readonly LabOrderChargeHandler _sut;
 
     public LabOrderChargeHandlerTest()
     {
-        _sut = new LabOrderChargeHandler(_repo.Object, _regRepo.Object, _tarifRepo.Object, _nilaiTarifRepo.Object,
-            _komponenRepo.Object, _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object, TestTglJamProvider.Instance);
+        _sut = new LabOrderChargeHandler(
+            _repo.Object,
+            _billingIntegration.Object,
+            TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel OrderedOrder()
@@ -43,6 +34,19 @@ public class LabOrderChargeHandlerTest
             lines: [LabOrderTestSupport.ResolvedLine(item)],
             snapshot: snapshot,
             audit: new AuditInfoType("U1", DateTime.Now));
+    }
+
+    private static LabOrderModel ExternalOrderedOrder()
+    {
+        var snapshot = new PatientSnapshotType(
+            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+        var item = LabOrderTestSupport.SampleItem();
+        return LabOrderModel.CreateExternal(
+            null,
+            snapshot,
+            [LabOrderTestSupport.ResolvedLine(item)],
+            "LAB00000002",
+            new AuditInfoType("U1", DateTime.Now));
     }
 
     private static LabOrderModel DeferredOrder()
@@ -58,8 +62,8 @@ public class LabOrderChargeHandlerTest
         var order = OrderedOrder();
         _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         _billingIntegration
-            .Setup(i => i.CreateTindakan(It.IsAny<LabBillingChargeRequest>()))
-            .Returns("TDK-FAKE-0001");
+            .Setup(i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()))
+            .Returns("TDK-REF-0001");
         LabOrderModel? persisted = null;
         _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
             .Callback<LabOrderModel>(m => persisted = m);
@@ -69,14 +73,43 @@ public class LabOrderChargeHandlerTest
             CancellationToken.None);
 
         result.Success.Should().BeTrue();
-        result.BillingTindakanId.Should().Be("TDK-FAKE-0001");
+        result.BillingTindakanId.Should().Be("TDK-REF-0001");
         result.BillingLastError.Should().BeNull();
         persisted.Should().NotBeNull();
         persisted!.LabOrderStatus.Should().Be(LabOrderStatusEnum.Charged);
-        persisted.BillingTindakanId.Should().Be("TDK-FAKE-0001");
+        persisted.BillingTindakanId.Should().Be("TDK-REF-0001");
         _billingIntegration.Verify(
-            i => i.CreateTindakan(It.Is<LabBillingChargeRequest>(r =>
-                r.OrderId == order.OrderId && r.UserId == "U3" && r.TarifLines.Count == 1)),
+            i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()),
+            Times.Once);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ExternalPatient_DelegatesToBillingIntegration_AndSaves()
+    {
+        var order = ExternalOrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _billingIntegration
+            .Setup(i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()))
+            .Returns("TDK-EXT-0001");
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var result = await _sut.Handle(
+            new LabOrderChargeCmd(order.OrderId, "U3"),
+            CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.BillingTindakanId.Should().Be("TDK-EXT-0001");
+        result.BillingLastError.Should().BeNull();
+        persisted.Should().NotBeNull();
+        persisted!.LabOrderStatus.Should().Be(LabOrderStatusEnum.Charged);
+        persisted.BillingTindakanId.Should().Be("TDK-EXT-0001");
+        persisted.Patient.RegId.Should().Be("LX26A14B8C");
+        persisted.Patient.RegId.Length.Should().Be(10);
+        _billingIntegration.Verify(
+            i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()),
             Times.Once);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
     }
@@ -93,7 +126,25 @@ public class LabOrderChargeHandlerTest
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _billingIntegration.Verify(
-            i => i.CreateTindakan(It.IsAny<LabBillingChargeRequest>()),
+            i => i.ChargeOrder(It.IsAny<LabOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()),
+            Times.Never);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyChargedOrder_ThrowsBeforeBilling()
+    {
+        var order = OrderedOrder();
+        order.MarkCharged("TDK-PREV", "U1");
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+
+        var act = async () => await _sut.Handle(
+            new LabOrderChargeCmd(order.OrderId, "U3"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _billingIntegration.Verify(
+            i => i.ChargeOrder(It.IsAny<LabOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()),
             Times.Never);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
@@ -104,7 +155,7 @@ public class LabOrderChargeHandlerTest
         var order = OrderedOrder();
         _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         _billingIntegration
-            .Setup(i => i.CreateTindakan(It.IsAny<LabBillingChargeRequest>()))
+            .Setup(i => i.ChargeOrder(order, "U3", It.IsAny<DateTime>()))
             .Throws(new LabBillingChargeException("Tarif tidak aktif"));
         LabOrderModel? persisted = null;
         _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
@@ -133,6 +184,27 @@ public class LabOrderChargeHandlerTest
             CancellationToken.None);
 
         await act.Should().ThrowAsync<Exception>();
+        _billingIntegration.Verify(
+            i => i.ChargeOrder(It.IsAny<LabOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()),
+            Times.Never);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidInputs_Throws()
+    {
+        var act1 = async () => await _sut.Handle(
+            new LabOrderChargeCmd("", "U1"),
+            CancellationToken.None);
+        var act2 = async () => await _sut.Handle(
+            new LabOrderChargeCmd("LBO1", ""),
+            CancellationToken.None);
+
+        await act1.Should().ThrowAsync<ArgumentException>();
+        await act2.Should().ThrowAsync<ArgumentException>();
+        _billingIntegration.Verify(
+            i => i.ChargeOrder(It.IsAny<LabOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()),
+            Times.Never);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 }

@@ -4,7 +4,7 @@ namespace Bilreg.Application.LabContext.LabTestDefinitionFeature;
 
 internal static class LabTestDefinitionResponseMapper
 {
-    public static LabTestDefinitionDetailResponse ToDetailResponse(LabTestDefinitionModel model) =>
+    public static LabTestDefinitionDetailResponse ToDetailResponse(LabTestDefinitionModel model, decimal tarifPrice = 0m) =>
         new(
             model.TestDefinitionId,
             model.TarifId,
@@ -20,9 +20,10 @@ internal static class LabTestDefinitionResponseMapper
                 x.ComponentId,
                 x.ReferenceRangeOverride,
                 x.RequiredFlagging,
-                x.IsMandatory)).ToList());
+                x.IsMandatory)).ToList(),
+            tarifPrice);
 
-    public static LabTestDefinitionListResponse ToListResponse(LabTestDefinitionModel model) =>
+    public static LabTestDefinitionListResponse ToListResponse(LabTestDefinitionModel model, decimal tarifPrice = 0m) =>
         new(
             model.TestDefinitionId,
             model.TarifId,
@@ -33,7 +34,8 @@ internal static class LabTestDefinitionResponseMapper
             model.SpecimenType,
             (int)model.VacutainerType,
             model.IsActive,
-            model.Components.Count());
+            model.Components.Count(),
+            tarifPrice);
 }
 
 public record LabTestDefinitionListResponse(
@@ -46,7 +48,8 @@ public record LabTestDefinitionListResponse(
     string SpecimenType,
     int VacutainerType,
     bool IsActive,
-    int ComponentCount);
+    int ComponentCount,
+    decimal TarifPrice = 0m);
 
 public record LabTestDefinitionDetailResponse(
     string TestDefinitionId,
@@ -58,7 +61,8 @@ public record LabTestDefinitionDetailResponse(
     string SpecimenType,
     int VacutainerType,
     bool IsActive,
-    IReadOnlyList<LabTestComponentResponse> Components);
+    IReadOnlyList<LabTestComponentResponse> Components,
+    decimal TarifPrice = 0m);
 
 public record LabTestComponentResponse(
     int SequenceNo,
