@@ -76,6 +76,7 @@ using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
 using Scrutor;
+using Bilreg.Api.HostedServices;
 
 namespace Bilreg.Api.Configurations;
 
@@ -189,6 +190,8 @@ public static class InfrastructureService
             var timeoutSec = opt.TimeoutSeconds > 0 ? opt.TimeoutSeconds : 10;
             client.Timeout = TimeSpan.FromSeconds(timeoutSec);
         });
+
+        services.AddHostedService<LabOwareOutboundWorker>();
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))

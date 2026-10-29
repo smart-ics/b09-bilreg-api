@@ -62,7 +62,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 | Phase | Description | Repository Scope | Slices | Implementation Status | Review Status | Progress |
 |---|---|---|---|---|---|---|
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
-| **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IN-PROGRESS | NOT-REVIEWED | 2/3 |
+| **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IMPLEMENTED | GO | 3/3 |
 | **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | NOT-STARTED | NOT-REVIEWED | 0/1 |
 | **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | NOT-STARTED | NOT-REVIEWED | 0/3 |
 
@@ -158,8 +158,8 @@ Review Status: GO
 
 ## P2 - LWF Outbound Adapter & Worker Pipeline (`b09-bilreg-api`)
 
-Implementation Status: IN-PROGRESS
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P2-S04
 - **Title**: Konfigurasi OwareOptions & Adapter HTTP Outbound Riil
@@ -217,8 +217,8 @@ Review Status: NOT-REVIEWED
 
 ### P2-S06
 - **Title**: Background Worker Antrean Latar Belakang (LabOwareOutboundWorker)
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Mengimplementasikan .NET `BackgroundService` (`LabOwareOutboundWorker`) di host `Bilreg.Api` untuk secara periodik memproses batch antrean pending/failed melalui `LabOwareQueueProcessor`.
 - **Depends On**: P2-S05
 - **Repository**: `b09-bilreg-api`
@@ -230,7 +230,13 @@ Review Status: NOT-REVIEWED
   - Dilengkapi mekanisme try-catch global agar exception jaringan/transmisi tidak mematikan background service.
   - Terdaftar via `services.AddHostedService<LabOwareOutboundWorker>()` di `Bilreg.Api/Configurations`.
   - Endpoint controller `LabOwareController` (`process` dan `retry`) tetap aktif dan dapat dipanggil secara manual.
-- **Notes**: Worker dirancang ringan dan non-blocking terhadap thread pool utama.
+- **Notes**: 
+  - Worker dirancang ringan dan non-blocking terhadap thread pool utama.
+  - Changed / created files:
+    - [`LabOwareOutboundWorker.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Api/HostedServices/LabOwareOutboundWorker.cs) (Implementasi background worker ter-scoped dengan fallback interval dan exception handling)
+    - [`InfrastructureService.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Api/Configurations/InfrastructureService.cs) (Registrasi `AddHostedService<LabOwareOutboundWorker>()`)
+    - [`LabOwareOutboundWorkerTest.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOwareFeature/LabOwareOutboundWorkerTest.cs) (Unit test worker ketika enabled, disabled, exception handling, dan start/stop lifecycle)
+  - Verification: Solusi `b09-bilreg-api.sln` build berhasil (0 Errors); 31 unit test suite `LabOware` (termasuk 4 test `LabOwareOutboundWorkerTest`) dan 58 unit test gabungan `LabOrder` & `LabOware` lulus 100%.
 
 ---
 
