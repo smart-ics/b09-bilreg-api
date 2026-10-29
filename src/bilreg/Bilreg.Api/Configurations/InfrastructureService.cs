@@ -76,6 +76,7 @@ using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
 using Scrutor;
+using Bilreg.Api.HostedServices;
 
 namespace Bilreg.Api.Configurations;
 
@@ -179,6 +180,19 @@ public static class InfrastructureService
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
+        services.AddHttpClient("OwareClient", (sp, client) =>
+        {
+            var opt = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OwareOptions>>().Value;
+            if (!string.IsNullOrWhiteSpace(opt.BaseUrl))
+            {
+                client.BaseAddress = new Uri(opt.BaseUrl);
+            }
+            var timeoutSec = opt.TimeoutSeconds > 0 ? opt.TimeoutSeconds : 10;
+            client.Timeout = TimeSpan.FromSeconds(timeoutSec);
+        });
+
+        services.AddHostedService<LabOwareOutboundWorker>();
+
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
             .AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BusinessDateOptions>>(
@@ -202,6 +216,7 @@ public static class InfrastructureService
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME))
             .Configure<SmassOptions>(configuration.GetSection(SmassOptions.SECTION_NAME))
             .Configure<IgdVisitOptions>(configuration.GetSection(IgdVisitOptions.SECTION_NAME))
+            .Configure<OwareOptions>(configuration.GetSection(OwareOptions.SECTION_NAME))
             .Configure<StockLedgerCoexistenceOptions>(
                 configuration.GetSection(StockLedgerCoexistenceOptions.SectionName));
 

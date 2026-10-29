@@ -1,6 +1,8 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Domain.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -23,6 +25,7 @@ public class LabOrderCancelHandlerTest
     private readonly Mock<ILabOrderRepo> _labOrderRepo = new();
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
     private readonly Mock<ITglJamProvider> _tglJamProvider = new();
+    private readonly Mock<ILabOwareOutboundQueueRepo> _queueRepo = new();
     private readonly LabOrderCancelHandler _sut;
 
     public LabOrderCancelHandlerTest()
@@ -31,7 +34,8 @@ public class LabOrderCancelHandlerTest
         _sut = new LabOrderCancelHandler(
             _labOrderRepo.Object,
             _billingIntegration.Object,
-            _tglJamProvider.Object);
+            _tglJamProvider.Object,
+            _queueRepo.Object);
     }
 
     private static LabOrderModel CreateOrderedModel()
@@ -287,6 +291,48 @@ public class LabOrderCancelHandlerTest
 
         _labOrderRepo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
         _billingIntegration.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenOrderOwareStatusIsSent_CreatesCancelQueueWithMessageTypeLabOrderCancel()
+    {
+        // Arrange
+        var order = CreateChargedModel();
+        order.MarkOwareSent("SYS", FixedNow.AddMinutes(-20));
+        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
+            .Returns(MayBe.From(order));
+
+        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+        _queueRepo.Verify(q => q.SaveChanges(It.Is<LabOwareOutboundQueueModel>(m =>
+            m.OrderId == order.OrderId &&
+            m.MessageType == "LabOrderCancel" &&
+            m.QueueStatus == LabOwareQueueStatusEnum.Pending &&
+            m.PayloadJson.Contains(order.OrderId))), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenOrderOwareStatusIsNotSent_DoesNotCreateCancelQueue()
+    {
+        // Arrange
+        var order = CreateChargedModel();
+        order.MarkOwarePending("SYS", FixedNow.AddMinutes(-20));
+        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
+            .Returns(MayBe.From(order));
+
+        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+        _queueRepo.Verify(q => q.SaveChanges(It.IsAny<LabOwareOutboundQueueModel>()), Times.Never);
     }
 
     [Fact]

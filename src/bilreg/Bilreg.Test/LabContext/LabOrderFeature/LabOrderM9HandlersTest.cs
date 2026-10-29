@@ -1,6 +1,7 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -14,12 +15,13 @@ public class LabOrderM9HandlersTest
 {
     private readonly Mock<ILabOrderRepo> _repo = new();
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
+    private readonly Mock<ILabOwareOutboundQueueRepo> _queueRepo = new();
     private readonly LabOrderCancelHandler _cancelHandler;
     private readonly LabOrderTerminateHandler _terminateHandler;
 
     public LabOrderM9HandlersTest()
     {
-        _cancelHandler = new LabOrderCancelHandler(_repo.Object, _billingIntegration.Object, TestTglJamProvider.Instance);
+        _cancelHandler = new LabOrderCancelHandler(_repo.Object, _billingIntegration.Object, TestTglJamProvider.Instance, _queueRepo.Object);
         _terminateHandler = new LabOrderTerminateHandler(_repo.Object, TestTglJamProvider.Instance);
     }
 
