@@ -23,7 +23,7 @@ public class LabOwareIntegration : ILabOwareIntegration
         _options = options.Value;
     }
 
-    public LabOwareIntegration(
+    internal LabOwareIntegration(
         HttpClient httpClient,
         IOptions<OwareOptions> options)
     {

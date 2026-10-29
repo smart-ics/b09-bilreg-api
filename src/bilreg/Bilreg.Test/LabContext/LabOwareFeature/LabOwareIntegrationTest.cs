@@ -4,6 +4,7 @@ using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -319,5 +320,27 @@ public class LabOwareIntegrationTest
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNull();
         result.ErrorMessage!.Length.Should().BeLessThanOrEqualTo(200);
+    }
+
+    [Fact]
+    public void ServiceCollection_CanResolve_ILabOwareIntegration_WithoutAmbiguity()
+    {
+        // Arrange
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddHttpClient();
+        services.Configure<OwareOptions>(opt => { opt.BaseUrl = "http://localhost:5255"; });
+        services.AddScoped<ILabOwareIntegration, LabOwareIntegration>();
+
+        // Act & Assert (simulates ASP.NET Core debug host validation)
+        using var provider = services.BuildServiceProvider(new Microsoft.Extensions.DependencyInjection.ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        using var scope = provider.CreateScope();
+        var instance = scope.ServiceProvider.GetRequiredService<ILabOwareIntegration>();
+        instance.Should().NotBeNull();
+        instance.Should().BeOfType<LabOwareIntegration>();
     }
 }
