@@ -241,13 +241,10 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
-<<<<<<< HEAD
         services.AddScoped<IOrderOpResourceDal, OrderOpResourceDal>();
         services.AddScoped<IScheduleOpHistDal, ScheduleOpHistDal>();
-=======
         services.AddScoped<ILabExternalDal, LabExternalDal>();
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
->>>>>>> master
 
         // PakaiBrgFeature (tb_trs_pakai, tb_trs_pakai2)
         services.AddScoped<IPakaiBrgDal, PakaiBrgDal>();
