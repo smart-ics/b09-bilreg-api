@@ -9,7 +9,9 @@ public record LabOrderWorklistFilter(
     int? LabOrderStatus,
     string? SearchTerm,
     DateTime? Date1,
-    DateTime? Date2);
+    DateTime? Date2,
+    bool? IsCitoOnly = null,
+    int? OrderSource = null);
 
 public record LabOrderWorklistView(
     string OrderId,
@@ -25,4 +27,8 @@ public record LabOrderWorklistView(
     int OwareStatus,
     DateTime CrtDate,
     string BillingTindakanId,
+    bool IsCito = false,
+    string DokterPerujukName = "",
+    string LayananPerujukName = "",
+    string DeferredReason = "",
     IReadOnlyList<string>? TestNames = null);

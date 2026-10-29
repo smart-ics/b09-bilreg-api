@@ -8,6 +8,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
@@ -51,6 +52,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
+using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
@@ -91,6 +93,8 @@ public static class InfrastructureService
             .AddScoped<IBusinessDateStatus>(sp => sp.GetRequiredService<TglJamProvider>())
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
+            .AddScoped<ILabOrderDal, LabOrderDal>()
+            .AddScoped<ILabOrderTableDal, LabOrderDal>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
             .AddScoped<ILabOrderReleaseWorklistDal, LabOrderReleaseWorklistDal>()
             .AddScoped<ILabResultVerificationWorklistDal, LabResultVerificationWorklistDal>()
@@ -154,6 +158,10 @@ public static class InfrastructureService
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
             .AddScoped<ITarifPublishLogRepo, TarifPublishLogRepo>()
             .AddScoped<INilaiTarifProjectionWriter, NilaiTarifProjectionWriter>()
+            .AddScoped<INilaiTarifRepo, NilaiTarifRepo>()
+            .AddScoped<INilaiTarifDal, NilaiTarifDal>()
+            .AddScoped<INilaiTarifKompDal, NilaiTarifKompDal>()
+            .AddScoped<IRegRepo, RegRepo>()
             .AddScoped<ITarifOperationalStateRepo, TarifOperationalStateRepo>()
             .AddScoped<ITarifOperationalStateDal, TarifOperationalStateDal>()
             .AddScoped<ITarifProjectionReadRepo, TarifProjectionReadRepo>()
@@ -232,6 +240,8 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+        services.AddScoped<ILabExternalDal, LabExternalDal>();
+        services.AddScoped<ILabExternalRepo, LabExternalRepo>();
 
         // PakaiBrgFeature (tb_trs_pakai, tb_trs_pakai2)
         services.AddScoped<IPakaiBrgDal, PakaiBrgDal>();
