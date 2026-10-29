@@ -62,7 +62,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 | Phase | Description | Repository Scope | Slices | Implementation Status | Review Status | Progress |
 |---|---|---|---|---|---|---|
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
-| **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IN-PROGRESS | NOT-REVIEWED | 1/3 |
+| **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IN-PROGRESS | NOT-REVIEWED | 2/3 |
 | **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | NOT-STARTED | NOT-REVIEWED | 0/1 |
 | **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | NOT-STARTED | NOT-REVIEWED | 0/3 |
 
@@ -192,8 +192,8 @@ Review Status: NOT-REVIEWED
 
 ### P2-S05
 - **Title**: Otomatisasi Pemicu Enqueue saat Charged & Enqueue Pembatalan
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Mengintegrasikan pembentukan antrean `LabOwareOutboundQueueModel` secara otomatis di dalam `LabOrderChargeHandler` saat order berstatus `Charged`, serta otomatisasi enqueue pembatalan di `LabOrderCancelHandler`.
 - **Depends On**: P2-S04
 - **Repository**: `b09-bilreg-api`
@@ -203,7 +203,15 @@ Review Status: NOT-REVIEWED
   - Aturan invariant: order Cito dan Rutin sama-sama dipicu saat status `Charged`.
   - Di `LabOrderCancelHandler.cs`: jika order yang dibatalkan memiliki status `order.OwareStatus == OwareStatusEnum.Sent`, handler menyimpan antrean baru dengan `MessageType = "LabOrderCancel"` dan payload `{"orderId":"<OrderId>"}`.
   - Dukungan tombol manual di UI: endpoint `LabOwareRetryCmd` tetap berfungsi untuk retry antrean yang berstatus `Failed`.
-- **Notes**: Memastikan tidak ada ketergantungan pemanggilan controller eksternal untuk pembentukan antrean selama siklus hidup order normal.
+- **Notes**: 
+  - Memastikan tidak ada ketergantungan pemanggilan controller eksternal untuk pembentukan antrean selama siklus hidup order normal.
+  - Changed / created files:
+    - [`LabOrderChargeCmd.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderChargeCmd.cs) (Injeksi `ILabOwareOutboundQueueRepo`, enqueue payload `{"orderId":"..."}`, dan mutasi `order.MarkOwarePending`)
+    - [`LabOrderCancelCmd.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCancelCmd.cs) (Injeksi `ILabOwareOutboundQueueRepo`, enqueue `LabOrderCancel` saat order berstatus `OwareStatus == Sent`)
+    - [`LabOrderChargeHandlerTest.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderChargeHandlerTest.cs) (Menambahkan verifikasi pembentukan antrean OWARE saat charge sukses dan non-enqueue saat gagal)
+    - [`LabOrderCancelHandlerTest.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCancelHandlerTest.cs) (Menambahkan verifikasi pembentukan antrean pembatalan OWARE saat order berstatus `Sent`)
+    - [`LabOrderM9HandlersTest.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderM9HandlersTest.cs) (Memperbarui injeksi mock queue repo pada handler cancel)
+  - Verification: Solusi `b09-bilreg-api.sln` build berhasil (0 Errors); seluruh 32 unit test pada `LabOrderChargeHandlerTest`, `LabOrderCancelHandlerTest`, dan `LabOrderM9HandlersTest` lulus 100%, serta 27 unit test pada test suite `LabOware` lulus 100%.
 
 ---
 
