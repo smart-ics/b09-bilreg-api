@@ -1,7 +1,9 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
@@ -28,17 +30,23 @@ public record IgdVisitReAssessTriageCmd(
 public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTriageCmd, IgdVisitAssessTriageResponse>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
+    private readonly IPpaRepo _ppaRepo;
     private readonly ITriageMethodEngineResolver _engineResolver;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
     private readonly ISmassAssessmentGateway _smassGateway;
     private readonly IgdVisitOptions _igdVisitOptions;
 
-    public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver,
-        ITglJamProvider tglJamProvider, IIgdVisitSmassTaskRepo smassTaskRepo,
-        ISmassAssessmentGateway smassGateway, IOptions<IgdVisitOptions> igdVisitOptions)
+    public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo,
+        IPpaRepo ppaRepo,
+        ITriageMethodEngineResolver engineResolver,
+        ITglJamProvider tglJamProvider,
+        IIgdVisitSmassTaskRepo smassTaskRepo,
+        ISmassAssessmentGateway smassGateway,
+        IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
+        _ppaRepo = ppaRepo;
         _engineResolver = engineResolver;
         _tglJamProvider = tglJamProvider;
         _smassTaskRepo = smassTaskRepo;
@@ -56,6 +64,18 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
         Guard.Against.OutOfRange(request.GcsEyeScore, nameof(request.GcsEyeScore), 1, 4);
         Guard.Against.OutOfRange(request.GcsMotorScore, nameof(request.GcsMotorScore), 1, 6);
         Guard.Against.OutOfRange(request.GcsVoiceScore, nameof(request.GcsVoiceScore), 1, 5);
+
+        if (request.IsManualOverrideBlack)
+        {
+            if (string.IsNullOrWhiteSpace(request.OverrideReason) || request.OverrideReason.Trim() == "-")
+                throw new ArgumentException("Alasan klinis Manual Override Black wajib diisi.");
+
+            var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.UserId))
+                .GetValueOrThrow($"Petugas '{request.UserId}' tidak ditemukan.");
+
+            if (!ppa.IsDokter())
+                throw new UnauthorizedAccessException($"Petugas '{request.UserId}' bukan dokter; tidak berwenang menetapkan status Black.");
+        }
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
 
@@ -78,7 +98,7 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
             notes: request.Notes ?? "-",
             isManualOverrideBlack: request.IsManualOverrideBlack,
             overrideByUserId: request.UserId,
-            overrideReason: request.OverrideReason ?? "-",
+            overrideReason: request.OverrideReason?.Trim() ?? "-",
             nextReTriageAt: triageResult.NextReTriageAt,
             audit: audit);
 
