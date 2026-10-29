@@ -64,7 +64,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
 | **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IMPLEMENTED | GO | 3/3 |
 | **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | IMPLEMENTED | GO | 1/1 |
-| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | IN-PROGRESS | NOT-REVIEWED | 1/3 |
+| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | IN-PROGRESS | NOT-REVIEWED | 2/3 |
 
 ---
 
@@ -296,8 +296,8 @@ Review Status: NOT-REVIEWED
 
 ### P4-S09
 - **Title**: Unit & Integration Testing Inbound Order Processing di OWARE
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menyusun dan memverifikasi unit test suite untuk seluruh komponen baru di `a046_oware_ordermiddlewareapi`.
 - **Depends On**: P1-S03
 - **Repository**: `a046_oware_ordermiddlewareapi`
@@ -306,7 +306,9 @@ Review Status: NOT-REVIEWED
   - Test suite `BilregAuthTokenServiceTest` memverifikasi login service account, penyimpanan token di memory cache, dan re-login saat token kedaluwarsa.
   - Test suite `OrderLabBilregBuilderTest` memverifikasi kecocokan pemetaan `TarifId` ke `ConsId` vendor LIS.
   - Seluruh test di `Oware.Test` berjalan sukses dan lulus 100%.
-- **Notes**: Ditempatkan di proyek `Oware.Test`.
+- **Notes**: 
+  - Ditempatkan di proyek `Oware.Test`.
+  - Verification: Solusi `A046_Oware_OrderMiddlewareApi.sln` build berhasil dengan 0 Error; seluruh 29 targeted unit tests (`CreateOrderLabFromBilregHandlerTest` 12 tests, `OrderLabBilregBuilderTest` 8 tests, `BilregLabOrderClientTest` 7 tests, `BilregAuthTokenServiceTest` 2 tests) lulus 100%; dan seluruh 117 unit tests pada suite Lab & Bilreg di `Oware.Test` lulus 100% tanpa regresi.
 
 ---
 
