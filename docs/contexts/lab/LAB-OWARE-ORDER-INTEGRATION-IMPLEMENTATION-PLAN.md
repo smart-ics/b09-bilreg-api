@@ -4,7 +4,7 @@ Code: LAB-OWARE-ORDER-INTEGRATION
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.1
 LastUpdated: 2026-10-29
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -64,7 +64,7 @@ Rencana implementasi mencakup modifikasi teknis terisolasi pada tiga repositori:
 | **P1** | OWARE Ingestion & Pulling Pipeline | `a046_oware_ordermiddlewareapi` | P1-S01 s/d P1-S03 | IMPLEMENTED | GO | 3/3 |
 | **P2** | LWF Outbound Adapter & Worker Pipeline | `b09-bilreg-api` | P2-S04 s/d P2-S06 | IMPLEMENTED | GO | 3/3 |
 | **P3** | Frontend Action Visibility & Status UX | `c012_myhospital_web` | P3-S07 | IMPLEMENTED | GO | 1/1 |
-| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | IN-PROGRESS | NOT-REVIEWED | 2/3 |
+| **P4** | Unit Testing & End-to-End Verification | Cross-Repo (`b09`, `oware`, `fe`) | P4-S08 s/d P4-S10 | IMPLEMENTED | GO | 3/3 |
 
 ---
 
@@ -272,8 +272,8 @@ Review Status: GO
 
 ## P4 - Unit Testing & End-to-End Verification
 
-Implementation Status: IN-PROGRESS
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P4-S08
 - **Title**: Unit & Integration Testing LWF Outbound di Bilreg
@@ -314,8 +314,8 @@ Review Status: NOT-REVIEWED
 
 ### P4-S10
 - **Title**: Frontend Targeted Spec Testing & Regression Check
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menjalankan targeted test suite pada frontend untuk memverifikasi fungsionalitas badge status OWARE, aksi workbench, dan dialog retry tanpa regresi.
 - **Depends On**: P3-S07
 - **Repository**: `c012_myhospital_web`
@@ -324,7 +324,9 @@ Review Status: NOT-REVIEWED
   - Menjalankan type-check cepat: `pnpm tc:app` (0 errors).
   - Menjalankan linter: `pnpm lint` (0 errors).
   - Tidak ada regresi pada pengujian komponen lab workflow lainnya.
-- **Notes**: Dilakukan langsung di working directory `c012_myhospital_web`.
+- **Notes**: 
+  - Dilakukan langsung di working directory `c012_myhospital_web`.
+  - Verification: `pnpm tc:app` sukses (0 errors); targeted tests 100% lulus (`lab-workflow-actions.config.spec.ts` 10 passed, `LabOrderDetailPanel.spec.ts` 27 passed); regression check lulus 100% (`lab-order.schema.spec.ts` 31 passed, `LabOrderWorklistRow.spec.ts` 8 passed); oxlint dan eslint pada modul Laboratory lulus dengan 0 warning dan 0 error.
 
 ---
 
