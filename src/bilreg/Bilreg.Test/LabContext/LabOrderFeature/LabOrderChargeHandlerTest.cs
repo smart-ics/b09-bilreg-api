@@ -1,6 +1,8 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Domain.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -14,6 +16,7 @@ public class LabOrderChargeHandlerTest
 {
     private readonly Mock<ILabOrderRepo> _repo = new();
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
+    private readonly Mock<ILabOwareOutboundQueueRepo> _queueRepo = new();
     private readonly LabOrderChargeHandler _sut;
 
     public LabOrderChargeHandlerTest()
@@ -21,7 +24,8 @@ public class LabOrderChargeHandlerTest
         _sut = new LabOrderChargeHandler(
             _repo.Object,
             _billingIntegration.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            _queueRepo.Object);
     }
 
     private static LabOrderModel OrderedOrder()
@@ -206,5 +210,37 @@ public class LabOrderChargeHandlerTest
             i => i.ChargeOrder(It.IsAny<LabOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()),
             Times.Never);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ChargeSuccess_CreatesOwareQueueAndSetsOwarePending()
+    {
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _billingIntegration.Setup(i => i.ChargeOrder(order, "U1", It.IsAny<DateTime>())).Returns("TDK-999");
+
+        var response = await _sut.Handle(new LabOrderChargeCmd(order.OrderId, "U1"), CancellationToken.None);
+
+        response.Success.Should().BeTrue();
+        order.OwareStatus.Should().Be(OwareStatusEnum.Pending);
+        _queueRepo.Verify(q => q.SaveChanges(It.Is<LabOwareOutboundQueueModel>(m =>
+            m.OrderId == order.OrderId &&
+            m.QueueStatus == LabOwareQueueStatusEnum.Pending &&
+            m.MessageType == LabOwareOutboundQueueModel.DefaultMessageType &&
+            m.PayloadJson.Contains(order.OrderId))), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ChargeFailure_DoesNotCreateOwareQueue()
+    {
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _billingIntegration.Setup(i => i.ChargeOrder(order, "U1", It.IsAny<DateTime>()))
+            .Throws(new LabBillingChargeException("Simulated error"));
+
+        var response = await _sut.Handle(new LabOrderChargeCmd(order.OrderId, "U1"), CancellationToken.None);
+
+        response.Success.Should().BeFalse();
+        _queueRepo.Verify(q => q.SaveChanges(It.IsAny<LabOwareOutboundQueueModel>()), Times.Never);
     }
 }
