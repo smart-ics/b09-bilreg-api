@@ -75,7 +75,8 @@ public class DeliveryDirectConfirmCommandTest
                 isClosed: false,
                 konversi: 10,
                 harga: 50000m,
-                diskon: 5000m),
+                diskon: 5000m,
+                satuanKecilId: "TAB"),
             new PoQuotaDto(
                 poId: PoId,
                 noUrut: 2,
@@ -88,7 +89,8 @@ public class DeliveryDirectConfirmCommandTest
                 isClosed: false,
                 konversi: 10,
                 harga: 75000m,
-                diskon: 0m)
+                diskon: 0m,
+                satuanKecilId: "KAP")
         ];
     }
 
@@ -160,6 +162,7 @@ public class DeliveryDirectConfirmCommandTest
         savedModel.Should().NotBeNull();
         savedModel!.Status.Should().Be(DeliveryOrderStatusEnum.Confirmed);
         savedModel.Confirmed.UserId.Should().Be(UserId);
+        savedModel.Confirmed.Timestamp.Should().Be(_now);
 
         // Valuation check: (50000 - 5000) / 10 = 4500 HPP; QtyPersediaan = 10 * 10 = 100
         sentStockCmd.Should().NotBeNull();
@@ -168,7 +171,9 @@ public class DeliveryDirectConfirmCommandTest
         sentStockCmd.LayananId.Should().Be(GudangId);
         sentStockCmd.Qty.Should().Be(100m);
         sentStockCmd.Hpp.Should().Be(4500m);
+        sentStockCmd.TglMutasi.Should().Be(_now);
         sentStockCmd.UserId.Should().Be(UserId);
+        sentStockCmd.SatuanId.Should().Be("TAB");
 
         _poTrackingDalMock.Verify(p => p.IncrementReceivedQty(PoId, 1, 10m), Times.Once);
         _poTrackingDalMock.Verify(p => p.UpdatePoOverallStatus(PoId), Times.Once);
@@ -269,6 +274,7 @@ public class DeliveryDirectConfirmCommandTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Surat Pesanan*tidak ditemukan atau tidak memiliki item aktif*");
     }
+
     [Fact]
     public async Task Handle_WhenGudangDifferentFromPo_ConfirmsDocumentSuccessfully()
     {
@@ -463,6 +469,7 @@ public class DeliveryDirectConfirmCommandTest
         bonusStockCmd.Should().NotBeNull();
         bonusStockCmd!.Hpp.Should().Be(0m);
         bonusStockCmd.Qty.Should().Be(20m);
+        bonusStockCmd.SatuanId.Should().Be("KAP");
 
         _poTrackingDalMock.Verify(p => p.IncrementReceivedQty(PoId, 1, 10m), Times.Once);
         _poTrackingDalMock.Verify(p => p.IncrementReceivedQty(PoId, 0, It.IsAny<decimal>()), Times.Never);
@@ -606,5 +613,197 @@ public class DeliveryDirectConfirmCommandTest
         savedModel.Should().NotBeNull();
         savedModel!.ListItem.Should().HaveCount(1);
         savedModel.ListItem.First().Het.Should().Be(80000m);
+    }
+
+    [Fact]
+    public async Task Handle_WhenConfirmedAtIsNull_UsesClockProviderNowForConfirmedAtAndTglMutasi()
+    {
+        // ARRANGE
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(CreateSamplePoQuotas());
+        DeliveryOrderModel? savedModel = null;
+        _repoMock.Setup(r => r.SaveChanges(It.IsAny<DeliveryOrderModel>()))
+            .Callback<DeliveryOrderModel>(m => savedModel = m);
+
+        PostGoodsReceiptConsequenceCommand? sentStockCmd = null;
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<PostGoodsReceiptConsequenceCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<PostGoodsReceiptConsequenceResult>, CancellationToken>((cmd, _) => sentStockCmd = (PostGoodsReceiptConsequenceCommand)cmd)
+            .ReturnsAsync(new PostGoodsReceiptConsequenceResult(
+                PostGoodsReceiptOutcomeEnum.Success,
+                "SM001", "SL001", "SB001", "BK001", "ST001",
+                string.Empty, string.Empty, string.Empty));
+
+        var command = new DeliveryDirectConfirmCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: CreateSampleItems(),
+            SupplierName: SupplierName,
+            GudangName: GudangName,
+            ConfirmedAt: null);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.Status.Should().Be("Confirmed");
+
+        savedModel.Should().NotBeNull();
+        savedModel!.Status.Should().Be(DeliveryOrderStatusEnum.Confirmed);
+        savedModel.Confirmed.UserId.Should().Be(UserId);
+        savedModel.Confirmed.Timestamp.Should().Be(_now);
+
+        sentStockCmd.Should().NotBeNull();
+        sentStockCmd!.TglMutasi.Should().Be(_now);
+    }
+
+    [Fact]
+    public async Task Handle_WhenConversionEqualsOne_PassesItemSatuanIdToStockConsequenceCommand()
+    {
+        // ARRANGE
+        var quotas = new List<PoQuotaDto>
+        {
+            new PoQuotaDto(
+                poId: PoId,
+                noUrut: 1,
+                brgId: "BRG001",
+                brgName: "Paracetamol Sirup 60ml",
+                satuanId: "BTL",
+                qtyPo: 10m,
+                qtyDo: 0m,
+                sisaQty: 10m,
+                isClosed: false,
+                konversi: 1,
+                harga: 25000m,
+                diskon: 0m,
+                satuanKecilId: "BTL")
+        };
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(quotas);
+
+        var items = new List<DeliveryDirectConfirmItemCommand>
+        {
+            new(
+                BrgId: "BRG001",
+                SatuanId: "BTL",
+                Konversi: 1,
+                Harga: 25000m,
+                Diskon: 0m,
+                TaxPercentage: 11m,
+                NoBatch: "BATCH-002",
+                TglEd: _now.AddMonths(24),
+                QtyKirim: 5m,
+                QtyDiterima: 5m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Paracetamol Sirup 60ml",
+                SatuanName: "Botol",
+                IsBonus: false,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 1)
+        };
+
+        PostGoodsReceiptConsequenceCommand? sentStockCmd = null;
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<PostGoodsReceiptConsequenceCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<PostGoodsReceiptConsequenceResult>, CancellationToken>((cmd, _) => sentStockCmd = (PostGoodsReceiptConsequenceCommand)cmd)
+            .ReturnsAsync(new PostGoodsReceiptConsequenceResult(
+                PostGoodsReceiptOutcomeEnum.Success,
+                "SM001", "SL001", "SB001", "BK001", "ST001",
+                string.Empty, string.Empty, string.Empty));
+
+        var command = new DeliveryDirectConfirmCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: items);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        sentStockCmd.Should().NotBeNull();
+        sentStockCmd!.SatuanId.Should().Be("BTL");
+    }
+
+    [Fact]
+    public async Task Handle_WhenConversionGreaterThanOneButSatuanKecilEmpty_FallsBackToItemSatuanId()
+    {
+        // ARRANGE
+        var quotas = new List<PoQuotaDto>
+        {
+            new PoQuotaDto(
+                poId: PoId,
+                noUrut: 1,
+                brgId: "BRG001",
+                brgName: "Paracetamol 500mg",
+                satuanId: "BOX",
+                qtyPo: 10m,
+                qtyDo: 0m,
+                sisaQty: 10m,
+                isClosed: false,
+                konversi: 10,
+                harga: 50000m,
+                diskon: 0m,
+                satuanKecilId: "")
+        };
+        _poTrackingDalMock.Setup(p => p.GetRemainingQuota(PoId)).Returns(quotas);
+
+        var items = new List<DeliveryDirectConfirmItemCommand>
+        {
+            new(
+                BrgId: "BRG001",
+                SatuanId: "BOX",
+                Konversi: 10,
+                Harga: 50000m,
+                Diskon: 0m,
+                TaxPercentage: 11m,
+                NoBatch: "BATCH-003",
+                TglEd: _now.AddMonths(24),
+                QtyKirim: 5m,
+                QtyDiterima: 5m,
+                QtyDitolak: 0m,
+                AlasanTolak: "",
+                BrgName: "Paracetamol 500mg",
+                SatuanName: "Box",
+                IsBonus: false,
+                HasJaminanRetur: false,
+                NoSuratJaminan: "",
+                PoNoUrut: 1)
+        };
+
+        PostGoodsReceiptConsequenceCommand? sentStockCmd = null;
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<PostGoodsReceiptConsequenceCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<PostGoodsReceiptConsequenceResult>, CancellationToken>((cmd, _) => sentStockCmd = (PostGoodsReceiptConsequenceCommand)cmd)
+            .ReturnsAsync(new PostGoodsReceiptConsequenceResult(
+                PostGoodsReceiptOutcomeEnum.Success,
+                "SM001", "SL001", "SB001", "BK001", "ST001",
+                string.Empty, string.Empty, string.Empty));
+
+        var command = new DeliveryDirectConfirmCommand(
+            SuratJalanNo: SuratJalan,
+            PoId: PoId,
+            SupplierId: SupplierId,
+            GudangId: GudangId,
+            Keterangan: Keterangan,
+            UserId: UserId,
+            Items: items);
+
+        // ACT
+        var response = await _sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        sentStockCmd.Should().NotBeNull();
+        sentStockCmd!.SatuanId.Should().Be("BOX");
     }
 }

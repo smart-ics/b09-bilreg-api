@@ -26,6 +26,7 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
                 po2.fs_kd_barang AS BrgId,
                 ISNULL(brg.fs_nm_barang, '') AS BrgName,
                 po2.fs_kd_satuan AS SatuanId,
+                ISNULL(NULLIF(RTRIM(sat_kecil.fs_kd_satuan), ''), po2.fs_kd_satuan) AS SatuanKecilId,
                 po2.fn_qty AS QtyPo,
                 po2.fn_qty_do AS QtyDo,
                 (po2.fn_qty - po2.fn_qty_do) AS SisaQty,
@@ -36,6 +37,11 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
             FROM tb_trs_po2 po2
             JOIN tb_trs_po po ON po2.fs_kd_trs = po.fs_kd_trs
             LEFT JOIN tb_barang brg ON po2.fs_kd_barang = brg.fs_kd_barang
+            OUTER APPLY (
+                SELECT TOP 1 bs.fs_kd_satuan
+                FROM tb_barang_satuan bs
+                WHERE bs.fs_kd_barang = po2.fs_kd_barang AND bs.fn_nilai = 1
+            ) sat_kecil
             WHERE po2.fs_kd_trs = @PoId AND po2.fb_void = 0
             ORDER BY po2.fn_no_urut
             """;
@@ -121,6 +127,7 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
                 ISNULL(brg.fs_nm_barang, '') AS BrgName,
                 po2.fs_kd_satuan AS SatuanId,
                 ISNULL(sat.fs_nm_satuan, '') AS SatuanName,
+                ISNULL(NULLIF(RTRIM(sat_kecil.fs_kd_satuan), ''), po2.fs_kd_satuan) AS SatuanKecilId,
                 po2.fn_qty AS QtyPo,
                 po2.fn_qty_do AS QtyDo,
                 (po2.fn_qty - po2.fn_qty_do) AS SisaQty,
@@ -132,6 +139,11 @@ public class PoDeliveryTrackingDal : IPoDeliveryTrackingDal
             LEFT JOIN t_iii sup ON po.fs_kd_iii = sup.fs_kd_iii
             LEFT JOIN tb_barang brg ON po2.fs_kd_barang = brg.fs_kd_barang
             LEFT JOIN tb_satuan sat ON po2.fs_kd_satuan = sat.fs_kd_satuan
+            OUTER APPLY (
+                SELECT TOP 1 bs.fs_kd_satuan
+                FROM tb_barang_satuan bs
+                WHERE bs.fs_kd_barang = po2.fs_kd_barang AND bs.fn_nilai = 1
+            ) sat_kecil
             OUTER APPLY (
                 SELECT TOP 1 do.fs_kd_trs AS ActiveDraftDoId, do.fs_kd_do_asli AS ActiveDraftSuratJalan
                 FROM TB_TRS_DO do

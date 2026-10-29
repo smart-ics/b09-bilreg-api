@@ -20,7 +20,8 @@ public record PostGoodsReceiptConsequenceCommand(
     string UserId,
     DateTime? TglEd = null,
     string? PoReffId = null,
-    string? NoBatch = null) : IRequest<PostGoodsReceiptConsequenceResult>;
+    string? NoBatch = null,
+    string? SatuanId = null) : IRequest<PostGoodsReceiptConsequenceResult>;
 
 public enum PostGoodsReceiptOutcomeEnum
 {
@@ -228,6 +229,7 @@ public class PostGoodsReceiptConsequenceHandler
                     MovementKindString: "DO",
                     PoReffId: request.PoReffId,
                     NoBatch: request.NoBatch,
+                    SatuanId: request.SatuanId,
                     LegacyBukuId: legacyBukuId,
                     LegacyStokId: legacyStokId))
             ],
