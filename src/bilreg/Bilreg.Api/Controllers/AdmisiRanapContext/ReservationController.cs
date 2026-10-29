@@ -56,9 +56,9 @@ public class ReservationController : ControllerBase
     }
 
     [HttpPost("{id}/cancel")]
-    public async Task<IActionResult> Cansel(string id, [FromBody] AdmCancelReservationBody body)
+    public async Task<IActionResult> Cancel(string id, [FromBody] AdmCancelReservationBody body)
     {
-        await _mediator.Send(new AdmCancelReservationCmd(id, body.UserId));
+        await _mediator.Send(new AdmCancelReservationCmd(id, body.UserId, body.Reason));
         return Ok(new JSendOk("Done"));
     }
 }
@@ -69,4 +69,4 @@ public record AdmMaintainReservationBody(
     string BangsalId,
     string UserId);
 
-public record AdmCancelReservationBody(string UserId);
+public record AdmCancelReservationBody(string UserId, string Reason);
