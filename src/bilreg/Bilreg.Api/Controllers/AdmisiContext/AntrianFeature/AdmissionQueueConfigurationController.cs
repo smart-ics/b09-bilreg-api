@@ -107,9 +107,12 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         var lokets = (body.Lokets ?? [])
             .Select(x => new AdmissionDisplayLoketDtoResponse(x.LoketKey, x.SortOrder))
             .ToList();
+        var polis = (body.Polis ?? [])
+            .Select(x => new AdmissionDisplayPoliDtoResponse(x.PoliId, x.SortOrder))
+            .ToList();
         var result = await _mediator.Send(new CreateDisplayCmd(
             body.DisplayId, body.DisplayName, body.LocationName, body.Active, body.AudioEnabled,
-            body.PollIntervalMs, body.LayoutKey, body.Notes, lokets, Actor()), ct);
+            body.PollIntervalMs, body.LayoutKey, body.Notes, lokets, Actor(), polis), ct);
         return Ok(new JSendOk(result));
     }
 
@@ -131,6 +134,25 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
             .ToList();
         var result = await _mediator.Send(new ReplaceDisplayLoketsCmd(
             displayId, lokets, body.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPut("displays/{displayId}/polis")]
+    public async Task<IActionResult> ReplacePolis(
+        string displayId, [FromBody] ReplacePolisBody body, CancellationToken ct)
+    {
+        var polis = new List<AdmissionDisplayPoliDtoResponse>();
+        if (body.Polis is not null && body.Polis.Count > 0)
+        {
+            polis.AddRange(body.Polis.Select(x => new AdmissionDisplayPoliDtoResponse(x.PoliId, x.SortOrder)));
+        }
+        else if (body.PoliIds is not null && body.PoliIds.Count > 0)
+        {
+            polis.AddRange(body.PoliIds.Select((p, idx) => new AdmissionDisplayPoliDtoResponse(p, idx + 1)));
+        }
+
+        var result = await _mediator.Send(new ReplaceDisplayPolisCmd(
+            displayId, polis, body.RowVersion, Actor()), ct);
         return Ok(new JSendOk(result));
     }
 
@@ -266,7 +288,8 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         int PollIntervalMs = 15000,
         string? LayoutKey = null,
         string? Notes = null,
-        List<LoketMapBody>? Lokets = null);
+        List<LoketMapBody>? Lokets = null,
+        List<PoliMapBody>? Polis = null);
 
     public sealed record UpdateDisplayBody(
         string DisplayName,
@@ -279,6 +302,8 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
 
     public sealed record ReplaceLoketsBody(string RowVersion, List<LoketMapBody>? Lokets);
     public sealed record LoketMapBody(string LoketKey, int SortOrder = 0);
+    public sealed record ReplacePolisBody(string RowVersion, List<PoliMapBody>? Polis = null, List<string>? PoliIds = null);
+    public sealed record PoliMapBody(string PoliId, int SortOrder = 0);
     public sealed record CreateKioskBody(
         string StationId,
         string DisplayName,

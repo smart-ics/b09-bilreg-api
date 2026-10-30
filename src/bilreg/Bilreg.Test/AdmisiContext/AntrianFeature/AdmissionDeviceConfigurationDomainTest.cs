@@ -77,4 +77,79 @@ public class AdmissionDeviceConfigurationDomainTest
             "u1", DateTime.UtcNow);
         model.Lokets.Should().HaveCount(2);
     }
+
+    [Fact]
+    public void ActiveDisplay_ClinicLayout_RequiresPoliMapping()
+    {
+        var act = () => AdmissionQueueDisplayModel.Create(
+            "DISP-CLINIC-1", "Poli Display", "Klinik Lt 2", true, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), "u1", DateTime.UtcNow,
+            Array.Empty<AdmissionDisplayPoliMapping>());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*requires at least one poli*");
+    }
+
+    [Fact]
+    public void ActiveDisplay_ClinicLayout_SucceedsWithPoliMapping()
+    {
+        var model = AdmissionQueueDisplayModel.Create(
+            "DISP-CLINIC-1", "Poli Display", "Klinik Lt 2", true, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), "u1", DateTime.UtcNow,
+            [
+                new AdmissionDisplayPoliMapping("POLI-INT", 0),
+                new AdmissionDisplayPoliMapping("POLI-ANAK", 1)
+            ]);
+
+        model.IsClinicLayout.Should().BeTrue();
+        model.Polis.Should().HaveCount(2);
+        model.Polis.Select(x => x.PoliId).Should().Equal("POLI-INT", "POLI-ANAK");
+    }
+
+    [Fact]
+    public void Display_EnsureCanBoot_ClinicLayout_ValidatesActiveAndPolis()
+    {
+        var inactiveModel = AdmissionQueueDisplayModel.Create(
+            "DISP-CLINIC-1", "Poli Display", "Klinik Lt 2", false, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), "u1", DateTime.UtcNow,
+            [new AdmissionDisplayPoliMapping("POLI-INT", 0)]);
+
+        var actInactive = () => inactiveModel.EnsureCanBoot();
+        actInactive.Should().Throw<InvalidOperationException>().WithMessage("*inactive*");
+
+        var activeNoPolis = AdmissionQueueDisplayModel.Load(
+            "DISP-CLINIC-2", "Poli Display", "Klinik Lt 2", true, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), 1, "u1", DateTime.UtcNow, "u1", DateTime.UtcNow,
+            Array.Empty<AdmissionDisplayPoliMapping>());
+
+        var actNoPolis = () => activeNoPolis.EnsureCanBoot();
+        actNoPolis.Should().Throw<InvalidOperationException>().WithMessage("*no poli mapping*");
+
+        var validModel = AdmissionQueueDisplayModel.Create(
+            "DISP-CLINIC-3", "Poli Display", "Klinik Lt 2", true, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), "u1", DateTime.UtcNow,
+            [new AdmissionDisplayPoliMapping("POLI-INT", 0)]);
+
+        var actValid = () => validModel.EnsureCanBoot();
+        actValid.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Display_ReplacePolis_UpdatesAndNormalizesPolis()
+    {
+        var model = AdmissionQueueDisplayModel.Create(
+            "DISP-CLINIC-1", "Poli Display", "Klinik Lt 2", true, true, 15000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketMapping>(), "u1", DateTime.UtcNow,
+            [new AdmissionDisplayPoliMapping("POLI-INT", 0)]);
+
+        var updated = model.ReplacePolis(
+            [
+                new AdmissionDisplayPoliMapping(" POLI-MATA ", 2),
+                new AdmissionDisplayPoliMapping("POLI-ANAK", 0),
+                new AdmissionDisplayPoliMapping("poli-anak", 5)
+            ],
+            1, "u2", DateTime.UtcNow);
+
+        updated.RowVersion.Should().Be(2);
+        updated.Polis.Select(x => x.PoliId).Should().Equal("POLI-ANAK", "POLI-MATA");
+    }
 }

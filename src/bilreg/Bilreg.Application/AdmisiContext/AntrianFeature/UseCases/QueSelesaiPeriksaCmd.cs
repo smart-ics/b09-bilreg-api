@@ -14,18 +14,24 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd, Qu
     private readonly IAntrianRepo _queRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IClinicQueueOperationDal? _clinicQueueDal;
+    private readonly IClinicQueueRefreshPublisher _publisher;
 
     public QueSelesaiPeriksaHandler(
         IAntrianRepo queRepo,
         IPasienTrackerRepo trackerRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IClinicQueueOperationDal? clinicQueueDal = null,
+        IClinicQueueRefreshPublisher? publisher = null)
     {
         _queRepo = queRepo;
         _trackerRepo = trackerRepo;
         _tglJamProvider = tglJamProvider;
+        _clinicQueueDal = clinicQueueDal;
+        _publisher = publisher ?? new NullClinicQueueRefreshPublisher();
     }
 
-    public Task<QueAntrianEntryActionResponse> Handle(
+    public async Task<QueAntrianEntryActionResponse> Handle(
         QueSelesaiPeriksaCmd request,
         CancellationToken cancellationToken)
     {
@@ -46,10 +52,25 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd, Qu
         _queRepo.SaveChanges(que);
         _trackerRepo.SaveChanges(tracker);
 
-        return Task.FromResult(new QueAntrianEntryActionResponse(
+        _clinicQueueDal?.MarkDismissedByEntry(request.AntrianId, request.NoUrut, "SYSTEM");
+
+        var dokterId = string.Empty;
+        var seqTag = que.SequenceTag;
+        if (!string.IsNullOrWhiteSpace(seqTag))
+        {
+            var underscoreIdx = seqTag.LastIndexOf('_');
+            if (underscoreIdx >= 0 && underscoreIdx < seqTag.Length - 1)
+            {
+                dokterId = seqTag[(underscoreIdx + 1)..].Replace('$', ' ');
+            }
+        }
+        var poliId = que.ServicePoint?.ServicePointCode ?? string.Empty;
+        await _publisher.PublishRefreshHint(poliId, dokterId, cancellationToken);
+
+        return new QueAntrianEntryActionResponse(
             request.AntrianId,
             request.NoUrut,
             tracker.PasienTrackerId,
-            item.AntrianStatus.ToString()));
+            item.AntrianStatus.ToString());
     }
 }

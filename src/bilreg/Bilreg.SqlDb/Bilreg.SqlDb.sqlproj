@@ -157,6 +157,9 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry_M2_QueueOperations_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmissionQueue_M3_Audit_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmLoketCurrentCall.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmDisplayLoket.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmDisplayPoli.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_ClinicQueueCall.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmBookingAssistance.sql" />
     <None Include="AdmisiContext\RegFeature\BILRG_RegOutcome.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
