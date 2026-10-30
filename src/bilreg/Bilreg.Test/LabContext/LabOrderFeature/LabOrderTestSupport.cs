@@ -64,11 +64,13 @@ internal static class LabOrderTestSupport
         string emrOrderId = "EMR-ORDER-001",
         IEnumerable<LabOrderModel.ResolvedOrderLine>? lines = null,
         PatientSnapshotType? snapshot = null,
-        AuditInfoType? audit = null)
+        AuditInfoType? audit = null,
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
         => LabOrderModel.CreateFromEmr(
             emrOrderId,
             snapshot ?? EmrSnapshot(),
             lines ?? [ResolvedLine()],
             orderNo,
-            audit ?? new AuditInfoType("U1", new DateTime(2026, 5, 18, 10, 0, 0)));
+            audit ?? new AuditInfoType("U1", new DateTime(2026, 5, 18, 10, 0, 0)),
+            urgency: urgency);
 }

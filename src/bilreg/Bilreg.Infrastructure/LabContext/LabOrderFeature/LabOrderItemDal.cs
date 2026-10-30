@@ -45,6 +45,7 @@ public class LabOrderItemDal : ILabOrderItemDal
         bcp.AddMap("TubeType", "TubeType");
         bcp.AddMap("SpecimenType", "SpecimenType");
         bcp.AddMap("RequiredTubeCount", "RequiredTubeCount");
+        bcp.AddMap("Urgency", "Urgency");
 
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "BILRG_LabOrderItem";
@@ -72,7 +73,8 @@ public class LabOrderItemDal : ILabOrderItemDal
                 aa.OrderId, aa.ItemNo,
                 aa.TestDefinitionId, aa.LabTestCode, aa.LabTestName,
                 aa.TarifId, aa.TarifCode, aa.TarifName,
-                aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount
+                aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount,
+                aa.Urgency
             FROM BILRG_LabOrderItem aa
             WHERE aa.OrderId = @OrderId
             ORDER BY aa.ItemNo

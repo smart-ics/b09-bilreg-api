@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
@@ -137,6 +137,7 @@ public class PoDeliveryTrackingDalTest
         var item1 = actual.First(x => x.NoUrut == 1);
         item1.PoId.Should().Be(poId);
         item1.BrgId.Should().Be("1.DUMI.2");
+        item1.SatuanKecilId.Should().Be("BOK");
         item1.QtyPo.Should().Be(10);
         item1.QtyDo.Should().Be(3);
         item1.SisaQty.Should().Be(7);
@@ -254,6 +255,7 @@ public class PoDeliveryTrackingDalTest
         var actual = _sut.ListPendingPoItems().ToList();
 
         actual.Should().Contain(x => x.PoId == recentPoId);
+        actual.First(x => x.PoId == recentPoId).SatuanKecilId.Should().Be("BOK");
         actual.Should().NotContain(x => x.PoId == oldPoId);
     }
 

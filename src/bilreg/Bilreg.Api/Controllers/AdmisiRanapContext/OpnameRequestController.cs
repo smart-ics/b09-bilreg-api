@@ -28,7 +28,7 @@ public class OpnameRequestController : ControllerBase
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id, [FromBody] AdmCancelOpnameRequestBody body)
     {
-        await _mediator.Send(new AdmCancelOpnameRequestCmd(id, body.UserId));
+        await _mediator.Send(new AdmCancelOpnameRequestCmd(id, body.UserId, body.Reason));
         return Ok(new JSendOk("Done"));
     }
 
@@ -62,7 +62,7 @@ public class OpnameRequestController : ControllerBase
     }
 }
 
-public record AdmCancelOpnameRequestBody(string UserId);
+public record AdmCancelOpnameRequestBody(string UserId, string Reason);
 
 public record AdmSetInsuranceRequestBody(string TipeJaminanId,
     string ReffId, string UserId);

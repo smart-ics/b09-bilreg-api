@@ -29,6 +29,12 @@ public class AuditTrailType
 
         Modified = new AuditInfoType(userId, timestamp);
     }
+
+    public AuditTrailType Update(string userId, DateTime timestamp)
+    {
+        Modif(userId, timestamp);
+        return this;
+    }
     
     public static AuditTrailType Default 
     => new AuditTrailType(AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default);

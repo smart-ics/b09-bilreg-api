@@ -176,7 +176,8 @@ Application boundary: `ILabBillingIntegration` in `Bilreg.Application`.
 
 | Operation | Contract | Notes |
 | --------- | -------- | ----- |
-| Create charge | `CreateTindakan(LabBillingChargeRequest)` | Actor-driven; failure blocks charge transition |
+| Create charge | `ChargeOrder(LabBillingChargeRequest)` | Actor-driven; mengorkestrasi tarif & AddBill; failure blocks charge transition |
+| Cancel charge | `CancelCharge(LabBillingCancelRequest)` | Mencegah pembatalan jika kasir sudah Final/Lunas; void TrsBill jika Opened |
 | Release validation | `ValidateReleaseEligibility(LabBillingReleaseValidationRequest)` | Called on every release attempt; returns `CLEAR` or `BLOCKED` |
 
 External HTTP examples (e.g. `POST /api/bil/charges`) describe **other systems** talking to BIL — not LWF→BIL inside Bilreg.

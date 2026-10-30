@@ -246,6 +246,14 @@ public class DeliveryDirectConfirmHandler : IRequestHandler<DeliveryDirectConfir
                 var qtyPersediaan = item.Inspection.QtyDiterima * konversi;
                 var itemPoId = !string.IsNullOrWhiteSpace(item.Inspection.PoId) ? item.Inspection.PoId : poId;
 
+                var matchedQuota = (item.Inspection.PoNoUrut > 0
+                    ? poQuotas.FirstOrDefault(q => q.NoUrut == item.Inspection.PoNoUrut)
+                    : null) ?? poQuotas.FirstOrDefault(q => q.BrgId == item.Brg.BrgId);
+
+                var satuanPersediaan = konversi > 1
+                    ? (!string.IsNullOrWhiteSpace(matchedQuota?.SatuanKecilId) ? matchedQuota.SatuanKecilId : item.Satuan.SatuanId)
+                    : item.Satuan.SatuanId;
+
                 var stockCmd = new PostGoodsReceiptConsequenceCommand(
                     BrgId: item.Brg.BrgId,
                     BrgMasukReffId: model.DeliveryOrderId,
@@ -257,7 +265,8 @@ public class DeliveryDirectConfirmHandler : IRequestHandler<DeliveryDirectConfir
                     UserId: request.UserId,
                     TglEd: item.TglEd,
                     PoReffId: string.IsNullOrWhiteSpace(itemPoId) ? null : itemPoId,
-                    NoBatch: item.NoBatch);
+                    NoBatch: item.NoBatch,
+                    SatuanId: satuanPersediaan);
 
                 var stockResult = await _mediator.Send(stockCmd, cancellationToken);
                 if (stockResult == null || stockResult.Outcome == PostGoodsReceiptOutcomeEnum.AbortedInconsistent)

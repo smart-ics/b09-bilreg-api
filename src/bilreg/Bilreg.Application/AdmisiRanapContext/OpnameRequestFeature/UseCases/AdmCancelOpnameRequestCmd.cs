@@ -10,7 +10,8 @@ namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
 public record AdmCancelOpnameRequestCmd(
     string OpnameRequestId,
-    string UserId) : IRequest, IOpnameRequestKey;
+    string UserId,
+    string Reason) : IRequest, IOpnameRequestKey;
 
 public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequestCmd>
 {
@@ -32,6 +33,7 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
     {
         Guard.Against.NullOrWhiteSpace(request.OpnameRequestId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.Reason);
 
         var opnameRequest = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
@@ -46,6 +48,7 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
             "VOID",
             nameof(OpnameRequestModel),
             cancelled.OpnameRequestId,
+            reason: request.Reason,
             originalDataJson: snapshotJson));
 
         return Task.CompletedTask;

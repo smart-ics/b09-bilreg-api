@@ -6,12 +6,12 @@ namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
 public class LabOrderRepo : ILabOrderRepo
 {
-    private readonly ILabOrderDal _orderDal;
+    private readonly ILabOrderTableDal _orderDal;
     private readonly ILabOrderItemDal _itemDal;
     private readonly ILabOrderItemComponentDal _itemComponentDal;
 
     public LabOrderRepo(
-        ILabOrderDal orderDal,
+        ILabOrderTableDal orderDal,
         ILabOrderItemDal itemDal,
         ILabOrderItemComponentDal itemComponentDal)
     {
@@ -62,6 +62,12 @@ public class LabOrderRepo : ILabOrderRepo
         _itemComponentDal.Delete(key);
         _itemDal.Delete(key);
         _orderDal.Delete(key);
+    }
+
+    public IEnumerable<LabOrderModel> ListByRegId(string regId)
+    {
+        var dtoList = _orderDal.ListByRegId(regId);
+        return dtoList?.Select(BuildModel).ToList() ?? [];
     }
 
     private LabOrderModel BuildModel(LabOrderDto dto)

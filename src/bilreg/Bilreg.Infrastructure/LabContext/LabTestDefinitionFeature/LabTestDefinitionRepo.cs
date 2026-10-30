@@ -53,6 +53,23 @@ public class LabTestDefinitionRepo : ILabTestDefinitionRepo
             });
     }
 
+    public IEnumerable<LabTestDefinitionListResponse> ListProjected(LabTestDefinitionListFilter filter)
+    {
+        return _definitionDal.ListProjected(filter)
+            .Select(x => new LabTestDefinitionListResponse(
+                x.TestDefinitionId,
+                x.TarifId,
+                x.TarifCode,
+                x.TarifName,
+                x.LabTestCode,
+                x.LabTestName,
+                x.SpecimenType,
+                x.VacutainerType,
+                x.IsActive,
+                x.ComponentCount,
+                x.TarifPrice));
+    }
+
     public MayBe<LabTestDefinitionModel> LoadActiveByTarifId(string tarifId)
     {
         var dto = _definitionDal.GetActiveByTarifId(tarifId, null);

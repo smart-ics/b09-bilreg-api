@@ -1,3 +1,4 @@
+using Bilreg.Application.ChargeContext.TarifFeature;
 using MediatR;
 
 namespace Bilreg.Application.LabContext.LabTestDefinitionFeature;
@@ -13,7 +14,9 @@ public class LabTestDefinitionListHandler
 {
     private readonly ILabTestDefinitionRepo _repo;
 
-    public LabTestDefinitionListHandler(ILabTestDefinitionRepo repo)
+    public LabTestDefinitionListHandler(
+        ILabTestDefinitionRepo repo,
+        INilaiTarifRepo? _ = null)
     {
         _repo = repo;
     }
@@ -23,8 +26,7 @@ public class LabTestDefinitionListHandler
         CancellationToken cancellationToken)
     {
         var filter = new LabTestDefinitionListFilter(request.ActiveOnly, request.Search, request.TarifId);
-        var response = _repo.ListData(filter)
-            .Select(LabTestDefinitionResponseMapper.ToListResponse);
+        var response = _repo.ListProjected(filter);
         return Task.FromResult(response);
     }
 }
