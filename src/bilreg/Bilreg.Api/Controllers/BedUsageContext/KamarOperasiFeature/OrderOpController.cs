@@ -46,9 +46,13 @@ public class OrderOpController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> ListOrder()
+    public async Task<IActionResult> ListOrder(
+        [FromQuery] string? status = null,
+        [FromQuery] string? tglAwal = null,
+        [FromQuery] string? tglAkhir = null,
+        [FromQuery] int? limit = null)
     {
-        var query = new OkListOperasiAktifQuery();
+        var query = new OkListOperasiAktifQuery(status, tglAwal, tglAkhir, limit);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

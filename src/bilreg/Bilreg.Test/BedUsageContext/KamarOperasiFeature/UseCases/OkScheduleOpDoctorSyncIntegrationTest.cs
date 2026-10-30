@@ -95,18 +95,27 @@ public class OkScheduleOpDoctorSyncIntegrationTest
             .Callback<OpCaseModel>(m => _opCases[m.OrderOp.OrderOpId] = m);
         _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
             .Returns<IOrderOpKey>(k => _opCases.TryGetValue(k.OrderOpId, out var m) ? MayBe.From(m) : MayBe<OpCaseModel>.None);
-        _opCaseRepoMock.Setup(x => x.ListActiveOpCase())
+        _opCaseRepoMock.Setup(x => x.ListActiveOpCase(It.IsAny<OpCaseAktifFilter>()))
             .Returns(() => _opCases.Values
                 .Where(x => x.OrderOpState != OpCaseStateEnum.Cancelled && x.OrderOpState != OpCaseStateEnum.Discharged)
-                .Select(x => new OpCaseOrderView(
-                    x.OrderOp.OrderOpId,
-                    x.Pasien,
-                    x.OperasiName,
-                    x.ListPpa.FirstOrDefault(p => p.NoUrut == 1)?.Ppa ?? PpaType.Default.ToReff(),
-                    60,
-                    x.UrgencyLevel,
-                    x.OrderOp.OrderDate,
-                    x.OrderOpState)));
+                .Select(x =>
+                {
+                    var leadDoctor = x.ListPpa.FirstOrDefault(p => p.NoUrut == 1)?.Ppa ?? PpaType.Default.ToReff();
+                    var reqDoctor = x.ListPpa.FirstOrDefault(p => p.Role == "REQUESTER")?.Ppa ?? PpaType.Default.ToReff();
+                    return new OpCaseOrderView(
+                        OrderOpId: x.OrderOp.OrderOpId,
+                        Pasien: x.Pasien,
+                        NamaOperasi: x.OperasiName,
+                        Dokter: leadDoctor,
+                        EstimasiDurasi: 60,
+                        UrgencyLevel: x.UrgencyLevel,
+                        PreferedDate: x.OrderOp.OrderDate,
+                        OpCaseState: x.OrderOpState,
+                        DokterPengorderId: reqDoctor.PpaId,
+                        DokterPengorderName: reqDoctor.PpaName,
+                        DokterOperatorId: leadDoctor.PpaId,
+                        DokterOperatorName: leadDoctor.PpaName);
+                }));
 
         // State-tracking setup for ScheduleOp repository
         _scheduleOpRepoMock.Setup(x => x.SaveChanges(It.IsAny<ScheduleOpModel>()))
@@ -166,7 +175,6 @@ public class OkScheduleOpDoctorSyncIntegrationTest
             _tglJamProviderMock.Object);
 
         _listActiveHandler = new OkListOperasiAktifHandler(
-            _orderOpRepoMock.Object,
             _opCaseRepoMock.Object);
 
         _cancelHandler = new OkScheduleOpCancelHandler(

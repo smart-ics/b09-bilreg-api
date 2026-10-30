@@ -232,7 +232,7 @@ public class OrderOpControllerTest
     }
 
     [Fact]
-    public async Task ListOrder_WhenExecuted_ThenSendsQueryAndReturnsOk()
+    public async Task ListOrder_WhenExecutedWithoutParams_ThenSendsDefaultQueryAndReturnsOk()
     {
         // ARRANGE
         var expectedResponse = new List<OkListOperasiAktifResponse>
@@ -240,8 +240,10 @@ public class OrderOpControllerTest
             new("ORD-001", "PAS-001", "PASIEN A", "DOC-01", "dr. Pengorder", "DOC-02", "dr. Operator", "Apendektomi", "Drainase", "Sedang", "2026-10-20", 60, "Elective", "Requested")
         };
 
+        OkListOperasiAktifQuery? capturedQuery = null;
         _mediatorMock
             .Setup(x => x.Send(It.IsAny<OkListOperasiAktifQuery>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<IEnumerable<OkListOperasiAktifResponse>>, CancellationToken>((req, _) => capturedQuery = req as OkListOperasiAktifQuery)
             .ReturnsAsync(expectedResponse);
 
         // ACT
@@ -252,7 +254,95 @@ public class OrderOpControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().BeEquivalentTo(expectedResponse);
 
+        capturedQuery.Should().NotBeNull();
+        capturedQuery!.Status.Should().BeNull();
+        capturedQuery.TglAwal.Should().BeNull();
+        capturedQuery.TglAkhir.Should().BeNull();
+        capturedQuery.Limit.Should().BeNull();
+
         _mediatorMock.Verify(x => x.Send(It.IsAny<OkListOperasiAktifQuery>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListOrder_GivenQueryParams_WhenExecuted_ThenForwardsParamsToQueryAndReturnsOk()
+    {
+        // ARRANGE
+        const string status = "Requested";
+        const string tglAwal = "2026-10-01";
+        const string tglAkhir = "2026-10-31";
+        const int limit = 25;
+
+        var expectedResponse = new List<OkListOperasiAktifResponse>
+        {
+            new("ORD-001", "PAS-001", "PASIEN A", "DOC-01", "dr. Pengorder", "DOC-02", "dr. Operator", "Apendektomi", "Drainase", "Sedang", "2026-10-20", 60, "Elective", "Requested")
+        };
+
+        OkListOperasiAktifQuery? capturedQuery = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkListOperasiAktifQuery>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<IEnumerable<OkListOperasiAktifResponse>>, CancellationToken>((req, _) => capturedQuery = req as OkListOperasiAktifQuery)
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var actionResult = await _sut.ListOrder(status, tglAwal, tglAkhir, limit);
+
+        // ASSERT
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        capturedQuery.Should().NotBeNull();
+        capturedQuery!.Status.Should().Be(status);
+        capturedQuery.TglAwal.Should().Be(tglAwal);
+        capturedQuery.TglAkhir.Should().Be(tglAkhir);
+        capturedQuery.Limit.Should().Be(limit);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<OkListOperasiAktifQuery>(q => q.Status == status && q.TglAwal == tglAwal && q.TglAkhir == tglAkhir && q.Limit == limit),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void ListOrder_MethodSignature_ShouldHaveFromQueryAttributesAndHttpGet()
+    {
+        // ARRANGE & ACT
+        var method = typeof(OrderOpController).GetMethod(nameof(OrderOpController.ListOrder));
+
+        // ASSERT
+        method.Should().NotBeNull();
+        var httpGetAttr = method!.GetCustomAttribute<HttpGetAttribute>();
+        httpGetAttr.Should().NotBeNull("[HttpGet] attribute must be present on ListOrder");
+
+        var parameters = method!.GetParameters();
+        parameters.Should().HaveCount(4);
+
+        var statusParam = parameters.FirstOrDefault(p => p.Name == "status");
+        statusParam.Should().NotBeNull();
+        statusParam!.GetCustomAttribute<FromQueryAttribute>().Should().NotBeNull("status parameter must have [FromQuery]");
+        statusParam!.ParameterType.Should().Be(typeof(string));
+        statusParam.HasDefaultValue.Should().BeTrue();
+        statusParam.DefaultValue.Should().BeNull();
+
+        var tglAwalParam = parameters.FirstOrDefault(p => p.Name == "tglAwal");
+        tglAwalParam.Should().NotBeNull();
+        tglAwalParam!.GetCustomAttribute<FromQueryAttribute>().Should().NotBeNull("tglAwal parameter must have [FromQuery]");
+        tglAwalParam!.ParameterType.Should().Be(typeof(string));
+        tglAwalParam.HasDefaultValue.Should().BeTrue();
+        tglAwalParam.DefaultValue.Should().BeNull();
+
+        var tglAkhirParam = parameters.FirstOrDefault(p => p.Name == "tglAkhir");
+        tglAkhirParam.Should().NotBeNull();
+        tglAkhirParam!.GetCustomAttribute<FromQueryAttribute>().Should().NotBeNull("tglAkhir parameter must have [FromQuery]");
+        tglAkhirParam!.ParameterType.Should().Be(typeof(string));
+        tglAkhirParam.HasDefaultValue.Should().BeTrue();
+        tglAkhirParam.DefaultValue.Should().BeNull();
+
+        var limitParam = parameters.FirstOrDefault(p => p.Name == "limit");
+        limitParam.Should().NotBeNull();
+        limitParam!.GetCustomAttribute<FromQueryAttribute>().Should().NotBeNull("limit parameter must have [FromQuery]");
+        limitParam!.ParameterType.Should().Be(typeof(int?));
+        limitParam.HasDefaultValue.Should().BeTrue();
+        limitParam.DefaultValue.Should().BeNull();
     }
 
     [Fact]
