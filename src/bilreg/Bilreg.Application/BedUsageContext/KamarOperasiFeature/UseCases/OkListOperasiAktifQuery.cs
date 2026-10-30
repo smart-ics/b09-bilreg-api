@@ -61,6 +61,10 @@ public class OkListOperasiAktifHandler :
                 ? ((KlasifikasiOperasiEnum)x.KlasifikasiOperasi).ToString()
                 : KlasifikasiOperasiEnum.Kecil.ToString();
 
+            var urgencyStr = x.UrgencyLevel == UrgencyLevelEnum.Cito
+                ? UrgencyLevelEnum.Cito.ToString()
+                : UrgencyLevelEnum.Elective.ToString();
+
             return new OkListOperasiAktifResponse(
                 x.OrderOpId,
                 x.Pasien.PasienId,
@@ -74,7 +78,7 @@ public class OkListOperasiAktifHandler :
                 klasifikasiStr,
                 x.PreferedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 x.EstimasiDurasi,
-                x.UrgencyLevel.ToString(),
+                urgencyStr,
                 x.OpCaseState.ToString());
         }).ToList();
 

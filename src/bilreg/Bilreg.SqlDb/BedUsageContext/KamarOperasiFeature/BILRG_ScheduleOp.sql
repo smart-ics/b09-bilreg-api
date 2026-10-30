@@ -6,7 +6,7 @@ BEGIN
         ScheduleOpDate  DATETIME NOT NULL CONSTRAINT DF_BILRG_SCheduleOp_ScheduleOpDate DEFAULT('3000-01-01'), 
         OrderOpId       VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_OrderOpId DEFAULT(''),
         PasienId        VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_PasienId DEFAULT(''),
-        UrgencyLevel    INT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_UrgencyLevel DEFAULT(0),
+        UrgencyLevel    INT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_UrgencyLevel DEFAULT(1),
         Durasi          INT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_Durasi DEFAULT(0),
         TglOp           DATETIME NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_TglOp DEFAULT('3000-01-01'),
         KamarId         VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_KamarId DEFAULT(''),

@@ -25,7 +25,10 @@ public class OkScheduleOpGetQueryTest
         return new OkScheduleOpGetHandler(_scheduleOpRepoMock.Object, _orderOpRepoMock.Object);
     }
 
-    private static OrderOpModel CreateSampleOrderOp(string orderOpId = "ORD-001", string pasienId = "PAS-001")
+    private static OrderOpModel CreateSampleOrderOp(
+        string orderOpId = "ORD-001",
+        string pasienId = "PAS-001",
+        UrgencyLevelEnum urgencyLevel = UrgencyLevelEnum.Elective)
     {
         return new OrderOpModel(
             orderOpId,
@@ -36,7 +39,7 @@ public class OkScheduleOpGetQueryTest
             new Icd10Type("K40", "Hernia"),
             new JenisOperasiType("JOP-1", "Bedah"),
             "Herniotomi",
-            UrgencyLevelEnum.Elective,
+            urgencyLevel,
             TarifReff.Default,
             new PpaReff("DOC-01", "dr. Bedah"),
             60,
@@ -378,5 +381,44 @@ public class OkScheduleOpGetQueryTest
 
         // Assert
         result.StatusOp.Should().Be(expectedStatus);
+    }
+
+    [Theory]
+    [InlineData((UrgencyLevelEnum)0, "Elective")]
+    [InlineData(UrgencyLevelEnum.Elective, "Elective")]
+    [InlineData(UrgencyLevelEnum.Cito, "Cito")]
+    public async Task Handle_DefensiveUrgencySerialization_MapsToExpectedString(UrgencyLevelEnum inputUrgency, string expectedUrgency)
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp("ORD-001", "PAS-001", inputUrgency);
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001", "PAS-001", OpCaseStateEnum.Scheduled);
+
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            new PasienReff("PAS-001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
+            new OrderOpReff("ORD-001", new DateTime(2026, 10, 16), "Herniotomi"),
+            inputUrgency,
+            new DateTime(2026, 10, 20, 10, 0, 0),
+            90,
+            new PpaReff("DOC-02", "dr. Baru"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            45);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "PAS-001")))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(scheduleOp));
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new OkScheduleOpGetQuery("ORD-001"), CancellationToken.None);
+
+        // Assert
+        result.Urgency.Should().Be(expectedUrgency);
     }
 }

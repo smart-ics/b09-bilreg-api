@@ -119,11 +119,15 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             x.Profesi?.ProfesiName ?? string.Empty
         )).ToList() ?? [];
 
+        var urgencyStr = orderOp.UrgencyLevel == UrgencyLevelEnum.Cito
+            ? UrgencyLevelEnum.Cito.ToString()
+            : UrgencyLevelEnum.Elective.ToString();
+
         var response = new ScheduleOpGetResponse(
             scheduleOp.OrderOp.OrderOpId,
             scheduleOp.ScheduleOpId,
             orderOp.NamaOperasi,
-            orderOp.UrgencyLevel.ToString(),
+            urgencyStr,
             scheduleOp.Durasi,
             scheduleOp.Pasien.PasienId,
             scheduleOp.Pasien.PasienName,

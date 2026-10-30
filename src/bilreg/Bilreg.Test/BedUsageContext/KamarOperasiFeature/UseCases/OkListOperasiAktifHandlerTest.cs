@@ -154,4 +154,41 @@ public class OkListOperasiAktifHandlerTest
         capturedFilter.Should().NotBeNull();
         capturedFilter!.OpCaseState.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData((UrgencyLevelEnum)0, "Elective")]
+    [InlineData(UrgencyLevelEnum.Elective, "Elective")]
+    [InlineData(UrgencyLevelEnum.Cito, "Cito")]
+    public async Task Handle_DefensiveUrgencySerialization_MapsToExpectedString(UrgencyLevelEnum inputUrgency, string expectedUrgency)
+    {
+        // Arrange
+        var pasien = new PasienReff("PAS-001", "Tn. Budi", new DateOnly(1985, 5, 20), "L");
+        var activeCase = new OpCaseOrderView(
+            OrderOpId: "ORD-001",
+            Pasien: pasien,
+            NamaOperasi: "Apendektomi Laparoskopi",
+            Dokter: new PpaReff("DOC-OPR", "dr. Operator Utama, Sp.B"),
+            EstimasiDurasi: 90,
+            UrgencyLevel: inputUrgency,
+            PreferedDate: new DateTime(2026, 10, 20),
+            OpCaseState: OpCaseStateEnum.Scheduled,
+            DokterPengorderId: "DOC-ORD",
+            DokterPengorderName: "dr. Pengorder, Sp.B",
+            DokterOperatorId: "DOC-OPR",
+            DokterOperatorName: "dr. Operator Utama, Sp.B",
+            ProsedurTambahan: "Eksplorasi Peritoneal",
+            KlasifikasiOperasi: (int)KlasifikasiOperasiEnum.Besar);
+
+        _opCaseRepo.Setup(x => x.ListActiveOpCase(It.IsAny<OpCaseAktifFilter>()))
+            .Returns([activeCase]);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = (await sut.Handle(new OkListOperasiAktifQuery(), CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].UrgencyLevel.Should().Be(expectedUrgency);
+    }
 }
