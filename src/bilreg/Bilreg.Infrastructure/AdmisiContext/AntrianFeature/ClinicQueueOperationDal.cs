@@ -107,6 +107,50 @@ public sealed class ClinicQueueOperationDal : IClinicQueueOperationDal
         return affected > 0;
     }
 
+    public bool MarkInService(string antrianId, int noUrut, string userId)
+    {
+        const string sql = """
+            UPDATE BILRG_ClinicQueueCall
+            SET CallStatus = @CallStatus,
+                UserId = @UserId,
+                UpdDate = @UpdDate
+            WHERE AntrianId = @AntrianId AND NoUrut = @NoUrut AND CallStatus = 0;
+            """;
+
+        using var conn = Open();
+        var affected = conn.Execute(sql, new
+        {
+            AntrianId = antrianId ?? string.Empty,
+            NoUrut = noUrut,
+            CallStatus = ClinicQueueCallStatus.InService,
+            UserId = userId ?? string.Empty,
+            UpdDate = DateTime.Now
+        });
+        return affected > 0;
+    }
+
+    public bool MarkDismissedByEntry(string antrianId, int noUrut, string userId)
+    {
+        const string sql = """
+            UPDATE BILRG_ClinicQueueCall
+            SET CallStatus = @CallStatus,
+                UserId = @UserId,
+                UpdDate = @UpdDate
+            WHERE AntrianId = @AntrianId AND NoUrut = @NoUrut AND CallStatus IN (0, 3);
+            """;
+
+        using var conn = Open();
+        var affected = conn.Execute(sql, new
+        {
+            AntrianId = antrianId ?? string.Empty,
+            NoUrut = noUrut,
+            CallStatus = ClinicQueueCallStatus.Dismissed,
+            UserId = userId ?? string.Empty,
+            UpdDate = DateTime.Now
+        });
+        return affected > 0;
+    }
+
     public ClinicQueueCallDto? GetActiveCall(string poliId, string dokterId)
     {
         const string sql = """
@@ -132,7 +176,7 @@ public sealed class ClinicQueueOperationDal : IClinicQueueOperationDal
         const string sql = """
             SELECT PoliId, DokterId, RuangId, AntrianId, NoUrut, CalledAt, CallCount, CallStatus, UserId, CrtDate, UpdDate
             FROM BILRG_ClinicQueueCall
-            WHERE PoliId IN @PoliIds AND CallStatus = 0
+            WHERE PoliId IN @PoliIds AND CallStatus IN (0, 3)
             ORDER BY CalledAt DESC;
             """;
 
@@ -148,7 +192,7 @@ public sealed class ClinicQueueOperationDal : IClinicQueueOperationDal
         const string sql = """
             SELECT PoliId, DokterId, RuangId, AntrianId, NoUrut, CalledAt, CallCount, CallStatus, UserId, CrtDate, UpdDate
             FROM BILRG_ClinicQueueCall
-            WHERE PoliId = @PoliId AND CallStatus = 0
+            WHERE PoliId = @PoliId AND CallStatus IN (0, 3)
             ORDER BY CalledAt DESC;
             """;
 

@@ -140,7 +140,8 @@ public record CreateDisplayCmd(
     string? LayoutKey,
     string? Notes,
     IReadOnlyList<AdmissionDisplayLoketDtoResponse> Lokets,
-    string UserId) : IRequest<AdmissionQueueDisplayDtoResponse>;
+    string UserId,
+    IReadOnlyList<AdmissionDisplayPoliDtoResponse>? Polis = null) : IRequest<AdmissionQueueDisplayDtoResponse>;
 
 public record UpdateDisplayCmd(
     string DisplayId,
@@ -417,11 +418,16 @@ public sealed class CreateDisplayHandler : IRequestHandler<CreateDisplayCmd, Adm
 {
     private readonly IAdmissionQueueDisplayRepo _repo;
     private readonly ITglJamProvider _clock;
+    private readonly IClinicQueueOperationDal? _clinicQueueDal;
 
-    public CreateDisplayHandler(IAdmissionQueueDisplayRepo repo, ITglJamProvider clock)
+    public CreateDisplayHandler(
+        IAdmissionQueueDisplayRepo repo,
+        ITglJamProvider clock,
+        IClinicQueueOperationDal? clinicQueueDal = null)
     {
         _repo = repo;
         _clock = clock;
+        _clinicQueueDal = clinicQueueDal;
     }
 
     public Task<AdmissionQueueDisplayDtoResponse> Handle(CreateDisplayCmd request, CancellationToken cancellationToken)
@@ -433,16 +439,27 @@ public sealed class CreateDisplayHandler : IRequestHandler<CreateDisplayCmd, Adm
 
         try
         {
+            var polis = request.Polis?.Select(x => new AdmissionDisplayPoliMapping(x.PoliId, x.SortOrder));
             var model = AdmissionQueueDisplayModel.Create(
                 request.DisplayId, request.DisplayName, request.LocationName ?? string.Empty,
                 request.Active, request.AudioEnabled, request.PollIntervalMs,
                 request.LayoutKey ?? string.Empty, request.Notes ?? string.Empty,
                 request.Lokets.Select(x => new AdmissionDisplayLoketMapping(x.LoketKey, x.SortOrder)),
-                request.UserId, _clock.Now);
+                request.UserId, _clock.Now,
+                polis);
             _repo.SaveChanges(model);
+
+            if (model.Polis.Count > 0 && _clinicQueueDal is not null)
+            {
+                _clinicQueueDal.ReplaceDisplayPolis(
+                    request.DisplayId,
+                    model.Polis.Select(x => x.PoliId));
+            }
+
             return Task.FromResult(DeviceConfigurationMapping.ToDto(model));
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("requires at least one loket", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("requires at least one loket", StringComparison.OrdinalIgnoreCase) ||
+                                                    ex.Message.Contains("requires at least one poli", StringComparison.OrdinalIgnoreCase))
         {
             throw new AdmissionQueueConfigurationException(
                 AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired, ex.Message);

@@ -156,4 +156,72 @@ public class AntrianRepoAreEqualTest
         updated!.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
         entryDal.Verify(x => x.Update(It.IsAny<AntrianEntryDto>()), Times.Once);
     }
+
+    [Fact]
+    public void SaveChanges_WhenCallCountChanges_ThenUpdatesEntry()
+    {
+        var sequencer = new Mock<ISequencer>();
+        var antrianDal = new Mock<IAntrianDal>();
+        var entryDal = new Mock<IAntrianEntryDal>();
+
+        var antrianId = "AN001";
+        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
+        var queue = new AntrianModel(
+            antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [entry], sequencer.Object);
+
+        // Persisted state in DB has CallCount = 0
+        antrianDal
+            .Setup(x => x.GetData(It.IsAny<IAntrianKey>()))
+            .Returns(AntrianDto.FromModel(queue));
+        entryDal
+            .Setup(x => x.ListData(It.IsAny<IAntrianKey>()))
+            .Returns([AntrianEntryDto.FromModel(antrianId, entry)]);
+
+        // Current state has CallCount = 1 (after RecordCall)
+        entry.RecordCall();
+
+        AntrianEntryDto? updated = null;
+        entryDal
+            .Setup(x => x.Update(It.IsAny<AntrianEntryDto>()))
+            .Callback<AntrianEntryDto>(d => updated = d);
+
+        var sut = new AntrianRepo(antrianDal.Object, entryDal.Object, sequencer.Object);
+        sut.SaveChanges(queue);
+
+        updated.Should().NotBeNull();
+        updated!.CallCount.Should().Be(1);
+        entryDal.Verify(x => x.Update(It.IsAny<AntrianEntryDto>()), Times.Once);
+    }
+
+    [Fact]
+    public void SaveChanges_WhenCallCountAndOtherFieldsUnchanged_ThenDoesNotUpdateEntry()
+    {
+        var sequencer = new Mock<ISequencer>();
+        var antrianDal = new Mock<IAntrianDal>();
+        var entryDal = new Mock<IAntrianEntryDal>();
+
+        var antrianId = "AN001";
+        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
+        var queue = new AntrianModel(
+            antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [entry], sequencer.Object);
+
+        // Persisted state in DB matches current state exactly
+        antrianDal
+            .Setup(x => x.GetData(It.IsAny<IAntrianKey>()))
+            .Returns(AntrianDto.FromModel(queue));
+        entryDal
+            .Setup(x => x.ListData(It.IsAny<IAntrianKey>()))
+            .Returns([AntrianEntryDto.FromModel(antrianId, entry)]);
+
+        var sut = new AntrianRepo(antrianDal.Object, entryDal.Object, sequencer.Object);
+        sut.SaveChanges(queue);
+
+        entryDal.Verify(x => x.Update(It.IsAny<AntrianEntryDto>()), Times.Never);
+    }
 }

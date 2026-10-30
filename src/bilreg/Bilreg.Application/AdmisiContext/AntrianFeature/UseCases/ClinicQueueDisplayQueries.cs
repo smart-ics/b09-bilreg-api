@@ -22,7 +22,8 @@ public sealed record ClinicQueueCallItem(
     string RuangId,
     string RuangName,
     int CallCount,
-    DateTime CalledAt)
+    DateTime CalledAt,
+    int CallStatus = 0)
 {
     public string QueueCode => AntrianId;
     public string QueueLabel => NomorAntrean;
@@ -115,7 +116,7 @@ public sealed class ClinicQueueGetDisplaySnapshotHandler
 
         foreach (var call in rawActiveCalls)
         {
-            if (call.CallStatus != ClinicQueueCallStatus.Active)
+            if (call.CallStatus != ClinicQueueCallStatus.Active && call.CallStatus != ClinicQueueCallStatus.InService)
                 continue;
 
             if (!loadedQueues.TryGetValue(call.AntrianId, out var queue))
@@ -143,24 +144,149 @@ public sealed class ClinicQueueGetDisplaySnapshotHandler
                 RuangId: call.RuangId,
                 RuangName: ruangName,
                 CallCount: call.CallCount,
-                CalledAt: call.CalledAt));
+                CalledAt: call.CalledAt,
+                CallStatus: call.CallStatus));
+        }
+
+        var today = DateOnly.TryParse(request.Tanggal, out var parsedDate)
+            ? parsedDate
+            : DateOnly.FromDateTime(_clock.Now);
+
+        var todayHeaders = _antrianRepo.ListData(today)?.ToList() ?? [];
+
+        var callContextByAntrianId = new Dictionary<string, (string PoliId, string DokterId)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var call in rawActiveCalls)
+        {
+            if (!string.IsNullOrWhiteSpace(call.AntrianId))
+                callContextByAntrianId[call.AntrianId] = (call.PoliId, call.DokterId);
+        }
+
+        var activeCallingEntries = new HashSet<(string AntrianId, int NoUrut)>(
+            rawActiveCalls
+                .Where(c => c.CallStatus == ClinicQueueCallStatus.Active)
+                .Select(c => (c.AntrianId, c.NoUrut)));
+
+        var candidateHeaders = new List<AntrianHeaderView>(todayHeaders);
+        foreach (var call in rawActiveCalls)
+        {
+            if (!candidateHeaders.Any(h => string.Equals(h.AntrianId, call.AntrianId, StringComparison.OrdinalIgnoreCase)))
+            {
+                candidateHeaders.Add(new AntrianHeaderView(
+                    call.AntrianId,
+                    string.Empty,
+                    today,
+                    TimeOnly.MinValue,
+                    string.Empty));
+            }
         }
 
         var seenWaiting = new HashSet<(string AntrianId, int NoUrut)>();
 
-        foreach (var call in rawActiveCalls)
+        foreach (var header in candidateHeaders)
         {
-            if (!loadedQueues.TryGetValue(call.AntrianId, out var queue) || queue is null)
+            if (!loadedQueues.TryGetValue(header.AntrianId, out var queue))
+            {
+                queue = _antrianRepo.LoadEntity(AntrianModel.Key(header.AntrianId)).GetValueOrDefault();
+                loadedQueues[header.AntrianId] = queue;
+            }
+
+            if (queue is null)
                 continue;
 
-            var poliName = ResolvePoliName(call.PoliId);
-            var dokterName = ResolveDokterName(call.DokterId);
+            // Resolve DokterId
+            var dokterId = string.Empty;
+            if (callContextByAntrianId.TryGetValue(queue.AntrianId, out var callCtx) && !string.IsNullOrWhiteSpace(callCtx.DokterId))
+            {
+                dokterId = callCtx.DokterId;
+            }
+            else
+            {
+                var seqTag = !string.IsNullOrWhiteSpace(queue.SequenceTag) ? queue.SequenceTag : header.SequenceTag;
+                if (!string.IsNullOrWhiteSpace(seqTag))
+                {
+                    var underscoreIdx = seqTag.LastIndexOf('_');
+                    if (underscoreIdx >= 0 && underscoreIdx < seqTag.Length - 1)
+                    {
+                        dokterId = seqTag[(underscoreIdx + 1)..].Replace('$', ' ');
+                    }
+                }
+            }
 
-            var activeNoUrut = call.CallStatus == ClinicQueueCallStatus.Active ? call.NoUrut : -1;
+            // Resolve PoliId
+            var poliId = string.Empty;
+            if (callContextByAntrianId.TryGetValue(queue.AntrianId, out var callCtxPoli) &&
+                poliList.Contains(callCtxPoli.PoliId, StringComparer.OrdinalIgnoreCase))
+            {
+                poliId = callCtxPoli.PoliId;
+            }
+            else
+            {
+                var matchedBySp = poliList.FirstOrDefault(p => string.Equals(p, queue.ServicePoint.ServicePointCode, StringComparison.OrdinalIgnoreCase));
+                if (matchedBySp != null)
+                {
+                    poliId = matchedBySp;
+                }
+                else if (_ppaRepo != null && !string.IsNullOrWhiteSpace(dokterId))
+                {
+                    try
+                    {
+                        var ppa = _ppaRepo.LoadEntity(PpaType.Key(dokterId)).Value;
+                        var matchedLayanan = ppa?.ListLayanan
+                            .FirstOrDefault(l => poliList.Contains(l.Layanan.LayananId, StringComparer.OrdinalIgnoreCase));
+                        if (matchedLayanan != null)
+                        {
+                            poliId = matchedLayanan.Layanan.LayananId;
+                        }
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(poliId))
+                {
+                    var desc = !string.IsNullOrWhiteSpace(header.AntrianDescription) ? header.AntrianDescription : queue.AntrianDescription;
+                    foreach (var p in poliList)
+                    {
+                        if (desc.Contains(p, StringComparison.OrdinalIgnoreCase))
+                        {
+                            poliId = p;
+                            break;
+                        }
+                        var pName = ResolvePoliName(p);
+                        if (!string.IsNullOrWhiteSpace(pName) && !string.Equals(pName, p, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (desc.Contains(pName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                poliId = p;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(poliId) && poliList.Count == 1)
+                {
+                    var spCode = queue.ServicePoint.ServicePointCode;
+                    var isAdmission = spCode.StartsWith("ADM", StringComparison.OrdinalIgnoreCase) ||
+                                      spCode.StartsWith("LOKET", StringComparison.OrdinalIgnoreCase) ||
+                                      header.AntrianDescription.StartsWith("Loket", StringComparison.OrdinalIgnoreCase);
+                    if (!isAdmission)
+                    {
+                        poliId = poliList[0];
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(poliId) || !poliList.Contains(poliId, StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            var poliName = ResolvePoliName(poliId);
+            var dokterName = ResolveDokterName(dokterId);
+
             var waitEntries = queue.ListEntry
-                .Where(e => e.AntrianStatus == AntrianStatusEnum.Waiting && e.NoUrut != activeNoUrut)
-                .OrderByDescending(e => e.Priority)
-                .ThenBy(e => e.NoUrut);
+                .Where(e => e.AntrianStatus == AntrianStatusEnum.Waiting && !activeCallingEntries.Contains((queue.AntrianId, e.NoUrut)));
 
             foreach (var e in waitEntries)
             {
@@ -173,18 +299,23 @@ public sealed class ClinicQueueGetDisplaySnapshotHandler
                     NoUrut: e.NoUrut,
                     NomorAntrean: waitNomor,
                     NamaPasien: e.Visitor.PersonName,
-                    PoliId: call.PoliId,
+                    PoliId: poliId,
                     PoliName: poliName,
-                    DokterId: call.DokterId,
+                    DokterId: dokterId,
                     DokterName: dokterName,
                     CreatedAt: e.CreatedAt,
                     Priority: e.Priority));
             }
         }
 
+        var sortedWaitingItems = waitingItems
+            .OrderByDescending(w => w.Priority)
+            .ThenBy(w => w.NoUrut)
+            .ToList();
+
         return Task.FromResult(new ClinicDisplaySnapshotResponse(
             activeCallItems,
-            waitingItems));
+            sortedWaitingItems));
     }
 
     private string ResolvePoliName(string poliId)

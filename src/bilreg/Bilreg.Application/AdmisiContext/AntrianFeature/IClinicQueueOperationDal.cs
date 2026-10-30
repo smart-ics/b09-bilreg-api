@@ -5,6 +5,8 @@ public interface IClinicQueueOperationDal
     void UpsertCall(ClinicQueueCallDto dto);
     bool MarkSkipped(string poliId, string dokterId, string userId);
     bool DismissCall(string poliId, string dokterId, string userId);
+    bool MarkInService(string antrianId, int noUrut, string userId);
+    bool MarkDismissedByEntry(string antrianId, int noUrut, string userId);
     ClinicQueueCallDto? GetActiveCall(string poliId, string dokterId);
     IReadOnlyList<ClinicQueueCallDto> GetActiveCallsByPoliIds(IEnumerable<string> poliIds);
     IReadOnlyList<ClinicQueueCallDto> GetActiveCallsByPoliId(string poliId);

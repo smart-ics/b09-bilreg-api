@@ -95,4 +95,52 @@ public class AdmissionQueueConfigurationControllerPolisTest
                 c.Polis[1].PoliId == "POLI-Y" && c.Polis[1].SortOrder == 2),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateDisplay_WithPolis_DispatchesCreateDisplayCmdAndReturnsJSendOk()
+    {
+        var expectedResponse = new AdmissionQueueDisplayDtoResponse(
+            "DISP-CLI", "Clinic Display", "Lt 2", true, true, 5000, "clinic", "",
+            Array.Empty<AdmissionDisplayLoketDtoResponse>(),
+            "2026-10-28T00:00:00Z", "user1", "2026-10-28T00:00:00Z", "CONFIG-ADMIN", "1",
+            new[] { new AdmissionDisplayPoliDtoResponse("POLI-A", 1), new AdmissionDisplayPoliDtoResponse("POLI-B", 2) });
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<CreateDisplayCmd>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var body = new AdmissionQueueConfigurationController.CreateDisplayBody(
+            DisplayId: "DISP-CLI",
+            DisplayName: "Clinic Display",
+            LocationName: "Lt 2",
+            Active: true,
+            AudioEnabled: true,
+            PollIntervalMs: 5000,
+            LayoutKey: "clinic",
+            Notes: "notes",
+            Lokets: null,
+            Polis: new List<AdmissionQueueConfigurationController.PoliMapBody>
+            {
+                new("POLI-A", 1),
+                new("POLI-B", 2)
+            });
+
+        var result = await _sut.CreateDisplay(body, CancellationToken.None);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(m => m.Send(
+            It.Is<CreateDisplayCmd>(c =>
+                c.DisplayId == "DISP-CLI" &&
+                c.DisplayName == "Clinic Display" &&
+                c.LayoutKey == "clinic" &&
+                c.Active == true &&
+                c.UserId == "CONFIG-ADMIN" &&
+                c.Polis != null &&
+                c.Polis.Count == 2 &&
+                c.Polis[0].PoliId == "POLI-A" &&
+                c.Polis[1].PoliId == "POLI-B"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

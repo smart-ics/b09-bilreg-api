@@ -41,6 +41,8 @@ public interface IAdmissionQueueDisplayDal
     IReadOnlyList<AdmissionDisplayLoketDto> ListLokets(string displayId);
     IReadOnlyList<AdmissionQueueDisplayDto> ListAll();
     IReadOnlyList<AdmissionDisplayLoketDto> ListAllLokets();
+    IReadOnlyList<AdmissionDisplayPoliDto> ListPolis(string displayId);
+    IReadOnlyList<AdmissionDisplayPoliDto> ListAllPolis();
     void Insert(AdmissionQueueDisplayDto dto, IReadOnlyList<AdmissionDisplayLoketDto> lokets);
     int Update(AdmissionQueueDisplayDto dto, long expectedRowVersion, IReadOnlyList<AdmissionDisplayLoketDto> lokets);
 }
@@ -91,6 +93,28 @@ public sealed class AdmissionQueueDisplayDal : IAdmissionQueueDisplayDal
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<AdmissionDisplayLoketDto>(sql).ToList();
+    }
+
+    public IReadOnlyList<AdmissionDisplayPoliDto> ListPolis(string displayId)
+    {
+        const string sql = """
+            SELECT DisplayId, PoliId, SortOrder
+            FROM BILRG_AdmDisplayPoli WHERE DisplayId = @DisplayId
+            ORDER BY SortOrder, PoliId
+            """;
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Query<AdmissionDisplayPoliDto>(sql, new { DisplayId = displayId }).ToList();
+    }
+
+    public IReadOnlyList<AdmissionDisplayPoliDto> ListAllPolis()
+    {
+        const string sql = """
+            SELECT DisplayId, PoliId, SortOrder
+            FROM BILRG_AdmDisplayPoli
+            ORDER BY DisplayId, SortOrder, PoliId
+            """;
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Query<AdmissionDisplayPoliDto>(sql).ToList();
     }
 
     public void Insert(AdmissionQueueDisplayDto dto, IReadOnlyList<AdmissionDisplayLoketDto> lokets)
@@ -177,7 +201,8 @@ public sealed class AdmissionQueueDisplayRepo : IAdmissionQueueDisplayRepo
         var dto = _dal.GetData(key.DisplayId);
         if (dto is null) return MayBe<AdmissionQueueDisplayModel>.None;
         var lokets = _dal.ListLokets(key.DisplayId);
-        return MayBe.From(ToModel(dto, lokets));
+        var polis = _dal.ListPolis(key.DisplayId);
+        return MayBe.From(ToModel(dto, lokets, polis));
     }
 
     public void SaveChanges(AdmissionQueueDisplayModel model)
@@ -201,7 +226,8 @@ public sealed class AdmissionQueueDisplayRepo : IAdmissionQueueDisplayRepo
         }
 
         var beforeLokets = _dal.ListLokets(model.DisplayId);
-        var before = ToModel(existing, beforeLokets);
+        var beforePolis = _dal.ListPolis(model.DisplayId);
+        var before = ToModel(existing, beforeLokets, beforePolis);
         var expected = model.RowVersion - 1;
         var affected = _dal.Update(dto, expected, loketDtos);
         if (affected == 0)
@@ -221,8 +247,12 @@ public sealed class AdmissionQueueDisplayRepo : IAdmissionQueueDisplayRepo
         var lokets = _dal.ListAllLokets().GroupBy(x => x.DisplayId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<AdmissionDisplayLoketDto>)g.ToList(),
                 StringComparer.OrdinalIgnoreCase);
+        var polis = _dal.ListAllPolis().GroupBy(x => x.DisplayId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<AdmissionDisplayPoliDto>)g.ToList(),
+                StringComparer.OrdinalIgnoreCase);
         return displays.Select(d => ToModel(d,
-            lokets.TryGetValue(d.DisplayId, out var list) ? list : Array.Empty<AdmissionDisplayLoketDto>()))
+            lokets.TryGetValue(d.DisplayId, out var lList) ? lList : Array.Empty<AdmissionDisplayLoketDto>(),
+            polis.TryGetValue(d.DisplayId, out var pList) ? pList : Array.Empty<AdmissionDisplayPoliDto>()))
             .ToList();
     }
 
@@ -247,12 +277,14 @@ public sealed class AdmissionQueueDisplayRepo : IAdmissionQueueDisplayRepo
 
     private static AdmissionQueueDisplayModel ToModel(
         AdmissionQueueDisplayDto dto,
-        IReadOnlyList<AdmissionDisplayLoketDto> lokets) =>
+        IReadOnlyList<AdmissionDisplayLoketDto> lokets,
+        IReadOnlyList<AdmissionDisplayPoliDto>? polis = null) =>
         AdmissionQueueDisplayModel.Load(
             dto.DisplayId, dto.DisplayName, dto.LocationName, dto.IsActive, dto.AudioEnabled,
             dto.PollIntervalMs, dto.LayoutKey, dto.Notes,
             lokets.Select(x => new AdmissionDisplayLoketMapping(x.LoketKey, x.SortOrder)),
-            dto.RowVersion, dto.CrtUser, dto.CrtDate, dto.UpdUser, dto.UpdDate);
+            dto.RowVersion, dto.CrtUser, dto.CrtDate, dto.UpdUser, dto.UpdDate,
+            polis?.Select(x => new AdmissionDisplayPoliMapping(x.PoliId, x.SortOrder)));
 
     private static AdmissionQueueDisplayDto ToDto(AdmissionQueueDisplayModel model) => new()
     {

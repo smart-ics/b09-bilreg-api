@@ -107,9 +107,12 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         var lokets = (body.Lokets ?? [])
             .Select(x => new AdmissionDisplayLoketDtoResponse(x.LoketKey, x.SortOrder))
             .ToList();
+        var polis = (body.Polis ?? [])
+            .Select(x => new AdmissionDisplayPoliDtoResponse(x.PoliId, x.SortOrder))
+            .ToList();
         var result = await _mediator.Send(new CreateDisplayCmd(
             body.DisplayId, body.DisplayName, body.LocationName, body.Active, body.AudioEnabled,
-            body.PollIntervalMs, body.LayoutKey, body.Notes, lokets, Actor()), ct);
+            body.PollIntervalMs, body.LayoutKey, body.Notes, lokets, Actor(), polis), ct);
         return Ok(new JSendOk(result));
     }
 
@@ -285,7 +288,8 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         int PollIntervalMs = 15000,
         string? LayoutKey = null,
         string? Notes = null,
-        List<LoketMapBody>? Lokets = null);
+        List<LoketMapBody>? Lokets = null,
+        List<PoliMapBody>? Polis = null);
 
     public sealed record UpdateDisplayBody(
         string DisplayName,

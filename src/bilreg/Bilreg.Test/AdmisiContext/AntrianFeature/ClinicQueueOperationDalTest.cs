@@ -162,4 +162,68 @@ public class ClinicQueueOperationDalTest
         var updatedPolis = _sut.GetPolisByDisplayId(displayId);
         updatedPolis.Should().ContainSingle().Which.Should().Be("POLI_C");
     }
+
+    [Fact]
+    public void MarkInService_WhenActiveCallExists_SetsStatusInService()
+    {
+        using var trans = TransHelper.NewScope();
+        var call = FakeCall("POLI_SERV", "DOC_SERV", 10, 1);
+        _sut.UpsertCall(call);
+
+        var marked = _sut.MarkInService("ANT_20261028_001", 10, "user_serv");
+        marked.Should().BeTrue();
+
+        var calls = _sut.GetActiveCallsByPoliIds(new[] { "POLI_SERV" });
+        calls.Should().HaveCount(1);
+        calls[0].CallStatus.Should().Be(ClinicQueueCallStatus.InService);
+        calls[0].UserId.Should().Be("user_serv");
+    }
+
+    [Fact]
+    public void MarkInService_WhenAlreadyInService_ReturnsFalse()
+    {
+        using var trans = TransHelper.NewScope();
+        var call = FakeCall("POLI_SERV2", "DOC_SERV2", 11, 1);
+        _sut.UpsertCall(call);
+
+        _sut.MarkInService("ANT_20261028_001", 11, "user_first").Should().BeTrue();
+        var second = _sut.MarkInService("ANT_20261028_001", 11, "user_second");
+        second.Should().BeFalse();
+    }
+
+    [Fact]
+    public void MarkDismissedByEntry_WhenInServiceOrActive_SetsStatusDismissed()
+    {
+        using var trans = TransHelper.NewScope();
+        var call = FakeCall("POLI_DISM", "DOC_DISM", 12, 1);
+        _sut.UpsertCall(call);
+
+        // Transition to InService first
+        _sut.MarkInService("ANT_20261028_001", 12, "user_serv").Should().BeTrue();
+
+        // Dismiss
+        var dismissed = _sut.MarkDismissedByEntry("ANT_20261028_001", 12, "user_dism");
+        dismissed.Should().BeTrue();
+
+        var calls = _sut.GetActiveCallsByPoliIds(new[] { "POLI_DISM" });
+        calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetActiveCallsByPoliIds_IncludesBothActiveAndInServiceCalls()
+    {
+        using var trans = TransHelper.NewScope();
+        var call1 = FakeCall("POLI_MIX", "DOC_MIX1", 1, 1);
+        var call2 = FakeCall("POLI_MIX", "DOC_MIX2", 2, 1);
+        _sut.UpsertCall(call1);
+        _sut.UpsertCall(call2);
+
+        // Mark call2 as InService
+        _sut.MarkInService("ANT_20261028_001", 2, "user_mix");
+
+        var results = _sut.GetActiveCallsByPoliIds(new[] { "POLI_MIX" });
+        results.Should().HaveCount(2);
+        results.Should().Contain(x => x.CallStatus == ClinicQueueCallStatus.Active && x.DokterId == "DOC_MIX1");
+        results.Should().Contain(x => x.CallStatus == ClinicQueueCallStatus.InService && x.DokterId == "DOC_MIX2");
+    }
 }
