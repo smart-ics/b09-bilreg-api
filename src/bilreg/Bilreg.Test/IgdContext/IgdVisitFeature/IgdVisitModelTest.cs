@@ -282,4 +282,110 @@ public class IgdVisitModelTest
         visit.BedId.Should().Be("-");
         visit.ListEvent.Should().Contain(x => x.EventKind == IgdEventEnum.ClearBed);
     }
+
+    private static AtsAssessmentType TestAtsAssessment() => new(
+        AirwaysScore: 0,
+        BreathingScore: 0,
+        BloodCirculationScore: 0,
+        GcsEyeScore: 1,
+        GcsMotorScore: 1,
+        GcsVoiceScore: 1);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AssessTriage_WhenOverrideBlackWithEmptyReason_ShouldThrowArgumentException(string? badReason)
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var act = () => visit.AssessTriage(
+            assessment: TestAtsAssessment(),
+            method: TriageMethodEnum.Ats,
+            level: TriageLevelEnum.Ats1,
+            color: TriageColorEnum.Red,
+            notes: "-",
+            isManualOverrideBlack: true,
+            overrideByUserId: "D01",
+            overrideReason: badReason!,
+            nextReTriageAt: null,
+            audit: TestAudit());
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Alasan klinis Manual Override Black wajib diisi.");
+    }
+
+    [Theory]
+    [InlineData("-")]
+    [InlineData(" - ")]
+    public void AssessTriage_WhenOverrideBlackWithDashReason_ShouldThrowArgumentException(string dashReason)
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var act = () => visit.AssessTriage(
+            assessment: TestAtsAssessment(),
+            method: TriageMethodEnum.Ats,
+            level: TriageLevelEnum.Ats1,
+            color: TriageColorEnum.Red,
+            notes: "-",
+            isManualOverrideBlack: true,
+            overrideByUserId: "D01",
+            overrideReason: dashReason,
+            nextReTriageAt: null,
+            audit: TestAudit());
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Alasan klinis Manual Override Black wajib diisi.");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("-")]
+    [InlineData(" - ")]
+    public void AssessTriage_WhenOverrideBlackWithEmptyDoctor_ShouldThrowArgumentException(string? badDoctor)
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var act = () => visit.AssessTriage(
+            assessment: TestAtsAssessment(),
+            method: TriageMethodEnum.Ats,
+            level: TriageLevelEnum.Ats1,
+            color: TriageColorEnum.Red,
+            notes: "-",
+            isManualOverrideBlack: true,
+            overrideByUserId: badDoctor!,
+            overrideReason: "Pasien henti jantung dan napas lebih dari 30 menit",
+            nextReTriageAt: null,
+            audit: TestAudit());
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Dokter otorisator Manual Override Black wajib diisi.");
+    }
+
+    [Fact]
+    public void AssessTriage_WhenOverrideBlackValid_ShouldSetBlackColorAndHitamLevelAndStoreReason()
+    {
+        var audit = TestAudit();
+        var visit = IgdVisitModel.Create(TestVisitor(), audit);
+
+        visit.AssessTriage(
+            assessment: TestAtsAssessment(),
+            method: TriageMethodEnum.Ats,
+            level: TriageLevelEnum.Ats1,
+            color: TriageColorEnum.Red,
+            notes: "DOA case",
+            isManualOverrideBlack: true,
+            overrideByUserId: "  DK01  ",
+            overrideReason: "  Pasien henti napas dan denyut jantung irreversible di TKP  ",
+            nextReTriageAt: null,
+            audit: audit);
+
+        visit.HasTriage.Should().BeTrue();
+        visit.TriageColor.Should().Be(TriageColorEnum.Black);
+        visit.Triage.Color.Should().Be(TriageColorEnum.Black);
+        visit.Triage.Level.Should().Be(TriageLevelEnum.Ats1);
+        visit.Triage.IsManualOverrideBlack.Should().BeTrue();
+        visit.Triage.OverrideByUserId.Should().Be("DK01");
+        visit.Triage.OverrideReason.Should().Be("Pasien henti napas dan denyut jantung irreversible di TKP");
+        visit.Triage.OverrideDateTime.Should().Be(audit.Timestamp);
+    }
 }

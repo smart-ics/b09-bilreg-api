@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
+using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.LabContext.LabOwareFeature;
 using MediatR;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.TransactionHelper;
@@ -21,15 +23,18 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabBillingIntegration _labBillingIntegration;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly ILabOwareOutboundQueueRepo _queueRepo;
 
     public LabOrderChargeHandler(
         ILabOrderRepo labOrderRepo,
         ILabBillingIntegration labBillingIntegration,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        ILabOwareOutboundQueueRepo queueRepo)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
         _tglJamProvider = tglJamProvider;
+        _queueRepo = queueRepo;
     }
 
     public Task<LabOrderChargeResponse> Handle(LabOrderChargeCmd request, CancellationToken cancellationToken)
@@ -55,8 +60,20 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
             order.RecordBillingError(ex.Message, request.UserId, occurredAt);
         }
 
+        LabOwareOutboundQueueModel? queue = null;
+        if (success)
+        {
+            var payloadJson = $"{{\"orderId\":\"{order.OrderId}\"}}";
+            queue = LabOwareOutboundQueueModel.CreatePending(order.OrderId, payloadJson, occurredAt);
+            order.MarkOwarePending(request.UserId, occurredAt);
+        }
+
         using (var trans = TransHelper.NewScope())
         {
+            if (queue != null)
+            {
+                _queueRepo.SaveChanges(queue);
+            }
             _labOrderRepo.SaveChanges(order);
             trans.Complete();
         }
