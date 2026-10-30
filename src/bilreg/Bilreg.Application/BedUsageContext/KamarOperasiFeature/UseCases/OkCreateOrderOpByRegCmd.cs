@@ -27,10 +27,8 @@ public record OkCreateOrderOpByRegCmd(
     string LayananPengorderId,
     string DokterOperatorId,
     string DiagCode,
-    string JenisOperasiId,
     string NamaOperasi,
     string ProsedurTambahan,
-    KlasifikasiOperasiEnum KlasifikasiOperasi,
     AnestesiPlanEnum AnestesiPlan,
     PostOpCareUnitEnum PostOpCareUnit,
     string? TarifId,
@@ -39,6 +37,8 @@ public record OkCreateOrderOpByRegCmd(
     string SpecialEquipment,
     string UserId,
     bool IsForceCreate,
+    KlasifikasiOperasiEnum KlasifikasiOperasi = KlasifikasiOperasiEnum.Kecil,
+    UrgencyLevelEnum UrgencyLevel = UrgencyLevelEnum.Elective,
     IEnumerable<OrderOpResourceRequest>? ListResource = null)
     : IRequest<OkCreateOrderOpByRegResponse>;
 
@@ -62,7 +62,6 @@ public class OkCreateOrderOpByRegHandler
     private readonly ILayananRepo _layananRepo;
     private readonly IPpaRepo _dokterRepo;
     private readonly IIcd10Repo _icdRepo;
-    private readonly IJenisOperasiRepo _jenisOperasiRepo;
     private readonly IOpCaseRepo _opCaseRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly ITglJamProvider _tglJamProvider;
@@ -73,7 +72,6 @@ public class OkCreateOrderOpByRegHandler
         ILayananRepo layananRepo,
         IPpaRepo dokterRepo,
         IIcd10Repo icdRepo,
-        IJenisOperasiRepo jenisOperasiRepo,
         IOpCaseRepo opCaseRepo,
         ITarifRepo tarifRepo,
         ITglJamProvider tglJamProvider)
@@ -83,7 +81,6 @@ public class OkCreateOrderOpByRegHandler
         _layananRepo = layananRepo;
         _dokterRepo = dokterRepo;
         _icdRepo = icdRepo;
-        _jenisOperasiRepo = jenisOperasiRepo;
         _opCaseRepo = opCaseRepo;
         _tarifRepo = tarifRepo;
         _tglJamProvider = tglJamProvider;
@@ -100,7 +97,6 @@ public class OkCreateOrderOpByRegHandler
         Guard.Against.NullOrEmpty(request.DokterPengorderId, nameof(request.DokterPengorderId));
         Guard.Against.NullOrEmpty(request.LayananPengorderId, nameof(request.LayananPengorderId));
         Guard.Against.NullOrEmpty(request.DiagCode, nameof(request.DiagCode));
-        Guard.Against.NullOrEmpty(request.JenisOperasiId, nameof(request.JenisOperasiId));
         Guard.Against.NullOrWhiteSpace(request.NamaOperasi, nameof(request.NamaOperasi));
 
         if (!request.IsForceCreate)
@@ -115,7 +111,6 @@ public class OkCreateOrderOpByRegHandler
         var layanan = LoadLayanan(request.LayananPengorderId);
         var dokterPengorder = LoadDokter(request.DokterPengorderId, "Dokter Pengorder ID invalid");
         var icd = LoadIcd(request.DiagCode);
-        var jenisOp = LoadJenisOperasi(request.JenisOperasiId);
 
         PpaType? dokterOperator = null;
         if (!string.IsNullOrWhiteSpace(request.DokterOperatorId) && request.DokterOperatorId != "-")
@@ -129,7 +124,7 @@ public class OkCreateOrderOpByRegHandler
             tarif = LoadTarif(request.TarifId);
         }
 
-        var orderOp = CreateOrder(reg, layanan, dokterPengorder, icd, jenisOp, dokterOperator, tarif, request, occurredAt);
+        var orderOp = CreateOrder(reg, layanan, dokterPengorder, icd, dokterOperator, tarif, request, occurredAt);
         var opCase = OpCaseModel.Create(orderOp, occurredAt);
 
         //  WRITE
@@ -162,10 +157,6 @@ public class OkCreateOrderOpByRegHandler
         _icdRepo.LoadEntity(Icd10Type.Key(code))
             .GetValueOrThrow("Diagnosa Code invalid");
 
-    private JenisOperasiType LoadJenisOperasi(string id) =>
-        _jenisOperasiRepo.LoadEntity(JenisOperasiType.Key(id))
-            .GetValueOrThrow("Jenis Operasi ID invalid");
-
     private TarifType LoadTarif(string id) =>
         _tarifRepo.LoadEntity(TarifType.Key(id))
             .GetValueOrThrow("Tarif ID invalid");
@@ -182,7 +173,6 @@ public class OkCreateOrderOpByRegHandler
         LayananType layanan,
         PpaType dokterPengorder,
         Icd10Type icd,
-        JenisOperasiType jenisOp,
         PpaType? dokterOperator,
         TarifType? tarif,
         OkCreateOrderOpByRegCmd req,
@@ -190,7 +180,8 @@ public class OkCreateOrderOpByRegHandler
     {
         var orderOp = OrderOpModel.CreateByReg(reg, layanan, dokterPengorder, req.UserId, occurredAt);
 
-        orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
+        orderOp.SetKlinis(icd, JenisOperasiType.Default, req.NamaOperasi);
+        orderOp.SetUrgencyLevel(req.UrgencyLevel);
         orderOp.SetProsedur(req.NamaOperasi, req.ProsedurTambahan, req.KlasifikasiOperasi);
         orderOp.SetRencanaAnestesiDanPerawatan(req.AnestesiPlan, req.PostOpCareUnit);
 

@@ -31,7 +31,6 @@ public class OkCreateOrderOpByRegHandlerTest
     private readonly Mock<ILayananRepo> _layananRepoMock = new();
     private readonly Mock<IPpaRepo> _dokterRepoMock = new();
     private readonly Mock<IIcd10Repo> _icdRepoMock = new();
-    private readonly Mock<IJenisOperasiRepo> _jenisOperasiRepoMock = new();
     private readonly Mock<IOpCaseRepo> _opCaseRepoMock = new();
     private readonly Mock<ITarifRepo> _tarifRepoMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
@@ -51,7 +50,6 @@ public class OkCreateOrderOpByRegHandlerTest
             _layananRepoMock.Object,
             _dokterRepoMock.Object,
             _icdRepoMock.Object,
-            _jenisOperasiRepoMock.Object,
             _opCaseRepoMock.Object,
             _tarifRepoMock.Object,
             _tglJamProviderMock.Object);
@@ -82,9 +80,6 @@ public class OkCreateOrderOpByRegHandlerTest
 
     private static Icd10Type CreateSampleIcd(string code = "K35.8") =>
         new(code, "Acute appendicitis, other");
-
-    private static JenisOperasiType CreateSampleJenisOp(string id = "JOP-001") =>
-        new(id, "Bedah Umum");
 
     private static TarifType CreateSampleTarif(string id = "TRF-001", string name = "Apendektomi") =>
         new(
@@ -126,6 +121,8 @@ public class OkCreateOrderOpByRegHandlerTest
         string dokterOperatorId = "DOC-OPR",
         string? tarifId = "TRF-001",
         bool isForceCreate = false,
+        KlasifikasiOperasiEnum klasifikasiOperasi = KlasifikasiOperasiEnum.Sedang,
+        UrgencyLevelEnum urgencyLevel = UrgencyLevelEnum.Elective,
         IEnumerable<OrderOpResourceRequest>? listResource = null)
     {
         return new OkCreateOrderOpByRegCmd(
@@ -134,10 +131,9 @@ public class OkCreateOrderOpByRegHandlerTest
             LayananPengorderId: layananPengorderId,
             DokterOperatorId: dokterOperatorId,
             DiagCode: "K35.8",
-            JenisOperasiId: "JOP-001",
             NamaOperasi: "Apendektomi",
             ProsedurTambahan: "Adhesiolisis",
-            KlasifikasiOperasi: KlasifikasiOperasiEnum.Sedang,
+            KlasifikasiOperasi: klasifikasiOperasi,
             AnestesiPlan: AnestesiPlanEnum.RegionalSpinal,
             PostOpCareUnit: PostOpCareUnitEnum.PACU,
             TarifId: tarifId,
@@ -146,6 +142,7 @@ public class OkCreateOrderOpByRegHandlerTest
             SpecialEquipment: "Harmonic Scalpel",
             UserId: "user1",
             IsForceCreate: isForceCreate,
+            UrgencyLevel: urgencyLevel,
             ListResource: listResource);
     }
 
@@ -159,7 +156,6 @@ public class OkCreateOrderOpByRegHandlerTest
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId, "dr. Pengorder");
         var dokterOperator = CreateSamplePpa(cmd.DokterOperatorId, "dr. Operator");
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
         var tarif = CreateSampleTarif(cmd.TarifId!);
 
         _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
@@ -172,8 +168,6 @@ public class OkCreateOrderOpByRegHandlerTest
             .Returns(MayBe.From(dokterOperator));
         _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
             .Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
-            .Returns(MayBe.From(jenisOp));
         _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == cmd.TarifId)))
             .Returns(MayBe.From(tarif));
         _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>()))
@@ -208,6 +202,8 @@ public class OkCreateOrderOpByRegHandlerTest
         savedOrderOp.AnestesiPlan.Should().Be(cmd.AnestesiPlan);
         savedOrderOp.PostOpCareUnit.Should().Be(cmd.PostOpCareUnit);
         savedOrderOp.TarifOperasi.TarifId.Should().Be(cmd.TarifId);
+        savedOrderOp.UrgencyLevel.Should().Be(cmd.UrgencyLevel);
+        savedOrderOp.JenisOperasi.Should().Be(JenisOperasiType.Default);
 
         savedOpCase.Should().NotBeNull();
         savedOpCase!.OrderOpId.Should().Be(savedOrderOp.OrderOpId);
@@ -226,7 +222,6 @@ public class OkCreateOrderOpByRegHandlerTest
         var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId, "dr. Pengorder");
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
 
         _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
             .Returns(MayBe.From(reg));
@@ -236,8 +231,6 @@ public class OkCreateOrderOpByRegHandlerTest
             .Returns(MayBe.From(dokterPengorder));
         _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
             .Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
-            .Returns(MayBe.From(jenisOp));
         _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>()))
             .Returns(new List<OrderOpView>());
 
@@ -256,6 +249,7 @@ public class OkCreateOrderOpByRegHandlerTest
         savedOrderOp.Should().NotBeNull();
         savedOrderOp!.TarifOperasi.Should().Be(TarifReff.Default);
         savedOrderOp.DokterOperator.Should().Be(PpaReff.Default);
+        savedOrderOp.JenisOperasi.Should().Be(JenisOperasiType.Default);
         _tarifRepoMock.Verify(x => x.LoadEntity(It.IsAny<ITarifKey>()), Times.Never);
         _orderOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<OrderOpModel>()), Times.Once);
     }
@@ -275,14 +269,12 @@ public class OkCreateOrderOpByRegHandlerTest
         var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
 
         var tarif = CreateSampleTarif();
         _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>())).Returns(MayBe.From(reg));
         _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
         _dokterRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(dokterPengorder));
         _icdRepoMock.Setup(x => x.LoadEntity(It.IsAny<IIcd10Key>())).Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.IsAny<IJenisOperasiKey>())).Returns(MayBe.From(jenisOp));
         _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>())).Returns(MayBe.From(tarif));
         _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
 
@@ -345,14 +337,12 @@ public class OkCreateOrderOpByRegHandlerTest
         var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
 
         var tarif = CreateSampleTarif();
         _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>())).Returns(MayBe.From(reg));
         _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
         _dokterRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(dokterPengorder));
         _icdRepoMock.Setup(x => x.LoadEntity(It.IsAny<IIcd10Key>())).Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.IsAny<IJenisOperasiKey>())).Returns(MayBe.From(jenisOp));
         _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>())).Returns(MayBe.From(tarif));
 
         var sut = CreateSut();
@@ -402,15 +392,14 @@ public class OkCreateOrderOpByRegHandlerTest
     }
 
     [Theory]
-    [InlineData("", "DOC", "LYN", "K35", "JOP", "Nama")]
-    [InlineData("REG", "", "LYN", "K35", "JOP", "Nama")]
-    [InlineData("REG", "DOC", "", "K35", "JOP", "Nama")]
-    [InlineData("REG", "DOC", "LYN", "", "JOP", "Nama")]
-    [InlineData("REG", "DOC", "LYN", "K35", "", "Nama")]
-    [InlineData("REG", "DOC", "LYN", "K35", "JOP", "")]
-    [InlineData("REG", "DOC", "LYN", "K35", "JOP", "   ")]
+    [InlineData("", "DOC", "LYN", "K35", "Nama")]
+    [InlineData("REG", "", "LYN", "K35", "Nama")]
+    [InlineData("REG", "DOC", "", "K35", "Nama")]
+    [InlineData("REG", "DOC", "LYN", "", "Nama")]
+    [InlineData("REG", "DOC", "LYN", "K35", "")]
+    [InlineData("REG", "DOC", "LYN", "K35", "   ")]
     public async Task Handle_WhenMandatoryFieldEmpty_ShouldThrowArgumentException(
-        string regId, string docId, string lynId, string diag, string jenis, string nama)
+        string regId, string docId, string lynId, string diag, string nama)
     {
         // Arrange
         var cmd = new OkCreateOrderOpByRegCmd(
@@ -419,7 +408,6 @@ public class OkCreateOrderOpByRegHandlerTest
             LayananPengorderId: lynId,
             DokterOperatorId: "",
             DiagCode: diag,
-            JenisOperasiId: jenis,
             NamaOperasi: nama,
             ProsedurTambahan: "",
             KlasifikasiOperasi: KlasifikasiOperasiEnum.Kecil,
@@ -471,7 +459,6 @@ public class OkCreateOrderOpByRegHandlerTest
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
         var dokterOperator = CreateSamplePpa(cmd.DokterOperatorId);
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
         var tarif = CreateSampleTarif(cmd.TarifId!);
 
         _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
@@ -484,8 +471,6 @@ public class OkCreateOrderOpByRegHandlerTest
             .Returns(MayBe.From(dokterOperator));
         _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
             .Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
-            .Returns(MayBe.From(jenisOp));
         _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == cmd.TarifId)))
             .Returns(MayBe.From(tarif));
         _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
@@ -550,7 +535,6 @@ public class OkCreateOrderOpByRegHandlerTest
         var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
         var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
         var icd = CreateSampleIcd(cmd.DiagCode);
-        var jenisOp = CreateSampleJenisOp(cmd.JenisOperasiId);
         var tarif = CreateSampleTarif(cmd.TarifId!);
 
         _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == cmd.RegId)))
@@ -563,8 +547,6 @@ public class OkCreateOrderOpByRegHandlerTest
             .Returns(MayBe.From(dokterPengorder));
         _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == cmd.DiagCode)))
             .Returns(MayBe.From(icd));
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == cmd.JenisOperasiId)))
-            .Returns(MayBe.From(jenisOp));
         _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == cmd.TarifId)))
             .Returns(MayBe.From(tarif));
         _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
@@ -576,5 +558,94 @@ public class OkCreateOrderOpByRegHandlerTest
         var exception = await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.Handle(cmd, CancellationToken.None));
         exception.Message.Should().NotContain("tidak aktif");
         exception.Message.Should().Contain(expectedParam);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUrgencyLevelIsCito_ShouldSaveOrderOpWithCitoUrgency()
+    {
+        // Arrange
+        var cmd = CreateSampleCmd(urgencyLevel: UrgencyLevelEnum.Cito);
+        var reg = CreateSampleReg(cmd.RegId);
+        var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
+        var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
+        var dokterOperator = CreateSamplePpa(cmd.DokterOperatorId);
+        var icd = CreateSampleIcd(cmd.DiagCode);
+        var tarif = CreateSampleTarif(cmd.TarifId!);
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>())).Returns(MayBe.From(reg));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterPengorderId))).Returns(MayBe.From(dokterPengorder));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterOperatorId))).Returns(MayBe.From(dokterOperator));
+        _icdRepoMock.Setup(x => x.LoadEntity(It.IsAny<IIcd10Key>())).Returns(MayBe.From(icd));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>())).Returns(MayBe.From(tarif));
+        _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
+
+        OrderOpModel? savedOrderOp = null;
+        _orderOpRepoMock.Setup(x => x.SaveChanges(It.IsAny<OrderOpModel>()))
+            .Callback<OrderOpModel>(m => savedOrderOp = m);
+
+        var sut = CreateSut();
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        savedOrderOp.Should().NotBeNull();
+        savedOrderOp!.UrgencyLevel.Should().Be(UrgencyLevelEnum.Cito);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutExplicitUrgencyAndKlasifikasi_ShouldUseDefaultsElectiveAndKecil_AndDefaultJenisOperasi()
+    {
+        // Arrange - using OkCreateOrderOpByRegCmd constructor with default optional arguments
+        var cmd = new OkCreateOrderOpByRegCmd(
+            RegId: "REG-001",
+            DokterPengorderId: "DOC-P01",
+            LayananPengorderId: "LYN-001",
+            DokterOperatorId: "DOC-OPR",
+            DiagCode: "K35.8",
+            NamaOperasi: "Apendektomi",
+            ProsedurTambahan: "",
+            AnestesiPlan: AnestesiPlanEnum.RegionalSpinal,
+            PostOpCareUnit: PostOpCareUnitEnum.PACU,
+            TarifId: null,
+            EstimasiDurasiInMinutes: 45,
+            PreferedDate: new DateTime(2026, 10, 20),
+            SpecialEquipment: "-",
+            UserId: "user1",
+            IsForceCreate: false);
+
+        var reg = CreateSampleReg(cmd.RegId);
+        var layanan = CreateSampleLayanan(cmd.LayananPengorderId);
+        var dokterPengorder = CreateSamplePpa(cmd.DokterPengorderId);
+        var dokterOperator = CreateSamplePpa(cmd.DokterOperatorId);
+        var icd = CreateSampleIcd(cmd.DiagCode);
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>())).Returns(MayBe.From(reg));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterPengorderId))).Returns(MayBe.From(dokterPengorder));
+        _dokterRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == cmd.DokterOperatorId))).Returns(MayBe.From(dokterOperator));
+        _icdRepoMock.Setup(x => x.LoadEntity(It.IsAny<IIcd10Key>())).Returns(MayBe.From(icd));
+        _orderOpRepoMock.Setup(x => x.ListData(It.IsAny<Periode>())).Returns(new List<OrderOpView>());
+
+        OrderOpModel? savedOrderOp = null;
+        _orderOpRepoMock.Setup(x => x.SaveChanges(It.IsAny<OrderOpModel>()))
+            .Callback<OrderOpModel>(m => savedOrderOp = m);
+
+        var sut = CreateSut();
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        cmd.UrgencyLevel.Should().Be(UrgencyLevelEnum.Elective, "Command record default UrgencyLevel must be Elective");
+        cmd.KlasifikasiOperasi.Should().Be(KlasifikasiOperasiEnum.Kecil, "Command record default KlasifikasiOperasi must be Kecil");
+
+        savedOrderOp.Should().NotBeNull();
+        savedOrderOp!.UrgencyLevel.Should().Be(UrgencyLevelEnum.Elective, "Saved OrderOp UrgencyLevel must be Elective");
+        savedOrderOp.KlasifikasiOperasi.Should().Be(KlasifikasiOperasiEnum.Kecil, "Saved OrderOp KlasifikasiOperasi must be Kecil");
+        savedOrderOp.JenisOperasi.Should().Be(JenisOperasiType.Default, "Saved OrderOp JenisOperasi must be JenisOperasiType.Default");
     }
 }

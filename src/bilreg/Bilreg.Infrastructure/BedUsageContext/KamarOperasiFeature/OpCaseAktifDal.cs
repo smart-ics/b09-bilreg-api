@@ -163,7 +163,7 @@ public class OpCaseAktifDal : IOpCaseAktifDal
               AND (@TglAwal IS NULL OR dd.PreferedDate >= @TglAwal)
               AND (@TglAkhir IS NULL OR dd.PreferedDate <= @TglAkhir)
             ORDER BY 
-              CASE WHEN dd.UrgencyLevel = 1 THEN 0 ELSE 1 END,
+              CASE WHEN dd.UrgencyLevel = 2 THEN 0 ELSE 1 END,
               aa.OrderOpDate ASC
             """;
 

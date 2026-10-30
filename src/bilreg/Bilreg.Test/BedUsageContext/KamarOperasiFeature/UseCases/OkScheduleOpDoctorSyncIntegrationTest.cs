@@ -40,7 +40,6 @@ public class OkScheduleOpDoctorSyncIntegrationTest
     private readonly Mock<IRegRepo> _regRepoMock = new();
     private readonly Mock<ILayananRepo> _layananRepoMock = new();
     private readonly Mock<IIcd10Repo> _icdRepoMock = new();
-    private readonly Mock<IJenisOperasiRepo> _jenisOperasiRepoMock = new();
     private readonly Mock<ITarifRepo> _tarifRepoMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
     private readonly Mock<IMediator> _mediatorMock = new();
@@ -75,9 +74,6 @@ public class OkScheduleOpDoctorSyncIntegrationTest
 
         var icd = new Icd10Type("K35.8", "Acute Appendicitis");
         _icdRepoMock.Setup(x => x.LoadEntity(It.Is<IIcd10Key>(k => k.Icd10Id == "K35.8"))).Returns(MayBe.From(icd));
-
-        var jop = new JenisOperasiType("JOP-001", "Bedah Umum");
-        _jenisOperasiRepoMock.Setup(x => x.LoadEntity(It.Is<IJenisOperasiKey>(k => k.JenisOperasiId == "JOP-001"))).Returns(MayBe.From(jop));
 
         var tarif = new TarifType("TRF-001", "Apendektomi", GroupTarifType.Default, GroupTarifDkType.Default, JenisTarifType.Default, RekapCetakType.Default.ToReff());
         _tarifRepoMock.Setup(x => x.LoadEntity(It.Is<ITarifKey>(k => k.TarifId == "TRF-001"))).Returns(MayBe.From(tarif));
@@ -153,7 +149,6 @@ public class OkScheduleOpDoctorSyncIntegrationTest
             _layananRepoMock.Object,
             _ppaRepoMock.Object,
             _icdRepoMock.Object,
-            _jenisOperasiRepoMock.Object,
             _opCaseRepoMock.Object,
             _tarifRepoMock.Object,
             _tglJamProviderMock.Object);
@@ -196,7 +191,6 @@ public class OkScheduleOpDoctorSyncIntegrationTest
             LayananPengorderId: "LYN-001",
             DokterOperatorId: "DR00083",
             DiagCode: "K35.8",
-            JenisOperasiId: "JOP-001",
             NamaOperasi: "Apendektomi Laparoskopi",
             ProsedurTambahan: "",
             KlasifikasiOperasi: KlasifikasiOperasiEnum.Sedang,

@@ -118,4 +118,90 @@ public class OpCaseAktifDalTest
         var actualLimit = _sut.ListData(filterLimit).ToList();
         actualLimit.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void ListData_ShouldPrioritizeCitoOverElective()
+    {
+        using var trans = TransHelper.NewScope();
+        var orderOpDal = new OrderOpDal(ConnStringHelper.GetTestEnv());
+
+        var orderElectiveId = $"ORD-ELEC-{Guid.NewGuid():N}"[..26];
+        var orderCitoId = $"ORD-CITO-{Guid.NewGuid():N}"[..26];
+
+        var orderElective = new OrderOpDto(
+            OrderOpId: orderElectiveId,
+            OrderDate: new DateTime(2026, 10, 1, 8, 0, 0),
+            RegId: "REG-01",
+            PasienId: "PAS-01",
+            Icd10Id: "K35.8",
+            JenisOperasiId: "-",
+            NamaOperasi: "Op Elective",
+            DokterId: "DOC-01",
+            UrgencyLevel: (int)UrgencyLevelEnum.Elective,
+            TarifId: "TRF-01",
+            TarifName: "Tarif 1",
+            EstimasiDurasi: 60,
+            PreferedDate: new DateTime(2026, 10, 10),
+            SpecialEquipment: "-",
+            DokterPengorderId: "DOC-01",
+            LayananPengorderId: "LYN-01",
+            DokterOperatorId: "DOC-02",
+            ProsedurTambahan: "",
+            KlasifikasiOperasi: 1,
+            AnestesiPlan: 1,
+            PostOpCareUnit: 1,
+            AlasanBatal: "",
+            CrtUser: "test",
+            CrtDate: new DateTime(2026, 10, 1),
+            UpdUser: "test",
+            UpdDate: new DateTime(2026, 10, 1),
+            VodUser: "",
+            VodDate: new DateTime(3000, 1, 1),
+            PasienName: "",
+            TglLahir: "",
+            Gender: "",
+            fs_ket_icd: "",
+            fs_nm_jenis_operasi: "",
+            fs_nm_peg: "",
+            DokterPengorderName: "",
+            LayananPengorderName: "",
+            DokterOperatorName: ""
+        );
+
+        var orderCito = orderElective with
+        {
+            OrderOpId = orderCitoId,
+            OrderDate = new DateTime(2026, 10, 2, 8, 0, 0),
+            NamaOperasi = "Op Cito",
+            UrgencyLevel = (int)UrgencyLevelEnum.Cito
+        };
+
+        orderOpDal.Insert(orderElective);
+        orderOpDal.Insert(orderCito);
+
+        var caseElective = Faker() with
+        {
+            OrderOpId = orderElectiveId,
+            OrderOpDate = new DateTime(2026, 10, 1, 8, 0, 0),
+            OpCaseState = 1
+        };
+        var caseCito = Faker() with
+        {
+            OrderOpId = orderCitoId,
+            OrderOpDate = new DateTime(2026, 10, 2, 8, 0, 0),
+            OpCaseState = 1
+        };
+
+        _sut.Insert(caseElective);
+        _sut.Insert(caseCito);
+
+        var result = _sut.ListData(new OpCaseAktifFilter(OpCaseState: 1)).ToList();
+
+        var citoIndex = result.FindIndex(x => x.OrderOpId == orderCitoId);
+        var electiveIndex = result.FindIndex(x => x.OrderOpId == orderElectiveId);
+
+        citoIndex.Should().BeGreaterThanOrEqualTo(0);
+        electiveIndex.Should().BeGreaterThanOrEqualTo(0);
+        citoIndex.Should().BeLessThan(electiveIndex, "Cito (UrgencyLevel = 2) must be returned before Elective (UrgencyLevel = 1) despite later OrderOpDate");
+    }
 }
