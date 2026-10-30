@@ -15,7 +15,7 @@ namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record QueListAntrianHeaderQuery(string TglYmd): IRequest<IEnumerable<QueListAntrianHeaderResponse>>;
 
-public record QueListAntrianHeaderResponse(string AntrianId, PpaReff Dokter, LayananReff Layanan, string JamMulai);
+public record QueListAntrianHeaderResponse(string AntrianId, PpaReff Dokter, LayananReff Layanan, string JamMulai, RuangType Ruang);
 
 public class QueListAntrianHeaderHandler : IRequestHandler<QueListAntrianHeaderQuery, IEnumerable<QueListAntrianHeaderResponse>>
 {
@@ -77,7 +77,8 @@ public class QueListAntrianHeaderHandler : IRequestHandler<QueListAntrianHeaderQ
                 q.AntrianId,
                 j.Dokter,
                 j.Layanan,
-                j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture)
+                j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                j.Ruang ?? RuangType.Default
             ))?.ToList() ?? [];
         return result;
     }
