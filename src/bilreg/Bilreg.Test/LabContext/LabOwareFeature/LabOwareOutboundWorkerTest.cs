@@ -79,7 +79,7 @@ public class LabOwareOutboundWorkerTest
             _loggerMock.Object);
 
         _queueRepoMock
-            .Setup(q => q.ListProcessable(LabOwareOutboundWorker.DefaultBatchSize))
+            .Setup(q => q.ListProcessable(LabOwareOutboundWorker.DefaultBatchSize, It.IsAny<int>()))
             .Returns(new List<LabOwareOutboundQueueModel>());
 
         // Act
@@ -89,7 +89,7 @@ public class LabOwareOutboundWorkerTest
         result.Should().NotBeNull();
         result!.ProcessedCount.Should().Be(0);
         _scopeFactoryMock.Verify(f => f.CreateScope(), Times.Once);
-        _queueRepoMock.Verify(q => q.ListProcessable(LabOwareOutboundWorker.DefaultBatchSize), Times.Once);
+        _queueRepoMock.Verify(q => q.ListProcessable(LabOwareOutboundWorker.DefaultBatchSize, 3), Times.Once);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class LabOwareOutboundWorkerTest
             _loggerMock.Object);
 
         _queueRepoMock
-            .Setup(q => q.ListProcessable(It.IsAny<int>()))
+            .Setup(q => q.ListProcessable(It.IsAny<int>(), It.IsAny<int>()))
             .Throws(new InvalidOperationException("Simulated database failure"));
 
         // Act
@@ -134,7 +134,7 @@ public class LabOwareOutboundWorkerTest
             _loggerMock.Object);
 
         _queueRepoMock
-            .Setup(q => q.ListProcessable(It.IsAny<int>()))
+            .Setup(q => q.ListProcessable(It.IsAny<int>(), It.IsAny<int>()))
             .Returns(new List<LabOwareOutboundQueueModel>());
 
         // Act

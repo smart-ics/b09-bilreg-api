@@ -33,11 +33,14 @@ public class LabOwareOutboundWorker : BackgroundService
 
         try
         {
+            var opt = _options.Value;
+            var maxRetry = opt.MaxRetryCount > 0 ? opt.MaxRetryCount : 3;
             using var scope = _scopeFactory.CreateScope();
             var processor = scope.ServiceProvider.GetRequiredService<LabOwareQueueProcessor>();
             return processor.ProcessBatch(
                 batchSize: DefaultBatchSize,
-                actorUserId: LabOwareQueueProcessor.WorkerUserId);
+                actorUserId: LabOwareQueueProcessor.WorkerUserId,
+                maxRetryCount: maxRetry);
         }
         catch (Exception ex)
         {
@@ -61,9 +64,11 @@ public class LabOwareOutboundWorker : BackgroundService
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var processor = scope.ServiceProvider.GetRequiredService<LabOwareQueueProcessor>();
+                    var maxRetry = opt.MaxRetryCount > 0 ? opt.MaxRetryCount : 3;
                     var result = processor.ProcessBatch(
                         batchSize: DefaultBatchSize,
-                        actorUserId: LabOwareQueueProcessor.WorkerUserId);
+                        actorUserId: LabOwareQueueProcessor.WorkerUserId,
+                        maxRetryCount: maxRetry);
 
                     if (result.ProcessedCount > 0)
                     {
