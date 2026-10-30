@@ -42,6 +42,13 @@ public static class ApplicationService
                 return new NullAdmissionQueueRefreshPublisher();
             return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
         });
+        services.AddScoped<IClinicQueueRefreshPublisher>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<AdmissionQueueApiOptions>>().Value;
+            if (!options.SignalRRefreshEnabled)
+                return new NullClinicQueueRefreshPublisher();
+            return ActivatorUtilities.CreateInstance<SignalRClinicQueueRefreshPublisher>(sp);
+        });
         
         services
             .Scan(selector => selector

@@ -6,6 +6,7 @@ public interface IAdmissionQueueDisplayKey
 }
 
 public sealed record AdmissionDisplayLoketMapping(string LoketKey, int SortOrder);
+public sealed record AdmissionDisplayPoliMapping(string PoliId, int SortOrder);
 
 public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
 {
@@ -23,7 +24,8 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
         string createdBy,
         DateTime createdAt,
         string updatedBy,
-        DateTime updatedAt)
+        DateTime updatedAt,
+        IReadOnlyList<AdmissionDisplayPoliMapping>? polis = null)
     {
         DisplayId = NormalizeKey(displayId);
         DisplayName = NormalizeRequired(displayName, nameof(displayName));
@@ -34,6 +36,7 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
         LayoutKey = layoutKey?.Trim() ?? string.Empty;
         Notes = notes?.Trim() ?? string.Empty;
         Lokets = NormalizeLokets(lokets);
+        Polis = NormalizePolis(polis);
         RowVersion = rowVersion;
         CreatedBy = createdBy ?? string.Empty;
         CreatedAt = createdAt;
@@ -50,11 +53,14 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
     public string LayoutKey { get; private init; }
     public string Notes { get; private init; }
     public IReadOnlyList<AdmissionDisplayLoketMapping> Lokets { get; private init; }
+    public IReadOnlyList<AdmissionDisplayPoliMapping> Polis { get; private init; }
     public long RowVersion { get; private init; }
     public string CreatedBy { get; private init; }
     public DateTime CreatedAt { get; private init; }
     public string UpdatedBy { get; private init; }
     public DateTime UpdatedAt { get; private init; }
+
+    public bool IsClinicLayout => string.Equals(LayoutKey, "clinic", StringComparison.OrdinalIgnoreCase);
 
     public static AdmissionQueueDisplayModel Create(
         string displayId,
@@ -67,11 +73,13 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
         string notes,
         IEnumerable<AdmissionDisplayLoketMapping> lokets,
         string userId,
-        DateTime now)
+        DateTime now,
+        IEnumerable<AdmissionDisplayPoliMapping>? polis = null)
     {
         var model = new AdmissionQueueDisplayModel(
             displayId, displayName, locationName, active, audioEnabled, pollIntervalMs,
-            layoutKey, notes, lokets.ToList(), 1, userId, now, userId, now);
+            layoutKey, notes, lokets?.ToList() ?? [], 1, userId, now, userId, now,
+            polis?.ToList());
         model.EnsureActiveMappingValid();
         return model;
     }
@@ -90,9 +98,11 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
         string createdBy,
         DateTime createdAt,
         string updatedBy,
-        DateTime updatedAt) =>
+        DateTime updatedAt,
+        IEnumerable<AdmissionDisplayPoliMapping>? polis = null) =>
         new(displayId, displayName, locationName, active, audioEnabled, pollIntervalMs,
-            layoutKey, notes, lokets.ToList(), rowVersion, createdBy, createdAt, updatedBy, updatedAt);
+            layoutKey, notes, lokets?.ToList() ?? [], rowVersion, createdBy, createdAt, updatedBy, updatedAt,
+            polis?.ToList());
 
     public static IAdmissionQueueDisplayKey Key(string displayId) =>
         new AdmissionQueueDisplayKey(NormalizeKey(displayId));
@@ -141,6 +151,24 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
         return next;
     }
 
+    public AdmissionQueueDisplayModel ReplacePolis(
+        IEnumerable<AdmissionDisplayPoliMapping> polis,
+        long expectedRowVersion,
+        string userId,
+        DateTime now)
+    {
+        EnsureRowVersion(expectedRowVersion);
+        var next = this with
+        {
+            Polis = NormalizePolis(polis.ToList()),
+            RowVersion = RowVersion + 1,
+            UpdatedBy = userId,
+            UpdatedAt = now
+        };
+        next.EnsureActiveMappingValid();
+        return next;
+    }
+
     public AdmissionQueueDisplayModel Activate(long expectedRowVersion, string userId, DateTime now)
     {
         EnsureRowVersion(expectedRowVersion);
@@ -159,14 +187,33 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
     {
         if (!Active)
             throw new InvalidOperationException($"Display '{DisplayId}' is inactive.");
-        if (Lokets.Count == 0)
-            throw new InvalidOperationException($"Display '{DisplayId}' has no loket mapping.");
+
+        if (IsClinicLayout)
+        {
+            if (Polis.Count == 0)
+                throw new InvalidOperationException($"Display '{DisplayId}' has no poli mapping.");
+        }
+        else
+        {
+            if (Lokets.Count == 0)
+                throw new InvalidOperationException($"Display '{DisplayId}' has no loket mapping.");
+        }
     }
 
     public void EnsureActiveMappingValid()
     {
-        if (Active && Lokets.Count == 0)
-            throw new InvalidOperationException($"Active display '{DisplayId}' requires at least one loket.");
+        if (!Active) return;
+
+        if (IsClinicLayout)
+        {
+            if (Polis.Count == 0)
+                throw new InvalidOperationException($"Active display '{DisplayId}' requires at least one poli.");
+        }
+        else
+        {
+            if (Lokets.Count == 0)
+                throw new InvalidOperationException($"Active display '{DisplayId}' requires at least one loket.");
+        }
     }
 
     private void EnsureRowVersion(long expectedRowVersion)
@@ -184,6 +231,22 @@ public sealed record AdmissionQueueDisplayModel : IAdmissionQueueDisplayKey
             .Select(g => g.OrderBy(x => x.SortOrder).First())
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.LoketKey, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return normalized;
+    }
+
+    private static IReadOnlyList<AdmissionDisplayPoliMapping> NormalizePolis(
+        IReadOnlyList<AdmissionDisplayPoliMapping>? polis)
+    {
+        if (polis is null || polis.Count == 0)
+            return Array.Empty<AdmissionDisplayPoliMapping>();
+
+        var normalized = polis
+            .Select((x, i) => new AdmissionDisplayPoliMapping(NormalizeKey(x.PoliId), x.SortOrder >= 0 ? x.SortOrder : i))
+            .GroupBy(x => x.PoliId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.OrderBy(x => x.SortOrder).First())
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.PoliId, StringComparer.OrdinalIgnoreCase)
             .ToList();
         return normalized;
     }
