@@ -22,7 +22,7 @@ public class LabExternalQueryHandlersTest
 
     private static LabExternalModel CreateSampleModel(
         string regExternalId = "LX26A14B8C",
-        string externalMrNo = "EXT-202610-00001",
+        string externalMrNo = "EX-202610-00001",
         string patientName = "Jane Doe",
         string nik = "3171012345670001",
         DateTime? birthDate = null,
@@ -72,7 +72,7 @@ public class LabExternalQueryHandlersTest
         var createdDate = new DateTime(2026, 10, 14, 8, 30, 0);
         var model = CreateSampleModel(
             regExternalId: "LEX001",
-            externalMrNo: "EXT-202610-00001",
+            externalMrNo: "EX-202610-00001",
             patientName: "Jane Doe",
             nik: "3171012345670001",
             birthDate: birthDate,
@@ -98,7 +98,7 @@ public class LabExternalQueryHandlersTest
         // Assert
         result.Should().NotBeNull();
         result.RegExternalId.Should().Be("LEX001");
-        result.ExternalMrNo.Should().Be("EXT-202610-00001");
+        result.ExternalMrNo.Should().Be("EX-202610-00001");
         result.PatientName.Should().Be("Jane Doe");
         result.Nik.Should().Be("3171012345670001");
         result.BirthDate.Should().Be(birthDate);
@@ -213,7 +213,7 @@ public class LabExternalQueryHandlersTest
         var createdDate1 = new DateTime(2026, 10, 14, 8, 0, 0);
         var item1 = CreateSampleModel(
             regExternalId: "LEX001",
-            externalMrNo: "EXT-202610-00001",
+            externalMrNo: "EX-202610-00001",
             patientName: "John Budi",
             nik: "3171000000000001",
             birthDate: birthDate1,
@@ -226,7 +226,7 @@ public class LabExternalQueryHandlersTest
 
         var item2 = CreateSampleModel(
             regExternalId: "LEX002",
-            externalMrNo: "EXT-202610-00002",
+            externalMrNo: "EX-202610-00002",
             patientName: "Budi Santoso",
             nik: "3171000000000002",
             gender: "M",
@@ -249,7 +249,7 @@ public class LabExternalQueryHandlersTest
 
         var first = result[0];
         first.RegExternalId.Should().Be("LEX001");
-        first.ExternalMrNo.Should().Be("EXT-202610-00001");
+        first.ExternalMrNo.Should().Be("EX-202610-00001");
         first.PatientName.Should().Be("John Budi");
         first.Nik.Should().Be("3171000000000001");
         first.BirthDate.Should().Be(birthDate1);

@@ -43,7 +43,7 @@ public class LabOrderChargeHandlerTest
     private static LabOrderModel ExternalOrderedOrder()
     {
         var snapshot = new PatientSnapshotType(
-            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+            "LX26A14B8C", "EX-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
         var item = LabOrderTestSupport.SampleItem();
         return LabOrderModel.CreateExternal(
             null,

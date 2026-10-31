@@ -11,7 +11,7 @@ public static class LabExternalNumberHelper
     public static string GenerateExternalMrNo(ISequencer sequencer, DateTime timestamp)
     {
         Guard.Against.Null(sequencer, nameof(sequencer));
-        var periodKey = $"EXT-{timestamp:yyyyMM}";
+        var periodKey = $"EX-{timestamp:yyyyMM}";
         var nextNo = sequencer.GetNextNoUrut(periodKey);
         return $"{periodKey}-{nextNo:D5}";
     }

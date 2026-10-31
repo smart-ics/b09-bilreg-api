@@ -19,7 +19,7 @@ public class LabExternalRepoTest
 
     private static LabExternalModel CreateTestModel(
         string regExternalId = "LX26A14B8C",
-        string externalMrNo = "EXT-202610-00001",
+        string externalMrNo = "EX-202610-00001",
         string patientName = "Jane Doe")
     {
         var demographics = new LabExternalDemographicsType(
@@ -122,10 +122,10 @@ public class LabExternalRepoTest
         // Arrange
         var model = CreateTestModel();
         var dto = LabExternalDto.FromModel(model);
-        _dal.Setup(x => x.GetByExternalMrNo("EXT-202610-00001")).Returns(dto);
+        _dal.Setup(x => x.GetByExternalMrNo("EX-202610-00001")).Returns(dto);
 
         // Act
-        var result = _sut.LoadByExternalMrNo("EXT-202610-00001");
+        var result = _sut.LoadByExternalMrNo("EX-202610-00001");
 
         // Assert
         result.HasValue.Should().BeTrue();
@@ -133,7 +133,7 @@ public class LabExternalRepoTest
             onSome: m =>
             {
                 m.RegExternalId.Should().Be(model.RegExternalId);
-                m.ExternalMrNo.Should().Be("EXT-202610-00001");
+                m.ExternalMrNo.Should().Be("EX-202610-00001");
                 m.Demographics.PatientName.Should().Be("Jane Doe");
             },
             onNone: () => Assert.Fail("Expected Some"));
@@ -156,8 +156,8 @@ public class LabExternalRepoTest
     public void ListData_WhenFound_ReturnsMappedList()
     {
         // Arrange
-        var m1 = CreateTestModel("LEX001", "EXT-202610-00001", "Patient A");
-        var m2 = CreateTestModel("LEX002", "EXT-202610-00002", "Patient B");
+        var m1 = CreateTestModel("LEX001", "EX-202610-00001", "Patient A");
+        var m2 = CreateTestModel("LEX002", "EX-202610-00002", "Patient B");
         var dtos = new List<LabExternalDto> { LabExternalDto.FromModel(m1), LabExternalDto.FromModel(m2) };
         _dal.Setup(x => x.ListData("Patient", null, null, null)).Returns(dtos);
 

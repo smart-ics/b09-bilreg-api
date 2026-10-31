@@ -95,7 +95,7 @@ Fakta kondisi sistem saat ini berdasarkan investigasi artefak dan kode sumber:
 | ID | Risk | Impact | Mitigation |
 |---|---|---|---|
 | RISK-001 | Inkonsistensi data jika registrasi eksternal tersimpan tetapi pembuatan akun billing kasir di `TRK-BILLING` gagal. | CRITICAL | Membungkus pembentukan registrasi eksternal dan akun billing dalam batas transaksional yang aman (*transaction scope* / orkestrasi atomik). |
-| RISK-002 | Penggunaan kembali `ExternalMrNo` untuk episode rawat jalan/rawat inap umum akibat ketidakjelasan pemisahan data. | MAJOR | Menetapkan format penomoran dengan prefiks unik (misal: `EXT-`) dan menegakkan validasi domain bahwa identitas ini ditolak oleh modul admisi reguler. |
+| RISK-002 | Penggunaan kembali `ExternalMrNo` untuk episode rawat jalan/rawat inap umum akibat ketidakjelasan pemisahan data. | MAJOR | Menetapkan format penomoran dengan prefiks unik (misal: `EX-`) dan menegakkan validasi domain bahwa identitas ini ditolak oleh modul admisi reguler. |
 | RISK-003 | Regresi pada alur kerja operasional laboratorium jika use case existing `LabOrderCreateExternalPatientCmd` diubah tanpa backwards compatibility. | MEDIUM | Merancang use case baru `LabExternalCreateCmd` dan menyesuaikan `LabOrderCreateExternalPatientCmd` agar mengonsumsi konteks `RegExternal` yang sah. |
 
 ---
@@ -159,10 +159,10 @@ Menambahkan kolom-kolom demografi dan rujukan luar langsung ke dalam tabel `BILR
 
 ## GAP-003: Ketiadaan Nomor Rekam Medis Operasional Sekali Pakai
 - **Status:** CLOSED
-- **Decision:** Menyediakan sequencer/generator nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format khusus (misal: `EXT-yyMM-XXXXX`) yang secara tegas terpisah dari nomor rekam medis master rumah sakit.
+- **Decision:** Menyediakan sequencer/generator nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format khusus (15 karakter: `EX-{yyyyMM}-{00000}`) yang secara tegas terpisah dari nomor rekam medis master rumah sakit dan kompatibel dengan batasan legacy `PasienId VARCHAR(15)`.
 - **Rationale:** Memenuhi ketentuan kanonikal *one-time use only* tanpa mencemari master data pasien (`PAS-DATSOS`).
 - **Impact:** Penambahan logika penomoran di service sequencer domain laboratorium.
-- **Architecture Impact:** Pemanfaatan `ISequencer` atau `AutoNumber` provider untuk prefiks `EXT`.
+- **Architecture Impact:** Pemanfaatan `ISequencer` atau `AutoNumber` provider untuk prefiks `EX`.
 - **Resolved By:** Analyst
 - **Resolved Date:** 2026-10-13
 
@@ -197,7 +197,7 @@ Menambahkan kolom-kolom demografi dan rujukan luar langsung ke dalam tabel `BILR
 
 ## OQ-001: Format dan Penomoran `ExternalMrNo`
 - **Status:** CLOSED
-- **Decision:** Menggunakan format terstandarisasi dengan prefiks `EXT-` diikuti penomoran sekuensial (misal: `EXT-{yyyyMM}-{00000}`) yang dikelola oleh sequencer khusus lab.
+- **Decision:** Menggunakan format terstandarisasi dengan prefiks `EX-` diikuti penomoran sekuensial (format 15 karakter: `EX-{yyyyMM}-{00000}`) yang dikelola oleh sequencer khusus lab guna menjamin kompatibilitas dengan kolom `PasienId VARCHAR(15)` sistem legacy.
 - **Rationale:** Menjamin keunikan nomor, kejelasan identitas sebagai nomor sekali pakai, dan mencegah benturan dengan format nomor rekam medis master rumah sakit.
 - **Impact:** Penambahan generator nomor sequence di layer domain/infrastruktur.
 - **Architecture Impact:** Diatur dalam arsitektur penomoran `ISequencer`.
