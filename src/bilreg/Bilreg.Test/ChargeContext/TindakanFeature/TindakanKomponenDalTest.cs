@@ -40,4 +40,14 @@ public class TindakanKomponenDalTest
         var actual = _sut.ListData(FakerKey());
         actual.Should().ContainEquivalentOf(dto);
     }
+
+    [Fact]
+    public void InsertAndListData_WithDiskon_ShouldPersistAndReadDiskon()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = new TindakanKomponenDto("TND001", 1, "KTR", "Komponen Dokter", "PPA001", "Ppa A", 2, 75000, 150000, 0);
+        _sut.Insert([dto]);
+        var actual = _sut.ListData(FakerKey());
+        actual.Should().ContainEquivalentOf(dto);
+    }
 }

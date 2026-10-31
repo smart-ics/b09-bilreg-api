@@ -23,7 +23,8 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,
-    int Qty = 1) 
+    int Qty = 1,
+    bool IsDiskonDokter = false) 
     : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey;
 
 public record TdkCreateTindakanPpaCmd(string KomponenId, string PpaId);
@@ -91,7 +92,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty);
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty, request.IsDiskonDokter);
 
         //  WRITE
         using var trans = TransHelper.NewScope();

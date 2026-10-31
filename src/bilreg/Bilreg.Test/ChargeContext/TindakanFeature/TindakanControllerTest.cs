@@ -85,10 +85,46 @@ public class TindakanControllerTest
     }
 
     [Fact]
+    public async Task Create_WhenCalledWithIsDiskonDokter_SendsCommandToMediatorAndReturnsOk()
+    {
+        // Arrange
+        var cmd = new TdkCreateTindakanCmd("REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 2, IsDiskonDokter: true);
+        var expectedResponse = new TindakanCreateRespose("TDK-12346");
+        _mediatorMock.Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Create(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+    }
+
+    [Fact]
     public async Task SaveTindakan_WhenCalledWithQty_SendsCommandToMediatorAndReturnsOk()
     {
         // Arrange
         var cmd = new TdkSaveTindakanCmd("TDK-12345", "REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 2);
+        var expectedResponse = new TdkSaveTindakanRespose("TDK-12345");
+        _mediatorMock.Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.SaveTindakan(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+    }
+
+    [Fact]
+    public async Task SaveTindakan_WhenCalledWithIsDiskonDokter_SendsCommandToMediatorAndReturnsOk()
+    {
+        // Arrange
+        var cmd = new TdkSaveTindakanCmd("TDK-12345", "REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 2, IsDiskonDokter: true);
         var expectedResponse = new TdkSaveTindakanRespose("TDK-12345");
         _mediatorMock.Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
@@ -121,6 +157,41 @@ public class TindakanControllerTest
             false,
             AuditTrailType.Default,
             []
+        );
+
+        _mediatorMock.Setup(x => x.Send(It.Is<TindakanGetQuery>(q => q.TindakanId == tindakanId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Get(tindakanId);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+    }
+
+    [Fact]
+    public async Task Get_WhenTindakanHasDiskonDokter_SendsQueryToMediatorAndReturnsOkWithDiskonDokter()
+    {
+        // Arrange
+        const string tindakanId = "TDK-002";
+        var expectedResponse = new TindakanGetResponse(
+            tindakanId,
+            new DateTime(2026, 10, 16, 8, 30, 0),
+            "ORD-02",
+            new RegReff("REG-01", "MED-01", "Pasien A"),
+            new LayananReff("LYN-01", "Poli Umum"),
+            new KelasReff("KLS-01", "Kelas 1"),
+            new TipeTarifReff("TT-01", "Umum"),
+            new TarifReff("TRF-01", "Tarif A"),
+            2,
+            0m,
+            false,
+            AuditTrailType.Default,
+            [new TindakanGetKomponenResponse("KOMP-01", "Jasa Dokter", 100000m, 2, 0m, "PPA-01", "dr. Smith", Diskon: 200000m)],
+            IsDiskonDokter: true,
+            DiskonDokter: 200000m
         );
 
         _mediatorMock.Setup(x => x.Send(It.Is<TindakanGetQuery>(q => q.TindakanId == tindakanId), It.IsAny<CancellationToken>()))
