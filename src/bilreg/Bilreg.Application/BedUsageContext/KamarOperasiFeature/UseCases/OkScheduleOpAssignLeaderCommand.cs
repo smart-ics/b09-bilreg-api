@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -8,8 +9,13 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkScheduleOpAssignLeaderCommand(string OrderOpId, string PpaId, string UserId) :
-    IRequest, IOrderOpKey, IPpaKey;
+public record OkScheduleOpAssignLeaderCommand(
+    string OrderOpId,
+    string PpaId,
+    string UserId,
+    string AlasanPerubahan,
+    bool IsOverride = false,
+    string OverrideReason = "") : IRequest, IOrderOpKey, IPpaKey;
 
 public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssignLeaderCommand>
 {
@@ -34,6 +40,11 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
     public Task Handle(OkScheduleOpAssignLeaderCommand request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.OrderOpId, nameof(request.OrderOpId));
+        Guard.Against.NullOrWhiteSpace(request.PpaId, nameof(request.PpaId));
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+        Guard.Against.NullOrWhiteSpace(request.AlasanPerubahan, nameof(request.AlasanPerubahan));
+
         var occurredAt = _tglJamProvider.Now;
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
@@ -55,33 +66,58 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        scheduleOp.CancelSchedule(request.UserId, occurredAt);
+        // Collision detection for substitute doctor across active schedules on the same date
+        DateTime start = scheduleOp.TglOp;
+        DateTime end = start.AddMinutes(scheduleOp.Durasi);
 
-        ScheduleOpModel newScheduleOp;
-        newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp, occurredAt);
+        var activeDoctorSchedules = _scheduleOpRepo.ListActiveSchedulesForDoctor(ppa.PpaId, start.Date)?.ToList() ?? [];
+        var activeTeamSchedules = _scheduleOpRepo.ListActiveSchedulesForPpaInTeam(ppa.PpaId, start.Date)?.ToList() ?? [];
 
-        // Checks if TeamLead is not null AND if PpaId is a valid string
-        if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
-            !string.IsNullOrWhiteSpace(ppaId) &&
-            ppaId != "-")
+        var combinedSchedules = activeDoctorSchedules
+            .Concat(activeTeamSchedules)
+            .GroupBy(x => x.ScheduleOpId)
+            .Select(g => g.OrderByDescending(x => !string.IsNullOrWhiteSpace(x.ProfesiName)).First())
+            .ToList();
+
+        var warnings = new List<string>();
+        foreach (var d in combinedSchedules)
         {
-            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(ppaId))
-                .GetValueOrDefault();
-            newScheduleOp.RemovePpa(assignedPpaLead, request.UserId, occurredAt);
+            if (d.IsVoid) continue;
+            if (d.ScheduleOpId == scheduleOp.ScheduleOpId) continue;
+
+            var startD = d.TglOp;
+            var endD = d.TglOp.AddMinutes(d.Durasi);
+
+            if (start < endD && end > startD)
+            {
+                var roomDisplay = !string.IsNullOrWhiteSpace(d.Kamar?.KamarId) ? d.Kamar.KamarId : scheduleOp.KamarOp?.KamarId ?? "";
+                var roleInfo = !string.IsNullOrWhiteSpace(d.ProfesiName) ? $" sebagai {d.ProfesiName}" : "";
+                warnings.Add($"Dokter/PPA {ppa.PpaName}{roleInfo} telah terjadwal pada operasi lain ({roomDisplay}) dari jam {startD:HH:mm} s/d {endD:HH:mm}.");
+            }
         }
 
-        var existingPpa = newScheduleOp.ListPpa
-            .FirstOrDefault(x => x.Ppa.PpaId == request.PpaId);
-        if (existingPpa is null)
-            newScheduleOp.AddPpa(ppa, request.UserId, occurredAt);
-        newScheduleOp.AssignLeader(ppa, request.UserId, occurredAt);
+        if (warnings.Count > 0 && !request.IsOverride)
+        {
+            throw new ScheduleWarningException(warnings);
+        }
 
-        opCase.Schedule(newScheduleOp, occurredAt);
+        if (warnings.Count > 0 && request.IsOverride)
+        {
+            Guard.Against.NullOrWhiteSpace(request.OverrideReason, nameof(request.OverrideReason),
+                "Alasan diskresi override wajib diisi jika terdapat peringatan bentrok dokter/turnover buffer.");
+        }
+
+        scheduleOp.AssignLeader(ppa, request.AlasanPerubahan, request.UserId, occurredAt, request.IsOverride, request.OverrideReason);
+
+        opCase.Schedule(scheduleOp, occurredAt);
+
+        orderOp.SetDokterOperator(ppa);
+        orderOp.AuditTrail.Modif(request.UserId, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);
-        _scheduleOpRepo.SaveChanges(newScheduleOp);
         _opCaseRepo.SaveChanges(opCase);
+        _orderOpRepo.SaveChanges(orderOp);
         trans.Complete();
 
         return Task.CompletedTask;

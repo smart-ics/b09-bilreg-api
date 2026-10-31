@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -8,7 +9,12 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkScheduleOpAddPpaCommand(string OrderOpId, string PpaId, string UserId) : IRequest, IOrderOpKey, IPpaKey;
+public record OkScheduleOpAddPpaCommand(
+    string OrderOpId,
+    string PpaId,
+    string UserId,
+    bool IsOverride = false,
+    string OverrideReason = "") : IRequest, IOrderOpKey, IPpaKey;
 
 public class OkScheduleOpAddPpaHandler : IRequestHandler<OkScheduleOpAddPpaCommand>
 {
@@ -33,6 +39,10 @@ public class OkScheduleOpAddPpaHandler : IRequestHandler<OkScheduleOpAddPpaComma
 
     public Task Handle(OkScheduleOpAddPpaCommand request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.OrderOpId, nameof(request.OrderOpId));
+        Guard.Against.NullOrWhiteSpace(request.PpaId, nameof(request.PpaId));
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+
         var occurredAt = _tglJamProvider.Now;
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
@@ -53,6 +63,47 @@ public class OkScheduleOpAddPpaHandler : IRequestHandler<OkScheduleOpAddPpaComma
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+
+        // Collision detection for PPA across active schedules on the same date
+        DateTime start = scheduleOp.TglOp;
+        DateTime end = start.AddMinutes(scheduleOp.Durasi);
+
+        var activeDoctorSchedules = _scheduleOpRepo.ListActiveSchedulesForDoctor(ppa.PpaId, start.Date)?.ToList() ?? [];
+        var activeTeamSchedules = _scheduleOpRepo.ListActiveSchedulesForPpaInTeam(ppa.PpaId, start.Date)?.ToList() ?? [];
+
+        var combinedSchedules = activeDoctorSchedules
+            .Concat(activeTeamSchedules)
+            .GroupBy(x => x.ScheduleOpId)
+            .Select(g => g.OrderByDescending(x => !string.IsNullOrWhiteSpace(x.ProfesiName)).First())
+            .ToList();
+
+        var warnings = new List<string>();
+        foreach (var d in combinedSchedules)
+        {
+            if (d.IsVoid) continue;
+            if (d.ScheduleOpId == scheduleOp.ScheduleOpId) continue;
+
+            var startD = d.TglOp;
+            var endD = d.TglOp.AddMinutes(d.Durasi);
+
+            if (start < endD && end > startD)
+            {
+                var roomDisplay = !string.IsNullOrWhiteSpace(d.Kamar?.KamarId) ? d.Kamar.KamarId : scheduleOp.KamarOp?.KamarId ?? "";
+                var roleInfo = !string.IsNullOrWhiteSpace(d.ProfesiName) ? $" sebagai {d.ProfesiName}" : "";
+                warnings.Add($"Dokter/PPA {ppa.PpaName}{roleInfo} telah terjadwal pada operasi lain ({roomDisplay}) dari jam {startD:HH:mm} s/d {endD:HH:mm}.");
+            }
+        }
+
+        if (warnings.Count > 0 && !request.IsOverride)
+        {
+            throw new ScheduleWarningException(warnings);
+        }
+
+        if (warnings.Count > 0 && request.IsOverride)
+        {
+            Guard.Against.NullOrWhiteSpace(request.OverrideReason, nameof(request.OverrideReason),
+                "Alasan diskresi override wajib diisi jika terdapat peringatan bentrok dokter/turnover buffer.");
+        }
 
         scheduleOp.AddPpa(ppa, request.UserId, occurredAt);
 

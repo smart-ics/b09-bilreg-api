@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
@@ -73,8 +73,7 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
-        && RegVoidAudit == AuditInfoType.Default;
+    public bool IsAktif => RegKeluarAudit.IsEmpty && RegVoidAudit.IsEmpty;
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }
@@ -197,10 +196,10 @@ public class RegModel : IRegKey
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("UserId wajib diisi.", nameof(userId));
 
-        if (RegVoidAudit != AuditInfoType.Default)
+        if (!RegVoidAudit.IsEmpty)
             throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
 
-        if (RegKeluarAudit != AuditInfoType.Default)
+        if (!RegKeluarAudit.IsEmpty)
             throw new InvalidOperationException($"Registrasi {RegId} sudah keluar dan tidak dapat dibatalkan.");
 
         RegVoidAudit = new AuditInfoType(userId, timestamp);
