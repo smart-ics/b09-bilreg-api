@@ -33,7 +33,7 @@ public class LabExternalCreateHandlerTest
     public async Task Handle_ValidRequest_CreatesRegistrationAndBillingAccountAtomically()
     {
         // Arrange
-        _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(1);
+        _sequencer.Setup(s => s.GetNextNoUrut("EX-202610")).Returns(1);
         TataRekeningModel? savedBilling = null;
         LabExternalModel? savedExternal = null;
 
@@ -62,7 +62,7 @@ public class LabExternalCreateHandlerTest
         result.Should().NotBeNull();
         result.RegExternalId.Should().StartWith("LX");
         result.RegExternalId.Length.Should().Be(10);
-        result.ExternalMrNo.Should().Be("EXT-202610-00001");
+        result.ExternalMrNo.Should().Be("EX-202610-00001");
         result.BillingAccountId.Should().Be(result.RegExternalId);
 
         savedBilling.Should().NotBeNull();
@@ -72,7 +72,7 @@ public class LabExternalCreateHandlerTest
 
         savedExternal.Should().NotBeNull();
         savedExternal!.RegExternalId.Should().Be(result.RegExternalId);
-        savedExternal.ExternalMrNo.Should().Be("EXT-202610-00001");
+        savedExternal.ExternalMrNo.Should().Be("EX-202610-00001");
         savedExternal.BillingAccountId.Should().Be(result.RegExternalId);
         savedExternal.Status.Should().Be(LabExternalStatusEnum.Active);
         savedExternal.Demographics.PatientName.Should().Be("Budi Santoso");
@@ -88,7 +88,7 @@ public class LabExternalCreateHandlerTest
         savedExternal.AuditTrail.Created.UserId.Should().Be("USR001");
         savedExternal.AuditTrail.Created.Timestamp.Should().Be(FixedNow);
 
-        _sequencer.Verify(s => s.GetNextNoUrut("EXT-202610"), Times.Once);
+        _sequencer.Verify(s => s.GetNextNoUrut("EX-202610"), Times.Once);
         _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Once);
         _labExternalRepo.Verify(r => r.SaveChanges(It.IsAny<LabExternalModel>()), Times.Once);
     }
@@ -97,7 +97,7 @@ public class LabExternalCreateHandlerTest
     public async Task Handle_NullableFields_SubstitutesEmptyStrings()
     {
         // Arrange
-        _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(25);
+        _sequencer.Setup(s => s.GetNextNoUrut("EX-202610")).Returns(25);
         LabExternalModel? savedExternal = null;
         _labExternalRepo.Setup(r => r.SaveChanges(It.IsAny<LabExternalModel>()))
             .Callback<LabExternalModel>(m => savedExternal = m);
@@ -119,7 +119,7 @@ public class LabExternalCreateHandlerTest
         var result = await _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        result.ExternalMrNo.Should().Be("EXT-202610-00025");
+        result.ExternalMrNo.Should().Be("EX-202610-00025");
         savedExternal.Should().NotBeNull();
         savedExternal!.Demographics.Nik.Should().Be(string.Empty);
         savedExternal.Demographics.Phone.Should().Be(string.Empty);
@@ -130,13 +130,13 @@ public class LabExternalCreateHandlerTest
     }
 
     [Theory]
-    [InlineData(1, "EXT-202610-00001")]
-    [InlineData(42, "EXT-202610-00042")]
-    [InlineData(999, "EXT-202610-00999")]
-    [InlineData(12345, "EXT-202610-12345")]
+    [InlineData(1, "EX-202610-00001")]
+    [InlineData(42, "EX-202610-00042")]
+    [InlineData(999, "EX-202610-00999")]
+    [InlineData(12345, "EX-202610-12345")]
     public async Task Handle_SequencerNumberPadding_FormatsCorrectly(int seqNo, string expectedMrNo)
     {
-        _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(seqNo);
+        _sequencer.Setup(s => s.GetNextNoUrut("EX-202610")).Returns(seqNo);
 
         var cmd = new LabExternalCreateCmd(
             UserId: "USR001",
@@ -321,9 +321,9 @@ public class LabExternalCreateHandlerTest
     public void NumberHelper_GenerateExternalMrNo_GeneratesExpectedFormat()
     {
         var seqMock = new Mock<ISequencer>();
-        seqMock.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(7);
+        seqMock.Setup(s => s.GetNextNoUrut("EX-202610")).Returns(7);
         var mrNo = LabExternalNumberHelper.GenerateExternalMrNo(seqMock.Object, new DateTime(2026, 10, 15));
-        mrNo.Should().Be("EXT-202610-00007");
+        mrNo.Should().Be("EX-202610-00007");
     }
 
     [Fact]
@@ -346,7 +346,7 @@ public class LabExternalCreateHandlerTest
     public async Task Handle_Generates10CharRegExternalId_MapsToTataRekeningRegIdWithStatusOpened()
     {
         // AC-ARCH-09 & TD-10: Verify regExternalId 10 characters (NunaId.NewLegacyCompact("LX")) is properly mapped to TataRekeningModel.RegId and saved with status Opened
-        _sequencer.Setup(s => s.GetNextNoUrut("EXT-202610")).Returns(10);
+        _sequencer.Setup(s => s.GetNextNoUrut("EX-202610")).Returns(10);
         TataRekeningModel? savedBilling = null;
         LabExternalModel? savedExternal = null;
 

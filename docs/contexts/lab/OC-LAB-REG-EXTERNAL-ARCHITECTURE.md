@@ -16,7 +16,7 @@ Arsitektur ini menetapkan realisasi teknis menyeluruh pada dua subsistem utama:
 1. **Backend BILREG API (`b09-bilreg-api`)**:
    - Membentuk fitur bounded baru `LabExternalFeature` di dalam `Bilreg.Domain.LabContext`, `Bilreg.Application.LabContext`, `Bilreg.Infrastructure.LabContext`, dan `Bilreg.Api`.
    - Menyediakan persistensi tabel database baru `BILRG_LabExternal` untuk mencatat fakta pendaftaran mandiri pasien luar secara persisten dan independen.
-   - Mengimplementasikan generator nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format `EXT-{yyyyMM}-{00000}` berbasis `ISequencer`.
+   - Mengimplementasikan generator nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format `EX-{yyyyMM}-{00000}` (15 karakter untuk kompatibilitas sistem legacy) berbasis `ISequencer`.
    - Mengorkestrasikan pembentukan akun penagihan langsung (*cash-first billing account*) pada agregat `TataRekeningModel` di domain Tata Rekening (`PaymentContext`).
    - Melakukan refaktorisasi pada handler pembebanan biaya (`LabOrderChargeCmd` di `LabOrderFeature`) agar mendukung resolusi penagihan pasien eksternal tanpa bergantung pada data admisi reguler (`_regRepo`).
    - Menerapkan penegakan guard non-destructive cancellation untuk mencegah pembatalan jika tagihan kasir telah dibayar (`EX-01`) atau spesimen telah diambil (`EX-02`).
@@ -54,7 +54,7 @@ Arsitektur ini mengonsumsi keputusan-keputusan resmi penutupan celah (*Gap Closu
 
 - **GAP-001 (Agregat & Tabel Terpisah)**: Membangun bounded feature baru `LabExternalFeature` di backend Bilreg dengan tabel `BILRG_LabExternal`.
 - **GAP-002 (Resolusi Charging Pasien Luar)**: Menyesuaikan `LabOrderChargeCmd` agar mendukung dua jalur resolusi: order rawat jalan/inap melalui `_regRepo`, dan order eksternal melalui `_labExternalRepo` serta akun billing mandiri `TataRekeningModel`.
-- **GAP-003 & OQ-001 (Format ExternalMrNo)**: Menerbitkan nomor rekam medis operasional sekali pakai dengan format terstandarisasi `EXT-{yyyyMM}-{00000}` yang dikelola oleh sequencer khusus laboratorium.
+- **GAP-003 & OQ-001 (Format ExternalMrNo)**: Menerbitkan nomor rekam medis operasional sekali pakai dengan format terstandarisasi `EX-{yyyyMM}-{00000}` (15 karakter untuk kompatibilitas legacy) yang dikelola oleh sequencer khusus laboratorium.
 - **GAP-004 (Atribut Demografi & Rujukan)**: Merekam demografi lengkap (Nama, NIK opsional, Tanggal Lahir/Usia, Gender wajib, No Telepon/WA, Alamat) dan informasi rujukan (Kategori Kedatangan APS vs Rujukan Luar, Dokter Perujuk, Instansi Pengirim, Catatan Klinis).
 - **GAP-005 (Siklus Hidup & Non-Destructive Cancellation)**: Siklus hidup registrasi `Active` $\rightarrow$ `Completed` atau `Cancelled`, dengan validasi pencegahan pembatalan jika tagihan kasir telah lunas (`EX-01`) atau spesimen telah diambil (`EX-02`).
 - **GAP-006 & OQ-003 (Alur Terpadu UI)**: Form walk-in UI disajikan sebagai alur 2 langkah terpadu (*Step 1: Registrasi Pasien Luar* $\rightarrow$ *Step 2: Pemesanan Pemeriksaan & Cetak Bukti*).
@@ -83,7 +83,7 @@ Arsitektur ini mengonsumsi keputusan-keputusan resmi penutupan celah (*Gap Closu
    - Commands & Handlers: `LabExternalCreateCmd` (registrasi baru + pembuatan `TataRekening`), `LabExternalCancelCmd` (verifikasi status kasir/spesimen + soft-cancel).
    - Queries & Handlers: `LabExternalGetQuery` (detail pendaftaran), `LabExternalListQuery` (omni-search riwayat pasien luar berdasarkan nama, telepon, NIK, atau `ExternalMrNo`).
    - Repository Interface: `ILabExternalRepo`.
-   - Perluasan Generator Nomor: `LabExternalCreateHelper` memanfaatkan `ISequencer` untuk format `EXT-{yyyyMM}-{00000}` dan `NunaId` untuk `LEX{10}`.
+   - Perluasan Generator Nomor: `LabExternalCreateHelper` memanfaatkan `ISequencer` untuk format `EX-{yyyyMM}-{00000}` (15 karakter) dan `NunaId` untuk `LEX{10}`.
 3. **Backend Refactoring (`Bilreg.Application.LabContext.LabOrderFeature`)**:
    - Penyesuaian `LabOrderCreateExternalPatientHandler` agar mengonsumsi `RegExternalId` dan `ExternalMrNo` dari registrasi eksternal yang sah.
    - Penyesuaian `LabOrderChargeHandler` untuk mengenali `OrderSource == ExternalPatient`, memotong dependensi ke `_regRepo` (Admisi), dan menggunakan skema tarif umum untuk penagihan pada `TataRekeningModel` pasien luar.
@@ -256,9 +256,9 @@ public enum LabExternalStatusEnum
    - Menggunakan utilitas `NunaId.New("LEX")` yang menghasilkan string 13 karakter unik terindeks (contoh: `LEX26A14B8C1D`).
    - Sesuai dengan batasan tipe data `VARCHAR(15)` pada kolom kunci registrasi di seluruh ekosistem Bilreg.
 2. **Nomor Rekam Medis Operasional Sekali Pakai (`ExternalMrNo`)**:
-   - Memanfaatkan port sequencer `ISequencer` dengan format kunci bulanan: `EXT-{yyyyMM}`.
-   - Menghasilkan format tampilan manusia: `EXT-{yyyyMM}-{00000}` (contoh: `EXT-202610-00001`).
-   - Panjang string 16 karakter, pas disimpan pada kolom `VARCHAR(20)`.
+   - Memanfaatkan port sequencer `ISequencer` dengan format kunci bulanan: `EX-{yyyyMM}`.
+   - Menghasilkan format tampilan manusia: `EX-{yyyyMM}-{00000}` (contoh: `EX-202610-00001`).
+   - Panjang string tepat 15 karakter, kompatibel dengan kolom `PasienId VARCHAR(15)` pada sistem legacy serta aman disimpan pada kolom `VARCHAR(20)`.
    - Karakteristik nomor: **sekali pakai (*one-time use only*)**, terisolasi di laboratorium, dan divalidasi oleh sistem admisi agar tidak dapat digunakan untuk registrasi rawat jalan/inap.
 
 ```csharp
@@ -266,7 +266,7 @@ public static class LabExternalNumberHelper
 {
     public static string GenerateExternalMrNo(ISequencer sequencer, DateTime timestamp)
     {
-        var periodKey = $"EXT-{timestamp:yyyyMM}";
+        var periodKey = $"EX-{timestamp:yyyyMM}";
         var nextNo = sequencer.GetNextNoUrut(periodKey);
         return $"{periodKey}-{nextNo:D5}";
     }
@@ -412,7 +412,7 @@ sequenceDiagram
     Petugas->>UI: Input Demografi & Rujukan (Walk-In)
     UI->>ExtCtrl: POST /api/LabContext/LabExternalFeature
     ExtCtrl->>ExtHandler: Send LabExternalCreateCmd
-    ExtHandler->>Seq: GetNextNoUrut("EXT-yyyyMM")
+    ExtHandler->>Seq: GetNextNoUrut("EX-yyyyMM")
     Seq-->>ExtHandler: Return next sequence number
     ExtHandler->>ExtHandler: Format ExternalMrNo & Generate RegExternalId
     ExtHandler->>TRK: SaveChanges(TataRekeningModel.Create(regExternalId))
@@ -555,7 +555,7 @@ Tidak ada modifikasi skema DDL fisik pada tabel yang sudah ada. Tabel `BILRG_Lab
 Implementasi fitur ini dinyatakan selesai dan memenuhi syarat arsitektural (*Architecturally Complete*) apabila seluruh kondisi berikut terverifikasi:
 
 - [ ] **AC-ARCH-01**: Tabel `BILRG_LabExternal` berhasil terbentuk di database dengan indeks performa yang sesuai dan terdaftar pada `Bilreg.SqlDb.sqlproj`.
-- [ ] **AC-ARCH-02**: Endpoint `POST /api/LabContext/LabExternalFeature` berhasil menyimpan pendaftaran pasien luar dan mengembalikan `RegExternalId` serta `ExternalMrNo` dengan format `EXT-{yyyyMM}-{00000}`.
+- [ ] **AC-ARCH-02**: Endpoint `POST /api/LabContext/LabExternalFeature` berhasil menyimpan pendaftaran pasien luar dan mengembalikan `RegExternalId` serta `ExternalMrNo` dengan format `EX-{yyyyMM}-{00000}` (15 karakter).
 - [ ] **AC-ARCH-03**: Akun penagihan pada `BILRG_TataRekening` terkonfirmasi terbentuk secara otomatis dengan `RegId = RegExternalId` segera setelah registrasi eksternal dibuat.
 - [ ] **AC-ARCH-04**: Use case `LabOrderCreateExternalPatientCmd` berhasil menerbitkan order laboratorium dengan mengaitkan `RegExternalId` dan `ExternalMrNo`.
 - [ ] **AC-ARCH-05**: Use case `LabOrderChargeCmd` berhasil memproses pembebanan tarif order pasien luar ke akun `TataRekening` tanpa melempar `KeyNotFoundException`.

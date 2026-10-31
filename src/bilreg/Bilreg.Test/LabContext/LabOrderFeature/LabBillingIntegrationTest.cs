@@ -74,7 +74,7 @@ public class LabBillingIntegrationTest
     private static LabExternalModel SampleLabExternal(string regExternalId = "LX26A14B8C") =>
         LabExternalModel.Create(
             regExternalId,
-            "EXT-202610-00001",
+            "EX-202610-00001",
             new LabExternalDemographicsType("Pasien Luar", "3201010101010001", new DateTime(1995, 5, 20), "P", "08123456789", "Alamat"),
             new LabExternalReferralInfoType(LabReferralTypeEnum.Aps, "", "", ""),
             regExternalId,
@@ -131,7 +131,7 @@ public class LabBillingIntegrationTest
     {
         var sut = CreateSut();
         var snapshot = new PatientSnapshotType(
-            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+            "LX26A14B8C", "EX-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
         var item = LabOrderTestSupport.SampleItem();
         var order = LabOrderModel.CreateExternal(
             null,
@@ -173,7 +173,7 @@ public class LabBillingIntegrationTest
     {
         var sut = CreateSut();
         var snapshot = new PatientSnapshotType(
-            "LX26A14B8C", "EXT-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
+            "LX26A14B8C", "EX-202610-00001", "Pasien Luar", new DateTime(1995, 5, 20), "P", 31);
         var item = LabOrderTestSupport.SampleItem();
         var order = LabOrderModel.CreateExternal(
             null,

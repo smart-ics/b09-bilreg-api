@@ -3,7 +3,7 @@ using MediatR;
 
 namespace Bilreg.Application.LabContext.LabOwareFeature.UseCases;
 
-public record LabOwareQueueProcessCmd(int? BatchSize, string? UserId)
+public record LabOwareQueueProcessCmd(int? BatchSize, string? UserId, int? MaxRetryCount = null)
     : IRequest<LabOwareProcessBatchResult>;
 
 public class LabOwareQueueProcessHandler : IRequestHandler<LabOwareQueueProcessCmd, LabOwareProcessBatchResult>
@@ -26,7 +26,8 @@ public class LabOwareQueueProcessHandler : IRequestHandler<LabOwareQueueProcessC
             ? LabOwareQueueProcessor.WorkerUserId
             : request.UserId;
 
-        var result = _processor.ProcessBatch(batchSize, actor);
+        var maxRetry = request.MaxRetryCount is null or < 1 ? 3 : request.MaxRetryCount.Value;
+        var result = _processor.ProcessBatch(batchSize, actor, maxRetry);
         return Task.FromResult(result);
     }
 }

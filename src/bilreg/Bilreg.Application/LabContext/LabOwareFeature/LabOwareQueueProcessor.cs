@@ -69,9 +69,9 @@ public class LabOwareQueueProcessor
             sendResult.ErrorMessage);
     }
 
-    public LabOwareProcessBatchResult ProcessBatch(int batchSize, string actorUserId)
+    public LabOwareProcessBatchResult ProcessBatch(int batchSize, string actorUserId, int maxRetryCount = 3)
     {
-        var items = _queueRepo.ListProcessable(batchSize).ToList();
+        var items = _queueRepo.ListProcessable(batchSize, maxRetryCount).ToList();
         var succeeded = 0;
         var failed = 0;
 

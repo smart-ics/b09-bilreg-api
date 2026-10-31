@@ -55,7 +55,7 @@ public class LabExternalCancelHandlerTest
 
         return LabExternalModel.Create(
             regExternalId,
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             referralInfo,
             billingAccountId,

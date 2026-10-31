@@ -28,6 +28,6 @@ public class LabOwareOutboundQueueRepo : ILabOwareOutboundQueueRepo
         return dto is null ? MayBe<LabOwareOutboundQueueModel>.None : MayBe.From(dto.ToModel());
     }
 
-    public IEnumerable<LabOwareOutboundQueueModel> ListProcessable(int batchSize)
-        => _dal.ListProcessable(batchSize).Select(x => x.ToModel()).ToList();
+    public IEnumerable<LabOwareOutboundQueueModel> ListProcessable(int batchSize, int maxRetryCount = 3)
+        => _dal.ListProcessable(batchSize, maxRetryCount).Select(x => x.ToModel()).ToList();
 }

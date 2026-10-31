@@ -37,7 +37,7 @@ public class LabExternalModelTest
 
     private static LabExternalModel CreateValidModel(
         string regExternalId = "LEX26A150001",
-        string externalMrNo = "EXT-202610-00001",
+        string externalMrNo = "EX-202610-00001",
         string billingAccountId = "LEX26A150001")
     {
         return LabExternalModel.Create(
@@ -58,14 +58,14 @@ public class LabExternalModelTest
 
         var model = LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             referral,
             "LEX26A150001",
             audit);
 
         model.RegExternalId.Should().Be("LEX26A150001");
-        model.ExternalMrNo.Should().Be("EXT-202610-00001");
+        model.ExternalMrNo.Should().Be("EX-202610-00001");
         model.Demographics.Should().Be(demographics);
         model.ReferralInfo.Should().Be(referral);
         model.BillingAccountId.Should().Be("LEX26A150001");
@@ -80,7 +80,7 @@ public class LabExternalModelTest
     {
         var model = LabExternalModel.Create(
             "LEX26A150002",
-            "EXT-202610-00002",
+            "EX-202610-00002",
             SampleDemographics(),
             SampleReferral(),
             "",
@@ -94,7 +94,7 @@ public class LabExternalModelTest
     {
         var model = LabExternalModel.Create(
             "LEX26A150003",
-            "EXT-202610-00003",
+            "EX-202610-00003",
             SampleDemographics(),
             SampleReferral(),
             "BILL-CUSTOM-99",
@@ -111,7 +111,7 @@ public class LabExternalModelTest
     {
         var act = () => LabExternalModel.Create(
             invalidId!,
-            "EXT-202610-00001",
+            "EX-202610-00001",
             SampleDemographics(),
             SampleReferral(),
             "LEX01",
@@ -142,7 +142,7 @@ public class LabExternalModelTest
     {
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             null!,
             SampleReferral(),
             "LEX01",
@@ -159,7 +159,7 @@ public class LabExternalModelTest
         var demographics = SampleDemographics(name: invalidName);
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             SampleReferral(),
             "LEX01",
@@ -176,7 +176,7 @@ public class LabExternalModelTest
         var demographics = SampleDemographics(gender: invalidGender);
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             SampleReferral(),
             "LEX01",
@@ -191,7 +191,7 @@ public class LabExternalModelTest
         var demographics = SampleDemographics(birthDate: default(DateTime));
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             SampleReferral(),
             "LEX01",
@@ -206,7 +206,7 @@ public class LabExternalModelTest
         var demographics = SampleDemographics(birthDate: LabExternalModel.EmptyDate);
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             SampleReferral(),
             "LEX01",
@@ -221,7 +221,7 @@ public class LabExternalModelTest
         var demographics = SampleDemographics(birthDate: DateTime.Today.AddDays(5));
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             demographics,
             SampleReferral(),
             "LEX01",
@@ -235,7 +235,7 @@ public class LabExternalModelTest
     {
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             SampleDemographics(),
             null!,
             "LEX01",
@@ -249,7 +249,7 @@ public class LabExternalModelTest
     {
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             SampleDemographics(),
             SampleReferral(),
             "LEX01",
@@ -266,7 +266,7 @@ public class LabExternalModelTest
     {
         var act = () => LabExternalModel.Create(
             "LEX26A150001",
-            "EXT-202610-00001",
+            "EX-202610-00001",
             SampleDemographics(),
             SampleReferral(),
             "LEX01",
@@ -301,7 +301,7 @@ public class LabExternalModelTest
 
         var loaded = LabExternalModel.Load(
             "LEX26A150099",
-            "EXT-202610-00099",
+            "EX-202610-00099",
             demographics,
             referral,
             "LEX26A150099",
@@ -310,7 +310,7 @@ public class LabExternalModelTest
             audit);
 
         loaded.RegExternalId.Should().Be("LEX26A150099");
-        loaded.ExternalMrNo.Should().Be("EXT-202610-00099");
+        loaded.ExternalMrNo.Should().Be("EX-202610-00099");
         loaded.Demographics.Should().Be(demographics);
         loaded.ReferralInfo.Should().Be(referral);
         loaded.BillingAccountId.Should().Be("LEX26A150099");

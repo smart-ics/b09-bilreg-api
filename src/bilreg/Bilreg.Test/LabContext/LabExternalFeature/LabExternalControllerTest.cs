@@ -102,7 +102,7 @@ public class LabExternalControllerTest
             null,
             "Cek Darah Lengkap");
 
-        var expectedResponse = new LabExternalCreateResponse("LEX26A14B8C1D", "EXT-202610-00001", "LEX26A14B8C1D");
+        var expectedResponse = new LabExternalCreateResponse("LEX26A14B8C1D", "EX-202610-00001", "LEX26A14B8C1D");
 
         _mediatorMock
             .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
@@ -257,7 +257,7 @@ public class LabExternalControllerTest
         const string regExternalId = "LEX26A14B8C1D";
         var expectedResponse = new LabExternalDetailResponse(
             regExternalId,
-            "EXT-202610-00001",
+            "EX-202610-00001",
             "Budi Santoso",
             "3171012345670001",
             new DateTime(1990, 5, 20),
@@ -333,7 +333,7 @@ public class LabExternalControllerTest
         {
             new(
                 "LEX26A14B8C1D",
-                "EXT-202610-00001",
+                "EX-202610-00001",
                 "Budi Santoso",
                 "3171012345670001",
                 new DateTime(1990, 5, 20),

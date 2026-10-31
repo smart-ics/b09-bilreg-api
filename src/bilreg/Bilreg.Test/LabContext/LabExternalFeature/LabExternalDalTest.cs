@@ -13,7 +13,7 @@ public class LabExternalDalTest
 {
     private readonly LabExternalDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static LabExternalDto FakerDto(string regExternalId = "LEX26A14B8C1D", string externalMrNo = "EXT-202610-00001")
+    private static LabExternalDto FakerDto(string regExternalId = "LEX26A14B8C1D", string externalMrNo = "EX-202610-00001")
         => new(
             RegExternalId: regExternalId,
             ExternalMrNo: externalMrNo,
@@ -76,7 +76,7 @@ public class LabExternalDalTest
 
         var model = LabExternalModel.Create(
             "LEX26A14B8C99",
-            "EXT-202610-00099",
+            "EX-202610-00099",
             demographics,
             referral,
             "LEX26A14B8C99",
@@ -88,7 +88,7 @@ public class LabExternalDalTest
 
         // Assert
         dto.RegExternalId.Should().Be("LEX26A14B8C99");
-        dto.ExternalMrNo.Should().Be("EXT-202610-00099");
+        dto.ExternalMrNo.Should().Be("EX-202610-00099");
         dto.PatientName.Should().Be("Jane Smith");
         dto.Nik.Should().Be("3172021122330002");
         dto.BirthDate.Should().Be(new DateTime(1992, 7, 24));
