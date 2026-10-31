@@ -35,10 +35,12 @@ public class TindakanDal : ITindakanDal
             INSERT INTO BILRG_Tindakan(
                 TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName, LayananId, LayananName, 
                 KelasId, KelasName, TipeTarifId, TipeTarifName, TarifId, TarifName, Total, 
+                IsDiskonDokter, DiskonDokter,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
                 @TindakanId, @TindakanDate, @OrderTdkId, @RegId, @PasienId, @PasienName, @LayananId, @LayananName, 
                 @KelasId, @KelasName, @TipeTarifId, @TipeTarifName, @TarifId, @TarifName, @Total, 
+                @IsDiskonDokter, @DiskonDokter,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -60,6 +62,8 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@IsDiskonDokter", dto.IsDiskonDokter, SqlDbType.Bit);
+        dp.AddParam("@DiskonDokter", dto.DiskonDokter, SqlDbType.Decimal);
         
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
@@ -92,6 +96,8 @@ public class TindakanDal : ITindakanDal
               TarifId = @TarifId, 
               TarifName = @TarifName, 
               Total = @Total, 
+              IsDiskonDokter = @IsDiskonDokter,
+              DiskonDokter = @DiskonDokter,
               CrtUser = @CrtUser, 
               CrtDate = @CrtDate,
               UpdUser = @UpdUser, 
@@ -120,6 +126,8 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@IsDiskonDokter", dto.IsDiskonDokter, SqlDbType.Bit);
+        dp.AddParam("@DiskonDokter", dto.DiskonDokter, SqlDbType.Decimal);
         
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
@@ -157,6 +165,7 @@ public class TindakanDal : ITindakanDal
                aa.KelasId, aa.KelasName, aa.TipeTarifId, aa.TipeTarifName, aa.TarifId, aa.TarifName, 
                ISNULL((SELECT TOP 1 CAST(tk.Qty AS INT) FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId), 1) AS Qty,
                aa.Total, 
+               aa.IsDiskonDokter, aa.DiskonDokter,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
            FROM
                BILRG_Tindakan aa
@@ -181,6 +190,7 @@ public class TindakanDal : ITindakanDal
                aa.KelasId, aa.KelasName, aa.TipeTarifId, aa.TipeTarifName, aa.TarifId, aa.TarifName, 
                ISNULL((SELECT TOP 1 CAST(tk.Qty AS INT) FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId), 1) AS Qty,
                aa.Total, 
+               aa.IsDiskonDokter, aa.DiskonDokter,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
            FROM
                BILRG_Tindakan aa

@@ -8,7 +8,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.BedIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Bilreg.Infrastructure.Shared.AuditLogFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -23,7 +23,7 @@ public class IgdVisitVoidHandlerTest
     private readonly Mock<IPakaiBedIgdRepo> _pakaiRepo = new();
     private readonly Mock<ITindakanIgdRepo> _tindakanRepo = new();
     private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
-    private readonly Mock<AuditLogRepo> _auditLogRepo = new();
+    private readonly Mock<IAuditRepo> _auditLogRepo = new();
     private readonly IgdVisitVoidHandler _sut;
 
     public IgdVisitVoidHandlerTest()
