@@ -23,7 +23,10 @@ using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
@@ -589,6 +592,295 @@ public class AdmissionRegistrationOrchestratorTest
             Times.Once);
     }
 
+    #region SOP Rawat Inap - Jenis Inap & Relasi Perinatal-Obstetri Tests
+
+    private static PasienModel BabyPasien(
+        string pasienId = "BABY01",
+        DateOnly? tglLahir = null,
+        string mrIbu = "MOM01")
+    {
+        var birthDate = tglLahir ?? DateOnly.FromDateTime(TestTglJamProvider.Instance.Now).AddDays(-5);
+        var person = new PersonInfoType(
+            "Bayi Ny. Ibu", birthDate, "L",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        return new PasienModel(
+            pasienId, person, "Bayi", "Pekalongan",
+            GolDarahType.Default, "-", KtpType.Default,
+            KelurahanType.Default, IdentitasType.Default,
+            [], PasienKeluargaType.Default,
+            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default,
+            PendidikanDkType.Default, PekerjaanDkType.Default,
+            DateTime.MinValue, false, mrIbu: mrIbu);
+    }
+
+    private static PasienModel AdultPasien(
+        string pasienId = "ADULT01",
+        DateOnly? tglLahir = null)
+    {
+        var birthDate = tglLahir ?? new DateOnly(1990, 5, 20);
+        var person = new PersonInfoType(
+            "Pasien Dewasa", birthDate, "L",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        return new PasienModel(
+            pasienId, person, "Dewasa", "Pekalongan",
+            GolDarahType.Default, "-", KtpType.Default,
+            KelurahanType.Default, IdentitasType.Default,
+            [], PasienKeluargaType.Default,
+            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default,
+            PendidikanDkType.Default, PekerjaanDkType.Default,
+            DateTime.MinValue, false);
+    }
+
+    private static RegDto MotherRegDto(
+        string regId = "REG-IBU-01",
+        string mrIbu = "MOM01",
+        string jenisInap = "2",
+        string tglKeluar = "3000-01-01",
+        string tglVoid = "3000-01-01") =>
+        new(
+            regId, "2026-10-25", "08:00:00", "user1",
+            tglKeluar, "00:00:00", "-",
+            "3000-01-01", "00:00:00", "-",
+            tglVoid, "00:00:00", "-",
+            "1", mrIbu, "00000", "1",
+            "1", "-", "D01",
+            "RI1", "K01", "-", "-",
+            "-", "2026-10-25 08:00:00", "3000-01-01 00:00:00", 0,
+            jenisInap, "",
+            "Ibu Pasien", "1995-05-10", "P",
+            "Umum", "Kelas 1", "Datang Sendiri",
+            "-", "Dr. Medis", "Rawat Inap", "Karcis");
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WithValidExplicitMotherReg_WhenProcessed_ThenSetsPerinatalAndMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")))
+            .Returns(MotherRegDto("REG-IBU-01", jenisInap: "2"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "1", RegIbuId = "REG-IBU-01" });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
+        harness.SavedReg.RegIbu.Should().Be("REG-IBU-01");
+        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WithoutPayloadMotherReg_WhenActiveMotherRegResolvedFromMrIbu_ThenSetsPerinatalAndMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien(mrIbu: "MOM-AUTO");
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        var motherReg = MotherRegDto("REG-AUTO-99", "MOM-AUTO", jenisInap: "2");
+        harness.RegDal.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")))
+            .Returns([motherReg]);
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")))
+            .Returns(motherReg);
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = null, RegIbuId = null });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
+        harness.SavedReg.RegIbu.Should().Be("REG-AUTO-99");
+        harness.RegDal.Verify(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")), Times.Once);
+        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenNoMotherRegInPayloadAndNoActiveMotherRegFound_ThenThrowsInvalidOperationException()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien(mrIbu: "");
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = null });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Pasien perinatal wajib menyertakan Register Ibu yang valid.");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenMotherRegNotFoundInDatabase_ThenThrowsInvalidOperationException()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "NOT-FOUND")))
+            .Returns((RegDto?)null);
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "NOT-FOUND" });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Register Ibu 'NOT-FOUND' tidak ditemukan.");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenMotherRegIsVoided_ThenThrowsInvalidOperationException()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-VOID")))
+            .Returns(MotherRegDto("REG-VOID", tglVoid: "2026-10-26"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "REG-VOID" });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Register Ibu 'REG-VOID' sudah dibatalkan (void).");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenMotherRegIsAlreadyDischarged_ThenThrowsInvalidOperationException()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-PULANG")))
+            .Returns(MotherRegDto("REG-PULANG", tglKeluar: "2026-10-26"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "REG-PULANG" });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Register Ibu 'REG-PULANG' sudah keluar/pulang.");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenMotherRegIsNotObstetri_ThenThrowsSpecificJenisInapIbuInvalidException()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-UMUM")))
+            .Returns(MotherRegDto("REG-UMUM", jenisInap: "1"));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "REG-UMUM" });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("JENIS INAP IBU invalid");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAdultPatient_WhenObstetriRequested_ThenPersistsObstetriAndEmptyMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var adult = AdultPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(adult));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "2", RegIbuId = "SHOULD_BE_IGNORED" });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("2");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAdultPatient_WhenNoJenisInapRequested_ThenDefaultsToUmumAndEmptyMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var adult = AdultPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(adult));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = null, RegIbuId = null });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GivenAdultPatient_WhenPerinatalRequestedInPayload_ThenForcesUmumAndEmptyMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var adult = AdultPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(adult));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "3", RegIbuId = "MOM-IGNORED" });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_InReservationFlow_WithValidMotherReg_ThenSetsPerinatalAndMotherReg()
+    {
+        var harness = CreateReservationHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")))
+            .Returns(MotherRegDto("REG-IBU-RES", jenisInap: "2"));
+
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "REG-IBU-RES" });
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")), Times.Once);
+    }
+
+    #endregion
+
     private static OpnameHarness CreateOpnameHarness(
         IAdmisiEventPublisher? customPublisher = null,
         Mock<IPasienTrackerInpatientCoordinator>? customTrackerCoordinator = null)
@@ -663,6 +955,7 @@ public class AdmissionRegistrationOrchestratorTest
         opnameRepo.Setup(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()))
             .Callback<OpnameRequestModel>(x => savedOpname = x);
 
+        var regDal = new Mock<IRegDal>();
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
         var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
@@ -672,11 +965,13 @@ public class AdmissionRegistrationOrchestratorTest
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
-            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object);
+            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object,
+            regDal.Object);
 
         return new OpnameHarness(
             sut, opname, publisher, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
             auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo, trackerCoordinator,
+            pasienRepo, regDal,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname,
             () => savedWaitingList);
     }
@@ -754,6 +1049,7 @@ public class AdmissionRegistrationOrchestratorTest
             .Callback<RegInapModel>(x => savedRegInap = x);
         regAktifRepo.Setup(x => x.SaveChanges(It.IsAny<RegAktifModel>()));
 
+        var regDal = new Mock<IRegDal>();
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
         var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
@@ -763,11 +1059,12 @@ public class AdmissionRegistrationOrchestratorTest
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
-            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object);
+            effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object,
+            regDal.Object);
 
         return new ReservationHarness(
             sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, auditRepo,
-            ward, waitingListRepo, trackerCoordinator, () => savedRegInap, () => savedWaitingList);
+            ward, waitingListRepo, trackerCoordinator, pasienRepo, regDal, () => savedRegInap, () => savedWaitingList);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -794,6 +1091,8 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IWardAccommodationGateway> wardGateway,
         Mock<IWaitingListRepo> waitingListRepo,
         Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
+        Mock<IPasienRepo> pasienRepo,
+        Mock<IRegDal> regDal,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -818,6 +1117,8 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
+        public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
+        public Mock<IRegDal> RegDal { get; } = regDal;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();
@@ -837,6 +1138,8 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IWardAccommodationGateway> wardGateway,
         Mock<IWaitingListRepo> waitingListRepo,
         Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
+        Mock<IPasienRepo> pasienRepo,
+        Mock<IRegDal> regDal,
         Func<RegInapModel?> savedRegInap,
         Func<WaitingListModel?> savedWaitingList)
     {
@@ -850,6 +1153,8 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IWardAccommodationGateway> WardGateway { get; } = wardGateway;
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
+        public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
+        public Mock<IRegDal> RegDal { get; } = regDal;
         public RegInapModel? SavedRegInap => savedRegInap();
         public WaitingListModel? SavedWaitingList => savedWaitingList();
     }

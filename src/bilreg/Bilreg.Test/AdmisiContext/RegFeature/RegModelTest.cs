@@ -94,6 +94,29 @@ public class RegModelTest
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
     }
 
+    [Fact]
+    public void GivenRegistration_WhenInitializedWithJenisInapAndRegIbu_ThenPropertiesHoldExpectedValues()
+    {
+        var jenisInap = new JenisInapType("2", "Obstetri");
+        var reg = new RegModel(
+            "RG00000003", RegDate,
+            new AuditInfoType("tester", new DateTime(2026, 6, 14, 8, 0, 0)),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegInap, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(), RegEligibilityType.Default, [],
+            jenisInap: jenisInap, regIbu: "REG-IBU-999");
+
+        reg.JenisInap.Should().Be(jenisInap);
+        reg.RegIbu.Should().Be("REG-IBU-999");
+
+        var newJenisInap = new JenisInapType("3", "Perinatal");
+        reg.SetJenisInap(newJenisInap, "REG-IBU-888");
+        reg.JenisInap.Should().Be(newJenisInap);
+        reg.RegIbu.Should().Be("REG-IBU-888");
+    }
+
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")
     {
         var layanan = LayananType.Default with

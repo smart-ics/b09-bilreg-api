@@ -140,4 +140,58 @@ public class PasienModelTest
         sut.ReActive();
         sut.IsAktif.Should().BeTrue();
     }
+
+    [Fact]
+    public void GivenDefaultPasien_WhenCreated_ThenMrIbuIsEmpty()
+    {
+        // Act
+        var sut = PasienModel.Default;
+
+        // Assert
+        sut.MrIbu.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GivenPasienWithMrIbu_WhenConstructed_ThenMrIbuIsPopulated()
+    {
+        // Act
+        var sut = new PasienModel(
+            pasienId: "00000001",
+            person: PersonInfoType.Default,
+            nickName: "Bayi Ny A",
+            tempatLahir: "Jakarta",
+            golDarah: GolDarahType.Default,
+            namaIbuKandung: "Ny A",
+            ktp: KtpType.Default,
+            kelurahan: KelurahanType.Default,
+            kartuKeluarga: IdentitasType.Default,
+            listContact: new List<ContactType>(),
+            keluarga: PasienKeluargaType.Default,
+            agama: AgamaType.Default,
+            suku: SukuType.Default,
+            statusKawinDk: StatusKawinDkType.Default,
+            pendidikanDk: PendidikanDkType.Default,
+            pekerjaanDk: PekerjaanDkType.Default,
+            tglMedRec: new DateTime(2026, 10, 1),
+            isAktif: true,
+            mrIbu: "00009999"
+        );
+
+        // Assert
+        sut.MrIbu.Should().Be("00009999");
+    }
+
+    [Fact]
+    public void GivenPasien_WhenSetMrIbuCalled_ThenMrIbuUpdated()
+    {
+        // Arrange
+        var sut = CreateSamplePasien("00000001");
+        sut.MrIbu.Should().BeEmpty();
+
+        // Act
+        sut.SetMrIbu("00008888");
+
+        // Assert
+        sut.MrIbu.Should().Be("00008888");
+    }
 }

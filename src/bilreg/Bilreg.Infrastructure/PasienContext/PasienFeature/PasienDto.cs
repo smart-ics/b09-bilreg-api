@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
@@ -46,6 +46,7 @@ public record PasienDto(
     //
     string fd_tgl_mr,
     bool fb_aktif,
+    string fs_mr_ibu,
     //
     string fs_nm_kelurahan,
     string fs_kd_kecamatan,
@@ -93,7 +94,7 @@ public record PasienDto(
             model.Agama.AgamaId, model.Suku.SukuId, model.StatusKawin.StatusKawinDkId,
             model.PendidikanDk.PendidikanDkId, model.PekerjaanDk.PekerjaanDkId,
             //
-            model.TglMedRec.ToString("yyyy-MM-dd"), model.IsAktif,
+            model.TglMedRec.ToString("yyyy-MM-dd"), model.IsAktif, model.MrIbu,
             //
             kel.KelurahanName, kel.Kecamatan.KecamatanId, kel.Kecamatan.KecamatanName,
             kel.Kabupaten.KabupatenId, kel.Kabupaten.KabupatenName,

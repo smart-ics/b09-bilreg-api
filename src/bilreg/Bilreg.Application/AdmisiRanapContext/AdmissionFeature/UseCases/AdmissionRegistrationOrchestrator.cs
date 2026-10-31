@@ -39,7 +39,9 @@ public record AdmissionRegistrationData(
     string ProsedurMasukInapId,
     string? RujukanId,
     string DokterId,
-    string PesertaJaminanId) :
+    string PesertaJaminanId,
+    string? JenisInapId = null,
+    string? RegIbuId = null) :
     ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey;
 
 public interface IAdmissionRegistrationOrchestrator
@@ -72,6 +74,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IRegRepo _regRepo;
     private readonly IRegInapRepo _regInapRepo;
     private readonly IRegAktifRepo _regAktifRepo;
+    private readonly IRegDal _regDal;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmisiEventPublisher _publisher;
@@ -102,6 +105,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IAdmisiEventPublisher publisher,
         IWaitingListRepo waitingListRepo,
         IPasienTrackerInpatientCoordinator trackerCoordinator,
+        IRegDal? regDal = null,
         ILogger<AdmissionRegistrationOrchestrator>? logger = null)
     {
         _admissionRepo = admissionRepo;
@@ -126,6 +130,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _publisher = publisher;
         _waitingListRepo = waitingListRepo;
         _trackerCoordinator = trackerCoordinator ?? throw new ArgumentNullException(nameof(trackerCoordinator));
+        _regDal = regDal!;
         _logger = logger ?? NullLogger<AdmissionRegistrationOrchestrator>.Instance;
     }
 
@@ -338,8 +343,65 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var layanan = ResolveLayananFromBangsal(admission.Bangsal.BangsalId);
         var polis = ResolvePolis(pasien, tipeJaminan);
 
+        var (jenisInap, regIbu) = ResolveJenisInapAndRegIbu(pasien, admission, data);
+
         return _regFactory.CreateRegInapFromAdmission(admission, pasien, tipeJaminan, polis,
-            caraMasuk, rujukan, dokter, layanan, data.PesertaJaminanId);
+            caraMasuk, rujukan, dokter, layanan, data.PesertaJaminanId, jenisInap, regIbu);
+    }
+
+
+    private (JenisInapType JenisInap, string RegIbu) ResolveJenisInapAndRegIbu(
+        PasienModel pasien,
+        AdmissionModel admission,
+        AdmissionRegistrationData data)
+    {
+        var regDate = DateOnly.FromDateTime(admission.AuditTrail.Created.Timestamp);
+        var isPerinatal = InpatientAgePolicy.IsPerinatalAge(pasien.Person.TglLahir, regDate);
+
+        if (isPerinatal)
+        {
+            var regIbuId = data.RegIbuId;
+            if (string.IsNullOrWhiteSpace(regIbuId))
+            {
+                var mrIbu = pasien.MrIbu;
+                if (!string.IsNullOrWhiteSpace(mrIbu))
+                {
+                    var regsIbu = _regDal?.ListData(PasienModel.Key(mrIbu)) ?? [];
+                    var activeMotherReg = regsIbu
+                        .Where(r => r.fd_tgl_void == "3000-01-01" && r.fd_tgl_keluar == "3000-01-01")
+                        .OrderByDescending(r => r.fd_tgl_masuk)
+                        .ThenByDescending(r => r.fs_jam_masuk)
+                        .FirstOrDefault();
+
+                    if (activeMotherReg is not null)
+                    {
+                        regIbuId = activeMotherReg.fs_kd_reg;
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(regIbuId))
+                throw new InvalidOperationException("Pasien perinatal wajib menyertakan Register Ibu yang valid.");
+
+            var motherReg = _regDal?.GetData(RegModel.Key(regIbuId))
+                ?? throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak ditemukan.");
+
+            if (motherReg.fd_tgl_void != "3000-01-01")
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah dibatalkan (void).");
+
+            if (motherReg.fd_tgl_keluar != "3000-01-01")
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah keluar/pulang.");
+
+            if (motherReg.fs_kd_jenis_inap != InpatientAgePolicy.JENIS_INAP_OBSTETRI)
+                throw new InvalidOperationException("JENIS INAP IBU invalid");
+
+            return (JenisInapType.Perinatal, regIbuId);
+        }
+
+        var jenisInapId = InpatientAgePolicy.ResolveJenisInap(
+            pasien.Person.TglLahir, regDate, data.JenisInapId);
+        var jenisInap = JenisInapType.FromId(jenisInapId);
+        return (jenisInap, string.Empty);
     }
 
     private LayananType ResolveLayananFromBangsal(string bangsalId)

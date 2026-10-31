@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -55,6 +56,8 @@ public class RegRepoTest
             {
                 reg.KelasDk.KelasDkId.Should().Be("1");
                 reg.Bangsal.BangsalId.Should().Be("B1");
+                reg.JenisInap.JenisInapId.Should().Be("1");
+                reg.RegIbu.Should().Be("REG-IBU");
             },
             onNone: () => Assert.Fail("Expected RegModel"));
     }
@@ -223,6 +226,8 @@ public class RegRepoTest
             "2026-07-07 08:00:00",
             "3000-01-01 00:00:00",
             0,
+            "1",
+            "REG-IBU",
             "Pasien Test",
             "1990-01-01",
             "L",

@@ -1,4 +1,4 @@
-﻿CREATE TABLE tc_mr(
+CREATE TABLE tc_mr(
     fs_mr VARCHAR(15) NOT NULL CONSTRAINT DF_tc_mr_fs_mr DEFAULT(''),
     fs_nm_pasien VARCHAR(40) NOT NULL CONSTRAINT DF_tc_mr_fs_nm_pasien DEFAULT(''),
     fd_tgl_lahir VARCHAR(10) NOT NULL CONSTRAINT DF_tc_mr_td_tgl_lahir DEFAULT('3000-01-01'),
@@ -7,6 +7,7 @@
     fs_nm_alias VARCHAR(20) NOT NULL CONSTRAINT DF_tc_mr_fs_nm_alias DEFAULT(''),
     fs_temp_lahir VARCHAR(20) NOT NULL CONSTRAINT DF_tc_mr_fs_temp_lahir DEFAULT(''),
     fs_nm_ibu_kandung VARCHAR(40) NOT NULL CONSTRAINT DF_tc_mr_fs_nm_ibu_kandung DEFAULT(''),
+    fs_mr_ibu VARCHAR(15) NOT NULL CONSTRAINT DF_tc_mr_fs_mr_ibu DEFAULT(''),
     fs_gol_darah VARCHAR(3) NOT NULL CONSTRAINT DF_tc_mr_fs_gol_darah DEFAULT(''),
     
     fs_alm_pasien VARCHAR(40) NOT NULL CONSTRAINT DF_tc_mr_fs_alm_pasien DEFAULT(''),

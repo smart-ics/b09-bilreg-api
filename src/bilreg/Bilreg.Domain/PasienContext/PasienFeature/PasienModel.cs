@@ -22,7 +22,7 @@ public class PasienModel : IPasienKey
         AgamaType agama, SukuType suku, StatusKawinDkType statusKawinDk, 
         PendidikanDkType pendidikanDk, PekerjaanDkType pekerjaanDk, 
         //
-        DateTime tglMedRec, bool isAktif)
+        DateTime tglMedRec, bool isAktif, string mrIbu = "")
     {
         PasienId = pasienId;
         Person = person;
@@ -30,6 +30,7 @@ public class PasienModel : IPasienKey
         TempatLahir = tempatLahir;
         GolDarah = golDarah;
         NamaIbuKandung = namaIbuKandung;
+        MrIbu = mrIbu ?? string.Empty;
         
         Ktp = ktp;
         Kelurahan = kelurahan;
@@ -74,6 +75,7 @@ public class PasienModel : IPasienKey
     public string TempatLahir { get; private set; }
     public GolDarahType GolDarah { get; private set; }
     public string NamaIbuKandung { get; private set; }
+    public string MrIbu { get; private set; }
     
     //      administrative info
     public KtpType Ktp { get; private set; }
@@ -260,6 +262,11 @@ public class PasienModel : IPasienKey
     {
         PasienSaset ??= PasienSasetModel.Default(PasienId);
         PasienSaset.ApproveUpload(approvedAt);
+    }
+
+    public void SetMrIbu(string mrIbu)
+    {
+        MrIbu = mrIbu ?? string.Empty;
     }
     
     #endregion

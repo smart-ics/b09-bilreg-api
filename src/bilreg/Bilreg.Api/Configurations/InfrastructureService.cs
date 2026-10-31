@@ -162,6 +162,7 @@ public static class InfrastructureService
             .AddScoped<INilaiTarifRepo, NilaiTarifRepo>()
             .AddScoped<INilaiTarifDal, NilaiTarifDal>()
             .AddScoped<INilaiTarifKompDal, NilaiTarifKompDal>()
+            .AddScoped<IRegDal, RegDal>()
             .AddScoped<IRegRepo, RegRepo>()
             .AddScoped<ITarifOperationalStateRepo, TarifOperationalStateRepo>()
             .AddScoped<ITarifOperationalStateDal, TarifOperationalStateDal>()
