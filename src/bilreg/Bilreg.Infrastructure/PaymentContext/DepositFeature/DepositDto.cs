@@ -35,6 +35,7 @@ public record DepositDto(
     decimal fn_kas = 0,
     decimal fn_bank = 0,
     decimal fn_kartu_kredit = 0,
+    decimal fn_total_bayar = 0,
     string fs_kd_petugas_kasir = "",
     string fs_terima_dari = "")
 {
@@ -67,11 +68,12 @@ public record DepositDto(
             fs_mr: string.Empty,
             fs_nm_pasien: string.Empty,
             fs_nm_layanan: string.Empty,
-            fs_no_kwitansi: string.Empty,
+            fs_no_kwitansi: model.NoKwitansi,
             fn_kas: 0,
             fn_bank: 0,
             fn_kartu_kredit: 0,
-            fs_kd_petugas_kasir: string.Empty,
+            fn_total_bayar: model.TotalBayar,
+            fs_kd_petugas_kasir: model.PetugasKasir,
             fs_terima_dari: string.Empty);
 
     public DepositModel ToModel()
@@ -91,6 +93,8 @@ public record DepositDto(
         if (tglVoid != "3000-01-01" && !string.IsNullOrEmpty(tglJamVoid))
             auditTrail.Batal(fs_kd_petugas_void, DateTime.Parse(tglJamVoid));
 
+        var totalBayar = fn_total_bayar > 0 ? fn_total_bayar : (fn_kas + fn_bank + fn_kartu_kredit);
+
         return new DepositModel(
             depositId: fs_kd_trs,
             depositDate: string.IsNullOrWhiteSpace(fd_tgl_jam_trs) ? default : DateTime.Parse(fd_tgl_jam_trs),
@@ -98,6 +102,9 @@ public record DepositDto(
             layanan: new LayananReff(fs_kd_layanan, fs_nm_layanan ?? string.Empty),
             ketarangan: fs_keterangan,
             nilaiDeposit: fn_nilai_deposit,
-            audit: auditTrail);
+            audit: auditTrail,
+            noKwitansi: fs_no_kwitansi ?? string.Empty,
+            petugasKasir: fs_kd_petugas_kasir ?? string.Empty,
+            totalBayar: totalBayar);
     }
 }

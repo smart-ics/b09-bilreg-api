@@ -5,6 +5,7 @@ public record TataRekeningPatientContextDto(
     string PasienName,
     string Gender,
     string TglLahir,
+    string LayananId,
     string LayananName,
     string JenisReg,
     string TipeJaminanId,

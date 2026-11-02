@@ -119,6 +119,7 @@ public record TataRekeningModel : IRegKey
         ClearFinancialResponsibilityAllocation();
         ResetFinancialVerification();
         SettlementInitiated = false;
+        FinalizationInfo = TataRekeningFinalizationType.Default;
         Status = TataRekeningStatusEnum.Opened;
     }
 
@@ -360,17 +361,30 @@ public record TataRekeningModel : IRegKey
 
     private void ApplyRehydrationInference()
     {
-        if (_listTrsBill.Any(bill => bill.ListFinalization.Any()) ||
-            Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+        var hasActiveFinalization = Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas;
+
+        if (hasActiveFinalization)
         {
             IsFinancialResponsibilityAllocated = true;
+            if (FinancialVerificationStatus == FinancialVerificationStatusEnum.NotVerified)
+            {
+                FinancialVerificationStatus = FinancialVerificationStatusEnum.Valid;
+            }
         }
-
-        if (FinancialVerificationStatus == FinancialVerificationStatusEnum.NotVerified &&
-            Status is TataRekeningStatusEnum.Closed or TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas &&
-            (IsFinancialResponsibilityAllocated || Status >= TataRekeningStatusEnum.Finalized))
+        else
         {
-            FinancialVerificationStatus = FinancialVerificationStatusEnum.Valid;
+            if (Status == TataRekeningStatusEnum.Opened)
+            {
+                IsFinancialResponsibilityAllocated = false;
+                FinancialVerificationStatus = FinancialVerificationStatusEnum.NotVerified;
+            }
+            else if (Status == TataRekeningStatusEnum.Closed)
+            {
+                if (_listTataRekeningPayment.Count == 0)
+                {
+                    IsFinancialResponsibilityAllocated = false;
+                }
+            }
         }
     }
 

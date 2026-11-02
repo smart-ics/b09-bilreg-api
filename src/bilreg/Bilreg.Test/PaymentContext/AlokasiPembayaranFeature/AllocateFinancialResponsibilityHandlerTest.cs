@@ -128,6 +128,43 @@ public class AllocateFinancialResponsibilityHandlerTest
         _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("BYKAS")]
+    [InlineData("-")]
+    public async Task GivenClosedAndVerifiedTataRekening_WhenAllocateCashPaymentWithEmptyOrByKasCoaId_ThenFallsBackTo1499901AndPersists(string dummyCoaId)
+    {
+        // Arrange
+        var bill = CreateBill("BILL-01", RegId, 100_000m, BillModulGroup.Jasa);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYKAS", "KAS", false, 100_000m, 0m, dummyCoaId, "KAS")
+        };
+
+        var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
+
+        _tataRekeningRepo.Verify(r => r.SaveChanges(It.Is<TataRekeningModel>(m =>
+            m.ListPayment.Any(p =>
+                p.Payment.PaymentId == "BYKAS" &&
+                p.Coa.CoaId == "1499901" &&
+                p.Coa.CoaName == "Rekening Piutang Kasir Perantara"))), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(bill), Times.Once);
+        _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
+    }
+
     [Fact]
     public async Task GivenClosedAndVerifiedTataRekening_WhenAllocateWithValidInsuranceAndCash_ThenSucceeds()
     {

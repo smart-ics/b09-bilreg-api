@@ -214,4 +214,28 @@ public class DepositSaldoGetHandlerTest
         result.SaldoAktif.Should().Be(500_000m);
         result.Status.Should().Be("Aktif");
     }
+
+    [Fact]
+    public async Task GivenUnpaidDepositOrderNotCalculatedInSaldo_WhenHandle_ThenSaldoAktifReflectsOnlyPaidKasir()
+    {
+        // Arrange: Sampel RGA633F9GS dengan setoran kasir terbayar DP0063855A Rp 500.000
+        // dan order belum dibayar DPA8D5SO7A Rp 100.000 yang tidak dihitung pada SaldoAktif
+        var regId = "RGA633F9GS";
+        var qry = new DepositSaldoGetQry(regId);
+        _depositRepoMock.Setup(x => x.GetSaldo(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns(new DepositSaldoModel(regId, 500_000m, 0m, 500_000m));
+        _depositRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns([CreateFakeDeposit("DP0063855A", regId, 500_000m)]);
+
+        // Act
+        var result = await _sut.Handle(qry, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.RegId.Should().Be(regId);
+        result.TotalSetoran.Should().Be(500_000m);
+        result.TotalTerpakai.Should().Be(0m);
+        result.SaldoAktif.Should().Be(500_000m);
+        result.Status.Should().Be("Aktif");
+    }
 }

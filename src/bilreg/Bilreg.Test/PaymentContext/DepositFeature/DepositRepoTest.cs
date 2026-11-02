@@ -220,4 +220,34 @@ public class DepositRepoTest
         result.TotalTerpakai.Should().Be(0);
         result.SaldoAktif.Should().Be(0);
     }
+
+    [Fact]
+    public void GivenUnpaidDepositOrder_WhenGetSaldo_ThenOnlyPaidKasirDepositContributesToSaldoAktif()
+    {
+        // Arrange: Sampel RGA633F9GS dengan setoran kasir terbayar DP0063855A (Rp 500.000)
+        // dan order deposit belum terbayar kasir DPA8D5SO7A (Rp 100.000).
+        // DAL yang telah diperketat hanya mengembalikan Rp 500.000 untuk TotalSetoran dan SaldoAktif.
+        var regKeyMock = new Mock<IRegKey>();
+        regKeyMock.Setup(k => k.RegId).Returns("RGA633F9GS");
+
+        var saldoDto = new DepositSaldoDto(
+            RegId: "RGA633F9GS",
+            TotalSetoran: 500_000m,
+            TotalTerpakai: 0m,
+            SaldoAktif: 500_000m);
+
+        _depositDalMock
+            .Setup(x => x.GetSaldo(regKeyMock.Object))
+            .Returns(saldoDto);
+
+        // Act
+        var result = _sut.GetSaldo(regKeyMock.Object);
+
+        // Assert: SaldoAktif hanya Rp 500.000 (tidak menjadi Rp 600.000)
+        result.Should().NotBeNull();
+        result.RegId.Should().Be("RGA633F9GS");
+        result.TotalSetoran.Should().Be(500_000m);
+        result.TotalTerpakai.Should().Be(0m);
+        result.SaldoAktif.Should().Be(500_000m);
+    }
 }

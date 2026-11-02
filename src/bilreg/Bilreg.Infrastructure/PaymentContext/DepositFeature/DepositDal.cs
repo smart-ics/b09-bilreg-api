@@ -34,7 +34,7 @@ public class DepositDal : IDepositDal
                 fs_kd_trs, fd_tgl_trs, fs_jam_trs, fd_tgl_jam_trs,
                 fs_kd_petugas, fs_kd_reg, fs_kd_layanan, fs_no_kwitansi, fs_keterangan,
                 fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                fn_kas, fn_bank, fn_kartu_kredit, fs_kd_petugas_kasir, fs_terima_dari,
+                fn_kas, fn_bank, fn_kartu_kredit, fn_total_bayar, fs_kd_petugas_kasir, fs_terima_dari,
                 fs_kd_trs_gen, fs_kd_trs_deposit_khusus,
                 fn_nilai_deposit, fn_total_deposit,
                 crttgl, crtjam, crtusr,
@@ -43,7 +43,7 @@ public class DepositDal : IDepositDal
                 @TrsId, @TglTrs, @JamTrs, @TglJamTrs,
                 @Petugas, @RegId, @LayananId, @NoKwitansi, @Keterangan,
                 @TglVoid, @JamVoid, @PetugasVoid,
-                @Kas, @Bank, @KartuKredit, @PetugasKasir, @TerimaDari,
+                @Kas, @Bank, @KartuKredit, @TotalBayar, @PetugasKasir, @TerimaDari,
                 @TrsGen, @TrsDepositKhusus,
                 @NilaiDeposit, @TotalDeposit,
                 @CrtTgl, @CrtJam, @CrtUsr,
@@ -73,6 +73,7 @@ public class DepositDal : IDepositDal
                 fn_kas = @Kas,
                 fn_bank = @Bank,
                 fn_kartu_kredit = @KartuKredit,
+                fn_total_bayar = @TotalBayar,
                 fs_kd_petugas_kasir = @PetugasKasir,
                 fs_terima_dari = @TerimaDari,
                 fs_kd_trs_gen = @TrsGen,
@@ -105,6 +106,7 @@ public class DepositDal : IDepositDal
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
                 ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan,
                 aa.fs_no_kwitansi, aa.fn_kas, aa.fn_bank, aa.fn_kartu_kredit,
+                aa.fn_total_bayar,
                 aa.fs_kd_petugas_kasir, aa.fs_terima_dari
             FROM ta_trs_deposit aa
             LEFT JOIN ta_registrasi bb ON bb.fs_kd_reg = aa.fs_kd_reg
@@ -135,6 +137,7 @@ public class DepositDal : IDepositDal
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
                 ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan,
                 aa.fs_no_kwitansi, aa.fn_kas, aa.fn_bank, aa.fn_kartu_kredit,
+                aa.fn_total_bayar,
                 aa.fs_kd_petugas_kasir, aa.fs_terima_dari
             FROM        ta_trs_deposit aa
             LEFT JOIN   ta_registrasi bb ON bb.fs_kd_reg = aa.fs_kd_reg
@@ -151,29 +154,33 @@ public class DepositDal : IDepositDal
         return conn.Read<DepositDto>(sql, dp);
     }
 
+    public const string GetSaldoSql = """
+        SELECT
+            @RegId AS RegId,
+            setoran.TotalSetoran,
+            terpakai.TotalTerpakai,
+            (setoran.TotalSetoran - terpakai.TotalTerpakai) AS SaldoAktif
+        FROM
+            (SELECT ISNULL(SUM(fn_nilai_deposit), 0) AS TotalSetoran
+             FROM ta_trs_deposit
+             WHERE fs_kd_reg = @RegId 
+               AND fd_tgl_void = '3000-01-01'
+               AND fn_total_bayar > 0 
+               AND ISNULL(fs_kd_petugas_kasir, '') <> '') setoran
+        CROSS JOIN
+            (SELECT ISNULL(SUM(fn_jasa + fn_obat), 0) AS TotalTerpakai
+             FROM ta_registrasi3
+             WHERE fs_kd_reg = @RegId 
+               AND fs_kd_bayar IN ('BYDPU', 'BYDPK')) terpakai
+        """;
+
     public DepositSaldoDto GetSaldo(IRegKey key)
     {
-        const string sql = """
-            SELECT
-                @RegId AS RegId,
-                setoran.TotalSetoran,
-                terpakai.TotalTerpakai,
-                (setoran.TotalSetoran - terpakai.TotalTerpakai) AS SaldoAktif
-            FROM
-                (SELECT ISNULL(SUM(fn_nilai_deposit), 0) AS TotalSetoran
-                 FROM ta_trs_deposit
-                 WHERE fs_kd_reg = @RegId AND fd_tgl_void = '3000-01-01') setoran
-            CROSS JOIN
-                (SELECT ISNULL(SUM(fn_jasa + fn_obat), 0) AS TotalTerpakai
-                 FROM ta_registrasi3
-                 WHERE fs_kd_reg = @RegId AND fs_kd_bayar IN ('BYDPU', 'BYDPK')) terpakai
-            """;
-
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", key.RegId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<DepositSaldoDto>(sql, dp) ?? new DepositSaldoDto(key.RegId, 0, 0, 0);
+        return conn.ReadSingle<DepositSaldoDto>(GetSaldoSql, dp) ?? new DepositSaldoDto(key.RegId, 0, 0, 0);
     }
 
     private static DynamicParameters BuildParams(DepositDto dto)
@@ -194,6 +201,7 @@ public class DepositDal : IDepositDal
         dp.AddParam("@Kas", dto.fn_kas, SqlDbType.Decimal);
         dp.AddParam("@Bank", dto.fn_bank, SqlDbType.Decimal);
         dp.AddParam("@KartuKredit", dto.fn_kartu_kredit, SqlDbType.Decimal);
+        dp.AddParam("@TotalBayar", dto.fn_total_bayar, SqlDbType.Decimal);
         dp.AddParam("@PetugasKasir", dto.fs_kd_petugas_kasir ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@TerimaDari", dto.fs_terima_dari ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@TrsGen", dto.fs_kd_trs_gen, SqlDbType.VarChar);

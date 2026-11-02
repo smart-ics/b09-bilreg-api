@@ -108,6 +108,7 @@ public class OpenTataRekeningHandlerTest
         result.PatientContext.PasienName.Should().Be("Budi Santoso");
         result.PatientContext.Gender.Should().Be("L");
         result.PatientContext.TglLahir.Should().Be("1985-05-12");
+        result.PatientContext.LayananId.Should().Be("LAY-01");
         result.PatientContext.LayananName.Should().Be("Rawat Inap Melati");
         result.PatientContext.JenisReg.Should().Be("RegInap");
         result.PatientContext.TipeJaminanId.Should().Be("JAM-01");
@@ -229,7 +230,7 @@ public class OpenTataRekeningHandlerTest
     {
         var summary = new TataRekeningSummaryDto(RegId, TataRekeningStatusEnum.Opened, FinancialVerificationStatusEnum.NotVerified, false, false);
         var patientContext = new TataRekeningPatientContextDto(
-            "PAS-001", "Budi", "L", "1990-01-01", "Poli Penyakit Dalam", "RegJalan",
+            "PAS-001", "Budi", "L", "1990-01-01", "LAY-01", "Poli Penyakit Dalam", "RegJalan",
             "JAM-01", "Umum", "Kelas 3", "dr. Budi", 0m, 50_000m);
         var breakdown = new TataRekeningBillingBreakdownDto(
             new TagihanLaluComponent(0, 0, 0),
@@ -252,6 +253,7 @@ public class OpenTataRekeningHandlerTest
         apiResponse.PatientContext.Should().Be(patientContext);
         apiResponse.SummaryBreakdown.Should().Be(breakdown);
         apiResponse.PatientContext!.PasienName.Should().Be("Budi");
+        apiResponse.PatientContext.LayananId.Should().Be("LAY-01");
         apiResponse.SummaryBreakdown!.GrandTotalKewajiban.Should().Be(150_000m);
         apiResponse.SummaryBreakdown.SisaTagihanKasir.Should().Be(100_000m);
     }

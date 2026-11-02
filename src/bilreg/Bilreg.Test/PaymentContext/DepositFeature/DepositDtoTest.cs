@@ -42,9 +42,40 @@ public class DepositDtoTest
         dto.fn_kas.Should().Be(0m);
         dto.fn_bank.Should().Be(0m);
         dto.fn_kartu_kredit.Should().Be(0m);
+        dto.fn_total_bayar.Should().Be(0m);
         dto.fs_kd_petugas_kasir.Should().BeEmpty();
         dto.fs_terima_dari.Should().BeEmpty();
         dto.fs_no_kwitansi.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FromModel_MapsModelProperties_WithCashierFields()
+    {
+        // Arrange
+        var audit = new AuditTrailType(
+            new AuditInfoType("USER01", "2026-10-22", "10:00:00"),
+            new AuditInfoType("USER02", "2026-10-22", "11:00:00"),
+            new AuditInfoType("", "3000-01-01", "00:00:00"));
+
+        var model = new DepositModel(
+            depositId: "DP0001",
+            depositDate: new DateTime(2026, 10, 22, 10, 0, 0),
+            reg: new RegReff("REG001", "MR001", "PASIEN 1"),
+            layanan: new LayananReff("LAY01", "RAWAT INAP"),
+            ketarangan: "Uang muka kamar",
+            nilaiDeposit: 500_000m,
+            audit: audit,
+            noKwitansi: "KW-12345",
+            petugasKasir: "KASIR01",
+            totalBayar: 500_000m);
+
+        // Act
+        var dto = DepositDto.FromModel(model);
+
+        // Assert
+        dto.fs_no_kwitansi.Should().Be("KW-12345");
+        dto.fs_kd_petugas_kasir.Should().Be("KASIR01");
+        dto.fn_total_bayar.Should().Be(500_000m);
     }
 
     [Fact]
@@ -97,6 +128,86 @@ public class DepositDtoTest
         model.NilaiDeposit.Should().Be(1_000_000m);
         model.Audit.Created.UserId.Should().Be("KASIR01");
         model.Audit.IsVoided.Should().BeFalse();
+        model.NoKwitansi.Should().Be("KW0001");
+        model.PetugasKasir.Should().Be("KASIR01");
+        model.TotalBayar.Should().Be(1_000_000m);
+        model.IsPaid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToModel_WhenFnTotalBayarProvided_UsesFnTotalBayar()
+    {
+        // Arrange
+        var dto = new DepositDto(
+            fs_kd_trs: "DP0003",
+            fd_tgl_trs: "2026-10-22",
+            fs_jam_trs: "10:30:00",
+            fd_tgl_jam_trs: "2026-10-22 10:30:00",
+            fs_kd_petugas: "KASIR01",
+            fs_kd_reg: "REG003",
+            fs_kd_layanan: "LAY03",
+            fs_keterangan: "Titipan deposit",
+            fd_tgl_void: "3000-01-01",
+            fs_jam_void: "00:00:00",
+            fs_kd_petugas_void: "",
+            fs_kd_trs_gen: "",
+            fs_kd_trs_deposit_khusus: "",
+            fn_nilai_deposit: 750_000m,
+            fn_total_deposit: 750_000m,
+            crttgl: "2026-10-22",
+            crtjam: "10:30:00",
+            crtusr: "KASIR01",
+            updtgl: "2026-10-22",
+            updjam: "10:30:00",
+            updusr: "KASIR01",
+            fs_mr: "MR003",
+            fs_nm_pasien: "PASIEN TEST 3",
+            fs_nm_layanan: "RAWAT INAP",
+            fs_no_kwitansi: "KW0003",
+            fn_kas: 0m,
+            fn_bank: 0m,
+            fn_kartu_kredit: 0m,
+            fn_total_bayar: 750_000m,
+            fs_kd_petugas_kasir: "KASIR02");
+
+        // Act
+        var model = dto.ToModel();
+
+        // Assert
+        model.TotalBayar.Should().Be(750_000m);
+        model.PetugasKasir.Should().Be("KASIR02");
+        model.NoKwitansi.Should().Be("KW0003");
+        model.IsPaid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0, "", false)]
+    [InlineData(0, "KASIR01", false)]
+    [InlineData(500000, "", false)]
+    [InlineData(500000, "   ", false)]
+    [InlineData(500000, "KASIR01", true)]
+    public void DepositModel_IsPaid_EvaluatesCorrectly(decimal totalBayar, string petugasKasir, bool expectedIsPaid)
+    {
+        // Arrange
+        var audit = new AuditTrailType(
+            new AuditInfoType("USER01", "2026-10-22", "10:00:00"),
+            new AuditInfoType("USER02", "2026-10-22", "11:00:00"),
+            new AuditInfoType("", "3000-01-01", "00:00:00"));
+
+        var model = new DepositModel(
+            depositId: "DP0010",
+            depositDate: DateTime.Now,
+            reg: new RegReff("REG01", "MR01", "PASIEN"),
+            layanan: new LayananReff("LAY01", "LAYANAN"),
+            ketarangan: "Keterangan",
+            nilaiDeposit: 500_000m,
+            audit: audit,
+            noKwitansi: "KW-01",
+            petugasKasir: petugasKasir,
+            totalBayar: totalBayar);
+
+        // Assert
+        model.IsPaid.Should().Be(expectedIsPaid);
     }
 
     [Fact]

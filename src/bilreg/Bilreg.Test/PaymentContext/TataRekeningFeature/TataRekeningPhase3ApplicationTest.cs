@@ -409,13 +409,14 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new ReopenBillingHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new ReopenBillingCommand(RegId, "Koreksi charge source", PetugasVerif),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Opened);
+        _trsBillingRepo.Verify(r => r.SaveChanges(It.IsAny<TrsBillType>()), Times.Once);
     }
 
     #endregion

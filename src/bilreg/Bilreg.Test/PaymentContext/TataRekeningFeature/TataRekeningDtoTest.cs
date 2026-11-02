@@ -1,8 +1,13 @@
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -120,6 +125,7 @@ public class TataRekeningDtoTest
             PasienName: "Budi Santoso",
             Gender: "L",
             TglLahir: "1985-05-12",
+            LayananId: "LAY-001",
             LayananName: "Rawat Inap Paviliun",
             JenisReg: "Ranap",
             TipeJaminanId: "JAM-BPJS",
@@ -133,6 +139,7 @@ public class TataRekeningDtoTest
         dto.PasienName.Should().Be("Budi Santoso");
         dto.Gender.Should().Be("L");
         dto.TglLahir.Should().Be("1985-05-12");
+        dto.LayananId.Should().Be("LAY-001");
         dto.LayananName.Should().Be("Rawat Inap Paviliun");
         dto.JenisReg.Should().Be("Ranap");
         dto.TipeJaminanId.Should().Be("JAM-BPJS");
@@ -141,6 +148,65 @@ public class TataRekeningDtoTest
         dto.DpjpName.Should().Be("dr. Andi, Sp.PD");
         dto.AdvancePayment.Should().Be(500_000m);
         dto.DepositPayment.Should().Be(1_000_000m);
+    }
+
+    [Fact]
+    public void ToPatientContextDto_WhenRegHasLayanan_MapsLayananIdAndAllPatientProperties()
+    {
+        var pasien = new PasienReff("PAS-001", "Budi Santoso", new DateOnly(1985, 5, 12), "L");
+        var layanan = new LayananReff("LAY-01", "Rawat Inap Melati");
+        var dokter = new PpaReff("DOK-01", "dr. Andi, Sp.PD");
+        var kelas = new KelasReff("KLS-01", "Kelas 1");
+        var jaminan = new TipeJaminanReff("JAM-01", "BPJS Kesehatan");
+
+        var reg = new RegModel(
+            "REG-001",
+            new DateOnly(2026, 6, 1),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            pasien, jaminan, PolisModel.Default.ToReff(), kelas,
+            CaraMasukDkType.Default, RujukanType.Default.ToReff(),
+            dokter, layanan, KarcisType.Default.ToReff(),
+            RegEligibilityType.Default, []);
+
+        var saldo = new DepositSaldoModel("REG-001", 100_000m, 0m, 100_000m);
+
+        var dto = TataRekeningApplicationMapper.ToPatientContextDto(reg, saldo, advancePayment: 25_000m);
+
+        dto.PasienId.Should().Be("PAS-001");
+        dto.PasienName.Should().Be("Budi Santoso");
+        dto.Gender.Should().Be("L");
+        dto.TglLahir.Should().Be("1985-05-12");
+        dto.LayananId.Should().Be("LAY-01");
+        dto.LayananName.Should().Be("Rawat Inap Melati");
+        dto.JenisReg.Should().Be("RegInap");
+        dto.TipeJaminanId.Should().Be("JAM-01");
+        dto.TipeJaminanName.Should().Be("BPJS Kesehatan");
+        dto.KelasName.Should().Be("Kelas 1");
+        dto.DpjpName.Should().Be("dr. Andi, Sp.PD");
+        dto.AdvancePayment.Should().Be(25_000m);
+        dto.DepositPayment.Should().Be(100_000m);
+    }
+
+    [Fact]
+    public void ToPatientContextDto_WhenRegHasNullLayanan_MapsEmptyLayananId()
+    {
+        var reg = new RegModel(
+            "REG-002",
+            new DateOnly(2026, 6, 1),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            null!, null!, PolisModel.Default.ToReff(), null!,
+            CaraMasukDkType.Default, RujukanType.Default.ToReff(),
+            null!, null!, KarcisType.Default.ToReff(),
+            RegEligibilityType.Default, []);
+
+        var dto = TataRekeningApplicationMapper.ToPatientContextDto(reg, null);
+
+        dto.LayananId.Should().BeEmpty();
+        dto.LayananName.Should().BeEmpty();
+        dto.DepositPayment.Should().Be(0m);
+        dto.AdvancePayment.Should().Be(0m);
     }
 
     [Fact]
