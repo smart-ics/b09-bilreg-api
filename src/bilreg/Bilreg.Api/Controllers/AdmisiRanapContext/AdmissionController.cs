@@ -45,6 +45,21 @@ public class AdmissionController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("direct")]
+    public async Task<IActionResult> ProcessFromDirect([FromBody] AdmProcessDirectAdmissionBody body)
+    {
+        var cmd = new AdmProcessDirectAdmissionCmd(
+            body.PasienId,
+            body.KelasDkId,
+            body.BangsalId,
+            body.UserId,
+            body.Registration,
+            body.KelasId,
+            body.Priority);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] AdmUpdateAdmissionBody body)
     {
@@ -161,6 +176,15 @@ public record AdmProcessReservationBody(
     string BangsalId,
     string UserId,
     AdmissionRegistrationData Registration);
+
+public record AdmProcessDirectAdmissionBody(
+    string PasienId,
+    string KelasDkId,
+    string BangsalId,
+    string UserId,
+    AdmissionRegistrationData Registration,
+    string? KelasId = null,
+    int Priority = 3);
 
 public record AdmUpdateAdmissionBody(
     string KelasDkId,

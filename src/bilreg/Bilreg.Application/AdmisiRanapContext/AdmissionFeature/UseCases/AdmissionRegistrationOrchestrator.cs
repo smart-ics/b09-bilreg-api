@@ -51,6 +51,9 @@ public interface IAdmissionRegistrationOrchestrator
 
     Task<AdmProcessAdmissionResponse> ProcessReservation(
         AdmProcessReservationCmd request, CancellationToken cancellationToken);
+
+    Task<AdmProcessAdmissionResponse> ProcessDirectAdmission(
+        AdmProcessDirectAdmissionCmd request, CancellationToken cancellationToken);
 }
 
 public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestrator
@@ -218,6 +221,38 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var waitingListId = PlaceWaitingListGracefully(
             admission, request.KelasId, request.BangsalId, request.KelasDkId,
             request.Priority, request.UserId, occurredAt, reservation.KelasRawat);
+
+        return ToResponse(admission, waitingListId);
+    }
+
+    public async Task<AdmProcessAdmissionResponse> ProcessDirectAdmission(
+        AdmProcessDirectAdmissionCmd request, CancellationToken cancellationToken)
+    {
+        Guard.Against.Null(request, nameof(request));
+        ValidateRequest(request.PasienId, request.KelasDkId, request.BangsalId,
+            request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
+        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
+            .GetValueOrThrow($"Pasien '{request.PasienId}' tidak ditemukan.");
+
+        EnsurePatientAvailable(pasien.ToReff());
+        var prosedur = ResolveProsedurMasukInap(request.Registration);
+        var admission = CreateAdmission(pasien.ToReff(), request.KelasDkId, request.BangsalId,
+            null, null, request.UserId, occurredAt);
+        var reg = CreateRegistration(admission, request.Registration);
+        var regInap = CreateRegInap(admission, reg, prosedur);
+
+        using (var trans = TransHelper.NewScope())
+        {
+            SaveCommon(admission, reg, regInap);
+            trans.Complete();
+        }
+
+        await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
+
+        var waitingListId = PlaceWaitingListGracefully(
+            admission, request.KelasId, request.BangsalId, request.KelasDkId,
+            request.Priority, request.UserId, occurredAt);
 
         return ToResponse(admission, waitingListId);
     }
