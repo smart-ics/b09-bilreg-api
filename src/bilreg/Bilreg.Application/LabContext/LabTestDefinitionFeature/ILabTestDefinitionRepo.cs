@@ -12,4 +12,5 @@ public interface ILabTestDefinitionRepo :
     MayBe<LabTestDefinitionModel> LoadActiveByTarifId(string tarifId);
     bool HasActiveTarifConflict(string tarifId, string? excludeTestDefinitionId);
     string AllocateNextTestDefinitionId();
+    IEnumerable<LabTestDefinitionListResponse> ListProjected(LabTestDefinitionListFilter filter);
 }

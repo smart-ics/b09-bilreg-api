@@ -106,6 +106,28 @@ public class RegDaruratCreateHandlerTest
     }
 
     [Fact]
+    public async Task Handle_WhenDaruratRegistrationSuccess_ThenAddsAntrianEmrWithEmptyPrefixAntrian()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulDarurat(cmd, "RG00000001");
+        AddAntrianEmrByRegCommand? capturedPayload = null;
+        _addAntrianEmrByRegService.Setup(x => x.Execute(It.IsAny<AddAntrianEmrByRegCommand>()))
+            .Callback<AddAntrianEmrByRegCommand>(p => capturedPayload = p);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.RegId.Should().Be("RG00000001");
+        _addAntrianEmrByRegService.Verify(x => x.Execute(It.IsAny<AddAntrianEmrByRegCommand>()), Times.Once);
+        capturedPayload.Should().NotBeNull();
+        capturedPayload!.RegId.Should().Be("RG00000001");
+        capturedPayload.NoAntrian.Should().Be(0);
+        capturedPayload.PrefixAntrian.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_WhenExceptionOccursBeforeTransactionCommit_ThenEventIsNotPublished()
     {
         // Arrange: pasien repo throws exception before registration persistence/commit

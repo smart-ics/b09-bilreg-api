@@ -23,6 +23,8 @@ public class LegacyMovementKindMapperTest
     [InlineData("DI", MovementKindEnum.DispenseIssue)]
     [InlineData("di", MovementKindEnum.DispenseIssue)]
     [InlineData("do", MovementKindEnum.GoodsReceipt)]
+    [InlineData("PK_V", MovementKindEnum.InternalConsumptionVoid)]
+    [InlineData("pk_v", MovementKindEnum.InternalConsumptionVoid)]
     public void TryMap_S1Strings_Maps(string legacy, MovementKindEnum expected)
     {
         LegacyMovementKindMapper.TryMap(legacy, out var kind).Should().BeTrue();
@@ -49,5 +51,14 @@ public class LegacyMovementKindMapperTest
         dispense.Should().Be(MovementKindEnum.DispenseIssue);
         sale.Should().Be(MovementKindEnum.SaleIssueDu);
         dispense.Should().NotBe(sale);
+    }
+
+    [Fact]
+    public void TryMap_Reverse_InternalConsumptionVoid_ReturnsPkV()
+    {
+        LegacyMovementKindMapper.TryMap(MovementKindEnum.InternalConsumptionVoid, out var legacy).Should().BeTrue();
+        legacy.Should().Be("PK_V");
+
+        LegacyMovementKindMapper.ToLegacyString(MovementKindEnum.InternalConsumptionVoid).Should().Be("PK_V");
     }
 }

@@ -228,5 +228,29 @@ public class TataRekeningDtoTest
         dto.BiayaAdministrasi.Total.Should().Be(35_500m);
         dto.GrandTotalKewajiban.Should().Be(675_500m);
         dto.SisaTagihanKasir.Should().Be(675_500m);
+    [Theory]
+    [InlineData("LEX26A150001", 12)]      // NunaId.New("LEX") - 12 chars (Lab External Walk-In)
+    [InlineData("LEX26A150001A", 13)]     // 13 chars
+    [InlineData("LEX26A150001AB", 14)]    // 14 chars
+    [InlineData("LEX26A150001ABC", 15)]   // 15 chars (Max capacity for BILRG_TataRekening.RegId VARCHAR(15))
+    public void FromModel_AcceptsAndMapsRegIdWith12To15Characters(string regId, int expectedLength)
+    {
+        // AC-ARCH-09 & TD-09: Ensure BilrgTataRekeningDto and TataRekeningModel accept and map RegId of length 12 to 15 characters
+        regId.Length.Should().Be(expectedLength);
+
+        var model = TataRekeningModel.Create(regId);
+        model.RegId.Should().Be(regId);
+        model.RegId.Length.Should().Be(expectedLength);
+        model.Status.Should().Be(TataRekeningStatusEnum.Opened);
+
+        var dto = BilrgTataRekeningDto.FromModel(model);
+        dto.RegId.Should().Be(regId);
+        dto.RegId.Length.Should().Be(expectedLength);
+        dto.Status.Should().Be((int)TataRekeningStatusEnum.Opened);
+
+        var insertDto = BilrgTataRekeningDto.FromModelForInsert(model);
+        insertDto.RegId.Should().Be(regId);
+        insertDto.RegId.Length.Should().Be(expectedLength);
+        insertDto.Version.Should().Be(1);
     }
 }

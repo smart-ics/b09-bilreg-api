@@ -42,7 +42,13 @@ public record LabOrderDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate)
+    DateTime VodDate,
+    string DokterPerujukId = "",
+    string DokterPerujukName = "",
+    string LayananPerujukId = "",
+    string LayananPerujukName = "",
+    string ClinicalNote = "",
+    int Urgency = 0)
 {
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
@@ -86,7 +92,13 @@ public record LabOrderDto(
             UpdUser: model.AuditTrail.Modified.UserId,
             UpdDate: model.AuditTrail.Modified.Timestamp,
             VodUser: model.AuditTrail.Voided.UserId,
-            VodDate: model.AuditTrail.Voided.Timestamp);
+            VodDate: model.AuditTrail.Voided.Timestamp,
+            DokterPerujukId: model.DokterPerujukId,
+            DokterPerujukName: model.DokterPerujukName,
+            LayananPerujukId: model.LayananPerujukId,
+            LayananPerujukName: model.LayananPerujukName,
+            ClinicalNote: model.ClinicalNote,
+            Urgency: (int)model.Urgency);
 
     public LabOrderModel ToModel(
         IEnumerable<LabOrderItemModel> items,
@@ -138,6 +150,12 @@ public record LabOrderDto(
             TerminationUserId,
             auditTrail,
             items,
-            itemComponents);
+            itemComponents,
+            DokterPerujukId,
+            DokterPerujukName,
+            LayananPerujukId,
+            LayananPerujukName,
+            ClinicalNote,
+            (LabOrderUrgencyEnum)Urgency);
     }
 }

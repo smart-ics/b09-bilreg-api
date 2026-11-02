@@ -51,7 +51,8 @@ public class LabTestResolutionService : ILabTestResolutionService
                 tarifName,
                 definition.VacutainerType,
                 definition.SpecimenType,
-                DefaultRequiredTubeCount);
+                DefaultRequiredTubeCount,
+                (LabOrderUrgencyEnum)input.Urgency);
 
             var components = definition.Components
                 .OrderBy(x => x.SequenceNo)

@@ -94,6 +94,71 @@ public class AdmReservationHandlerTest
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
+    [Fact]
+    public async Task UT03_GivenReservedReservation_WhenCancel_ThenSavesCancelledAndLogsAuditWithReason()
+    {
+        var reserved = ReservationModel.Create(
+            SamplePasienReff(),
+            new DateTime(2026, 8, 1),
+            SampleKelas(),
+            SampleBangsal(),
+            "user1");
+
+        _reservationRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IReservationKey>(k => k.ReservationId == reserved.ReservationId)))
+            .Returns(MayBe.From(reserved));
+
+        ReservationModel? saved = null;
+        _reservationRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<ReservationModel>()))
+            .Callback<ReservationModel>(m => saved = m);
+
+        AuditLog? loggedAudit = null;
+        _auditRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<AuditLog>()))
+            .Callback<AuditLog>(a => loggedAudit = a);
+
+        var handler = new AdmCancelReservationHandler(
+            _reservationRepoMock.Object,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        const string reason = "Pasien membatalkan rencana rawat inap";
+        await handler.Handle(
+            new AdmCancelReservationCmd(reserved.ReservationId, "user2", reason),
+            CancellationToken.None);
+
+        saved.Should().NotBeNull();
+        saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Cancelled);
+        saved.AuditTrail.Voided.UserId.Should().Be("user2");
+
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
+        loggedAudit.Should().NotBeNull();
+        loggedAudit!.ActionType.Should().Be("VOID");
+        loggedAudit.EntityName.Should().Be(nameof(ReservationModel));
+        loggedAudit.EntityId.Should().Be(reserved.ReservationId);
+        loggedAudit.UserId.Should().Be("user2");
+        loggedAudit.Reason.Should().Be(reason);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UT04_GivenInvalidReason_WhenCancel_ThenThrowsArgumentException(string? invalidReason)
+    {
+        var handler = new AdmCancelReservationHandler(
+            _reservationRepoMock.Object,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = () => handler.Handle(
+            new AdmCancelReservationCmd("RSV001", "user1", invalidReason!),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
     private void SetupMasters()
     {
         _patientGatewayMock

@@ -79,7 +79,7 @@ internal class TrsBillFactory
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
         var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, createdAt);
-        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, tindakan.TindakanId);
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, tindakan.Qty, tindakan.TindakanId);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
@@ -111,7 +111,7 @@ internal class TrsBillFactory
 
             var trsBill2 = new TrsBill2TransEventType(
                 i++, komponen, TrsBillJenisBayarType.Pdp,
-                item.Nilai, ppa, bill2Coa);
+                item.SubTotal, ppa, bill2Coa);
 
             listBill2TransEvent.Add(trsBill2);
         }

@@ -22,7 +22,8 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
-    IEnumerable<TdkCreateTindakanPpaCmd> ListPpa) 
+    IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,
+    int Qty = 1) 
     : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey;
 
 public record TdkCreateTindakanPpaCmd(string KomponenId, string PpaId);
@@ -39,7 +40,6 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IPpaRepo _ppaRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly IJaminanRepo _jaminanRepo;
-    private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
@@ -48,7 +48,6 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
         ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
-        ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService, 
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
@@ -62,7 +61,6 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _ppaRepo = ppaRepo;
         _tarifRepo = tarifRepo;
         _jaminanRepo = jaminanRepo;
-        _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
@@ -92,17 +90,19 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var qty = request.Qty <= 0 ? 1 : request.Qty;
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty);
+
+        //  WRITE
+        using var trans = TransHelper.NewScope();
         var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tindakan == TindakanModel.Default
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
-        //  WRITE
-        using var trans = TransHelper.NewScope();
+
         _tindakanRepo.SaveChanges(tindakan);
-        _trsBillingRepo.SaveChanges(trsBilling);
         _jurnalRepo.SaveChanges(jurnal);
         trans.Complete();
 
