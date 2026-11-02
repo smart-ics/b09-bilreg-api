@@ -15,7 +15,7 @@ Mengimplementasikan realisasi teknis backend untuk fitur **Registrasi Pasien Eks
 Tujuan operasional backend:
 1. Membentuk fitur bounded baru `LabExternalFeature` di `Bilreg.Domain`, `Bilreg.Application`, `Bilreg.Infrastructure`, `Bilreg.SqlDb`, dan `Bilreg.Api`.
 2. Menyimpan fakta pendaftaran mandiri pasien luar secara persisten pada tabel `BILRG_LabExternal`.
-3. Menerbitkan nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format `EXT-{yyyyMM}-{00000}` via `ISequencer`.
+3. Menerbitkan nomor rekam medis operasional sekali pakai (`ExternalMrNo`) dengan format `EX-{yyyyMM}-{00000}` (15 karakter untuk kompatibilitas sistem legacy) via `ISequencer`.
 4. Menginisialisasi akun penagihan langsung (*cash-first billing account*) pada `TataRekeningModel` secara atomik saat pendaftaran disimpan (`RegId = RegExternalId`).
 5. Memperbaiki alur pembebanan biaya pada `LabOrderChargeCmd` (`GAP-002`) agar mengenali pasien luar dan menagih ke `TataRekening` tanpa mencari ke `_regRepo` (mencegah `KeyNotFoundException`).
 6. Menegakkan aturan pembatalan non-destructive: menolak pembatalan jika tagihan kasir telah lunas (`EX-01`) atau spesimen telah diambil (`EX-02`).
@@ -45,7 +45,7 @@ In Scope:
 2. **Domain Layer**: Agregat `LabExternalModel`, antarmuka `ILabExternalKey`, value objects (`Demographics`, `ReferralInfo`, `CancelInfo`), enumerasi (`LabReferralTypeEnum`, `LabExternalStatusEnum`), dan domain unit tests.
 3. **Infrastructure Layer**: DTO `LabExternalDto`, DAL `LabExternalDal` berbasis Dapper, repositori `LabExternalRepo` (mengimplementasikan `ILabExternalRepo`), dan registrasi dependency injection pada `InfrastructureService.cs`.
 4. **Application Layer (Use Cases & Queries)**:
-   - Helper penomoran `LabExternalNumberHelper` (`EXT-{yyyyMM}-{00000}` & `LEX{10}`).
+   - Helper penomoran `LabExternalNumberHelper` (`EX-{yyyyMM}-{00000}` & `LEX{10}`).
    - Command `LabExternalCreateCmd` & handler dengan pembuatan akun `TataRekeningModel` atomik dalam `TransHelper.NewScope()`.
    - Query `LabExternalGetQuery` & `LabExternalListQuery` (omni-search riwayat).
    - Command `LabExternalCancelCmd` & handler dengan verifikasi guard kasir (`EX-01`) dan spesimen (`EX-02`).
@@ -227,7 +227,7 @@ Depends On: P2-S03
 Repository: `b09-bilreg-api`
 
 Completion Criteria:
-1. Helper `LabExternalNumberHelper.cs` dibuat di Application layer untuk menerbitkan `ExternalMrNo` dengan format `EXT-{yyyyMM}-{00000}` via `ISequencer.GetNextNoUrut($"EXT-{timestamp:yyyyMM}")` dan `RegExternalId` via `NunaId.New("LEX")`.
+1. Helper `LabExternalNumberHelper.cs` dibuat di Application layer untuk menerbitkan `ExternalMrNo` dengan format `EX-{yyyyMM}-{00000}` via `ISequencer.GetNextNoUrut($"EX-{timestamp:yyyyMM}")` dan `RegExternalId` via `NunaId.New("LEX")`.
 2. Command `LabExternalCreateCmd` dan DTO response `LabExternalCreateResponse(string RegExternalId, string ExternalMrNo, string BillingAccountId)` dibuat.
 3. Handler `LabExternalCreateHandler` mengorkestrasikan:
    - Validasi data masukan via GuardClauses.
@@ -240,7 +240,7 @@ Completion Criteria:
 Notes:
 - Memenuhi prinsip *Cash-First* dan menutup celah `OQ-002`.
 - Implementation completed:
-  - Helper `LabExternalNumberHelper.cs` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/` mengimplementasikan `GenerateExternalMrNo(ISequencer sequencer, DateTime timestamp)` berformat `EXT-{yyyyMM}-{00000}` dan `GenerateRegExternalId()` via `NunaId.New(LabExternalModel.IdPrefix)`.
+  - Helper `LabExternalNumberHelper.cs` dibuat di `Bilreg.Application/LabContext/LabExternalFeature/` mengimplementasikan `GenerateExternalMrNo(ISequencer sequencer, DateTime timestamp)` berformat `EX-{yyyyMM}-{00000}` dan `GenerateRegExternalId()` via `NunaId.New(LabExternalModel.IdPrefix)`.
   - Command `LabExternalCreateCmd` dan DTO respon `LabExternalCreateResponse(string RegExternalId, string ExternalMrNo, string BillingAccountId)` dibuat.
   - Handler `LabExternalCreateHandler` mengorkestrasikan input guard validation, penomoran sequence, pembuatan dan persistensi akun `TataRekeningModel.Create(regExternalId)` via `ITataRekeningRepo.SaveChanges(...)`, pembuatan dan persistensi `LabExternalModel` via `ILabExternalRepo.SaveChanges(...)`, yang dibungkus atomik dalam `using var trans = TransHelper.NewScope()`.
   - Suite unit test `LabExternalCreateHandlerTest.cs` dibuat di `Bilreg.Test/LabContext/LabExternalFeature/` dengan 22 pengujian komprehensif memvalidasi registrasi atomik, mapping field opsional, padding format sequencer, validasi guard, dan transaction rollback.
@@ -430,3 +430,4 @@ Notes:
 # 6. Change Log
 
 - 2026-10-14: Dokumen perencanaan awal (V1.0) dibuat oleh peran `ica-architect` khusus untuk repositori backend `b09-bilreg-api` (Opsi 1) dengan 5 fase dan 8 irisan implementasi (P1-S01 s/d P5-S08). Status persetujuan eksekusi: `APPROVED`.
+- 2026-10-31: Memperbarui format penomoran `ExternalMrNo` dari `EXT-{yyyyMM}-{00000}` (16 karakter) menjadi `EX-{yyyyMM}-{00000}` (15 karakter) via sequencer key `EX-{timestamp:yyyyMM}` untuk menjaga kompatibilitas dengan kolom `PasienId VARCHAR(15)` pada sistem legacy. Seluruh use cases, handler, helper, dan unit test terkait (136 tests) telah disinkronkan dan terverifikasi lulus 100%.
