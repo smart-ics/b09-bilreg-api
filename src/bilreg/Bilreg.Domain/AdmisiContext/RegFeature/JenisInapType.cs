@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.AdmisiContext.RegFeature;
+namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public record JenisInapType : IJenisInapKey
 {
@@ -14,6 +14,18 @@ public record JenisInapType : IJenisInapKey
         => Default with { JenisInapId = id };
 
     public static JenisInapType Default => new("-", "-");
+    public static JenisInapType Empty => new("", "");
+    public static JenisInapType Umum => new(InpatientAgePolicy.JENIS_INAP_UMUM, "Umum");
+    public static JenisInapType Obstetri => new(InpatientAgePolicy.JENIS_INAP_OBSTETRI, "Obstetri");
+    public static JenisInapType Perinatal => new(InpatientAgePolicy.JENIS_INAP_PERINATAL, "Perinatal");
+
+    public static JenisInapType FromId(string id) => id switch
+    {
+        InpatientAgePolicy.JENIS_INAP_UMUM => Umum,
+        InpatientAgePolicy.JENIS_INAP_OBSTETRI => Obstetri,
+        InpatientAgePolicy.JENIS_INAP_PERINATAL => Perinatal,
+        _ => Default with { JenisInapId = id }
+    };
 
     #endregion
 

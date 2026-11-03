@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -66,6 +67,18 @@ public class AdmissionRepoTest
                 model.ReservationId.Should().Be("-");
             },
             onNone: () => Assert.Fail("Expected Some but got None"));
+    }
+
+    [Fact]
+    public void UT_RP_04_GivenFilterWithSearch_WhenListData_ThenDalListDataIsCalledWithSameFilter()
+    {
+        var filter = new AdmissionListFilter(AdmissionStatusEnum.Admitted, "P0001", "006669");
+        _dalMock.Setup(x => x.ListData(filter)).Returns([CreateTestDto()]);
+
+        var result = _repository.ListData(filter);
+
+        result.Should().HaveCount(1);
+        _dalMock.Verify(x => x.ListData(filter), Times.Once);
     }
 
     private static AdmissionModel CreateTestModel() =>

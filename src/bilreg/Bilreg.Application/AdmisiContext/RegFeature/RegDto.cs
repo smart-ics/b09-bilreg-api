@@ -1,8 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using System.Globalization;
 
 //  resharper disable inconsistentnaming
-namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
+namespace Bilreg.Application.AdmisiContext.RegFeature;
 
 public record RegDto(
     string fs_kd_reg, 
@@ -12,8 +12,9 @@ public record RegDto(
     string fd_tgl_void, string fs_jam_void, string fs_kd_petugas_void,
     string fs_kd_jenis_reg, string fs_mr, string fs_kd_tipe_jaminan, string fs_kd_kelas, 
     string fs_kd_cara_masuk_dk,  string fs_kd_rujukan, string fs_kd_medis, 
-    string fs_kd_layanan,  string fs_kd_karcis, string fs_no_sjp, string fs_no_peserta,
+    string fs_kd_layanan,  string fs_kd_karcis, string fs_no_sjp, string fs_no_peserta, 
     string fs_kd_trs_sjp, string fd_tgl_jam_masuk, string fd_tgl_jam_keluar, decimal fn_karcis,
+    string fs_kd_jenis_inap, string fs_reg_ibu,
     //
     string fs_nm_pasien,  string fd_tgl_lahir, string fs_jns_kelamin,
     string fs_nm_tipe_jaminan, string fs_nm_kelas, string fs_nm_cara_masuk_dk, 
@@ -23,6 +24,12 @@ public record RegDto(
     public static RegDto FromModel(RegModel model)
     {
         var jenisRegStr = model.JenisReg.ToNumberString();
+        var jenisInapStr = model.JenisInap?.JenisInapId switch
+        {
+            null or "-" => string.Empty,
+            var id => id
+        };
+        var regIbuStr = model.RegIbu ?? string.Empty;
         var result = new RegDto(
             model.RegId,
             model.RegDate.ToString("yyyy-MM-dd"),
@@ -58,6 +65,8 @@ public record RegDto(
             model.RegMasukAudit.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
             model.RegKeluarAudit.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
             model.ListKomponen.Sum(k => k.Nilai),
+            jenisInapStr,
+            regIbuStr,
             //
             model.Pasien.PasienName,
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),
@@ -69,30 +78,7 @@ public record RegDto(
             model.Dokter.PpaName,
             model.Layanan.LayananName,
             model.Karcis.KarcisName
-
-            );
+        );
         return result;
     }
-
-    // public RegModel ToModel(IEnumerable<RegKomponenType> listKomponen)
-    // {
-    //     var regMasukAudit = new AuditInfoType(fs_kd_petugas, fd_tgl_masuk, fs_jam_masuk);
-    //     var regKeluarAudit = new AuditInfoType(fs_kd_petugas_keluar, fd_tgl_keluar, fs_jam_keluar);
-    //     var regCancelOutAudit = new AuditInfoType(fs_kd_petugas_cancel_out, fd_tgl_cancel_out, fs_jam_cancel_out);
-    //     var jenisReg = fs_kd_jenis_reg.ToJenisRegEnum();
-    //     var pasien = new PasienReff(fs_mr, fs_nm_pasien, DateOnly.Parse(fd_tgl_lahir), fs_jns_kelamin);
-    //     var tipeJmn = new TipeJaminanReff(fs_kd_tipe_jaminan, fs_nm_tipe_jaminan);
-    //     var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
-    //     var caraMasukDk = new CaraMasukDkType(fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk);
-    //     var rujukan = new RujukanReff(fs_kd_rujukan, fs_nm_rujukan);
-    //     var dokter = new PetugasMedisReff(fs_kd_medis, fs_nm_peg);
-    //     var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
-    //     var karcis = new KarcisReff(fs_kd_karcis, fs_nm_karcis);
-    //     var result = new RegModel(
-    //         fs_kd_reg, DateOnly.Parse(fd_tgl_masuk),
-    //         regMasukAudit, regKeluarAudit, regCancelOutAudit, jenisReg,
-    //         pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
-    //         layanan, karcis, listKomponen);
-    //     return result;
-    // }
 }
