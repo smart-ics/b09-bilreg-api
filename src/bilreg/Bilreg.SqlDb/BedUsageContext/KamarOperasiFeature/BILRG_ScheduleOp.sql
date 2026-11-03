@@ -15,6 +15,7 @@ BEGIN
 
         AlasanBatal     VARCHAR(255) NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_AlasanBatal DEFAULT(''),
         TurnoverBuffer  INT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_TurnoverBuffer DEFAULT(30),
+        IsDraft         BIT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_IsDraft DEFAULT(1),
 
         CrtUser         VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_CrtUser DEFAULT(''),
         CrtDate         DATETIME NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_CrtDate DEFAULT('3000-01-01'),
@@ -45,10 +46,25 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_Sche
     ALTER TABLE BILRG_ScheduleOp ADD TurnoverBuffer INT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_TurnoverBuffer DEFAULT(30);
 GO
 
+-- Penambahan Kolom IsDraft (v2.8)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_ScheduleOp') AND name = 'IsDraft')
+    ALTER TABLE BILRG_ScheduleOp ADD IsDraft BIT NOT NULL CONSTRAINT DF_BILRG_ScheduleOp_IsDraft DEFAULT(1);
+GO
+
 -- Index Penunjang Pengecekan Overlap Jadwal Kamar & Dokter
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('BILRG_ScheduleOp') AND name = 'IX_BILRG_ScheduleOp_CollisionCheck')
     CREATE INDEX IX_BILRG_ScheduleOp_CollisionCheck
         ON BILRG_ScheduleOp (KamarId, TglOp, VodDate)
         INCLUDE (Durasi, PpaId, OrderOpId)
         WITH (FILLFACTOR = 95);
+GO
+
+-- Index Penunjang Kueri Kalender & Deteksi Bentrok Menyertakan IsDraft (v2.8)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('BILRG_ScheduleOp') AND name = 'IX_BILRG_ScheduleOp_IsDraft_TglOp')
+BEGIN
+    CREATE INDEX IX_BILRG_ScheduleOp_IsDraft_TglOp
+        ON BILRG_ScheduleOp (TglOp, VodDate, IsDraft)
+        INCLUDE (KamarId, Durasi, PpaId, OrderOpId)
+        WITH (FILLFACTOR = 95);
+END
 GO
