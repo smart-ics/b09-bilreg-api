@@ -219,8 +219,8 @@ Review Status: NOT-REVIEWED
 
 ### P3-S05
 - **Title**: Sinkronisasi Status Real-Time & Proteksi Pembatalan Order Lab (`orderLab.js`)
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menyelaraskan modul `orderLab.js` dengan status siklus hidup order Bilreg LWF: mengecek status order real-time, mengunci tombol hapus jika spesimen sudah diambil, dan memanggil endpoint pembatalan Bilreg saat order dibatalkan sebelum pengambilan sampel.
 - **Depends On**: P2-S03
 - **Repository**: `c001_emr2_frontend`
@@ -238,6 +238,18 @@ Review Status: NOT-REVIEWED
 - **Notes**:
   - Target files:
     - `assets/js/MedicalChart/orderLab.js`
+  - Implementation Notes:
+    - Menambahkan helper integrasi Bilreg (`isBilregLabOrderActive`, `getBilregApiBaseUrl`, `getBilregAuthToken`, `getBilregStatusName`, `getBilregStatusBadgeHtml`, `applyBilregCardStatus`, `getBilregOrderStatus`, `syncBilregOrderStatus`) pada `assets/js/MedicalChart/orderLab.js`.
+    - Mengintegrasikan sinkronisasi status real-time pada `setOrderLabFromChart(data, orderId)` saat order memiliki `ChartOrderId` via query AJAX GET `GET ${config.base_api_bilreg}LabContext/LabOrderFeature/byEmrOrderId/${chartOrderId}` dengan Authorization bearer token Bilreg (cookie `myAuthBilreg`).
+    - Menyimpan atribut `bilregOrderId`, `orderStatus`, dan `bilregOrderNo` pada objek order `listOrderLaborat` serta atribut dataset DOM card.
+    - Mengunci dan men-disable tombol `.deleteOrderLab` serta menampilkan badge status visual informatif ("Spesimen telah diambil di Lab" / "Sedang diproses Lab") saat status Bilreg `>= 3` (`SampleCollected`, `Charged`, `Done`).
+    - Menambahkan fallback protection pada event handler `.deleteOrderLab` dan modal `shown.bs.modal` sehingga jika order telah disampling (`status >= 3`), aksi pembatalan langsung dicegah dengan menampilkan notifikasi peringatan `Swal.fire`.
+    - Mengimplementasikan alur pembatalan interaktif untuk order berstatus `1` (`Ordered`) atau `2` (`Deferred`): memunculkan dialog konfirmasi SweetAlert dengan input textarea alasan pembatalan medis dokter dan mengirimkan request pembatalan ke endpoint Bilreg `POST ${config.base_api_bilreg}LabContext/LabOrderFeature/cancel` payload `{ orderId, cancellationReason, reason, userId }`.
+    - Setelah Bilreg mengonfirmasi pembatalan (HTTP 200 OK), card dihapus dari UI EMR, item dikeluarkan dari `listOrderLaborat`, counter di-update, dan toastr sukses ditampilkan.
+    - Mempertahankan alur delete lokal EMR jika order belum terkirim ke Bilreg / belum memiliki `ChartOrderId`.
+    - Memverifikasi validitas sintaks javascript `orderLab.js` menggunakan `node -c` (valid tanpa error) dan memastikan format line ending CRLF.
+  - Changed Files:
+    - `c001_emr2_frontend/assets/js/MedicalChart/orderLab.js`
 
 ---
 
