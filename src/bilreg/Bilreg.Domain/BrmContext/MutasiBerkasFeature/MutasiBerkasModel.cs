@@ -193,8 +193,10 @@ public class MutasiBerkasModel : IMutasiBerkasKey
         if (IsVoid)
             throw new InvalidOperationException("Mutasi berkas sudah dibatalkan (void).");
 
-        if (Status != MutasiBerkasStatusEnum.Dispatched && Status != MutasiBerkasStatusEnum.Received)
-            throw new InvalidOperationException($"Mutasi berkas tidak dapat dikembalikan karena status saat ini {Status} (harus Dispatched atau Received).");
+        if (Status != MutasiBerkasStatusEnum.Dispatched && 
+            Status != MutasiBerkasStatusEnum.Received && 
+            Status != MutasiBerkasStatusEnum.Missing)
+            throw new InvalidOperationException($"Mutasi berkas tidak dapat dikembalikan karena status saat ini {Status} (harus Dispatched, Received, atau Missing).");
 
         if (qtyKembaliRi < 0 || qtyKembaliRj < 0)
             throw new ArgumentException("Jumlah volume berkas kembali tidak boleh negatif.");

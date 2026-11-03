@@ -1,6 +1,8 @@
+using System.Data.SqlClient;
 using Bilreg.Application.BrmContext.MutasiBerkasFeature;
 using Bilreg.Infrastructure.BrmContext.MutasiBerkasFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
@@ -162,5 +164,152 @@ public class MutasiBerkasWorklistDalTest
         results[0].MutasiId.Should().Be("MM26100083");
         results[1].MutasiId.Should().Be("MP26100082");
         results[2].MutasiId.Should().Be("MK26100081");
+    }
+
+    private void InsertAntrian(
+        string antrianTrsId,
+        string tglAntrian,
+        string layananId,
+        int noUrut,
+        string mrId,
+        string regId,
+        string tglVoid = "3000-01-01")
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt.Value));
+        conn.Execute(@"
+            INSERT INTO TA_TRS_ANTRIAN (FS_KD_TRS, FD_TGL_ANTRIAN, FS_KD_LAYANAN, FN_NO_URUT, FS_MR, FS_KD_REG, FD_TGL_VOID)
+            VALUES (@antrianTrsId, @tglAntrian, @layananId, @noUrut, @mrId, @regId, @tglVoid)",
+            new { antrianTrsId, tglAntrian, layananId, noUrut, mrId, regId, tglVoid });
+    }
+
+    private void InsertRegistrasi(
+        string regId,
+        string mrId,
+        string dokterId = "DR001",
+        string jamMasuk = "08:15:00",
+        string tglMasuk = "2026-10-17")
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt.Value));
+        conn.Execute(@"
+            IF NOT EXISTS (SELECT 1 FROM TA_REGISTRASI WHERE FS_KD_REG = @regId)
+            INSERT INTO TA_REGISTRASI (FS_KD_REG, FS_MR, FS_KD_MEDIS, FS_JAM_MASUK, FD_TGL_MASUK)
+            VALUES (@regId, @mrId, @dokterId, @jamMasuk, @tglMasuk)",
+            new { regId, mrId, dokterId, jamMasuk, tglMasuk });
+    }
+
+    [Fact]
+    public void QueryWorklist_OutpatientQueueWithoutMutasi_ProjectsWithStatus0AndQueueNumber()
+    {
+        using var trans = TransHelper.NewScope();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var regId = "RG26100551";
+        var mrId = "00-55-11-22";
+        var layananId = "POL55";
+
+        InsertRegistrasi(regId, mrId, dokterId: "DR001", jamMasuk: "08:30:00", tglMasuk: today);
+        InsertAntrian("AT26100551", today, layananId, 5, mrId, regId);
+
+        var filter = new MutasiBerkasWorklistFilter(
+            TglPraktek: today,
+            LayananId: layananId
+        );
+
+        var results = _sut.QueryWorklist(filter).ToList();
+        var item = results.FirstOrDefault(x => x.TrsBuatId == regId);
+
+        item.Should().NotBeNull();
+        item!.MutasiId.Should().BeEmpty();
+        item.MrId.Should().Be(mrId);
+        item.LayananId.Should().Be(layananId);
+        item.Status.Should().Be(0); // Permintaan
+        item.NoAntrian.Should().Be(5);
+        item.JamPraktek.Should().Be("08:30:00");
+    }
+
+    [Fact]
+    public void QueryWorklist_OutpatientQueueWithMutasi_ProjectsWithMutasiStatusAndQueueNumber()
+    {
+        using var trans = TransHelper.NewScope();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var regId = "RG26100771";
+        var mrId = "00-77-11-22";
+        var layananId = "POL77";
+
+        InsertRegistrasi(regId, mrId, dokterId: "DR001", jamMasuk: "09:00:00", tglMasuk: today);
+        InsertAntrian("AT26100771", today, layananId, 12, mrId, regId);
+
+        var mutasiDto = Faker(
+            mutasiId: "MK26100771",
+            trsBuatId: regId,
+            mrId: mrId,
+            layananId: layananId,
+            tglPraktek: today,
+            status: 2 // Dikirim
+        );
+        _mutasiDal.Insert(mutasiDto);
+
+        var filter = new MutasiBerkasWorklistFilter(
+            TglPraktek: today,
+            LayananId: layananId
+        );
+
+        var results = _sut.QueryWorklist(filter).ToList();
+        var item = results.FirstOrDefault(x => x.TrsBuatId == regId);
+
+        item.Should().NotBeNull();
+        item!.MutasiId.Should().Be("MK26100771");
+        item.MrId.Should().Be(mrId);
+        item.LayananId.Should().Be(layananId);
+        item.Status.Should().Be(2); // Dikirim
+        item.NoAntrian.Should().Be(12);
+    }
+
+    [Fact]
+    public void QueryWorklist_OutpatientQueueVoided_DoesNotAppearInWorklist()
+    {
+        using var trans = TransHelper.NewScope();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var regId = "RG26100881";
+        var mrId = "00-88-11-22";
+        var layananId = "POL88";
+
+        InsertRegistrasi(regId, mrId, dokterId: "DR001", jamMasuk: "09:15:00", tglMasuk: today);
+        InsertAntrian("AT26100881", today, layananId, 3, mrId, regId, tglVoid: today);
+
+        var filter = new MutasiBerkasWorklistFilter(
+            TglPraktek: today,
+            LayananId: layananId
+        );
+
+        var results = _sut.QueryWorklist(filter).ToList();
+        results.Should().NotContain(x => x.TrsBuatId == regId);
+    }
+
+    [Fact]
+    public void QueryWorklist_NonAntrianInternalLoan_AppearsWithNoAntrianZero()
+    {
+        using var trans = TransHelper.NewScope();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var internalLoanDto = Faker(
+            mutasiId: "MK26100991",
+            trsBuatId: "PJ26100099",
+            mrId: "00-99-11-22",
+            layananId: "POL99",
+            tglPraktek: today,
+            status: 1
+        );
+        _mutasiDal.Insert(internalLoanDto);
+
+        var filter = new MutasiBerkasWorklistFilter(
+            TglPraktek: today,
+            LayananId: "POL99"
+        );
+
+        var results = _sut.QueryWorklist(filter).ToList();
+        var item = results.FirstOrDefault(x => x.MutasiId == "MK26100991");
+
+        item.Should().NotBeNull();
+        item!.NoAntrian.Should().Be(0);
+        item.Status.Should().Be(1);
     }
 }

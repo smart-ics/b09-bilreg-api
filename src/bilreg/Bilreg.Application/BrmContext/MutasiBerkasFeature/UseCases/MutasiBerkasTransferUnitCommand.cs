@@ -3,9 +3,11 @@ using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.BrmContext.MutasiBerkasFeature;
 using MediatR;
+using System.Text.Json.Serialization;
 
 namespace Bilreg.Application.BrmContext.MutasiBerkasFeature.UseCases;
 
+[method: JsonConstructor]
 public record MutasiBerkasTransferUnitCommand(
     string MutasiIdAsal,
     string PetugasTransfer,

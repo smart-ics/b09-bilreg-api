@@ -118,6 +118,52 @@ public class MutasiBerkasKembaliCommandTest
     }
 
     [Fact]
+    public async Task Handle_WhenMissing_TransitionsToReturned_GeneratesMMPrefix_AndSavesChanges()
+    {
+        // Arrange
+        var model = CreateSampleDispatched("MH26100001", qtyRi: 0, qtyRj: 1);
+        model.TandaiHilang("USR_POLI", new DateOnly(2026, 10, 17), new TimeOnly(10, 0, 0));
+        model.Status.Should().Be(MutasiBerkasStatusEnum.Missing);
+
+        _mutasiRepoMock.Setup(x => x.LoadEntity(It.Is<IMutasiBerkasKey>(k => k.MutasiBerkasId == "MH26100001")))
+            .Returns(MayBe.From(model));
+        _idGeneratorMock.Setup(x => x.Generate(MutasiBerkasStatusEnum.Returned))
+            .Returns("MM26100005");
+
+        var cmd = new MutasiBerkasKembaliCommand(
+            MutasiId: "MH26100001",
+            PetugasKembali: "USR_FILING",
+            QtyKembaliRi: 0,
+            QtyKembaliRj: 1,
+            TglKembali: new DateOnly(2026, 10, 17),
+            JamKembali: new TimeOnly(14, 30, 0));
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.MutasiId.Should().Be("MM26100005");
+        result.Status.Should().Be((int)MutasiBerkasStatusEnum.Returned);
+        result.Volume.Should().NotBeNull();
+        result.Volume.TotalKembali.Should().Be(1);
+        result.Volume.SisaPinjam.Should().Be(0);
+        result.Volume.IsLengkapKembali.Should().BeTrue();
+        result.PetugasKembali.Should().Be("USR_FILING");
+
+        _idGeneratorMock.Verify(x => x.Generate(MutasiBerkasStatusEnum.Returned), Times.Once);
+        _mutasiRepoMock.Verify(x => x.SaveChanges(It.Is<MutasiBerkasModel>(m =>
+            m.MutasiBerkasId == "MM26100005" &&
+            m.Status == MutasiBerkasStatusEnum.Returned &&
+            m.PetugasId == "USR_FILING" &&
+            m.Volume.TotalKembali == 1 &&
+            m.Volume.IsLengkapKembali
+        )), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_WhenPartialReturn_ReturnsVolumeWithRemainingBalance()
     {
         // Arrange
@@ -252,7 +298,7 @@ public class MutasiBerkasKembaliCommandTest
 
         var act = () => sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*harus Dispatched atau Received*");
+            .WithMessage("*harus Dispatched, Received, atau Missing*");
     }
 
     [Fact]

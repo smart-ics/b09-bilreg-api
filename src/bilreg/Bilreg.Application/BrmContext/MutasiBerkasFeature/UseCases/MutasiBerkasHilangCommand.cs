@@ -1,14 +1,17 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.BrmContext.MutasiBerkasFeature;
 using MediatR;
+using System.Text.Json.Serialization;
 
 namespace Bilreg.Application.BrmContext.MutasiBerkasFeature.UseCases;
 
+[method: JsonConstructor]
 public record MutasiBerkasHilangCommand(
     string MutasiId,
     string Petugas,
     DateOnly? TglMutasi = null,
-    TimeOnly? JamMutasi = null
+    TimeOnly? JamMutasi = null,
+    string Catatan = ""
 ) : IRequest<MutasiBerkasHilangResponse>, IMutasiBerkasKey
 {
     public string MutasiBerkasId => MutasiId;
@@ -21,7 +24,8 @@ public record MutasiBerkasHilangCommand(
             mutasiId,
             petugas,
             string.IsNullOrWhiteSpace(tglMutasi) ? null : DateOnly.Parse(tglMutasi),
-            string.IsNullOrWhiteSpace(jamMutasi) ? null : TimeOnly.Parse(jamMutasi))
+            string.IsNullOrWhiteSpace(jamMutasi) ? null : TimeOnly.Parse(jamMutasi),
+            "")
     {
     }
 }

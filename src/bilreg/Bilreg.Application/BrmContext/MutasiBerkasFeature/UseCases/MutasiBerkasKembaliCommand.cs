@@ -1,9 +1,11 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.BrmContext.MutasiBerkasFeature;
 using MediatR;
+using System.Text.Json.Serialization;
 
 namespace Bilreg.Application.BrmContext.MutasiBerkasFeature.UseCases;
 
+[method: JsonConstructor]
 public record MutasiBerkasKembaliCommand(
     string MutasiId,
     string PetugasKembali,
@@ -20,8 +22,8 @@ public record MutasiBerkasKembaliCommand(
         string petugasKembali,
         decimal qtyKembaliRi,
         decimal qtyKembaliRj,
-        string tglKembali,
-        string jamKembali) : this(
+        string? tglKembali,
+        string? jamKembali) : this(
             mutasiId,
             petugasKembali,
             qtyKembaliRi,
@@ -78,8 +80,8 @@ public class MutasiBerkasKembaliHandler : IRequestHandler<MutasiBerkasKembaliCom
         if (model.IsVoid)
             throw new InvalidOperationException("Mutasi berkas sudah dibatalkan (void).");
 
-        if (model.Status != MutasiBerkasStatusEnum.Dispatched && model.Status != MutasiBerkasStatusEnum.Received)
-            throw new InvalidOperationException($"Mutasi berkas tidak dapat dikembalikan karena status saat ini {model.Status} (harus Dispatched atau Received).");
+        if (model.Status != MutasiBerkasStatusEnum.Dispatched && model.Status != MutasiBerkasStatusEnum.Received && model.Status != MutasiBerkasStatusEnum.Missing)
+            throw new InvalidOperationException($"Mutasi berkas tidak dapat dikembalikan karena status saat ini {model.Status} (harus Dispatched, Received, atau Missing).");
 
         if (request.QtyKembaliRi > model.Volume.QtyPinjamRi)
             throw new ArgumentException("Jumlah berkas rawat inap kembali melebihi jumlah pinjam.", nameof(request.QtyKembaliRi));

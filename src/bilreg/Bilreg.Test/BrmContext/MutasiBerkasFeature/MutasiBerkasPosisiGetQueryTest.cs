@@ -173,6 +173,92 @@ public class MutasiBerkasPosisiGetQueryTest
     }
 
     [Fact]
+    public async Task Posisi_WhenNoActiveMutasi_AndPasienRegistered_ReturnsDefaultFilingPositionWithDemographics()
+    {
+        // Arrange
+        const string mrId = "00-12-34-56";
+        var pasien = CreateSamplePasien(mrId, "Budi Santoso", "L", new DateOnly(1990, 5, 20));
+
+        _mutasiRepoMock
+            .Setup(x => x.GetLatestActiveByMr(mrId))
+            .Returns(MayBe<MutasiBerkasModel>.None);
+
+        _pasienRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPasienKey>(k => k.PasienId == mrId)))
+            .Returns(MayBe.From(pasien));
+
+        var sut = CreateSut(includePasienRepo: true);
+
+        // Act
+        var response = await sut.Handle(new MutasiBerkasPosisiGetQuery(mrId), CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.MutasiId.Should().BeEmpty();
+        response.TrsBuatId.Should().BeEmpty();
+        response.MrId.Should().Be(mrId);
+        response.LayananId.Should().Be("FILING");
+        response.DokterId.Should().BeEmpty();
+        response.PetugasId.Should().BeEmpty();
+        response.Status.Should().Be(3);
+        response.StatusDescription.Should().Be("Tersimpan di Ruang Filing RM");
+        response.QtyPinjamRi.Should().Be(0);
+        response.QtyKembaliRi.Should().Be(0);
+        response.QtyPinjamRj.Should().Be(0);
+        response.QtyKembaliRj.Should().Be(0);
+        response.TotalPinjam.Should().Be(0);
+        response.TotalKembali.Should().Be(0);
+        response.SisaPinjam.Should().Be(0);
+        response.TglMutasi.Should().Be(DateOnly.FromDateTime(DateTime.Today));
+        response.IsFound.Should().BeTrue();
+        response.PasienName.Should().Be("Budi Santoso");
+        response.JenisKelamin.Should().Be("L");
+        response.TglLahir.Should().Be("1990-05-20");
+    }
+
+    [Fact]
+    public async Task Posisi_WhenNoActiveMutasi_AndPasienNotRegistered_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        const string mrId = "00-99-99-99";
+        _mutasiRepoMock
+            .Setup(x => x.GetLatestActiveByMr(mrId))
+            .Returns(MayBe<MutasiBerkasModel>.None);
+
+        _pasienRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPasienKey>(k => k.PasienId == mrId)))
+            .Returns(MayBe<PasienModel>.None);
+
+        var sut = CreateSut(includePasienRepo: true);
+
+        // Act
+        var act = () => sut.Handle(new MutasiBerkasPosisiGetQuery(mrId), CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"Data pasien dengan No RM '{mrId}' tidak ditemukan.");
+    }
+
+    [Fact]
+    public async Task Posisi_WhenNoActiveMutasi_AndPasienRepoNull_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        const string mrId = "00-99-99-99";
+        _mutasiRepoMock
+            .Setup(x => x.GetLatestActiveByMr(mrId))
+            .Returns(MayBe<MutasiBerkasModel>.None);
+
+        var sut = CreateSut(includePasienRepo: false);
+
+        // Act
+        var act = () => sut.Handle(new MutasiBerkasPosisiGetQuery(mrId), CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"Data pasien dengan No RM '{mrId}' tidak ditemukan.");
+    }
+
+    [Fact]
     public async Task Posisi_NotFound_ThrowsKeyNotFoundException()
     {
         // Arrange

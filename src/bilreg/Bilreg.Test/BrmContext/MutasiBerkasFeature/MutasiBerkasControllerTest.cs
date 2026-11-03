@@ -623,4 +623,318 @@ public class MutasiBerkasControllerTest
         root.GetProperty("code").GetString().Should().Be("500");
         root.GetProperty("status").GetString().Should().Be("Internal Server Error");
     }
+
+    [Fact]
+    public void KirimCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "trsBuatId": "RG00000001",
+            "mrId": "00000001",
+            "dokterId": "DOK01",
+            "layananId": "POLI01",
+            "tglPraktek": "2026-10-17",
+            "jamPraktek": "08:00",
+            "sesiPoli": "PAGI",
+            "petugasKirim": "PET01",
+            "qtyPinjamRi": 0,
+            "qtyPinjamRj": 1,
+            "tglMutasi": null,
+            "jamMutasi": null
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasKirimCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.TrsBuatId.Should().Be("RG00000001");
+        cmd.TglPraktek.Should().Be(new DateOnly(2026, 10, 17));
+        cmd.TglMutasi.Should().BeNull();
+        cmd.JamMutasi.Should().BeNull();
+    }
+
+    [Fact]
+    public void PinjamInternalCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mrId": "00000001",
+            "unitPeminjamId": "CASEMIX",
+            "petugasPeminjam": "PET02",
+            "petugasKirim": "PET01",
+            "keperluan": "Audit berkas medis internal",
+            "tglPinjam": null,
+            "jamPinjam": null
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasPinjamInternalCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MrId.Should().Be("00000001");
+        cmd.UnitPeminjamId.Should().Be("CASEMIX");
+        cmd.Keperluan.Should().Be("Audit berkas medis internal");
+    }
+
+    [Fact]
+    public void TerimaCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiId": "MK00000001",
+            "petugasTerima": "PET02",
+            "tglTerima": "2026-10-17",
+            "jamTerima": "09:00:00",
+            "trsBuatId": "RG00000001",
+            "mrId": "00000001"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasTerimaCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiId.Should().Be("MK00000001");
+        cmd.PetugasTerima.Should().Be("PET02");
+        cmd.TrsBuatId.Should().Be("RG00000001");
+        cmd.MrId.Should().Be("00000001");
+        cmd.TglTerima.Should().Be(new DateOnly(2026, 10, 17));
+    }
+
+    [Fact]
+    public void TransferUnitCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiIdAsal": "MK00000001",
+            "petugasTransfer": "PET01",
+            "layananTujuanId": "POLI02",
+            "dokterTujuanId": "DOK02",
+            "tglPraktek": "2026-10-17",
+            "jamPraktek": "10:00",
+            "sesiPoliTujuan": "PAGI",
+            "qtyTransferRi": 0,
+            "qtyTransferRj": 1,
+            "catatan": "Konsul poli mata",
+            "tglMutasi": null,
+            "jamMutasi": null
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasTransferUnitCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiIdAsal.Should().Be("MK00000001");
+        cmd.LayananTujuanId.Should().Be("POLI02");
+        cmd.TglPraktek.Should().Be(new DateOnly(2026, 10, 17));
+    }
+
+    [Fact]
+    public void KembaliCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiId": "MK00000001",
+            "petugasKembali": "PET01",
+            "qtyKembaliRi": 0,
+            "qtyKembaliRj": 1,
+            "tglKembali": "2026-10-17",
+            "jamKembali": "11:30:00"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasKembaliCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiId.Should().Be("MK00000001");
+        cmd.PetugasKembali.Should().Be("PET01");
+        cmd.QtyKembaliRj.Should().Be(1m);
+    }
+
+    [Fact]
+    public void HilangCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiId": "MK00000001",
+            "petugas": "PET01",
+            "tglMutasi": "2026-10-17",
+            "jamMutasi": "12:00:00",
+            "catatan": "Berkas tidak ditemukan di rak 3"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasHilangCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiId.Should().Be("MK00000001");
+        cmd.Petugas.Should().Be("PET01");
+        cmd.Catatan.Should().Be("Berkas tidak ditemukan di rak 3");
+    }
+
+    [Fact]
+    public void VoidCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiId": "MK00000001",
+            "petugasVoid": "SPV01",
+            "alasanVoid": "Salah input kunjungan",
+            "tglVoid": "2026-10-17",
+            "jamVoid": "13:00:00"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasVoidCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiId.Should().Be("MK00000001");
+        cmd.PetugasVoid.Should().Be("SPV01");
+        cmd.AlasanVoid.Should().Be("Salah input kunjungan");
+    }
+
+    [Fact]
+    public void CetakTracerCommand_JsonDeserialization_Works()
+    {
+        var json = """
+        {
+            "mutasiId": "MK00000001",
+            "petugasCetak": "PET01",
+            "tglCetak": "2026-10-17",
+            "jamCetak": "08:15:00"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var cmd = JsonSerializer.Deserialize<MutasiBerkasCetakTracerCommand>(json, options);
+        cmd.Should().NotBeNull();
+        cmd!.MutasiId.Should().Be("MK00000001");
+        cmd.PetugasCetak.Should().Be("PET01");
+        cmd.TglCetak.Should().Be(new DateOnly(2026, 10, 17));
+    }
+
+    [Fact]
+    public async Task ErrorHandlerMiddleware_WhenBadHttpRequestException_Returns400BadRequest()
+    {
+        // ARRANGE
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = ctx =>
+        {
+            throw new BadHttpRequestException("Invalid request body format.");
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be("Invalid request body format.");
+    }
+
+    [Fact]
+    public async Task ErrorHandlerMiddleware_WhenJsonException_Returns400BadRequest()
+    {
+        // ARRANGE
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = ctx =>
+        {
+            throw new JsonException("The JSON value could not be converted.");
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be("The JSON value could not be converted.");
+    }
+
+    [Fact]
+    public async Task ErrorHandlerMiddleware_WhenDeserializationNotSupportedException_Returns400BadRequest()
+    {
+        // ARRANGE
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = ctx =>
+        {
+            throw new NotSupportedException("Deserialization of types without a parameterless constructor is not supported.");
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+    }
+
+    [Fact]
+    public async Task ErrorHandlerMiddleware_WhenAggregateExceptionWrappingArgumentException_UnwrapsTo400BadRequest()
+    {
+        // ARRANGE
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        var loggerMock = new Mock<ILogger<ErrorHandlerMiddleware>>();
+
+        RequestDelegate next = ctx =>
+        {
+            throw new AggregateException(
+                new TargetInvocationException(
+                    "Invocation wrapper",
+                    new ArgumentException("Field is required.")));
+        };
+
+        var middleware = new ErrorHandlerMiddleware(next, loggerMock.Object);
+
+        // ACT
+        await middleware.Invoke(httpContext);
+
+        // ASSERT
+        httpContext.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        httpContext.Response.ContentType.Should().Contain("application/json");
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+
+        using var jsonDoc = JsonDocument.Parse(responseBody);
+        var root = jsonDoc.RootElement;
+        root.GetProperty("code").GetString().Should().Be("400");
+        root.GetProperty("status").GetString().Should().Be("AQ_INVALID_REQUEST");
+        root.GetProperty("data").GetString().Should().Be("Field is required.");
+    }
 }

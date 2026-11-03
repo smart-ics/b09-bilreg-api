@@ -108,7 +108,42 @@ public class MutasiBerkasPosisiGetHandler : IRequestHandler<MutasiBerkasPosisiGe
 
         var maybeModel = _mutasiRepo.GetLatestActiveByMr(request.MrId);
         if (!maybeModel.HasValue)
-            throw new KeyNotFoundException($"Mutasi berkas aktif untuk No RM '{request.MrId}' tidak ditemukan.");
+        {
+            if (_pasienRepo is not null)
+            {
+                var pasienOpt = _pasienRepo.LoadEntity(PasienModel.Key(request.MrId));
+                if (pasienOpt.HasValue)
+                {
+                    var person = pasienOpt.Value.Person;
+                    var defaultResponse = new MutasiBerkasPosisiResponse(
+                        MutasiId: string.Empty,
+                        TrsBuatId: string.Empty,
+                        MrId: request.MrId,
+                        LayananId: "FILING",
+                        DokterId: string.Empty,
+                        PetugasId: string.Empty,
+                        Status: (int)MutasiBerkasStatusEnum.Returned,
+                        StatusDescription: "Tersimpan di Ruang Filing RM",
+                        QtyPinjamRi: 0,
+                        QtyKembaliRi: 0,
+                        QtyPinjamRj: 0,
+                        QtyKembaliRj: 0,
+                        TotalPinjam: 0,
+                        TotalKembali: 0,
+                        SisaPinjam: 0,
+                        TglMutasi: DateOnly.FromDateTime(DateTime.Today),
+                        JamMutasi: TimeOnly.FromDateTime(DateTime.Now),
+                        IsFound: true,
+                        PasienName: person.PersonName,
+                        JenisKelamin: person.Gender,
+                        TglLahir: person.TglLahir.ToString("yyyy-MM-dd")
+                    );
+                    return Task.FromResult(defaultResponse);
+                }
+            }
+
+            throw new KeyNotFoundException($"Data pasien dengan No RM '{request.MrId}' tidak ditemukan.");
+        }
 
         var model = maybeModel.Value;
 

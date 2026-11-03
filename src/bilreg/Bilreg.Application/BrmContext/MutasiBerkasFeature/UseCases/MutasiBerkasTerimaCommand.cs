@@ -2,9 +2,11 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.BrmContext.MutasiBerkasFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using System.Text.Json.Serialization;
 
 namespace Bilreg.Application.BrmContext.MutasiBerkasFeature.UseCases;
 
+[method: JsonConstructor]
 public record MutasiBerkasTerimaCommand(
     string MutasiId,
     string PetugasTerima,

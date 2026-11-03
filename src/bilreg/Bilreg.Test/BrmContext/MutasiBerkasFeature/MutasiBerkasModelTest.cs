@@ -260,13 +260,33 @@ public class MutasiBerkasModelTest
     }
 
     [Fact]
+    public void GivenMissing_WhenKembaliCalled_ThenStatusTransitionsToReturnedAndVolumeUpdated()
+    {
+        var sut = CreateSampleDispatched(qtyRi: 1, qtyRj: 1);
+        sut.TandaiHilang("USR_POLI", new DateOnly(2026, 10, 17), new TimeOnly(9, 0, 0));
+        sut.Status.Should().Be(MutasiBerkasStatusEnum.Missing);
+
+        var tglKembali = new DateOnly(2026, 10, 17);
+        var jamKembali = new TimeOnly(14, 0, 0);
+        sut.Kembali("USR_FILING", tglKembali, jamKembali, qtyKembaliRi: 1, qtyKembaliRj: 1);
+
+        sut.Status.Should().Be(MutasiBerkasStatusEnum.Returned);
+        sut.PetugasId.Should().Be("USR_FILING");
+        sut.TglMutasi.Should().Be(tglKembali);
+        sut.JamMutasi.Should().Be(jamKembali);
+        sut.Volume.TotalKembali.Should().Be(2);
+        sut.Volume.SisaPinjam.Should().Be(0);
+        sut.Volume.IsLengkapKembali.Should().BeTrue();
+    }
+
+    [Fact]
     public void GivenInvalidStatusForKembali_WhenKembaliCalled_ThenThrowsInvalidOperationException()
     {
         var sut = CreateSamplePermintaan();
 
         var act = () => sut.Kembali("USR_FILING", new DateOnly(2026, 10, 17), new TimeOnly(12, 0, 0), 0, 1);
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*harus Dispatched atau Received*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*harus Dispatched, Received, atau Missing*");
     }
 
     [Fact]
