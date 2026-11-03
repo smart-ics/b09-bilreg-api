@@ -89,6 +89,42 @@ public class OpCaseModel : IOrderOpKey
     #endregion
 
     #region BEHAVIOUR
+    public void ScheduleDraft(ScheduleOpModel schedule, DateTime scheduledAt = default)
+    {
+        if (OrderOpState != OpCaseStateEnum.Requested)
+            throw new InvalidOperationException($"Jadwal draf hanya dapat dialokasikan pada order berstatus Requested! Status saat ini: {OrderOpState}");
+
+        ScheduleOp = schedule.ToReff();
+        DuranteOp = DuranteOpReff.Default;
+        SetListPpa(schedule.ListPpa
+                    .Select(x =>
+                    {
+                        string profesi = x.Profesi.ProfesiName;
+                        return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                    }), scheduledAt);
+    }
+
+    public void ConfirmSchedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
+    {
+        if (OrderOpState != OpCaseStateEnum.Requested)
+            throw new InvalidOperationException($"Konfirmasi jadwal hanya dapat dilakukan pada order berstatus Requested! Status saat ini: {OrderOpState}");
+
+        if (schedule.IsDraft)
+            throw new InvalidOperationException("Tidak dapat mengonfirmasi jadwal operasi yang masih berstatus draf!");
+
+        ScheduleOp = schedule.ToReff();
+        DuranteOp = DuranteOpReff.Default;
+        OrderOpState = OpCaseStateEnum.Scheduled;
+        SetListPpa(schedule.ListPpa
+                    .Select(x =>
+                    {
+                        string profesi = x.Profesi.ProfesiName;
+                        return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                    }), scheduledAt);
+
+        UpsertStateHistory(OrderOpState, scheduledAt);
+    }
+
     public void Schedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)

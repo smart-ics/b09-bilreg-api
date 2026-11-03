@@ -20,7 +20,8 @@ public class ScheduleOpModel : IScheduleOpKey
         IEnumerable<ScheduleOpPpaType> listPpa,
         string alasanBatal = "",
         int turnoverBuffer = 30,
-        IEnumerable<ScheduleOpHistType> listHistory = null)
+        IEnumerable<ScheduleOpHistType> listHistory = null,
+        bool isDraft = true)
     {
         ScheduleOpId = scheduleOpId;
         ScheduleOpDate = scheduleDate;
@@ -40,6 +41,7 @@ public class ScheduleOpModel : IScheduleOpKey
         AlasanBatal = alasanBatal ?? string.Empty;
         TurnoverBuffer = turnoverBuffer <= 0 ? 30 : turnoverBuffer;
         _listHistory = listHistory?.ToList() ?? [];
+        IsDraft = isDraft;
 
         EnsureTeamLeadInvariant();
     }
@@ -51,7 +53,7 @@ public class ScheduleOpModel : IScheduleOpKey
             new DateTime(3000, 1, 1), KamarType.Default.ToReff(),
             RegModel.Default.ToReff(), PpaType.Default.ToReff(),
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            OpCaseStateEnum.Scheduled, [], "", 30, []);
+            OpCaseStateEnum.Scheduled, [], "", 30, [], isDraft: false);
 
     public static IScheduleOpKey Key(string id)
         => new ScheduleOpModel(id, new DateTime(3000, 1, 1), AuditTrailType.Default,
@@ -60,7 +62,7 @@ public class ScheduleOpModel : IScheduleOpKey
             new DateTime(3000, 1, 1), KamarType.Default.ToReff(),
             RegModel.Default.ToReff(), PpaType.Default.ToReff(),
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            OpCaseStateEnum.Scheduled, [], "", 30, []);
+            OpCaseStateEnum.Scheduled, [], "", 30, [], isDraft: false);
 
     public static ScheduleOpModel CreateFromOrder(OrderOpModel orderOp, string userId,
         KamarType kamar, PpaType dokterOperator, DateTime tglOp, DateTime createdAt = default)
@@ -82,7 +84,7 @@ public class ScheduleOpModel : IScheduleOpKey
             orderOp.Pasien, orderOp.UrgencyLevel, orderOp.EstimasiDurasiInMinutes,
             tglOp, kamar.ToReff(), orderOp.Reg, dokterOperator.ToReff(),
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            OpCaseStateEnum.Scheduled, [firstPpaMember], "", 30, []);
+            OpCaseStateEnum.Scheduled, [firstPpaMember], "", 30, [], isDraft: true);
 
         return result;
     }
@@ -93,6 +95,7 @@ public class ScheduleOpModel : IScheduleOpKey
     public string ScheduleOpId { get; init; }
     public DateTime ScheduleOpDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
+    public bool IsDraft { get; private set; }
     //  order
     public OrderOpReff OrderOp { get; init; }
     public PasienReff Pasien { get; init; }
@@ -117,6 +120,15 @@ public class ScheduleOpModel : IScheduleOpKey
     #endregion
 
     #region BEHAVIOUR
+    public void Confirm(string userId, DateTime occurredAt)
+    {
+        if (!IsDraft)
+            throw new InvalidOperationException("Jadwal operasi sudah berstatus resmi dan tidak dapat dikonfirmasi ulang.");
+
+        IsDraft = false;
+        AuditTrail.Modif(userId, occurredAt);
+    }
+
     public void SetSchedule(DateTime tglOp, KamarReff kamarOp, int durasi, string userId, DateTime updatedAt = default, int turnoverBuffer = 30)
     {
         TglOp = tglOp;
@@ -138,26 +150,29 @@ public class ScheduleOpModel : IScheduleOpKey
         string userId,
         DateTime occurredAt)
     {
-        Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
+        if (!IsDraft)
+        {
+            Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
 
-        var nextNoUrut = _listHistory.Count + 1;
-        var hist = new ScheduleOpHistType(
-            nextNoUrut,
-            TglOp,
-            newTglOp,
-            Durasi,
-            newDurasi,
-            KamarOp,
-            newKamar,
-            TeamLead,
-            newTeamLead,
-            alasanPerubahan,
-            isOverride,
-            overrideReason ?? string.Empty,
-            userId,
-            occurredAt,
-            "RESCHEDULE");
-        _listHistory.Add(hist);
+            var nextNoUrut = _listHistory.Count + 1;
+            var hist = new ScheduleOpHistType(
+                nextNoUrut,
+                TglOp,
+                newTglOp,
+                Durasi,
+                newDurasi,
+                KamarOp,
+                newKamar,
+                TeamLead,
+                newTeamLead,
+                alasanPerubahan,
+                isOverride,
+                overrideReason ?? string.Empty,
+                userId,
+                occurredAt,
+                "RESCHEDULE");
+            _listHistory.Add(hist);
+        }
 
         TglOp = newTglOp;
         KamarOp = newKamar;
@@ -200,7 +215,10 @@ public class ScheduleOpModel : IScheduleOpKey
 
     public void AssignLeader(PpaType ppa, string alasanPerubahan, string userId, DateTime updatedAt = default, bool isOverride = false, string overrideReason = "")
     {
-        Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
+        if (!IsDraft)
+        {
+            Guard.Against.NullOrWhiteSpace(alasanPerubahan, nameof(alasanPerubahan));
+        }
 
         // harus dokter
         var profesi = ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi;
@@ -221,19 +239,22 @@ public class ScheduleOpModel : IScheduleOpKey
             _listPpa.Add(new ScheduleOpPpaType(_listPpa.Count + 1, ppa.ToReff(), profesi, groupSpesialis));
         }
 
-        var nextNoUrut = _listHistory.Count + 1;
-        var hist = new ScheduleOpHistType(
-            nextNoUrut,
-            TglOp, TglOp,
-            Durasi, Durasi,
-            KamarOp, KamarOp,
-            TeamLead, ppa.ToReff(),
-            alasanPerubahan,
-            isOverride,
-            overrideReason ?? string.Empty,
-            userId, updatedAt,
-            "ASSIGN_LEADER");
-        _listHistory.Add(hist);
+        if (!IsDraft)
+        {
+            var nextNoUrut = _listHistory.Count + 1;
+            var hist = new ScheduleOpHistType(
+                nextNoUrut,
+                TglOp, TglOp,
+                Durasi, Durasi,
+                KamarOp, KamarOp,
+                TeamLead, ppa.ToReff(),
+                alasanPerubahan,
+                isOverride,
+                overrideReason ?? string.Empty,
+                userId, updatedAt,
+                "ASSIGN_LEADER");
+            _listHistory.Add(hist);
+        }
 
         TeamLead = ppa.ToReff();
         EnsureTeamLeadInvariant();

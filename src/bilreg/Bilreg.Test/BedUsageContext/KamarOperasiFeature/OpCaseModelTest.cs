@@ -199,4 +199,114 @@ public class OpCaseModelTest
             .Should().Throw<InvalidOperationException>()
             .WithMessage("*Status Operasi tidak dapat dibatalkan*");
     }
+
+    [Fact]
+    public void ScheduleDraft_WhenRequested_ShouldAttachScheduleAndPpa_ButRetainRequestedStateWithoutHistory()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 16, 8, 0, 0));
+        var schedule = CreateSampleSchedule(orderOp); // isDraft = true
+        var scheduledAt = new DateTime(2026, 10, 16, 9, 0, 0);
+
+        schedule.IsDraft.Should().BeTrue();
+
+        // Act
+        sut.ScheduleDraft(schedule, scheduledAt);
+
+        // Assert
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+        sut.ScheduleOp.ScheduleOpId.Should().Be(schedule.ScheduleOpId);
+        sut.ScheduleOp.ScheduledDate.Should().Be(schedule.TglOp);
+        sut.DuranteOp.Should().Be(DuranteOpReff.Default);
+
+        // State history should NOT add Scheduled state (still only 1 initial Requested history)
+        sut.ListStateHistory.Should().HaveCount(1);
+        sut.ListStateHistory.Should().NotContain(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
+
+        // Ppa team should be attached
+        sut.ListPpa.Should().Contain(x => x.Ppa == schedule.TeamLead);
+    }
+
+    [Fact]
+    public void ScheduleDraft_WhenNotRequested_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 16, 8, 0, 0));
+        var schedule = CreateSampleSchedule(orderOp);
+        schedule.Confirm("user-conf", new DateTime(2026, 10, 16, 8, 30, 0));
+        sut.ConfirmSchedule(schedule, new DateTime(2026, 10, 16, 8, 30, 0));
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.Scheduled);
+
+        // Act & Assert
+        FluentActions.Invoking(() => sut.ScheduleDraft(schedule, DateTime.Now))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("*Requested*");
+    }
+
+    [Fact]
+    public void ConfirmSchedule_WhenDraftSchedule_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 16, 8, 0, 0));
+        var schedule = CreateSampleSchedule(orderOp); // isDraft == true
+        schedule.IsDraft.Should().BeTrue();
+
+        // Act & Assert
+        FluentActions.Invoking(() => sut.ConfirmSchedule(schedule, DateTime.Now))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("*draf*");
+    }
+
+    [Fact]
+    public void ConfirmSchedule_WhenValid_ShouldTransitionToScheduledAndRecordHistory()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 16, 8, 0, 0));
+        var schedule = CreateSampleSchedule(orderOp);
+        var scheduledAt = new DateTime(2026, 10, 16, 9, 30, 0);
+
+        // First allocate as draft
+        sut.ScheduleDraft(schedule, scheduledAt);
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+
+        // Confirm the schedule model first
+        schedule.Confirm("user-conf", scheduledAt);
+        schedule.IsDraft.Should().BeFalse();
+
+        // Act
+        sut.ConfirmSchedule(schedule, scheduledAt);
+
+        // Assert
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.Scheduled);
+        sut.ScheduleOp.ScheduleOpId.Should().Be(schedule.ScheduleOpId);
+        sut.ScheduleOp.ScheduledDate.Should().Be(schedule.TglOp);
+
+        // State history should contain Scheduled state
+        sut.ListStateHistory.Should().Contain(x =>
+            x.OpCaseState == OpCaseStateEnum.Scheduled && x.StateTimestamp == scheduledAt);
+    }
+
+    [Fact]
+    public void ConfirmSchedule_WhenNotRequested_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 16, 8, 0, 0));
+        var schedule = CreateSampleSchedule(orderOp);
+        schedule.Confirm("user-conf", new DateTime(2026, 10, 16, 8, 30, 0));
+        sut.ConfirmSchedule(schedule, new DateTime(2026, 10, 16, 8, 30, 0));
+        sut.Start(DateTime.Now); // Now OpStarted
+
+        var newSchedule = CreateSampleSchedule(orderOp);
+        newSchedule.Confirm("user-conf", DateTime.Now);
+
+        // Act & Assert
+        FluentActions.Invoking(() => sut.ConfirmSchedule(newSchedule, DateTime.Now))
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("*Requested*");
+    }
 }

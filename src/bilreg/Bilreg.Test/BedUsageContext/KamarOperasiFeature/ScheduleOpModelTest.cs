@@ -42,7 +42,7 @@ public class ScheduleOpModelTests
         );
     }
 
-    private static ScheduleOpModel CreateEmptySchedule()
+    private static ScheduleOpModel CreateEmptySchedule(bool isDraft = false)
     {
         return new ScheduleOpModel(
             "S1",
@@ -62,7 +62,8 @@ public class ScheduleOpModelTests
             Enumerable.Empty<ScheduleOpPpaType>(),
             "",
             30,
-            Enumerable.Empty<ScheduleOpHistType>()
+            Enumerable.Empty<ScheduleOpHistType>(),
+            isDraft
         );
     }
 
@@ -208,6 +209,7 @@ public class ScheduleOpModelTests
         var kamar = KamarType.Default;
         var doctor1 = CreatePpa("D1", ProfesiType.Dokter);
         var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+        schedule.Confirm("user1", DateTime.Today);
         var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
 
         // Act
@@ -430,6 +432,7 @@ public class ScheduleOpModelTests
         var doctor2 = CreatePpa("D2", ProfesiType.Dokter);
         var doctor3 = CreatePpa("D3", ProfesiType.Dokter);
         var schedule = ScheduleOpModel.CreateFromOrder(order, "user1", kamar, doctor1, DateTime.Today);
+        schedule.Confirm("user1", DateTime.Today);
 
         schedule.AddPpa(doctor2, "user1");
         schedule.AddPpa(doctor3, "user1");
@@ -553,6 +556,7 @@ public class ScheduleOpModelTests
         var dokter = CreatePpa("DOC-01", ProfesiType.Dokter);
         var initialTglOp = new DateTime(2026, 10, 25, 8, 0, 0);
         var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamarAwal, dokter, initialTglOp);
+        sut.Confirm("u1", initialTglOp);
         var originalId = sut.ScheduleOpId;
 
         var newTglOp = new DateTime(2026, 10, 25, 13, 0, 0);
@@ -616,6 +620,7 @@ public class ScheduleOpModelTests
         var kamar = KamarType.Default with { KamarId = "K-01", KamarName = "Kamar 1" };
         var dokter = CreatePpa("DOC-01", ProfesiType.Dokter);
         var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, dokter, DateTime.Today);
+        sut.Confirm("u1", DateTime.Today);
 
         // Act 1
         sut.Reschedule(
@@ -768,5 +773,173 @@ public class ScheduleOpModelTests
         sut.AlasanBatal.Should().Be("Batal jadwal lama");
         sut.TurnoverBuffer.Should().Be(45);
         sut.ListHistory.Should().ContainSingle().Which.Should().Be(hist);
+    }
+
+    // ---------------------------------------------------------
+    // Draft Lifecycle & Pre-Commitment History Suppression Tests (P2-S02)
+    // ---------------------------------------------------------
+    [Fact]
+    public void CreateFromOrder_ShouldInitializeWithIsDraftTrue()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor = CreatePpa("DOC-01", ProfesiType.Dokter);
+
+        // Act
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, doctor, DateTime.Today);
+
+        // Assert
+        sut.IsDraft.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Confirm_WhenScheduleIsDraft_ShouldSetIsDraftFalseAndRecordAudit()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, doctor, DateTime.Today);
+        var confirmedAt = new DateTime(2026, 11, 3, 10, 0, 0);
+
+        // Act
+        sut.Confirm("coordinator1", confirmedAt);
+
+        // Assert
+        sut.IsDraft.Should().BeFalse();
+        sut.AuditTrail.Modified.UserId.Should().Be("coordinator1");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(confirmedAt);
+    }
+
+    [Fact]
+    public void Confirm_WhenScheduleAlreadyOfficial_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var sut = CreateEmptySchedule(isDraft: false);
+
+        // Act
+        Action act = () => sut.Confirm("u1", DateTime.Now);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*sudah berstatus resmi*");
+    }
+
+    [Fact]
+    public void Reschedule_WhenDraft_ShouldMutateWithoutHistoryAndAllowEmptyAlasan()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, doctor, DateTime.Today);
+        sut.IsDraft.Should().BeTrue();
+
+        var newTgl = DateTime.Today.AddHours(2);
+        var newKamar = new KamarReff("K2", "Kamar 2");
+
+        // Act - reason is empty string
+        sut.Reschedule(
+            newTglOp: newTgl,
+            newKamar: newKamar,
+            newDurasi: 120,
+            newTurnoverBuffer: 30,
+            newTeamLead: doctor.ToReff(),
+            alasanPerubahan: "",
+            isOverride: false,
+            overrideReason: "",
+            userId: "u2",
+            occurredAt: DateTime.Now);
+
+        // Assert
+        sut.TglOp.Should().Be(newTgl);
+        sut.KamarOp.Should().Be(newKamar);
+        sut.Durasi.Should().Be(120);
+        sut.ListHistory.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Reschedule_WhenOfficial_ShouldRequireAlasanAndRecordHistory()
+    {
+        // Arrange
+        var sut = CreateEmptySchedule(isDraft: false);
+        var doctor = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var newTgl = DateTime.Today.AddHours(2);
+        var newKamar = new KamarReff("K2", "Kamar 2");
+
+        // Act & Assert - empty reason fails
+        FluentActions.Invoking(() => sut.Reschedule(
+            newTglOp: newTgl,
+            newKamar: newKamar,
+            newDurasi: 120,
+            newTurnoverBuffer: 30,
+            newTeamLead: doctor.ToReff(),
+            alasanPerubahan: "   ",
+            isOverride: false,
+            overrideReason: "",
+            userId: "u2",
+            occurredAt: DateTime.Now))
+            .Should().Throw<ArgumentException>();
+
+        // Act - valid reason records history
+        var occurredAt = new DateTime(2026, 11, 3, 11, 0, 0);
+        sut.Reschedule(
+            newTglOp: newTgl,
+            newKamar: newKamar,
+            newDurasi: 120,
+            newTurnoverBuffer: 30,
+            newTeamLead: doctor.ToReff(),
+            alasanPerubahan: "Pergeseran jadwal resmi",
+            isOverride: false,
+            overrideReason: "",
+            userId: "u2",
+            occurredAt: occurredAt);
+
+        sut.ListHistory.Should().HaveCount(1);
+        var hist = sut.ListHistory.First();
+        hist.Alasan.Should().Be("Pergeseran jadwal resmi");
+        hist.ChangeType.Should().Be("RESCHEDULE");
+    }
+
+    [Fact]
+    public void AssignLeader_WhenDraft_ShouldSuppressHistoryAndAllowEmptyAlasan()
+    {
+        // Arrange
+        var order = OrderOpModel.Default;
+        var kamar = KamarType.Default;
+        var doctor1 = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var doctor2 = CreatePpa("DOC-02", ProfesiType.Dokter);
+        var sut = ScheduleOpModel.CreateFromOrder(order, "u1", kamar, doctor1, DateTime.Today);
+        sut.IsDraft.Should().BeTrue();
+
+        // Act - empty reason
+        sut.AssignLeader(doctor2, alasanPerubahan: "", userId: "u2");
+
+        // Assert
+        sut.TeamLead.PpaId.Should().Be("DOC-02");
+        sut.ListHistory.Should().BeEmpty();
+        sut.ListPpa.First().Ppa.PpaId.Should().Be("DOC-02");
+        sut.ListPpa.First().NoUrut.Should().Be(1);
+    }
+
+    [Fact]
+    public void AssignLeader_WhenOfficial_ShouldRequireAlasanAndRecordHistory()
+    {
+        // Arrange
+        var sut = CreateEmptySchedule(isDraft: false);
+        var doctor1 = CreatePpa("DOC-01", ProfesiType.Dokter);
+        var doctor2 = CreatePpa("DOC-02", ProfesiType.Dokter);
+        sut.AddPpa(doctor1, "u1");
+
+        // Act & Assert - whitespace reason throws
+        FluentActions.Invoking(() => sut.AssignLeader(doctor1, "  ", "u1"))
+            .Should().Throw<ArgumentException>();
+
+        // Act - valid reason records history
+        sut.AssignLeader(doctor1, "Pergantian resmi", "u1");
+        sut.ListHistory.Should().HaveCount(1);
+        sut.ListHistory.First().Alasan.Should().Be("Pergantian resmi");
+        sut.ListHistory.First().ChangeType.Should().Be("ASSIGN_LEADER");
     }
 }
