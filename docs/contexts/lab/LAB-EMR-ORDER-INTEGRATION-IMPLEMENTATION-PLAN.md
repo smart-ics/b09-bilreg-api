@@ -181,8 +181,8 @@ Review Status: NOT-REVIEWED
 
 ### P2-S04
 - **Title**: Penanganan Interaktif Peringatan Duplikasi 24 Jam & Error Validasi UI EMR (`chartNote.js`)
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Mengimplementasikan penanganan error HTTP 409 (`DUPLICATE_LAB_ORDER_WARNING`) dan error definisi tes pada `chartNote.js` dengan modal konfirmasi SweetAlert interaktif untuk dokter pengorder.
 - **Depends On**: P2-S03
 - **Repository**: `c001_emr2_frontend`
@@ -198,6 +198,17 @@ Review Status: NOT-REVIEWED
 - **Notes**:
   - Target files:
     - `assets/js/MedicalChart/chartNote.js`
+  - Implementation Notes:
+    - Mengimplementasikan penanganan respons error HTTP 409 (`DUPLICATE_LAB_ORDER_WARNING`) pada fungsi `sendOrderLabToBilreg` di `chartNote.js`.
+    - Mengekstrak informasi `duplicateTestNames` dan `previousOrderIds` dari payload respons JSend Bilreg API.
+    - Menampilkan dialog konfirmasi interaktif SweetAlert (`Swal.fire`) dengan opsi "Ya, Tetap Buat Order" dan "Batal".
+    - Mengimplementasikan retry otomatis via AJAX dengan payload parameter `allowDuplicateConfirmation: true` ketika dokter memilih override, disertai notifikasi toastr sukses memuat `orderNo`.
+    - Menangani pembatalan konfirmasi oleh dokter dengan notifikasi toastr pembatalan.
+    - Menangani respons HTTP 400 untuk exception `LAB_TEST_DEFINITION_NOT_FOUND` dengan menampilkan modal error informatif (`Swal.fire`) yang menyertakan nama pemeriksaan/tarif terkait agar klinisi dapat berkoordinasi dengan laboratorium/IT.
+    - Mempertahankan toastr error fallback untuk jenis error lainnya.
+    - Memverifikasi validitas sintaks javascript `chartNote.js` menggunakan `node -c`.
+  - Changed Files:
+    - `c001_emr2_frontend/assets/js/MedicalChart/chartNote.js`
 
 ---
 
