@@ -23,6 +23,11 @@ public static class InpatientAgePolicy
     {
         if (IsPerinatalAge(tglLahir, regDate))
         {
+            if (requestedJenisInapId == JENIS_INAP_UMUM)
+            {
+                return JENIS_INAP_UMUM;
+            }
+
             return JENIS_INAP_PERINATAL;
         }
 

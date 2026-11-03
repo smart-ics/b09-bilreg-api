@@ -15,7 +15,7 @@ Berlaku pada proses registrasi rawat inap, validasi registrasi, dan pencatatan d
 - **Jenis Inap Umum (kode `1`)**: pasien rawat inap biasa, bukan obstetri/perinatal.
 - **Jenis Inap Obstetri (kode `2`)**: pasien ibu yang dirawat terkait kehamilan/persalinan.
 - **Jenis Inap Perinatal (kode `3`)**: pasien bayi/neonatus yang dirawat dan terkait dengan registrasi ibu.
-- **Register Ibu**: kode registrasi ibu yang menjadi rujukan bagi pasien perinatal.
+- **Register Ibu**: kode registrasi ibu yang menjadi rujukan bagi pasien perinatal (apabila ibu dirawat).
 
 ## 4. Master Data Terkait
 
@@ -34,7 +34,7 @@ Field utama terkait jenis inap:
 | `fs_kd_reg` | Kode registrasi |
 | `fs_mr` | No. MR pasien |
 | `fs_kd_jenis_inap` | Jenis inap: `1` umum, `2` obstetri, `3` perinatal |
-| `fs_reg_ibu` | Kode registrasi ibu, wajib untuk jenis inap perinatal |
+| `fs_reg_ibu` | Kode registrasi ibu, kondisional untuk jenis inap perinatal (kosong jika ibu tidak dirawat) |
 
 
 ### 5.2 Tabel Terkait Lain
@@ -46,16 +46,16 @@ Field utama terkait jenis inap:
 ## 6. Aturan Penentuan Jenis Inap
 
 ### 6.1 Pasien Perinatal
-Pasien ditentukan sebagai **perinatal** jika:
-1. Umur pasien kurang dari 1 bulan (0 tahun, 0 bulan).
-2. Sistem otomatis set `fs_kd_jenis_inap = "3"`.
-3. Sistem otomatis mengambil register ibu dari data MR ibu.
-4. Register ibu harus terdaftar dan aktif.
-5. Register ibu harus memiliki jenis inap **obstetri (`"2"`)**.
-6. Register ibu tidak boleh void.
-7. Register ibu tidak boleh sudah keluar.
-
-Jika salah satu syarat tidak terpenuhi, registrasi perinatal ditolak.
+1. Pasien berumur kurang dari 1 bulan (0 tahun, 0 bulan) secara default diarahkan ke jenis inap **perinatal (`"3"`)**, namun petugas dapat memilih jenis inap **umum (`"1"`)** apabila diperlukan.
+2. Pada jenis inap perinatal, sistem secara otomatis mencoba mengambil nomor register ibu aktif dari data MR ibu jika tersedia.
+3. **Kondisionalitas Register Ibu**:
+   - Jika ibu tidak sedang dirawat inap di rumah sakit (misal rujukan luar, readmisi bayi, atau kondisi sosial), Register Ibu dapat dikosongkan dan pendaftaran tetap dapat diproses (`fs_reg_ibu = ""`).
+   - Jika Register Ibu diisi (baik otomatis atau manual), maka wajib memenuhi validasi integritas berikut:
+     a. Register ibu harus terdaftar di database.
+     b. Register ibu tidak boleh void (`fd_tgl_void == "3000-01-01"`).
+     c. Register ibu tidak boleh sudah keluar/pulang (`fd_tgl_keluar == "3000-01-01"`).
+     d. Register ibu harus memiliki jenis inap **obstetri (`"2"`)**.
+4. Jika Register Ibu diisi namun salah satu syarat validasi integritas tidak terpenuhi, registrasi ditolak.
 
 ### 6.2 Pasien Obstetri
 Pasien ditentukan sebagai **obstetri** jika:
@@ -73,31 +73,34 @@ Pasien ditentukan sebagai **umum** jika:
 
 1. Petugas membuka registrasi rawat inap.
 2. Sistem membaca data pasien dari `tc_mr`.
-3. Jika pasien baru dan umur < 1 bulan:
-   - Sistem otomatis set jenis inap = perinatal (`3`).
-   - Sistem mengambil register ibu aktif.
+3. Jika umur pasien < 1 bulan:
+   - Sistem secara default menetapkan jenis inap = perinatal (`3`), namun petugas dapat memilih umum (`1`).
+   - Jika jenis inap perinatal dipilih, sistem mencoba mengambil register ibu aktif dari MR ibu.
 4. Jika tidak memenuhi kriteria perinatal:
    - Sistem set jenis inap = umum (`1`), kecuali petugas memilih obstetri (`2`).
 5. Jika jenis inap perinatal:
-   - Sistem validasi register ibu:
-     - register ibu ada,
+   - Jika register ibu terisi (otomatis maupun manual), sistem memvalidasi:
+     - register ibu ada di database,
      - tidak void,
-     - tidak keluar,
+     - tidak keluar/pulang,
      - jenis inap ibu = obstetri (`2`).
-6. Jika validasi gagal, registrasi ditolak.
-7. Jika valid, simpan ke `ta_registrasi` dengan `fs_kd_jenis_inap` dan `fs_reg_ibu` bila perinatal.
+   - Jika register ibu tidak terisi (ibu tidak dirawat inap), registrasi tetap diizinkan.
+6. Jika validasi register ibu gagal, registrasi ditolak.
+7. Simpan data ke `ta_registrasi` dengan `fs_kd_jenis_inap` dan `fs_reg_ibu` (berisi nomor registrasi ibu jika ada, atau string kosong jika tidak ada).
 
 ## 8. Validasi Utama
 
 | Kondisi | Hasil |
 |---|---|
-| Umur < 1 bulan | Otomatis perinatal |
-| Umur ≥ 1 bulan | Default umum, kecuali dipilih obstetri |
-| Perinatal tanpa register ibu | Ditolak |
+| Umur < 1 bulan (default) | Default perinatal (`3`), dapat dipilih umum (`1`) |
+| Umur ≥ 1 bulan | Default umum (`1`), kecuali dipilih obstetri (`2`) |
+| Perinatal tanpa register ibu (ibu tidak dirawat) | Diterima (`fs_kd_jenis_inap = "3"`, `fs_reg_ibu = ""`) |
+| Perinatal dengan register ibu valid | Diterima (`fs_kd_jenis_inap = "3"`, `fs_reg_ibu = "{regIdIbu}"`) |
+| Register ibu tidak ditemukan di database | Ditolak |
 | Register ibu void | Ditolak |
 | Register ibu sudah keluar | Ditolak |
 | Register ibu bukan obstetri | Ditolak dengan pesan “JENIS INAP IBU invalid” |
 
 ## 9. Output yang Diharapkan
 - `ta_registrasi.fs_kd_jenis_inap` selalu terisi sesuai aturan.
-- Untuk perinatal, `ta_registrasi.fs_reg_ibu` terisi dan valid.
+- Untuk perinatal, `ta_registrasi.fs_reg_ibu` terisi registrasi ibu yang valid jika ibu dirawat, atau string kosong jika ibu tidak dirawat.

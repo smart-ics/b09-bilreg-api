@@ -662,7 +662,7 @@ public class AdmissionRegistrationOrchestratorTest
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
-            RegistrationData() with { JenisInapId = "1", RegIbuId = "REG-IBU-01" });
+            RegistrationData() with { JenisInapId = "3", RegIbuId = "REG-IBU-01" });
 
         var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
@@ -671,6 +671,26 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().Be("REG-IBU-01");
         harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenPerinatalPatient_WhenUmumRequested_ThenSetsUmumAndEmptyMotherReg()
+    {
+        var harness = CreateOpnameHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "1", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -700,7 +720,7 @@ public class AdmissionRegistrationOrchestratorTest
     }
 
     [Fact]
-    public async Task GivenPerinatalPatient_WhenNoMotherRegInPayloadAndNoActiveMotherRegFound_ThenThrowsInvalidOperationException()
+    public async Task GivenPerinatalPatient_WhenNoMotherRegInPayloadAndNoActiveMotherRegFound_ThenSetsPerinatalAndEmptyMotherReg()
     {
         var harness = CreateOpnameHarness();
         var baby = BabyPasien(mrIbu: "");
@@ -710,12 +730,13 @@ public class AdmissionRegistrationOrchestratorTest
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
             RegistrationData() with { RegIbuId = null });
 
-        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Pasien perinatal wajib menyertakan Register Ibu yang valid.");
-        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
-        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -877,6 +898,103 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedRegInap.Should().NotBeNull();
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservation_ForPerinatalPatient_WhenUmumRequested_ThenSetsUmumAndEmptyMotherReg()
+    {
+        var harness = CreateReservationHarness();
+        var baby = BabyPasien();
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "1", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenReservation_ForPerinatalPatient_WhenPerinatalWithoutMotherReg_ThenSetsPerinatalAndEmptyMotherReg()
+    {
+        var harness = CreateReservationHarness();
+        var baby = BabyPasien(mrIbu: "");
+        harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
+
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "3", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenDirectAdmission_ForPerinatalPatient_WhenUmumRequested_ThenSetsUmumAndEmptyMotherReg()
+    {
+        var baby = BabyPasien("P-BABY-DIR");
+        var harness = CreateDirectHarness(defaultPasien: baby);
+
+        var command = new AdmProcessDirectAdmissionCmd(
+            "P-BABY-DIR", "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "1", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenDirectAdmission_ForPerinatalPatient_WhenPerinatalWithoutMotherReg_ThenSetsPerinatalAndEmptyMotherReg()
+    {
+        var baby = BabyPasien("P-BABY-DIR-2", mrIbu: "");
+        var harness = CreateDirectHarness(defaultPasien: baby);
+
+        var command = new AdmProcessDirectAdmissionCmd(
+            "P-BABY-DIR-2", "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "3", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
+        harness.SavedReg.RegIbu.Should().BeEmpty();
+        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenDirectAdmission_ForPerinatalPatient_WhenPerinatalWithValidMotherReg_ThenSetsPerinatalAndMotherReg()
+    {
+        var baby = BabyPasien("P-BABY-DIR-3");
+        var harness = CreateDirectHarness(defaultPasien: baby);
+        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")))
+            .Returns(MotherRegDto("REG-IBU-DIR", jenisInap: "2"));
+
+        var command = new AdmProcessDirectAdmissionCmd(
+            "P-BABY-DIR-3", "1", "B1", "user2",
+            RegistrationData() with { JenisInapId = "3", RegIbuId = "REG-IBU-DIR" });
+
+        var response = await harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
+        harness.SavedReg.RegIbu.Should().Be("REG-IBU-DIR");
+        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")), Times.Once);
     }
 
     #endregion

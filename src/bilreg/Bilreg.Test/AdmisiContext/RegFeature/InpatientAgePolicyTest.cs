@@ -29,18 +29,25 @@ public class InpatientAgePolicyTest
     }
 
     [Fact]
-    public void GivenPerinatalAge_WhenResolveJenisInap_ThenAlwaysForcesPerinatalRegardlessOfPayload()
+    public void GivenPerinatalAge_WhenResolveJenisInap_ThenHonorsRequestedUmumOrDefaultsToPerinatal()
     {
         var tglLahir = new DateOnly(2026, 10, 20);
         var regDate = new DateOnly(2026, 10, 31); // 11 hari (< 1 bulan)
 
+        // Default Perinatal (3) jika null, kosong, atau "3"
         InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, null)
             .Should().Be(InpatientAgePolicy.JENIS_INAP_PERINATAL);
-        InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "1")
-            .Should().Be(InpatientAgePolicy.JENIS_INAP_PERINATAL);
-        InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "2")
+        InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "")
             .Should().Be(InpatientAgePolicy.JENIS_INAP_PERINATAL);
         InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "3")
+            .Should().Be(InpatientAgePolicy.JENIS_INAP_PERINATAL);
+
+        // Jika requestedJenisInapId == "1" (Umum), kembalikan Umum (1)
+        InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "1")
+            .Should().Be(InpatientAgePolicy.JENIS_INAP_UMUM);
+
+        // Nilai lain (seperti "2") tetap fallback ke Perinatal (3)
+        InpatientAgePolicy.ResolveJenisInap(tglLahir, regDate, "2")
             .Should().Be(InpatientAgePolicy.JENIS_INAP_PERINATAL);
     }
 

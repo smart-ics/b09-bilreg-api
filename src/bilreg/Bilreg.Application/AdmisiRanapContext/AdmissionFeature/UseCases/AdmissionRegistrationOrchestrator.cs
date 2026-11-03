@@ -391,9 +391,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         AdmissionRegistrationData data)
     {
         var regDate = DateOnly.FromDateTime(admission.AuditTrail.Created.Timestamp);
-        var isPerinatal = InpatientAgePolicy.IsPerinatalAge(pasien.Person.TglLahir, regDate);
+        var jenisInapId = InpatientAgePolicy.ResolveJenisInap(
+            pasien.Person.TglLahir, regDate, data.JenisInapId);
 
-        if (isPerinatal)
+        if (jenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL)
         {
             var regIbuId = data.RegIbuId;
             if (string.IsNullOrWhiteSpace(regIbuId))
@@ -416,7 +417,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             }
 
             if (string.IsNullOrWhiteSpace(regIbuId))
-                throw new InvalidOperationException("Pasien perinatal wajib menyertakan Register Ibu yang valid.");
+                return (JenisInapType.Perinatal, string.Empty);
 
             var motherReg = _regDal?.GetData(RegModel.Key(regIbuId))
                 ?? throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak ditemukan.");
@@ -433,8 +434,6 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             return (JenisInapType.Perinatal, regIbuId);
         }
 
-        var jenisInapId = InpatientAgePolicy.ResolveJenisInap(
-            pasien.Person.TglLahir, regDate, data.JenisInapId);
         var jenisInap = JenisInapType.FromId(jenisInapId);
         return (jenisInap, string.Empty);
     }
