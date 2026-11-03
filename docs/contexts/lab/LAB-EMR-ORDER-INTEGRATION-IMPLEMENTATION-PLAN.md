@@ -3,8 +3,8 @@ Title: Rencana Implementasi Integrasi Order Laboratorium EMR ke Order Lab Bilreg
 Code: LAB-EMR-ORDER-INTEGRATION
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
-LastUpdated: 2026-11-02
-Status: NOT-STARTED
+LastUpdated: 2026-11-03
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -60,10 +60,10 @@ Rencana implementasi ini mencakup penyelesaian pekerjaan teknis terstruktur pada
 
 | Phase | Description | Repository Scope | Slices | Implementation Status | Review Status | Progress |
 |---|---|---|---|---|---|---|
-| **P1** | Bilreg Contract Readiness & Master Test Audit | `b09-bilreg-api` | P1-S01 s/d P1-S02 | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| **P2** | EMR Frontend Order Transmission & Duplicate UX | `c001_emr2_frontend` | P2-S03 s/d P2-S04 | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| **P3** | EMR Frontend Lifecycle & Cancellation Protection | `c001_emr2_frontend` | P3-S05 | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| **P4** | End-to-End Integration & LIS Alignment Verification | `b09-bilreg-api` | P4-S06 | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| **P1** | Bilreg Contract Readiness & Master Test Audit | `b09-bilreg-api` | P1-S01 s/d P1-S02 | IMPLEMENTED | GO | 2/2 |
+| **P2** | EMR Frontend Order Transmission & Duplicate UX | `c001_emr2_frontend` | P2-S03 s/d P2-S04 | IMPLEMENTED | GO | 2/2 |
+| **P3** | EMR Frontend Lifecycle & Cancellation Protection | `c001_emr2_frontend` | P3-S05 | IMPLEMENTED | GO | 1/1 |
+| **P4** | End-to-End Integration & LIS Alignment Verification | `b09-bilreg-api` | P4-S06 | IMPLEMENTED | GO | 1/1 |
 
 ---
 
@@ -71,8 +71,8 @@ Rencana implementasi ini mencakup penyelesaian pekerjaan teknis terstruktur pada
 
 ## P1 - Bilreg Contract Readiness & Master Test Audit (`b09-bilreg-api`)
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P1-S01
 - **Title**: Verifikasi Kontrak Handler `fromEmr`, Idempotensi, dan Suite Pengujian Bilreg
@@ -131,8 +131,8 @@ Review Status: NOT-REVIEWED
 
 ## P2 - EMR Frontend Order Transmission & Duplicate UX (`c001_emr2_frontend`)
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P2-S03
 - **Title**: Integrasi Pengiriman Order Lab EMR ke Bilreg API (`chartNote.js`)
@@ -214,8 +214,8 @@ Review Status: NOT-REVIEWED
 
 ## P3 - EMR Frontend Lifecycle & Cancellation Protection (`c001_emr2_frontend`)
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P3-S05
 - **Title**: Sinkronisasi Status Real-Time & Proteksi Pembatalan Order Lab (`orderLab.js`)
@@ -255,13 +255,13 @@ Review Status: NOT-REVIEWED
 
 ## P4 - End-to-End Integration & LIS Alignment Verification (`b09-bilreg-api`)
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P4-S06
 - **Title**: Pengujian Verifikasi Terpadu Alur EMR → Bilreg LWF → OWARE → Worklist Lab
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menjalankan pengujian integrasi end-to-end menyeluruh untuk memastikan rantai proses berjalan tanpa celah sesuai seluruh kriteria penerimaan arsitektur target.
 - **Depends On**: P1-S02, P2-S04, P3-S05
 - **Repository**: `b09-bilreg-api`
@@ -276,9 +276,17 @@ Review Status: NOT-REVIEWED
   - Skenario 4 (Penerusan ke OWARE):
     - Order yang telah di-charge di Bilreg masuk ke antrean `BILRG_LabOwareOutboundQueue` dan diteruskan ke endpoint OWARE `POST /api/order/lab/bilreg` menggunakan `OrderNo` resmi Bilreg.
 - **Notes**:
-  - Target files / suite:
-    - `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/`
-    - Manual / automated integration test script
+  - Target files:
+    - `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabEmrOrderIntegrationVerificationTest.cs`
+  - Implementation Notes:
+    - Menyusun suite pengujian verifikasi terpadu end-to-end `src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabEmrOrderIntegrationVerificationTest.cs` menggunakan xUnit, Moq, dan FluentAssertions yang menguji 4 skenario integrasi arsitektur target.
+    - Skenario 1 (Happy Path Order Baru & Worklist): Memverifikasi alur pembuatan order lab dari EMR (`LabOrderCreateFromEmrCmd`) menghasilkan `OrderNo` resmi berformat `LAB...`, status `Ordered`, menyimpan `EmrOrderId`, idempotent saat pemanggilan ulang dengan `EmrOrderId` yang sama tanpa menduplikasi data, serta order muncul pada query worklist laboratorium (`LabOrderWorklistHandler`).
+    - Skenario 2 (Peringatan Duplikasi 24 Jam & Override): Memverifikasi deteksi tes aktif dalam jendela 24 jam dengan `AllowDuplicateConfirmation: false` melempar `DuplicateLabOrderWarningException`, pemetaan exception ke respons HTTP 409 Conflict berstruktur JSend (`DUPLICATE_LAB_ORDER_WARNING`, `duplicateTestNames`, `previousOrderIds`) via `ErrorHandlerMiddleware`, serta pembuatan order berhasil saat dikirim ulang dengan `AllowDuplicateConfirmation: true`.
+    - Skenario 3 (Siklus Hidup & Proteksi Pembatalan): Memverifikasi pembatalan medis untuk order berstatus `Ordered` (`1`) dan `Deferred` (`2`) berhasil via `LabOrderCancelHandler` dengan pencatatan alasan medis (`CancelledReason`), serta memverifikasi penolakan pembatalan (specimen guard) dengan exception `InvalidOperationException` untuk order yang spesimennya telah diambil (`Collected`, status `4` ke atas, termasuk `Recorded` dan `Verified`).
+    - Skenario 4 (Penerusan ke OWARE saat Charged): Memverifikasi order yang diproses hingga tahap `Charged` (`LabOrderChargeHandler`) memicu pencatatan tagihan tindakan di billing, status OWARE berubah menjadi `Pending`, dan antrean baru terbentuk di `BILRG_LabOwareOutboundQueue` dengan payload yang valid. Memverifikasi pemrosesan antrean oleh `LabOwareQueueProcessor` berhasil mengirimkan payload ke endpoint OWARE (`ILabOwareIntegration.Send`), status antrean menjadi `Succeeded`, dan status order menjadi `Sent`. Serta memverifikasi jika order yang sudah berstatus `Sent` dibatalkan, antrean `LabOrderCancel` terbentuk otomatis.
+    - Menjalankan suite pengujian `LabEmrOrderIntegrationVerificationTest` (12 passing, 0 failed), seluruh suite `LabOrderFeature` (242 passing, 0 failed), dan seluruh suite `LabContext` (459 passing, 0 failed).
+  - Changed Files:
+    - `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabEmrOrderIntegrationVerificationTest.cs`
 
 ---
 
