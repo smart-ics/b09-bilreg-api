@@ -106,8 +106,8 @@ Review Status: NOT-REVIEWED
 
 ### P1-S02
 - **Title**: Audit & Sinkronisasi Master `LabTestDefinition` Terhadap Master Tarif Lab Aktif
-- **Implementation Status**: NOT-STARTED
-- **Review Status**: NOT-REVIEWED
+- **Implementation Status**: IMPLEMENTED
+- **Review Status**: GO
 - **Objective**: Menyusun query dan skrip verifikasi untuk mengaudit kelengkapan data master `BILRG_LabTestDefinition` di database Bilreg terhadap seluruh tarif aktif yang digunakan pada formulir pencarian EMR (`TRK-TARIF`), mencegah timbulnya exception `LAB_TEST_DEFINITION_NOT_FOUND` saat klinisi memesan tes di EMR.
 - **Depends On**: P1-S01
 - **Repository**: `b09-bilreg-api`
@@ -116,8 +116,16 @@ Review Status: NOT-REVIEWED
   - Seluruh tarif tes laboratorium rutin yang ada pada katalog EMR terpetakan ke entitas `LabTestDefinitionModel` yang valid (lengkap dengan `VacutainerType`, `SpecimenType`, dan relasi komponen uji aktif).
 - **Notes**:
   - Target files:
-    - `src/bilreg/Bilreg.SqlDb/LabContext/LabOrderFeature/` (skrip audit/pengecekan master)
-    - `docs/contexts/lab/LAB_MASTER_TEST_ALIGNMENT.md` (pemutakhiran checklist)
+    - `src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql`
+    - `docs/contexts/lab/LAB_MASTER_TEST_ALIGNMENT.md`
+  - Implementation Notes:
+    - Menyusun skrip SQL audit komprehensif `src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql` untuk mengaudit dan memverifikasi keselarasan katalog tarif laboratorium aktif (`ta_tarif` / `TRK-TARIF`) terhadap master data `BILRG_LabTestDefinition`, komponen uji `BILRG_LabTestComponent`, dan master analit vendor `BILRG_LabComponentMaster`.
+    - Mengintegrasikan deteksi potensi exception runtime domain Bilreg (`LAB_TEST_DEFINITION_NOT_FOUND`, `LAB_TEST_DEFINITION_INACTIVE`, `LAB_TEST_DEFINITION_EMPTY_COMPONENTS`, `LAB_COMPONENT_NOT_FOUND`, `LAB_COMPONENT_INACTIVE`, `LAB_DUPLICATE_SEQUENCE`, `LAB_DUPLICATE_COMPONENT`).
+    - Menyediakan scorecard kesehatan pemetaan, deteksi anomali, serta checklist kelengkapan 9 panel klinis rutin rumah sakit (Darah Rutin/CBC, Profil Lipid, Fungsi Hati, Fungsi Ginjal, Glukosa, Urinalisis, Elektrolit, Imunoserologi, Hemostasis).
+    - Memperbarui dokumen `docs/contexts/lab/LAB_MASTER_TEST_ALIGNMENT.md` (§7) dengan spesifikasi teknis skrip audit, ringkasan pemetaan panel klinis rutin standar, diagram alur penanganan tarif unmapped, SOP tata kelola registrasi tarif lab baru, dan template SQL remediasi.
+  - Changed Files:
+    - `b09-bilreg-api/src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql`
+    - `b09-bilreg-api/docs/contexts/lab/LAB_MASTER_TEST_ALIGNMENT.md`
 
 ---
 
@@ -128,7 +136,7 @@ Review Status: NOT-REVIEWED
 
 ### P2-S03
 - **Title**: Integrasi Pengiriman Order Lab EMR ke Bilreg API (`chartNote.js`)
-- **Implementation Status**: NOT-STARTED
+- **Implementation Status**: IMPLEMENTED
 - **Review Status**: NOT-REVIEWED
 - **Objective**: Mengimplementasikan fungsi transmisi `sendOrderLabToBilreg(result)` pada `chartNote.js` untuk mengirimkan data order laboratorium dari rekam medis EMR ke endpoint Bilreg `POST /api/LabContext/LabOrderFeature/fromEmr` segera setelah penyimpanan chart note sukses (`POST Chart/Add`), serta menonaktifkan pemanggilan bypass legacy `sendOrderLIS`.
 - **Depends On**: P1-S01
@@ -158,6 +166,16 @@ Review Status: NOT-REVIEWED
   - Target files:
     - `assets/js/MedicalChart/chartNote.js`
     - `config/config.js`
+  - Implementation Notes:
+    - Menambahkan toggle `order_lab_to_bilreg: false` pada section `medicalChart` di `config/config.js` sebagai switch dual-mode bridging, serta memverifikasi ketersediaan konfigurasi `base_api_bilreg`.
+    - Mengimplementasikan fungsi async `sendOrderLabToBilreg(result)` pada `assets/js/MedicalChart/chartNote.js` yang mengekstrak seluruh order lab (`OrderTypeID == "LB"`), mengambil `ChartOrderId` sebagai `emrOrderId`, dan menyusun DTO `LabOrderCreateFromEmrCmd`.
+    - Melakukan mapping lengkap atribut demografi pasien (`patientName`, `birthDateYmd` berformat `YYYY-MM-DD`, `gender` ternormalisasi `L`/`P`), informasi dokter perujuk (`dokterPerujukId`, `dokterPerujukName`), informasi layanan perujuk (`layananPerujukId`, `layananPerujukName`), item pemeriksaan (`tarifId`, `tarifName`), catatan klinis, dan tingkat urgensi (0 Rutin / 1 Cito).
+    - Menangani pengiriman AJAX POST ke `${config.base_api_bilreg}LabContext/LabOrderFeature/fromEmr` dengan Authorization header (bila token cookie tersedia) dan notifikasi toastr sukses memuat `orderNo`.
+    - Memperbarui blok pasca-simpan chart pada `saveMedicalChart` agar saat `config.medicalChart.order_lab_to_bilreg` aktif, alur memanggil `sendOrderLabToBilreg(result)` dan menonaktifkan pemanggilan legacy bypass `sendOrderLIS`.
+    - Memverifikasi sintaks Javascript pada kedua file target (`node -c`) berhasil tanpa error syntax.
+  - Changed Files:
+    - `c001_emr2_frontend/assets/js/MedicalChart/chartNote.js`
+    - `c001_emr2_frontend/config/config.js`
 
 ---
 
