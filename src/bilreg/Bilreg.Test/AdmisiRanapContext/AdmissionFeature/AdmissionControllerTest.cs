@@ -232,17 +232,49 @@ public class AdmissionControllerTest
         var response = new AdmLookupAdmissionResponse(items);
 
         _mediatorMock
-            .Setup(m => m.Send(It.Is<AdmLookupAdmissionQry>(q => q.Status == AdmissionStatusEnum.Admitted && q.PasienId == "PAS01"), It.IsAny<CancellationToken>()))
+            .Setup(m => m.Send(It.Is<AdmLookupAdmissionQry>(q => q.Status == AdmissionStatusEnum.Admitted && q.PasienId == "PAS01" && q.Search == null), It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
         // Act
-        var result = await _sut.Lookup(AdmissionStatusEnum.Admitted, "PAS01");
+        var result = await _sut.Lookup(AdmissionStatusEnum.Admitted, "PAS01", null);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.status.Should().Be("success");
         jsend.data.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task Lookup_WithSearch_SendsQryWithSearchAndReturnsJSendOk()
+    {
+        // Arrange
+        var items = new List<AdmAdmissionListItem>
+        {
+            new("ADM01", AdmissionStatusEnum.Admitted, "PAS01", "Pasien Ibu Siti", "KDK01", "Kelas 1", "B01", "Bangsal A", DateTime.UtcNow)
+        };
+        var response = new AdmLookupAdmissionResponse(items);
+
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<AdmLookupAdmissionQry>(q =>
+                q.Status == AdmissionStatusEnum.Admitted &&
+                q.PasienId == null &&
+                q.Search == "Siti"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _sut.Lookup(AdmissionStatusEnum.Admitted, null, "Siti");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(response);
+
+        _mediatorMock.Verify(m => m.Send(It.Is<AdmLookupAdmissionQry>(q =>
+            q.Status == AdmissionStatusEnum.Admitted &&
+            q.PasienId == null &&
+            q.Search == "Siti"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

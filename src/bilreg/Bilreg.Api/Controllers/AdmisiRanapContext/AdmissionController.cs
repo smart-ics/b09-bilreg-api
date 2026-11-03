@@ -149,9 +149,10 @@ public class AdmissionController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Lookup(
         [FromQuery] AdmissionStatusEnum? status,
-        [FromQuery] string? pasienId)
+        [FromQuery] string? pasienId,
+        [FromQuery] string? search)
     {
-        var result = await _mediator.Send(new AdmLookupAdmissionQry(status, pasienId));
+        var result = await _mediator.Send(new AdmLookupAdmissionQry(status, pasienId, search));
         return Ok(new JSendOk(result));
     }
 
