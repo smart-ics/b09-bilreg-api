@@ -128,6 +128,30 @@ public class RegRepoTest
     }
 
     [Fact]
+    public void GivenRawatInapRegistration_WhenSaveChanges_ThenDoesNotDeleteHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegInap, "RGINAP0001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNonRawatInapRegistration_WhenSaveChanges_ThenDeletesHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegJalan, "RGJALAN001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGJALAN001")), Times.Once);
+    }
+
+    [Fact]
     public void GivenRawatJalanRegistration_WhenPersisted_ThenPreservesKomponenFromDal()
     {
         var existing = new[]

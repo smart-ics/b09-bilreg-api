@@ -62,7 +62,10 @@ public class RegRepo : IRegRepo
             _regKomponenDal.Insert(listKomponen);
         }
 
-        _regHistoryDokterDal.Delete(model);
+        if (model.JenisReg != JenisRegEnum.RegInap)
+        {
+            _regHistoryDokterDal.Delete(model);
+        }
     }
 
     public MayBe<RegModel> LoadEntity(IRegKey key)

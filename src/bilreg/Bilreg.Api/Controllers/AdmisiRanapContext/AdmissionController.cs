@@ -86,7 +86,8 @@ public class AdmissionController : ControllerBase
                 body.ExpectedUpdatedAt,
                 body.RequestId!.Trim(),
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers.UserAgent.FirstOrDefault());
+                Request.Headers.UserAgent.FirstOrDefault(),
+                body.VoidSource ?? false);
             var result = await _mediator.Send(command);
             return Ok(new JSendOk(result));
         }
@@ -197,7 +198,8 @@ public record AdmCoordinatedCancelBody(
     string? UserId,
     AdmissionStatusEnum? ExpectedAdmissionStatus,
     DateTime? ExpectedUpdatedAt,
-    string? RequestId);
+    string? RequestId,
+    bool? VoidSource = false);
 
 public record CancellationJSendFailure(string Status, CancellationErrorData Data);
 public record CancellationErrorData(string Code, string Message, string[]? Blockers, string? CorrelationId);
