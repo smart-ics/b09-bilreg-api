@@ -1,4 +1,4 @@
-using Ardalis.GuardClauses;
+﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -73,6 +73,22 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         Guard.Against.NullOrWhiteSpace(request.PatientId, nameof(request.PatientId));
         Guard.Against.NullOrWhiteSpace(request.PatientName, nameof(request.PatientName));
         Guard.Against.NullOrEmpty(request.Items, nameof(request.Items));
+
+        // 0. Idempotensi: jika EmrOrderId sudah pernah dibuat, kembalikan respons order eksisting
+        var existingOrder = _labOrderRepo.LoadByEmrOrderId(request.EmrOrderId)
+            .Match(
+                onSome: x => x,
+                onNone: () => null as LabOrderModel
+            );
+
+        if (existingOrder is not null)
+        {
+            return Task.FromResult(new LabOrderCreateFromEmrResponse(
+                existingOrder.EmrOrderId,
+                (int)existingOrder.LabOrderStatus,
+                existingOrder.OrderNo,
+                existingOrder.OrderId));
+        }
 
         // 1. Validasi status kunjungan aktif ke ADM-REG (EX-01)
         var reg = _regRepo.LoadEntity(RegModel.Key(request.RegId))
