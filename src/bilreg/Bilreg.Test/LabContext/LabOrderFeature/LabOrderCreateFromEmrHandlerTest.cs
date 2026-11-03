@@ -1,4 +1,4 @@
-using Bilreg.Application.AdmisiContext.PpaFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
@@ -49,6 +49,10 @@ public class LabOrderCreateFromEmrHandlerTest
         // Default: no duplicate active tests
         _labOrderDal.Setup(d => d.ListActiveTestsByPatientWithinHours(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>()))
             .Returns([]);
+
+        // Default: no existing order by EmrOrderId
+        _repo.Setup(r => r.LoadByEmrOrderId(It.IsAny<string>()))
+            .Returns(MayBe<LabOrderModel>.None);
 
         _sut = new LabOrderCreateFromEmrHandler(
             _repo.Object,
@@ -300,5 +304,40 @@ public class LabOrderCreateFromEmrHandlerTest
         persisted.Should().NotBeNull();
         persisted!.Patient.PatientId.Should().Be("PASIEN-REG-01");
         _labOrderDal.Verify(d => d.ListActiveTestsByPatientWithinHours("PASIEN-REG-01", 24, It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_TarifNotMapped_ThrowsLabTestDefinitionNotFound()
+    {
+        _resolution
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Throws(new InvalidOperationException("LAB_TEST_DEFINITION_NOT_FOUND: No active LabTestDefinition for TarifId 'TR-UNMAPPED'."));
+
+        var act = async () => await _sut.Handle(ValidCmd(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("*LAB_TEST_DEFINITION_NOT_FOUND*");
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_EmrOrderIdAlreadyExists_ReturnsExistingOrderWithoutCreatingNew()
+    {
+        var existingOrder = LabOrderTestSupport.CreateEmrOrder(
+            orderNo: "LAB00000010",
+            emrOrderId: "EMR-ORDER-001");
+
+        _repo.Setup(r => r.LoadByEmrOrderId("EMR-ORDER-001"))
+            .Returns(MayBe.From(existingOrder));
+
+        var result = await _sut.Handle(ValidCmd(), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.EmrOrderId.Should().Be("EMR-ORDER-001");
+        result.OrderNo.Should().Be("LAB00000010");
+        result.OrderId.Should().Be(existingOrder.OrderId);
+        result.LabOrderStatus.Should().Be((int)LabOrderStatusEnum.Ordered);
+
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 }
