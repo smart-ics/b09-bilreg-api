@@ -137,7 +137,7 @@ Review Status: NOT-REVIEWED
 ### P2-S03
 - **Title**: Integrasi Pengiriman Order Lab EMR ke Bilreg API (`chartNote.js`)
 - **Implementation Status**: IMPLEMENTED
-- **Review Status**: NOT-REVIEWED
+- **Review Status**: GO
 - **Objective**: Mengimplementasikan fungsi transmisi `sendOrderLabToBilreg(result)` pada `chartNote.js` untuk mengirimkan data order laboratorium dari rekam medis EMR ke endpoint Bilreg `POST /api/LabContext/LabOrderFeature/fromEmr` segera setelah penyimpanan chart note sukses (`POST Chart/Add`), serta menonaktifkan pemanggilan bypass legacy `sendOrderLIS`.
 - **Depends On**: P1-S01
 - **Repository**: `c001_emr2_frontend`
