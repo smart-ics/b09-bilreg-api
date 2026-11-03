@@ -84,6 +84,60 @@ public class OkListScheduleHandlerTest
         item.KamarId.Should().Be("KMR-01");
         item.KamarName.Should().Be("OK 1");
         item.TurnoverBuffer.Should().Be(45);
+        item.IsDraft.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_WhenDraftAndOfficialSchedulesExist_ShouldProjectIsDraftAccurately()
+    {
+        // Arrange
+        var pasien = new PasienReff("PAS-001", "Tn. Budi", new DateOnly(1985, 5, 20), "L");
+        var orderOp1 = new OrderOpReff("ORD-001", new DateTime(2026, 10, 16), "Apendektomi");
+        var orderOp2 = new OrderOpReff("ORD-002", new DateTime(2026, 10, 16), "Herniotomi");
+        var teamLead = new PpaReff("DOC-01", "dr. Operator Utama, Sp.B");
+        var kamar = new KamarReff("KMR-01", "OK 1");
+
+        var draftView = new ScheduleOpView(
+            ScheduleOpId: "SCH-001",
+            Pasien: pasien,
+            OrderOp: orderOp1,
+            Urgency: UrgencyLevelEnum.Elective,
+            TglOp: new DateTime(2026, 10, 20, 8, 30, 0),
+            Durasi: 60,
+            TeamLead: teamLead,
+            Kamar: kamar,
+            Status: OpCaseStateEnum.Requested,
+            IsVoid: false,
+            TurnoverBuffer: 30,
+            IsDraft: true
+        );
+
+        var officialView = new ScheduleOpView(
+            ScheduleOpId: "SCH-002",
+            Pasien: pasien,
+            OrderOp: orderOp2,
+            Urgency: UrgencyLevelEnum.Elective,
+            TglOp: new DateTime(2026, 10, 20, 10, 0, 0),
+            Durasi: 90,
+            TeamLead: teamLead,
+            Kamar: kamar,
+            Status: OpCaseStateEnum.Scheduled,
+            IsVoid: false,
+            TurnoverBuffer: 30,
+            IsDraft: false
+        );
+
+        _scheduleRepoMock.Setup(x => x.ListData(new DateTime(2026, 10, 20)))
+            .Returns([draftView, officialView]);
+        var sut = CreateSut();
+
+        // Act
+        var result = (await sut.Handle(new OkListScheduleQuery("2026-10-20"), CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().HaveCount(2);
+        result.First(x => x.ScheduleOpId == "SCH-001").IsDraft.Should().BeTrue();
+        result.First(x => x.ScheduleOpId == "SCH-002").IsDraft.Should().BeFalse();
     }
 
     [Fact]

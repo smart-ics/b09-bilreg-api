@@ -12,7 +12,8 @@ public record OkListScheduleResponse(
     int Durasi, string ScheduledTime, string StatusOp,
     string DokterId, string DokterName,
     string KamarId, string KamarName,
-    int TurnoverBuffer = 30);
+    int TurnoverBuffer = 30,
+    bool IsDraft = false);
 
 public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnumerable<OkListScheduleResponse>>
 {
@@ -42,7 +43,8 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
             x.TeamLead.PpaName,
             x.Kamar.KamarId,
             x.Kamar.KamarName,
-            x.TurnoverBuffer
+            x.TurnoverBuffer,
+            x.IsDraft
         ));
         return Task.FromResult(result);
     }

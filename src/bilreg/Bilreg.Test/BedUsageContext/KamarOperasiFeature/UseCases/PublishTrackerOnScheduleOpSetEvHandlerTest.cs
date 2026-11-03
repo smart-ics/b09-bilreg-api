@@ -11,7 +11,6 @@ using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
-using Xunit;
 
 namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -27,12 +26,11 @@ public class PublishTrackerOnScheduleOpSetEvHandlerTest
             _tglJamProviderMock.Object);
     }
 
-    private static OkScheduleOpSetEvent CreateSampleEvent(
+    private static OkScheduleOpConfirmedEvent CreateSampleEvent(
         string orderOpId = "ORD-001",
         string regId = "REG-001",
         string scheduleOpId = "SCH-001")
     {
-        var cmd = new OkScheduleOpSetCommand(orderOpId, "KAMAR-1", "2026-10-20", "08:00", 60, "u1");
         var schedule = new ScheduleOpModel(
             scheduleOpId,
             new DateTime(2026, 10, 16),
@@ -50,7 +48,7 @@ public class PublishTrackerOnScheduleOpSetEvHandlerTest
             OpCaseStateEnum.Scheduled,
             []);
 
-        return new OkScheduleOpSetEvent(cmd, schedule);
+        return new OkScheduleOpConfirmedEvent(schedule, new DateTime(2026, 10, 20, 8, 30, 0));
     }
 
     [Fact]

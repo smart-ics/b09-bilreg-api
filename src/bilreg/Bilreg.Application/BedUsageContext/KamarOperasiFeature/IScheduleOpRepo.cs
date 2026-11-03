@@ -29,4 +29,5 @@ public record ScheduleOpView(string ScheduleOpId,
     bool IsVoid,
     int TurnoverBuffer = 30,
     string ProfesiId = "",
-    string ProfesiName = "");
+    string ProfesiName = "",
+    bool IsDraft = true);

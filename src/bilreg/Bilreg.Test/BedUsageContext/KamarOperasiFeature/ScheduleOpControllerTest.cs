@@ -3,7 +3,6 @@ using System.Security.Claims;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using FluentAssertions;
@@ -15,7 +14,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Nuna.Lib.ActionResultHelper;
-using Xunit;
 
 namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
@@ -555,8 +553,8 @@ public class ScheduleOpControllerTest
 
         // ASSERT
         services.Should().Contain(d =>
-            d.ServiceType == typeof(INotificationHandler<OkScheduleOpSetEvent>) &&
+            d.ServiceType == typeof(INotificationHandler<OkScheduleOpConfirmedEvent>) &&
             d.ImplementationType == typeof(PublishTrackerOnScheduleOpSetEvHandler),
-            "PublishTrackerOnScheduleOpSetEvHandler must be registered as INotificationHandler<OkScheduleOpSetEvent> via MediatR");
+            "PublishTrackerOnScheduleOpSetEvHandler must be registered as INotificationHandler<OkScheduleOpConfirmedEvent> via MediatR");
     }
 }

@@ -283,7 +283,8 @@ public record ScheduleOpDto(
             VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01",
             TurnoverBuffer,
             ProfesiId,
-            ProfesiName
+            ProfesiName,
+            IsDraft
         );
         return result;
     }

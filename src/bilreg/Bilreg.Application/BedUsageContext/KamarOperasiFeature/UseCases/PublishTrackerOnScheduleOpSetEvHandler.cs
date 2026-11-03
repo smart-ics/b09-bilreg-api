@@ -6,7 +6,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public class PublishTrackerOnScheduleOpSetEvHandler : INotificationHandler<OkScheduleOpSetEvent>
+public class PublishTrackerOnScheduleOpSetEvHandler : INotificationHandler<OkScheduleOpConfirmedEvent>
 {
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly ITglJamProvider _tglJamProvider;
@@ -19,7 +19,7 @@ public class PublishTrackerOnScheduleOpSetEvHandler : INotificationHandler<OkSch
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task Handle(OkScheduleOpSetEvent notification, CancellationToken cancellationToken)
+    public Task Handle(OkScheduleOpConfirmedEvent notification, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         var regId = notification.Aggregate?.Reg?.RegId ?? string.Empty;

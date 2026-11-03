@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -109,7 +109,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             existingSchedule = null;
         }
 
-        if (existingSchedule != null)
+        if (existingSchedule != null && !existingSchedule.IsDraft)
         {
             Guard.Against.NullOrWhiteSpace(request.AlasanPerubahan, nameof(request.AlasanPerubahan),
                 "Alasan perubahan jadwal wajib diisi saat reschedule.");
@@ -239,15 +239,14 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
                 request.UserId,
                 occurredAt);
             scheduleOp = existingSchedule;
+            opCase.Schedule(scheduleOp, occurredAt);
         }
         else
         {
             scheduleOp = ScheduleOpModel.CreateFromOrder(orderOp, request.UserId, kamar, ppa, start, occurredAt);
             scheduleOp.SetSchedule(start, kamar.ToReff(), request.Durasi, request.UserId, occurredAt, effectiveTurnoverBuffer);
+            opCase.ScheduleDraft(scheduleOp, occurredAt);
         }
-
-        // 9. Sinkronisasi Kasus Operasi
-        opCase.Schedule(scheduleOp, occurredAt);
 
         // 10. Transaksi Atomik
         using (var trans = TransHelper.NewScope())
@@ -261,8 +260,11 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         }
 
         // 11. Publikasi Event
-        var domainEvent = new OkScheduleOpSetEvent(request, scheduleOp);
-        _mediator.Publish(domainEvent, cancellationToken);
+        if (existingSchedule != null)
+        {
+            var domainEvent = new OkScheduleOpSetEvent(request, scheduleOp);
+            _mediator.Publish(domainEvent, cancellationToken);
+        }
 
         return Task.FromResult(new OkScheduleOpSetResponse(scheduleOp.ScheduleOpId));
     }

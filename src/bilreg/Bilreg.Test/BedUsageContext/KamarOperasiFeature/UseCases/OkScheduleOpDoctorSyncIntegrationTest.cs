@@ -5,7 +5,6 @@ using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
-using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -22,7 +21,6 @@ using MediatR;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
-using Xunit;
 
 namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -240,7 +238,7 @@ public class OkScheduleOpDoctorSyncIntegrationTest
         orderOp = _orderOps[orderOpId];
         orderOp.DokterOperator.PpaId.Should().Be("DR00083");
         opCase = _opCases[orderOpId];
-        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Scheduled);
+        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested); // In v2.8 draft scheduling, initial set retains Requested state
 
         // -------------------------------------------------------------------------------------------------
         // 3. Pergantian Operator via AssignLeader ke Dr. Arya Yunan (DR00139)
