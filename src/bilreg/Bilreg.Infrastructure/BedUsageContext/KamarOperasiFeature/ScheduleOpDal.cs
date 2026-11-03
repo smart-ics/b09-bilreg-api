@@ -37,11 +37,11 @@ public class ScheduleOpDal : IScheduleOpDal
            INSERT INTO BILRG_ScheduleOp(
                ScheduleOpId, ScheduleOpDate, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
                OrderOpId, PasienId, UrgencyLevel, Durasi, TglOp, KamarId, RegId, PpaId,
-               AlasanBatal, TurnoverBuffer)
+               AlasanBatal, TurnoverBuffer, IsDraft)
            VALUES( 
                @ScheduleOpId, @ScheduleOpDate, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
                @OrderOpId, @PasienId, @UrgencyLevel, @Durasi, @TglOp, @KamarId, @RegId, @PpaId,
-               @AlasanBatal, @TurnoverBuffer)
+               @AlasanBatal, @TurnoverBuffer, @IsDraft)
            """;
 
         var dp = new DynamicParameters();
@@ -63,6 +63,7 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@AlasanBatal", dto.AlasanBatal, SqlDbType.VarChar);
         dp.AddParam("@TurnoverBuffer", dto.TurnoverBuffer, SqlDbType.Int);
+        dp.AddParam("@IsDraft", dto.IsDraft, SqlDbType.Bit);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -87,6 +88,7 @@ public class ScheduleOpDal : IScheduleOpDal
                PpaId = @PpaId,
                AlasanBatal = @AlasanBatal,
                TurnoverBuffer = @TurnoverBuffer,
+               IsDraft = @IsDraft,
                VodUser = @VodUser,
                VodDate = @VodDate
            WHERE
@@ -108,6 +110,7 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@AlasanBatal", dto.AlasanBatal, SqlDbType.VarChar);
         dp.AddParam("@TurnoverBuffer", dto.TurnoverBuffer, SqlDbType.Int);
+        dp.AddParam("@IsDraft", dto.IsDraft, SqlDbType.Bit);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
 
@@ -137,7 +140,7 @@ public class ScheduleOpDal : IScheduleOpDal
            SELECT
                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-               aa.AlasanBatal, aa.TurnoverBuffer,
+               aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
@@ -174,7 +177,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.AlasanBatal, aa.TurnoverBuffer,
+                aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
@@ -195,6 +198,8 @@ public class ScheduleOpDal : IScheduleOpDal
                 LEFT JOIN BILRG_OpCase ff ON aa.OrderOpId = ff.OrderOpId
             WHERE
                 aa.TglOp BETWEEN @Tgl1 AND @Tgl2
+                AND aa.VodDate = '3000-01-01'
+                AND (aa.IsDraft = 0 OR (aa.IsDraft = 1 AND ISNULL(ff.OrderOpState, 0) = 0))
             """;
 
         var tgl1 = filter.Date;
@@ -212,7 +217,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.AlasanBatal, aa.TurnoverBuffer,
+                aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
@@ -248,7 +253,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.AlasanBatal, aa.TurnoverBuffer,
+                aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
@@ -290,7 +295,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.AlasanBatal, aa.TurnoverBuffer,
+                aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
@@ -331,7 +336,7 @@ public class ScheduleOpDal : IScheduleOpDal
         const string sql = """
             SELECT aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                    aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                   aa.AlasanBatal, aa.TurnoverBuffer,
+                   aa.AlasanBatal, aa.TurnoverBuffer, aa.IsDraft,
                    aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                    ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                    ISNULL(bb.NamaOperasi, '') AS NamaOperasi,

@@ -11,9 +11,9 @@ public class ScheduleOpDalTest
 {
     private readonly ScheduleOpDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static ScheduleOpDto Faker()
+    private static ScheduleOpDto Faker(bool isDraft = true)
         => new ScheduleOpDto("A", new DateTime(2023, 1, 2), "E", "F", 1, 120, new DateTime(2023, 1, 4), "G", "H", "I",
-            "Pasien demam tinggi", 30,
+            "Pasien demam tinggi", 30, isDraft,
             "B", new DateTime(2023, 1, 1), "C", new DateTime(2023, 1, 2), "",
             new DateTime(3000, 1, 1), new DateTime(2023, 1, 5), "J", "K", "2023-01-06", "M", "N", "O",
             new DateTime(2023, 1, 5), new DateTime(2023, 1, 5), 0);
@@ -25,14 +25,14 @@ public class ScheduleOpDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: true));
     }
 
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
+        _sut.Update(Faker(isDraft: false));
     }
 
     [Fact]
@@ -46,9 +46,9 @@ public class ScheduleOpDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: true));
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker(),
+        actual.Should().BeEquivalentTo(Faker(isDraft: true),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
@@ -62,15 +62,16 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.OrderOpState)
                 .Excluding(x => x.ProfesiId)
                 .Excluding(x => x.ProfesiName));
+        actual.IsDraft.Should().BeTrue();
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: true));
         var actual = _sut.ListData(new DateTime(2023, 1, 4));
-        actual.Should().ContainEquivalentOf(Faker(),
+        actual.Should().ContainEquivalentOf(Faker(isDraft: true),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
@@ -90,9 +91,9 @@ public class ScheduleOpDalTest
     public void ListData_ByPasienKey_Test()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: false));
         var actual = _sut.ListData(PasienModel.Key("F"));
-        actual.Should().ContainEquivalentOf(Faker(),
+        actual.Should().ContainEquivalentOf(Faker(isDraft: false),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
@@ -112,9 +113,9 @@ public class ScheduleOpDalTest
     public void ListActiveSchedulesInRoomTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: true));
         var actual = _sut.ListActiveSchedulesInRoom("G", new DateTime(2023, 1, 4));
-        actual.Should().ContainEquivalentOf(Faker(),
+        actual.Should().ContainEquivalentOf(Faker(isDraft: true),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
@@ -128,15 +129,16 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.OrderOpState)
                 .Excluding(x => x.ProfesiId)
                 .Excluding(x => x.ProfesiName));
+        actual.First(x => x.ScheduleOpId == "A").IsDraft.Should().BeTrue();
     }
 
     [Fact]
     public void ListActiveSchedulesForDoctorTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: false));
         var actual = _sut.ListActiveSchedulesForDoctor("I", new DateTime(2023, 1, 4));
-        actual.Should().ContainEquivalentOf(Faker(),
+        actual.Should().ContainEquivalentOf(Faker(isDraft: false),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
@@ -150,13 +152,14 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.OrderOpState)
                 .Excluding(x => x.ProfesiId)
                 .Excluding(x => x.ProfesiName));
+        actual.First(x => x.ScheduleOpId == "A").IsDraft.Should().BeFalse();
     }
 
     [Fact]
     public void ListActiveSchedulesForPpaInTeamTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
+        _sut.Insert(Faker(isDraft: true));
 
         var ppaDal = new ScheduleOpPpaDal(ConnStringHelper.GetTestEnv());
         ppaDal.Insert(new[]
@@ -169,7 +172,8 @@ public class ScheduleOpDalTest
         actual.Should().NotBeEmpty();
         var item = actual.First(x => x.ScheduleOpId == "A");
         item.ProfesiId.Should().Be("PROF1");
-        item.Should().BeEquivalentTo(Faker(),
+        item.IsDraft.Should().BeTrue();
+        item.Should().BeEquivalentTo(Faker(isDraft: true),
             opt => opt
                 .Excluding(x => x.OrderDate)
                 .Excluding(x => x.NamaOperasi)
