@@ -239,6 +239,22 @@ public record WaitingListModel : IWaitingListKey
         };
     }
 
+    public WaitingListModel RevertToWaiting(string actorId, DateTime occurredAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(actorId, nameof(actorId));
+
+        var audit = new AuditTrailType(AuditTrail.Created, AuditTrail.Modified, AuditTrail.Voided);
+        audit.Modif(actorId, occurredAt == default ? DateTime.Now : occurredAt);
+
+        return this with
+        {
+            WaitingListStatus = WaitingListStatusEnum.Waiting,
+            PlacedBedId = string.Empty,
+            PlacedPakaiBedId = string.Empty,
+            AuditTrail = audit
+        };
+    }
+
     public WaitingListModel Cancel(string reason, string actorId, DateTime occurredAt = default)
     {
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));

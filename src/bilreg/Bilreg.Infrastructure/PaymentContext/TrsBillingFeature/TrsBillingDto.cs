@@ -53,6 +53,53 @@ public record TrsBillingDto(
     decimal? DifferentialAmount = null
 )
 {
+    public TrsBillingDto() : this(
+        string.Empty, 0, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+        0, 0, 0, 0, 0,
+        string.Empty, string.Empty, string.Empty, 0, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, null
+    )
+    {
+    }
+
+    public TrsBillingDto(
+        string fs_kd_trs,
+        decimal fn_modul,
+        string fd_tgl_trs,
+        string fs_jam_trs,
+        string fd_tgl_jam_trs,
+        string fs_kd_reg,
+        string fs_kd_layanan,
+        string fs_kd_kelas,
+        string fs_kd_rekap_cetak,
+        string fs_kd_petugas,
+        decimal fn_sub_total,
+        decimal fn_diskon,
+        decimal fn_biaya,
+        decimal fn_tax,
+        decimal fn_total,
+        string fs_keterangan,
+        string fs_keterangan2,
+        string fs_kd_ref_biaya,
+        decimal fn_qty,
+        string fs_kd_trs_main,
+        string fs_mr,
+        string fs_nm_pasien,
+        string fs_nm_layanan,
+        string fs_nm_kelas,
+        string fs_nm_rekap_cetak
+    ) : this(
+        fs_kd_trs, fn_modul, fd_tgl_trs, fs_jam_trs, fd_tgl_jam_trs,
+        fs_kd_reg, fs_kd_layanan, fs_kd_kelas, fs_kd_rekap_cetak, fs_kd_petugas,
+        fn_sub_total, fn_diskon, fn_biaya, fn_tax, fn_total,
+        fs_keterangan, fs_keterangan2, fs_kd_ref_biaya, fn_qty, fs_kd_trs_main,
+        fs_mr, fs_nm_pasien, fs_nm_layanan, fs_nm_kelas, fs_nm_rekap_cetak,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, null
+    )
+    {
+    }
     public static TrsBillingDto FromModel(TrsBillType model)
     {
         var ket = model.Keterangan.Keterangan ?? string.Empty;

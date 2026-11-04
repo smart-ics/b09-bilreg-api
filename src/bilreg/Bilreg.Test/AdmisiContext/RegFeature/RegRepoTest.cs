@@ -81,6 +81,26 @@ public class RegRepoTest
     }
 
     [Fact]
+    public void GivenRegInapWithAdmission_WhenMultipleBangsalForLayanan_ThenResolvesBangsalFromAdmission()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+        _kelasRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
+            .Returns(MayBe.From(new KelasType("KLS1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"))));
+        _bangsalRepo
+            .Setup(x => x.GetByRegId(dto.fs_kd_reg))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1"))));
+
+        var result = CreateSut().LoadEntity(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg => reg.Bangsal.BangsalId.Should().Be("B1"),
+            onNone: () => Assert.Fail("Expected RegModel"));
+    }
+
+    [Fact]
     public void GivenRegWithSyncFields_WhenSaveChanges_ThenRegDtoStillUsesLegacyRegistrationFields()
     {
         RegDto? inserted = null;

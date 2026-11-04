@@ -71,12 +71,37 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         var occurredAt = _tglJamProvider.Now;
         tdk.Void(request.UserId, occurredAt);
 
+        // Cari billing ID yang cocok di tataRekening (bisa exact match atau prefix match karena kolom legasi 10-char)
+        var matchedBill = tataRekening.ListTrsBill
+            .FirstOrDefault(x => string.Equals(x.TrsBillingId, tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
+                              || x.TrsBillingId.StartsWith(tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
+                              || tdk.TindakanId.StartsWith(x.TrsBillingId, StringComparison.OrdinalIgnoreCase));
+
+        var billIdToDelete = matchedBill?.TrsBillingId ?? tdk.TindakanId;
+
         using var trans = TransHelper.NewScope();
-        tataRekening.DeleteBill(tdk.TindakanId);
-        _tataRekeningRepo.SaveChanges(tataRekening);
+        if (matchedBill != null)
+        {
+            tataRekening.DeleteBill(billIdToDelete);
+            _tataRekeningRepo.SaveChanges(tataRekening);
+        }
+        else
+        {
+            tataRekening.EnsureCanDeleteBill();
+        }
+
         _tdkRepo.SaveChanges(tdk);
-        _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
-        _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
+        _trsBillingRepo.DeleteEntity(TrsBillType.Key(billIdToDelete));
+        if (!string.Equals(billIdToDelete, tdk.TindakanId, StringComparison.OrdinalIgnoreCase))
+        {
+            _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
+        }
+
+        _jurnalRepo.DeleteEntity(JurnalType.Key(billIdToDelete));
+        if (!string.Equals(billIdToDelete, tdk.TindakanId, StringComparison.OrdinalIgnoreCase))
+        {
+            _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
+        }
 
         var audit = CreateAudit(tdk, snapshotJson, request);
         _auditRepo.SaveChanges(audit);

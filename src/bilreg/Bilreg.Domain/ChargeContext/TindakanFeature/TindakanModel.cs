@@ -12,6 +12,12 @@ public record TindakanModel : ITindakanKey
     private readonly List<TindakanKomponenBase> _listKomponen;
     private const string ID_PREFIX = "TDK";
 
+    private static string GenerateNewId()
+    {
+        var id = NunaId.New(ID_PREFIX);
+        return id.Length > 10 ? id[..10] : id;
+    }
+
     #region CREATION
     public TindakanModel(
         string tindakanId, DateTime tindakanDate, string orderTindakanId,
@@ -48,7 +54,7 @@ public record TindakanModel : ITindakanKey
         if (qty < 1)
             throw new ArgumentException("Qty must be at least 1", nameof(qty));
 
-        var newId = NunaId.New(ID_PREFIX);
+        var newId = GenerateNewId();
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty);
         var audit = AuditTrailType.Create(userId, occurredAt);
@@ -98,7 +104,7 @@ public record TindakanModel : ITindakanKey
         if (qty < 1)
             throw new ArgumentException("Qty must be at least 1", nameof(qty));
 
-        var newId = NunaId.New(ID_PREFIX);
+        var newId = GenerateNewId();
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty);
         var audit = AuditTrailType.Create(userId, occurredAt);

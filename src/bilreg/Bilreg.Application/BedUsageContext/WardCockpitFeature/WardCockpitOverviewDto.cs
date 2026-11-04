@@ -53,7 +53,11 @@ public record WardCockpitOccupancyDto(
     string PenjaminName,
     string BillingKelasName,
     bool IsTitipKelas,
-    bool IsRawatGabung
+    bool IsRawatGabung,
+    string? BabyName = null,
+    string? BabyRegId = null,
+    string? BabyMrNo = null,
+    string? KdJenisInap = null
 );
 
 public record WardCockpitOperationalStateDto(

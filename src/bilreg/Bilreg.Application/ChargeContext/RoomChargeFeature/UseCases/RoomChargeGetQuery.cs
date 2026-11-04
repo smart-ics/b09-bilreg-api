@@ -64,7 +64,13 @@ public class RoomChargeGetHandler : IRequestHandler<RoomChargeGetQuery, RoomChar
             model.BillingItemRefId,
             model.ReversalOfRoomChargeId,
             model.ReversalReason,
-            komponenViews
+            komponenViews,
+            model.BedCode,
+            model.KamarName,
+            model.BangsalName,
+            model.PhysicalClassName,
+            model.PayerClassName,
+            model.BillingClassName
         );
 
         return Task.FromResult(detailView);

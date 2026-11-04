@@ -37,7 +37,13 @@ public class RoomChargeModel : IRoomChargeKey
         string reversalOfRoomChargeId,
         string reversalReason,
         AuditTrailType auditTrail,
-        IEnumerable<RoomChargeKomponenModel>? listKomponen = null)
+        IEnumerable<RoomChargeKomponenModel>? listKomponen = null,
+        string bedCode = "",
+        string kamarName = "",
+        string bangsalName = "",
+        string physicalClassName = "",
+        string payerClassName = "",
+        string billingClassName = "")
     {
         RoomChargeId = roomChargeId;
         PakaiBedId = pakaiBedId;
@@ -67,6 +73,12 @@ public class RoomChargeModel : IRoomChargeKey
         ReversalReason = reversalReason;
         AuditTrail = auditTrail ?? AuditTrailType.Default;
         _listKomponen = listKomponen?.ToList() ?? [];
+        BedCode = bedCode ?? string.Empty;
+        KamarName = kamarName ?? string.Empty;
+        BangsalName = bangsalName ?? string.Empty;
+        PhysicalClassName = physicalClassName ?? string.Empty;
+        PayerClassName = payerClassName ?? string.Empty;
+        BillingClassName = billingClassName ?? string.Empty;
     }
 
     #region PROPERTIES
@@ -78,12 +90,18 @@ public class RoomChargeModel : IRoomChargeKey
     public string BangsalId { get; private set; }
     public string KamarId { get; private set; }
     public string BedId { get; private set; }
+    public string BedCode { get; private set; }
+    public string KamarName { get; private set; }
+    public string BangsalName { get; private set; }
     public string ChargeCycleDate { get; private set; }
     public DateTime TimeCharge { get; private set; }
     public ChargeTriggerTypeEnum ChargeTriggerType { get; private set; }
     public string PhysicalClassId { get; private set; }
+    public string PhysicalClassName { get; private set; }
     public string PayerClassId { get; private set; }
+    public string PayerClassName { get; private set; }
     public string BillingClassId { get; private set; }
+    public string BillingClassName { get; private set; }
     public bool IsTitipKelas { get; private set; }
     public bool IsNaikKelas { get; private set; }
     public decimal DifferentialAmount { get; private set; }
@@ -256,10 +274,10 @@ public class RoomChargeModel : IRoomChargeKey
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
 
-        if (RoomChargeStatus != RoomChargeStatusEnum.Posted)
+        if (RoomChargeStatus == RoomChargeStatusEnum.Reversed)
         {
             throw new InvalidOperationException(
-                $"Cannot reverse room charge '{RoomChargeId}' because current status is '{RoomChargeStatus}', expected '{RoomChargeStatusEnum.Posted}'.");
+                $"Cannot reverse room charge '{RoomChargeId}' because it has already been reversed.");
         }
 
         var modifTime = occurredAt == default ? DateTime.Now : occurredAt;
@@ -323,14 +341,20 @@ public class RoomChargeModel : IRoomChargeKey
         decimal newTotalAmount,
         IEnumerable<RoomChargeKomponenModel> newListKomponen,
         string userId,
-        DateTime occurredAt)
+        DateTime occurredAt,
+        DateTime? newTimeCharge = null)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
-        if (RoomChargeStatus != RoomChargeStatusEnum.Posted)
+        if (RoomChargeStatus == RoomChargeStatusEnum.Reversed)
         {
             throw new InvalidOperationException(
-                $"Cannot adjust room charge '{RoomChargeId}' because current status is '{RoomChargeStatus}', expected '{RoomChargeStatusEnum.Posted}'.");
+                $"Cannot adjust room charge '{RoomChargeId}' because current status is '{RoomChargeStatus}'.");
+        }
+
+        if (newTimeCharge.HasValue && newTimeCharge.Value != default)
+        {
+            TimeCharge = newTimeCharge.Value;
         }
 
         ChargedUnits = IsRoomingIn ? 0.0m : newChargedUnits;

@@ -89,12 +89,31 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
         
-        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
+        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen)).ToList();
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
         {
-            var komp = listKomp.First(x => x.KomponenId == item.KomponenId);
+            if (string.IsNullOrWhiteSpace(item.PpaId))
+                continue;
+
+            // Cari komponen yang cocok berdasarkan KomponenId
+            var komp = listKomp.FirstOrDefault(x => x.KomponenId == item.KomponenId);
+
+            // Fallback: Jika KomponenId tidak cocok persis (misal dikirim ID generik 'KOMP01' dari FE)
+            // Prioritaskan komponen yang memiliki SatTugas (memerlukan PPA)
+            if (komp is null)
+            {
+                komp = listKomp.FirstOrDefault(x => x.ListSatTugas.Any()) 
+                    ?? (listKomp.Count == 1 ? listKomp[0] : null);
+            }
+
+            if (komp is null || !komp.ListSatTugas.Any())
+                continue;
+
             var ppa = LoadPpa(PpaType.Key(item.PpaId));
+            if (!komp.IsValidPpa(ppa))
+                continue;
+
             listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 

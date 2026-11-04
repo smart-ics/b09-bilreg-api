@@ -10,16 +10,17 @@ namespace Bilreg.Infrastructure.ChargeContext.RoomChargeFeature;
 
 public class RoomChargeKomponenDal : IRoomChargeKomponenDal
 {
-    private const string SelectColumns = """
-        RoomChargeId, KomponenId, KomponenName, KomponenCategory,
-        Tarif, Diskon, Total, RekeningPendapatan
-        """;
-
     private readonly DatabaseOptions _opt;
 
     public RoomChargeKomponenDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
+    }
+
+    private static string SafeTruncate(string? val, int maxLen)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return string.Empty;
+        return val.Length > maxLen ? val[..maxLen] : val;
     }
 
     public void Insert(RoomChargeKomponenDto dto)
@@ -34,12 +35,14 @@ public class RoomChargeKomponenDal : IRoomChargeKomponenDal
         if (rows.Count == 0) return;
 
         const string sql = """
-            INSERT INTO BILRG_RnaRoomChargeKomponen (
-                RoomChargeId, KomponenId, KomponenName, KomponenCategory,
-                Tarif, Diskon, Total, RekeningPendapatan)
+            INSERT INTO ta_trs_roomcharge2 (
+                fs_kd_trs, fs_kd_detil_tarif,
+                fn_tarif, fn_diskon, fn_total,
+                fs_kd_rek_pdpt, fs_kd_rek_diskon)
             VALUES (
-                @RoomChargeId, @KomponenId, @KomponenName, @KomponenCategory,
-                @Tarif, @Diskon, @Total, @RekeningPendapatan)
+                @fs_kd_trs, @fs_kd_detil_tarif,
+                @fn_tarif, @fn_diskon, @fn_total,
+                @fs_kd_rek_pdpt, @fs_kd_rek_diskon)
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -49,12 +52,12 @@ public class RoomChargeKomponenDal : IRoomChargeKomponenDal
     public void DeleteByRoomChargeId(string roomChargeId)
     {
         const string sql = """
-            DELETE FROM BILRG_RnaRoomChargeKomponen
-            WHERE RoomChargeId = @RoomChargeId
+            DELETE FROM ta_trs_roomcharge2
+            WHERE fs_kd_trs = @fs_kd_trs
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@RoomChargeId", roomChargeId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(roomChargeId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -62,14 +65,24 @@ public class RoomChargeKomponenDal : IRoomChargeKomponenDal
 
     public IEnumerable<RoomChargeKomponenDto> ListDataByRoomChargeId(string roomChargeId)
     {
-        var sql = $"""
-            SELECT {SelectColumns}
-            FROM BILRG_RnaRoomChargeKomponen
-            WHERE RoomChargeId = @RoomChargeId
+        const string sql = """
+            SELECT 
+                bb.fs_kd_trs AS RoomChargeId,
+                bb.fs_kd_detil_tarif AS KomponenId,
+                ISNULL(dt.fs_nm_detil_tarif, bb.fs_kd_detil_tarif) AS KomponenName,
+                'Akomodasi' AS KomponenCategory,
+                bb.fn_tarif AS Tarif,
+                bb.fn_diskon AS Diskon,
+                bb.fn_total AS Total,
+                ISNULL(bb.fs_kd_rek_pdpt, '') AS RekeningPendapatan
+            FROM ta_trs_roomcharge2 bb
+            LEFT JOIN ta_detil_tarif dt ON bb.fs_kd_detil_tarif = dt.fs_kd_detil_tarif
+            WHERE bb.fs_kd_trs = @fs_kd_trs
+            ORDER BY bb.fs_kd_detil_tarif ASC
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@RoomChargeId", roomChargeId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(roomChargeId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RoomChargeKomponenDto>(sql, dp) ?? [];
@@ -84,14 +97,13 @@ public class RoomChargeKomponenDal : IRoomChargeKomponenDal
     private static DynamicParameters MapParams(RoomChargeKomponenDto dto)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@RoomChargeId", dto.RoomChargeId, SqlDbType.VarChar);
-        dp.AddParam("@KomponenId", dto.KomponenId, SqlDbType.VarChar);
-        dp.AddParam("@KomponenName", dto.KomponenName, SqlDbType.VarChar);
-        dp.AddParam("@KomponenCategory", dto.KomponenCategory, SqlDbType.VarChar);
-        dp.AddParam("@Tarif", dto.Tarif, SqlDbType.Decimal);
-        dp.AddParam("@Diskon", dto.Diskon, SqlDbType.Decimal);
-        dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
-        dp.AddParam("@RekeningPendapatan", dto.RekeningPendapatan, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(dto.RoomChargeId, 15), SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_detil_tarif", SafeTruncate(dto.KomponenId, 3), SqlDbType.VarChar);
+        dp.AddParam("@fn_tarif", dto.Tarif, SqlDbType.Decimal);
+        dp.AddParam("@fn_diskon", dto.Diskon, SqlDbType.Decimal);
+        dp.AddParam("@fn_total", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@fs_kd_rek_pdpt", SafeTruncate(dto.RekeningPendapatan, 20), SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_diskon", string.Empty, SqlDbType.VarChar);
         return dp;
     }
 }

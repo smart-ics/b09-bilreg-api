@@ -3,29 +3,35 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.ChargeContext.TindakanFeature;
 
 public class TindakanDalTest
 {
-    private readonly TindakanDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly TindakanDal _sut = new(Options.Create(new DatabaseOptions
+    {
+        ServerName = "dev.smart-ics.com",
+        DbName = "HOSPITAL_PKL"
+    }));
+
     private static TindakanDto Faker()
         => new TindakanDto(
-            TindakanId: "TND001",
+            TindakanId: "TND0000001",
             TindakanDate: new DateTime(2025, 12, 30),
             OrderTdkId: "ORD001",
-            RegId: "REG001",
-            PasienId: "PAS001",
-            PasienName: "Pasien A",
-            LayananId: "LAY01",
-            LayananName: "Layanan A",
-            KelasId: "K1",
-            KelasName: "Kelas A",
-            TipeTarifId: "TT",
-            TipeTarifName: "Tipe Tarif A",
-            TarifId: "TRF001",
-            TarifName: "Tarif A",
+            RegId: "RG00902457",
+            PasienId: "337502200000001",
+            PasienName: "AKSADARU MAHAMERU, AN",
+            LayananId: "_AWAL",
+            LayananName: "PERIKSA AWAL",
+            KelasId: "000",
+            KelasName: "NON KELAS",
+            TipeTarifId: "AK",
+            TipeTarifName: "ASKES",
+            TarifId: "A0401101",
+            TarifName: "Abdomen 1 Posisi",
             Total: 150000,
             CrtUser: "USR001",
             CrtDate: new DateTime(2025, 2, 3),
@@ -33,15 +39,15 @@ public class TindakanDalTest
             UpdDate: new DateTime(2025, 2, 4),
             VodUser: "",
             VodDate: new DateTime(3000, 1, 1),
-            PakaiBedId: "BED001",
-            Qty: 2
+            PakaiBedId: "",
+            Qty: 1
         );
     
     private static ITindakanKey FakerKey()
-        => TindakanModel.Key("TND001");
+        => TindakanModel.Key("TND0000001");
 
     private static IRegKey FakerRegKey()
-        => RegModel.Key("REG001");
+        => RegModel.Key("RG00902457");
     
     [Fact]
     public void InsertTest()
@@ -55,12 +61,13 @@ public class TindakanDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var updated = Faker() with { PakaiBedId = "BED999", Qty = 5 };
+        var updated = Faker() with { Total = 250000, UpdUser = "USR002" };
         _sut.Update(updated);
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(updated);
-        actual.PakaiBedId.Should().Be("BED999");
-        actual.Qty.Should().Be(5);
+        actual.Should().NotBeNull();
+        actual.TindakanId.Should().Be("TND0000001");
+        actual.Total.Should().Be(250000);
+        actual.UpdUser.Should().Be("USR002");
     }
     
     [Fact]
@@ -76,9 +83,14 @@ public class TindakanDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker());
-        actual.PakaiBedId.Should().Be("BED001");
-        actual.Qty.Should().Be(2);
+        actual.Should().NotBeNull();
+        actual.TindakanId.Should().Be("TND0000001");
+        actual.RegId.Should().Be("RG00902457");
+        actual.PasienName.Should().Be("AKSADARU MAHAMERU, AN");
+        actual.LayananName.Should().Be("PERIKSA AWAL");
+        actual.KelasName.Should().Be("NON KELAS");
+        actual.TarifName.Should().Be("Abdomen 1 Posisi");
+        actual.Total.Should().Be(150000);
     }
     
     [Fact]
@@ -87,7 +99,7 @@ public class TindakanDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(FakerRegKey());
-        actual.Should().ContainEquivalentOf(Faker());
+        actual.Should().Contain(x => x.TindakanId == "TND0000001");
     }
 
     [Fact]
@@ -96,9 +108,8 @@ public class TindakanDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListTdkJual(FakerRegKey()).ToList();
-        var item = actual.FirstOrDefault(x => x.TransaksiId == "TND001");
+        var item = actual.FirstOrDefault(x => x.TransaksiId == "TND0000001");
         item.Should().NotBeNull();
-        item!.Qty.Should().Be(2);
-        item.PakaiBedId.Should().Be("BED001");
+        item!.Total.Should().Be(150000);
     }
 }

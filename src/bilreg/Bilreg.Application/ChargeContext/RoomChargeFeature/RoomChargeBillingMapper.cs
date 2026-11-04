@@ -14,9 +14,10 @@ public static class RoomChargeBillingMapper
 {
     public static TrsBillType ToTrsBill(RoomChargeModel roomCharge)
     {
-        var billingId = string.IsNullOrWhiteSpace(roomCharge.BillingItemRefId) 
+        var rawId = string.IsNullOrWhiteSpace(roomCharge.BillingItemRefId) 
             ? roomCharge.RoomChargeId 
             : roomCharge.BillingItemRefId;
+        var billingId = rawId.Length > 15 ? rawId[..15] : rawId;
 
         var transEvents = roomCharge.ListKomponen.Select((k, idx) =>
             new TrsBill2TransEventType(
@@ -34,12 +35,19 @@ public static class RoomChargeBillingMapper
                     CoaType.Default)
             )).ToList();
 
-        var userId = !string.IsNullOrWhiteSpace(roomCharge.AuditTrail.Created.UserId)
-            ? roomCharge.AuditTrail.Created.UserId
-            : "SYSTEM";
-        var timestamp = roomCharge.AuditTrail.Created.Timestamp != default
-            ? roomCharge.AuditTrail.Created.Timestamp
-            : roomCharge.TimeCharge;
+        var isModified = roomCharge.AuditTrail.Modified != null &&
+                         !string.IsNullOrWhiteSpace(roomCharge.AuditTrail.Modified.UserId) &&
+                         roomCharge.AuditTrail.Modified.Timestamp != default &&
+                         roomCharge.AuditTrail.Modified.Timestamp.Year > 1900 &&
+                         roomCharge.AuditTrail.Modified.Timestamp.Year < 3000;
+
+        var userId = isModified
+            ? roomCharge.AuditTrail.Modified.UserId
+            : (!string.IsNullOrWhiteSpace(roomCharge.AuditTrail.Created.UserId) ? roomCharge.AuditTrail.Created.UserId : "SYSTEM");
+
+        var timestamp = isModified
+            ? roomCharge.AuditTrail.Modified.Timestamp
+            : (roomCharge.AuditTrail.Created.Timestamp != default ? roomCharge.AuditTrail.Created.Timestamp : roomCharge.TimeCharge);
 
         var auditInfo = new AuditInfoType(userId, timestamp);
 

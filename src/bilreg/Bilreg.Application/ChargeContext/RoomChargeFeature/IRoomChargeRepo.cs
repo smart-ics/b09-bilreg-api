@@ -9,6 +9,7 @@ public interface IRoomChargeRepo :
     ILoadEntity<RoomChargeModel, IRoomChargeKey>
 {
     void Save(RoomChargeModel model);
+    void Delete(IRoomChargeKey key, string userId, DateTime occurredAt);
     MayBe<RoomChargeModel> LoadEntity(string roomChargeId);
     MayBe<RoomChargeModel> GetByPakaiBedAndDate(string pakaiBedId, string chargeCycleDate);
     IEnumerable<RoomChargeModel> ListDataByReg(string regId);

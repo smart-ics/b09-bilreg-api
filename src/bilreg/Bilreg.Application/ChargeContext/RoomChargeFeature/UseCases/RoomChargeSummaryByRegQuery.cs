@@ -1,4 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.Shared;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.RoomChargeFeature;
 using MediatR;
 
@@ -9,10 +12,17 @@ public record RoomChargeSummaryByRegQuery(string RegId) : IRequest<RoomChargeSum
 public class RoomChargeSummaryByRegHandler : IRequestHandler<RoomChargeSummaryByRegQuery, RoomChargeSummaryView>
 {
     private readonly IRoomChargeRepo _roomChargeRepo;
+    private readonly IRegRepo? _regRepo;
+    private readonly IBusinessDateStatus? _businessDateStatus;
 
-    public RoomChargeSummaryByRegHandler(IRoomChargeRepo roomChargeRepo)
+    public RoomChargeSummaryByRegHandler(
+        IRoomChargeRepo roomChargeRepo,
+        IRegRepo? regRepo = null,
+        IBusinessDateStatus? businessDateStatus = null)
     {
         _roomChargeRepo = roomChargeRepo;
+        _regRepo = regRepo;
+        _businessDateStatus = businessDateStatus;
     }
 
     public Task<RoomChargeSummaryView> Handle(RoomChargeSummaryByRegQuery request, CancellationToken cancellationToken)
@@ -22,23 +32,39 @@ public class RoomChargeSummaryByRegHandler : IRequestHandler<RoomChargeSummaryBy
 
         var list = _roomChargeRepo.ListDataByReg(request.RegId).ToList();
 
-        var totalChargedUnits = list.Sum(x => x.ChargedUnits);
-        var totalAmount = list.Sum(x => x.TotalAmount);
-        var differentialAmount = list.Sum(x => x.DifferentialAmount);
+        var tglMasukStr = ResolveAdmissionDate(request.RegId);
+        var businessDateStr = ResolveBusinessDate();
 
-        var totalSubsidi = list
-            .Where(x => x.IsTitipKelas && x.RoomChargeStatus != RoomChargeStatusEnum.Reversed)
+        var effectiveTglMasukStr = string.CompareOrdinal(tglMasukStr, businessDateStr) <= 0
+            ? tglMasukStr
+            : "1900-01-01";
+
+        var filteredList = list.Where(model =>
+            !string.IsNullOrWhiteSpace(model.ChargeCycleDate) &&
+            string.CompareOrdinal(model.ChargeCycleDate, effectiveTglMasukStr) >= 0 &&
+            string.CompareOrdinal(model.ChargeCycleDate, businessDateStr) <= 0
+        ).ToList();
+
+        var activeList = filteredList
+            .Where(x => x.RoomChargeStatus != RoomChargeStatusEnum.Reversed)
+            .ToList();
+
+        var totalChargedUnits = activeList.Sum(x => x.ChargedUnits);
+        var totalAmount = activeList.Sum(x => x.TotalAmount);
+        var differentialAmount = activeList.Sum(x => x.DifferentialAmount);
+
+        var totalSubsidi = activeList
+            .Where(x => x.IsTitipKelas)
             .Sum(x => Math.Max(0m, (x.BaseTariff * x.ChargedUnits) - x.TotalAmount));
 
         if (totalSubsidi == 0m)
         {
-            totalSubsidi = list
-                .Where(x => x.IsTitipKelas && x.RoomChargeStatus != RoomChargeStatusEnum.Reversed)
+            totalSubsidi = activeList
+                .Where(x => x.IsTitipKelas)
                 .Sum(x => x.BaseTariff * x.ChargedUnits);
         }
 
-        var activeDaysCount = list
-            .Where(x => x.RoomChargeStatus == RoomChargeStatusEnum.Posted && x.ChargedUnits > 0)
+        var activeDaysCount = activeList
             .Select(x => x.ChargeCycleDate)
             .Distinct()
             .Count();
@@ -52,5 +78,36 @@ public class RoomChargeSummaryByRegHandler : IRequestHandler<RoomChargeSummaryBy
         );
 
         return Task.FromResult(summary);
+    }
+
+    private string ResolveAdmissionDate(string regId)
+    {
+        if (_regRepo is null)
+            return "1900-01-01";
+
+        var regOpt = _regRepo.LoadEntity(RegModel.Key(regId));
+        return regOpt.Match(
+            onSome: reg =>
+            {
+                if (reg.RegDate != new DateOnly(3000, 1, 1) && reg.RegDate != DateOnly.MinValue)
+                    return reg.RegDate.ToString("yyyy-MM-dd");
+
+                if (reg.RegMasukAudit != null &&
+                    reg.RegMasukAudit.Timestamp != DateTime.MinValue &&
+                    reg.RegMasukAudit.Timestamp != new DateTime(3000, 1, 1))
+                {
+                    return reg.RegMasukAudit.Timestamp.ToString("yyyy-MM-dd");
+                }
+
+                return "1900-01-01";
+            },
+            onNone: () => "1900-01-01"
+        );
+    }
+
+    private string ResolveBusinessDate()
+    {
+        var businessNow = _businessDateStatus?.BusinessNow ?? DateTime.Today;
+        return businessNow.ToString("yyyy-MM-dd");
     }
 }

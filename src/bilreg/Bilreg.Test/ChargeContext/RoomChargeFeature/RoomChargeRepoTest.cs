@@ -64,8 +64,6 @@ public class RoomChargeRepoTest
             list.Any(k => k.KomponenId == "K02" && k.Tarif == 100000m) &&
             list.Any(k => k.KomponenId == "K03" && k.Tarif == 50000m)
         )), Times.Once);
-
-        _legacyDalMock.Verify(x => x.SaveChanges(model), Times.Once);
     }
 
     [Fact]
@@ -89,7 +87,6 @@ public class RoomChargeRepoTest
         _dalMock.Verify(x => x.Insert(It.IsAny<RoomChargeDto>()), Times.Never);
         _komponenDalMock.Verify(x => x.DeleteByRoomChargeId("RMC2610190001"), Times.Once);
         _komponenDalMock.Verify(x => x.Insert(It.IsAny<IEnumerable<RoomChargeKomponenDto>>()), Times.Once);
-        _legacyDalMock.Verify(x => x.SaveChanges(model), Times.Once);
     }
 
     [Fact]
@@ -104,7 +101,6 @@ public class RoomChargeRepoTest
 
         // Assert
         _dalMock.Verify(x => x.Insert(It.IsAny<RoomChargeDto>()), Times.Once);
-        _legacyDalMock.Verify(x => x.SaveChanges(model), Times.Once);
     }
 
     [Fact]
@@ -251,6 +247,30 @@ public class RoomChargeRepoTest
     }
 
     [Fact]
+    public void UT_RP_14_GivenUnorderedDtos_WhenListDataByReg_ThenOrdersByDateThenTime()
+    {
+        // Arrange
+        var dtos = new List<RoomChargeDto>
+        {
+            CreateTestDto("RMC02", "2026-10-19") with { TimeCharge = new DateTime(2026, 10, 19, 14, 0, 0) },
+            CreateTestDto("RMC01", "2026-10-18") with { TimeCharge = new DateTime(2026, 10, 18, 12, 0, 0) },
+            CreateTestDto("RMC03", "2026-10-19") with { TimeCharge = new DateTime(2026, 10, 19, 08, 0, 0) }
+        };
+        _dalMock.Setup(x => x.ListDataByReg("RG001")).Returns(dtos);
+        _komponenDalMock.Setup(x => x.ListDataByRoomChargeId(It.IsAny<string>()))
+            .Returns((string id) => CreateTestKomponenDtos(id));
+
+        // Act
+        var result = _repository.ListDataByReg("RG001").ToList();
+
+        // Assert
+        result.Should().HaveCount(3);
+        result[0].RoomChargeId.Should().Be("RMC01");
+        result[1].RoomChargeId.Should().Be("RMC03");
+        result[2].RoomChargeId.Should().Be("RMC02");
+    }
+
+    [Fact]
     public void UT_RP_10_GivenWardAndDate_WhenListActiveByBangsalAndDate_ThenReturnsMappedEntities()
     {
         // Arrange
@@ -288,11 +308,6 @@ public class RoomChargeRepoTest
             d.RoomChargeStatus == "Reversed" &&
             d.ReversalReason == "Salah input kamar" &&
             d.UpdatedBy == "supervisor"
-        )), Times.Once);
-
-        _legacyDalMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
-            m.RoomChargeStatus == RoomChargeStatusEnum.Reversed &&
-            m.ReversalReason == "Salah input kamar"
         )), Times.Once);
     }
 
@@ -351,6 +366,22 @@ public class RoomChargeRepoTest
         reconstructed.Diskon.Should().Be(10000m);
         reconstructed.Total.Should().Be(190000m);
         reconstructed.RekeningPendapatan.Should().Be("1.1.1.01");
+    }
+
+    [Fact]
+    public void UT_RP_15_GivenKeyAndAuditDetails_WhenDelete_ThenDelegatesToDalAndDeletesChildKomponen()
+    {
+        // Arrange
+        var key = RoomChargeModel.Key("RMC2610190001");
+        var userId = "user123";
+        var occurredAt = new DateTime(2026, 10, 19, 15, 30, 0);
+
+        // Act
+        _repository.Delete(key, userId, occurredAt);
+
+        // Assert
+        _dalMock.Verify(x => x.Delete(key, userId, occurredAt), Times.Once);
+        _komponenDalMock.Verify(x => x.DeleteByRoomChargeId("RMC2610190001"), Times.Once);
     }
 
     #region TEST HELPERS
@@ -434,6 +465,47 @@ public class RoomChargeRepoTest
             new(roomChargeId, "K01", "Sewa Kamar", "Akomodasi", 200000m, 0m, 200000m, "1.1.01"),
             new(roomChargeId, "K02", "Askep Bangsal", "Keperawatan", 100000m, 0m, 100000m, "1.1.02"),
             new(roomChargeId, "K03", "Konsumsi", "Gizi", 50000m, 0m, 50000m, "1.1.03")
+        };
+    }
+
+    private static RoomChargeLegacyDto CreateTestLegacyDto(
+        string id = "LEG261017001",
+        string date = "2026-10-17",
+        string time = "10:00:00",
+        string status = "Posted")
+    {
+        return new RoomChargeLegacyDto
+        {
+            RoomChargeId = id,
+            PakaiBedId = "PB001",
+            RegId = "RG001",
+            BangsalId = "B01",
+            BedId = "BED01",
+            ChargeCycleDate = date,
+            JamTrs = time,
+            TimeCharge = DateTime.TryParse($"{date} {time}", out var dt) ? dt : DateTime.MinValue,
+            PetugasId = "admin_leg",
+            BaseTariff = 300000m,
+            DiscountAmount = 0m,
+            TotalAmount = 300000m,
+            ChargedUnits = 1.0m,
+            PayerClassId = "KL2",
+            Notes = "Legacy Charge",
+            RoomChargeStatus = status,
+            ListKomponen = new List<RoomChargeKomponenLegacyDto>
+            {
+                new()
+                {
+                    RoomChargeId = id,
+                    KomponenId = "K01",
+                    KomponenName = "Sewa Kamar",
+                    KomponenCategory = "Akomodasi",
+                    Tarif = 300000m,
+                    Diskon = 0m,
+                    Total = 300000m,
+                    RekeningPendapatan = "1.1.01"
+                }
+            }
         };
     }
 

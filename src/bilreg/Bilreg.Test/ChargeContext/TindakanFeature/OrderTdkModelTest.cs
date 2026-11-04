@@ -24,7 +24,7 @@ public class OrderTdkModelTests
         var tarif = CreateTestTarifType();
 
         // Act
-        var result = OrderTdkModel.Create(pasien, dokter, layanan, tarif, TestUserId);
+        var result = OrderTdkModel.Create(pasien, dokter, layanan, tarif, TestUserId, DateTime.Now);
 
         // Assert
         result.Should().NotBeNull();
@@ -195,7 +195,7 @@ public class OrderTdkModelTests
     private static RegModel CreateTestNonAktifRegModel()
     {
         var reg = RegModel.Default;
-        // Simulate non-aktif reg by modifying the audit trail
+        reg.BatalBerobat("test", DateTime.Now);
         return reg;
     }
 }

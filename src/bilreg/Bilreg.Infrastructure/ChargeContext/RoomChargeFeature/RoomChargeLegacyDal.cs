@@ -6,20 +6,24 @@ using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.ChargeContext.RoomChargeFeature;
 
 public interface IRoomChargeLegacyDal : ISaveChange<RoomChargeModel>
 {
+    IEnumerable<RoomChargeLegacyDto> ListDataByReg(string regId);
 }
 
 public class RoomChargeLegacyDal : IRoomChargeLegacyDal
 {
     private readonly DatabaseOptions _opt;
+    private readonly ITglJamProvider? _tglJamProvider;
 
-    public RoomChargeLegacyDal(IOptions<DatabaseOptions> opt)
+    public RoomChargeLegacyDal(IOptions<DatabaseOptions> opt, ITglJamProvider? tglJamProvider = null)
     {
         _opt = opt.Value;
+        _tglJamProvider = tglJamProvider;
     }
 
     public void SaveChanges(RoomChargeModel model)
@@ -133,33 +137,164 @@ public class RoomChargeLegacyDal : IRoomChargeLegacyDal
         // 3. Project to ta_trs_roomcharge_log if Reversed
         if (model.RoomChargeStatus == RoomChargeStatusEnum.Reversed)
         {
-            const string insertLogSql = """
-                INSERT INTO ta_trs_roomcharge_log (
-                    fs_kd_trs, fd_tgl_trs, fd_tgl_upd, fs_jam_upd,
-                    fs_kd_petugas, fs_kd_upd, fs_kd_reg,
-                    fs_kd_layanan, fs_kd_bed,
-                    fn_tarif, fn_qty, fb_status_void)
-                VALUES (
-                    @fs_kd_trs, @fd_tgl_trs, @fd_tgl_upd, @fs_jam_upd,
-                    @fs_kd_petugas, @fs_kd_upd, @fs_kd_reg,
-                    @fs_kd_layanan, @fs_kd_bed,
-                    @fn_tarif, @fn_qty, @fb_status_void)
-                """;
-            var dpLog = new DynamicParameters();
-            dpLog.AddParam("@fs_kd_trs", trsId, SqlDbType.VarChar);
-            dpLog.AddParam("@fd_tgl_trs", Truncate(model.ChargeCycleDate, 10), SqlDbType.VarChar);
-            dpLog.AddParam("@fd_tgl_upd", model.AuditTrail.Modified.Timestamp.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_jam_upd", model.AuditTrail.Modified.Timestamp.ToString("HH:mm:ss"), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_kd_petugas", Truncate(model.AuditTrail.Created.UserId, 10), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_kd_upd", Truncate(model.AuditTrail.Modified.UserId, 10), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_kd_reg", Truncate(model.RegId, 10), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_kd_layanan", Truncate(model.BangsalId, 5), SqlDbType.VarChar);
-            dpLog.AddParam("@fs_kd_bed", Truncate(model.BedId, 8), SqlDbType.VarChar);
-            dpLog.AddParam("@fn_tarif", model.BaseTariff, SqlDbType.Decimal);
-            dpLog.AddParam("@fn_qty", model.ChargedUnits, SqlDbType.Decimal);
-            dpLog.AddParam("@fb_status_void", true, SqlDbType.Bit);
-            conn.Execute(insertLogSql, dpLog);
+            try
+            {
+                const string insertLogSql = """
+                    INSERT INTO ta_trs_roomcharge_log (
+                        fs_kd_trs, fd_tgl_trs, fd_tgl_upd, fs_jam_upd,
+                        fs_kd_petugas, fs_kd_upd, fs_kd_reg,
+                        fs_kd_layanan, fs_kd_bed,
+                        fn_tarif, fn_qty, fb_status_void)
+                    VALUES (
+                        @fs_kd_trs, @fd_tgl_trs, @fd_tgl_upd, @fs_jam_upd,
+                        @fs_kd_petugas, @fs_kd_upd, @fs_kd_reg,
+                        @fs_kd_layanan, @fs_kd_bed,
+                        @fn_tarif, @fn_qty, @fb_status_void)
+                    """;
+
+                var fallbackNow = _tglJamProvider?.Now ?? DateTime.Now;
+                var updTime = (model.AuditTrail.Modified.Timestamp == default || model.AuditTrail.Modified.Timestamp.Year < 1900)
+                    ? fallbackNow
+                    : model.AuditTrail.Modified.Timestamp;
+                var updUser = string.IsNullOrWhiteSpace(model.AuditTrail.Modified.UserId)
+                    ? (string.IsNullOrWhiteSpace(model.AuditTrail.Created.UserId) ? "SYSTEM" : model.AuditTrail.Created.UserId)
+                    : model.AuditTrail.Modified.UserId;
+
+                var dpLog = new DynamicParameters();
+                dpLog.AddParam("@fs_kd_trs", trsId, SqlDbType.VarChar);
+                dpLog.AddParam("@fd_tgl_trs", Truncate(model.ChargeCycleDate, 10), SqlDbType.VarChar);
+                dpLog.AddParam("@fd_tgl_upd", updTime.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_jam_upd", updTime.ToString("HH:mm:ss"), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_kd_petugas", Truncate(model.AuditTrail.Created.UserId, 10), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_kd_upd", Truncate(updUser, 10), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_kd_reg", Truncate(model.RegId, 10), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_kd_layanan", Truncate(model.BangsalId, 5), SqlDbType.VarChar);
+                dpLog.AddParam("@fs_kd_bed", Truncate(model.BedId, 8), SqlDbType.VarChar);
+                dpLog.AddParam("@fn_tarif", model.BaseTariff, SqlDbType.Decimal);
+                dpLog.AddParam("@fn_qty", model.ChargedUnits, SqlDbType.Decimal);
+                dpLog.AddParam("@fb_status_void", true, SqlDbType.Bit);
+                conn.Execute(insertLogSql, dpLog);
+            }
+            catch
+            {
+                // Legacy log projection non-critical
+            }
         }
+    }
+
+    public IEnumerable<RoomChargeLegacyDto> ListDataByReg(string regId)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            return [];
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+
+        const string headerSql = """
+            SELECT 
+                aa.fs_kd_trs AS RoomChargeId,
+                aa.fs_kd_pakai_bed AS PakaiBedId,
+                aa.fs_kd_reg AS RegId,
+                aa.fs_kd_layanan AS BangsalId,
+                ISNULL(lay.fs_nm_layanan, '') AS BangsalName,
+                ISNULL(bed.fs_kd_kamar, '') AS KamarId,
+                ISNULL(kmr.fs_nm_kamar, '') AS KamarName,
+                aa.fs_kd_bed AS BedId,
+                ISNULL(bed.fs_nm_bed, aa.fs_kd_bed) AS BedCode,
+                ISNULL(CONVERT(VARCHAR(10), aa.fd_tgl_trs, 120), '') AS ChargeCycleDate,
+                ISNULL(aa.fs_jam_trs, '') AS JamTrs,
+                ISNULL(aa.fs_kd_petugas, '') AS PetugasId,
+                aa.fn_tarif AS BaseTariff,
+                aa.fn_diskon AS DiscountAmount,
+                aa.fn_total AS TotalAmount,
+                aa.fn_qty AS ChargedUnits,
+                ISNULL(kmr.fs_kd_kelas, '') AS PhysicalClassId,
+                ISNULL(kls_kmr.fs_nm_kelas, '') AS PhysicalClassName,
+                ISNULL(reg.fs_kd_kelas, ISNULL(aa.fs_kd_tipe_jaminan, '')) AS PayerClassId,
+                ISNULL(kls_reg.fs_nm_kelas, '') AS PayerClassName,
+                COALESCE(NULLIF(tb.fs_kd_kelas, ''), NULLIF(kmr.fs_kd_kelas, ''), NULLIF(reg.fs_kd_kelas, ''), NULLIF(aa.fs_kd_tipe_jaminan, ''), '') AS BillingClassId,
+                COALESCE(NULLIF(kls_tb.fs_nm_kelas, ''), NULLIF(kls_kmr.fs_nm_kelas, ''), NULLIF(kls_reg.fs_nm_kelas, ''), '') AS BillingClassName,
+                ISNULL(aa.fs_ket, '') AS Notes,
+                CASE 
+                    WHEN ISNULL(lg.fb_status_void, 0) = 1 THEN 'Reversed'
+                    WHEN aa.fs_ket LIKE 'Reversed%' OR aa.fs_ket LIKE 'Void%' OR aa.fs_ket LIKE '%Void%' THEN 'Reversed'
+                    ELSE 'Posted'
+                END AS RoomChargeStatus
+            FROM ta_trs_roomcharge aa
+            LEFT JOIN ta_trs_bed tb ON aa.fs_kd_pakai_bed = tb.fs_kd_trs
+            LEFT JOIN ta_registrasi reg ON aa.fs_kd_reg = reg.fs_kd_reg
+            LEFT JOIN ta_bed bed ON aa.fs_kd_bed = bed.fs_kd_bed
+            LEFT JOIN ta_kamar kmr ON bed.fs_kd_kamar = kmr.fs_kd_kamar
+            LEFT JOIN ta_layanan lay ON aa.fs_kd_layanan = lay.fs_kd_layanan
+            LEFT JOIN ta_kelas kls_tb ON tb.fs_kd_kelas = kls_tb.fs_kd_kelas
+            LEFT JOIN ta_kelas kls_kmr ON kmr.fs_kd_kelas = kls_kmr.fs_kd_kelas
+            LEFT JOIN ta_kelas kls_reg ON reg.fs_kd_kelas = kls_reg.fs_kd_kelas
+            LEFT JOIN (
+                SELECT fs_kd_trs, MAX(CASE WHEN fb_status_void = 1 THEN 1 ELSE 0 END) AS fb_status_void
+                FROM ta_trs_roomcharge_log
+                GROUP BY fs_kd_trs
+            ) lg ON aa.fs_kd_trs = lg.fs_kd_trs
+            WHERE aa.fs_kd_reg = @RegId
+            ORDER BY aa.fd_tgl_trs ASC, aa.fs_jam_trs ASC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+
+        var listHeader = conn.Query<RoomChargeLegacyDto>(headerSql, dp).ToList();
+        if (listHeader.Count == 0)
+            return [];
+
+        const string kompSql = """
+            SELECT 
+                bb.fs_kd_trs AS RoomChargeId,
+                bb.fs_kd_detil_tarif AS KomponenId,
+                ISNULL(dt.fs_nm_detil_tarif, bb.fs_kd_detil_tarif) AS KomponenName,
+                'Akomodasi' AS KomponenCategory,
+                bb.fn_tarif AS Tarif,
+                bb.fn_diskon AS Diskon,
+                bb.fn_total AS Total,
+                ISNULL(bb.fs_kd_rek_pdpt, '') AS RekeningPendapatan,
+                ISNULL(bb.fs_kd_rek_diskon, '') AS RekeningDiskon
+            FROM ta_trs_roomcharge2 bb
+            INNER JOIN ta_trs_roomcharge aa ON bb.fs_kd_trs = aa.fs_kd_trs
+            LEFT JOIN ta_detil_tarif dt ON bb.fs_kd_detil_tarif = dt.fs_kd_detil_tarif
+            WHERE aa.fs_kd_reg = @RegId
+            """;
+
+        List<RoomChargeKomponenLegacyDto> listKomp;
+        try
+        {
+            listKomp = conn.Query<RoomChargeKomponenLegacyDto>(kompSql, dp).ToList();
+        }
+        catch
+        {
+            listKomp = [];
+        }
+
+        var kompLookup = listKomp.GroupBy(x => x.RoomChargeId).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var item in listHeader)
+        {
+            if (DateTime.TryParse($"{item.ChargeCycleDate} {item.JamTrs}", out var parsedDt))
+            {
+                item.TimeCharge = parsedDt;
+            }
+            else if (DateTime.TryParse(item.ChargeCycleDate, out var parsedD))
+            {
+                item.TimeCharge = parsedD;
+            }
+
+            if (kompLookup.TryGetValue(item.RoomChargeId, out var komps))
+            {
+                item.ListKomponen = komps;
+            }
+            else
+            {
+                item.ListKomponen = [];
+            }
+        }
+
+        return listHeader;
     }
 
     private static string Truncate(string? value, int maxLength)

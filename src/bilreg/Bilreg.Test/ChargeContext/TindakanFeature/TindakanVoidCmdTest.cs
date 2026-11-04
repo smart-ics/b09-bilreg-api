@@ -21,11 +21,13 @@ using Moq;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Bilreg.Test.ChargeContext.TindakanFeature;
 
 public class TindakanVoidCmdTest
 {
+    private readonly ITestOutputHelper _output;
     private readonly Mock<ITindakanRepo> _tdkRepoMock = new();
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepoMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
@@ -37,8 +39,9 @@ public class TindakanVoidCmdTest
     private readonly TindakanVoidHandler _sut;
     private readonly DateTime _testNow = new(2026, 10, 20, 11, 0, 0);
 
-    public TindakanVoidCmdTest()
+    public TindakanVoidCmdTest(ITestOutputHelper output)
     {
+        _output = output;
         _tglJamProviderMock.Setup(x => x.Now).Returns(_testNow);
 
         _sut = new TindakanVoidHandler(
@@ -204,6 +207,38 @@ public class TindakanVoidCmdTest
         // Assert
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("*Tindakan TDK-MISSING not found*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenBillingIdTruncatedByLegacyTable_ShouldMatchPrefixAndVoidSuccessfully()
+    {
+        // Arrange: Legacy TA_TRS_TINDAKAN truncated ID to 10 chars, while ta_trs_billing has full 12 chars
+        const string legacyTdkId = "TDK09KZ0XH";
+        const string fullBillingId = "TDK09KZ0XHX7";
+        const string regId = "RG01377882";
+
+        var tdk = CreateTestTindakan(legacyTdkId, regId);
+        var bill = TataRekeningTestDataBuilder.CreateBill(fullBillingId, regId, 700000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(regId, TataRekeningStatusEnum.Opened, bill);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == legacyTdkId)))
+            .Returns(MayBe.From(tdk));
+        _tataRekeningRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var cmd = new TindakanVoidCmd(legacyTdkId, "SPR001", "Salah input tindakan bangsal", "127.0.0.1", "Mozilla/5.0");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        tdk.AuditTrail.IsVoided.Should().BeTrue();
+        tdk.AuditTrail.Voided.UserId.Should().Be("SPR001");
+
+        _tdkRepoMock.Verify(x => x.SaveChanges(It.Is<TindakanModel>(t => t.AuditTrail.IsVoided)), Times.Once);
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.Is<TataRekeningModel>(tr => !tr.ListTrsBill.Any(b => b.TrsBillingId == fullBillingId))), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == fullBillingId)), Times.Once);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == fullBillingId)), Times.Once);
     }
 
     [Fact]

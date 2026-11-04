@@ -46,4 +46,7 @@ public class PakaiBedRepo : IPakaiBedRepo
             ? MayBe<PakaiBedModel>.None
             : MayBe.From(dto.ToModel());
     }
+
+    public Task<List<string>> VoidBedAndRoomChargeAsync(string pakaiBedId, string userId, string alasanBatal, DateTime? voidTime = null)
+        => _dal.VoidBedAndRoomChargeAsync(pakaiBedId, userId, alasanBatal, voidTime);
 }

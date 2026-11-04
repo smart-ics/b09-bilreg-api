@@ -2,6 +2,7 @@ using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature.UseCases;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.BedUsageContext.WardCockpitFeature;
@@ -9,12 +10,16 @@ namespace Bilreg.Test.BedUsageContext.WardCockpitFeature;
 public class WardCockpitBedDetailQueryHandlerTest
 {
     private readonly Mock<IWardCockpitDal> _dalMock;
+    private readonly Mock<ITglJamProvider> _clockMock;
     private readonly WardCockpitBedDetailQueryHandler _sut;
+    private readonly DateTime _testNow = new(2026, 10, 24, 10, 0, 0);
 
     public WardCockpitBedDetailQueryHandlerTest()
     {
         _dalMock = new Mock<IWardCockpitDal>();
-        _sut = new WardCockpitBedDetailQueryHandler(_dalMock.Object);
+        _clockMock = new Mock<ITglJamProvider>();
+        _clockMock.Setup(c => c.Now).Returns(_testNow);
+        _sut = new WardCockpitBedDetailQueryHandler(_dalMock.Object, _clockMock.Object);
     }
 
     [Theory]
@@ -31,7 +36,7 @@ public class WardCockpitBedDetailQueryHandlerTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
-        _dalMock.Verify(x => x.GetBedDetailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _dalMock.Verify(x => x.GetBedDetailAsync(It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -77,7 +82,7 @@ public class WardCockpitBedDetailQueryHandlerTest
         );
 
         _dalMock
-            .Setup(x => x.GetBedDetailAsync(bedId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBedDetailAsync(bedId, _testNow, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDto);
 
         var query = new WardCockpitBedDetailQuery("  BED-101-A  ");
@@ -97,7 +102,7 @@ public class WardCockpitBedDetailQueryHandlerTest
         result.TabRoomCharge!.EstimasiTotalSewa.Should().Be(750000m);
         result.TabRiwayatMutasi.Should().HaveCount(1);
 
-        _dalMock.Verify(x => x.GetBedDetailAsync("BED-101-A", It.IsAny<CancellationToken>()), Times.Once);
+        _dalMock.Verify(x => x.GetBedDetailAsync("BED-101-A", _testNow, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -114,7 +119,7 @@ public class WardCockpitBedDetailQueryHandlerTest
         );
 
         _dalMock
-            .Setup(x => x.GetBedDetailAsync(bedId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBedDetailAsync(bedId, _testNow, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDto);
 
         var query = new WardCockpitBedDetailQuery(bedId);
@@ -136,7 +141,7 @@ public class WardCockpitBedDetailQueryHandlerTest
     {
         // Arrange
         _dalMock
-            .Setup(x => x.GetBedDetailAsync("BED-NONEXISTENT", It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBedDetailAsync("BED-NONEXISTENT", _testNow, It.IsAny<CancellationToken>()))
             .ReturnsAsync((WardCockpitBedDetailDto?)null);
 
         var query = new WardCockpitBedDetailQuery("BED-NONEXISTENT");

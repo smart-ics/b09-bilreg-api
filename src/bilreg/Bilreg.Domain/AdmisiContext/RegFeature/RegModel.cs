@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
@@ -73,8 +73,8 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
-        && RegVoidAudit == AuditInfoType.Default;
+    public bool IsAktif => (RegKeluarAudit == AuditInfoType.Default || RegKeluarAudit.Timestamp == new DateTime(3000, 1, 1))
+        && (RegVoidAudit == AuditInfoType.Default || RegVoidAudit.Timestamp == new DateTime(3000, 1, 1));
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }

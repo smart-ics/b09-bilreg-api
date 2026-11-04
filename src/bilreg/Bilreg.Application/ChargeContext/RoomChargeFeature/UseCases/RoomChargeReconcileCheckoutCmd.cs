@@ -61,16 +61,22 @@ public class RoomChargeReconcileCheckoutHandler : IRequestHandler<RoomChargeReco
         _billingLockChecker.AssertBillingNotFinal(occupant.RegId);
 
         // 2. Calculate remaining duration and grace period via RoomChargeCalculationPolicy
+        var checkOutTime = request.CheckOutTime;
+        if (checkOutTime < occupant.CheckInTime && checkOutTime.Date == occupant.CheckInTime.Date)
+        {
+            checkOutTime = occupant.CheckInTime;
+        }
+
         var cutOffTime = new DateTime(
-            request.CheckOutTime.Year,
-            request.CheckOutTime.Month,
-            request.CheckOutTime.Day,
+            checkOutTime.Year,
+            checkOutTime.Month,
+            checkOutTime.Day,
             12, 0, 0,
-            request.CheckOutTime.Kind);
+            checkOutTime.Kind);
 
         var chargedUnits = RoomChargeCalculationPolicy.EvaluateDuration(
             occupant.CheckInTime,
-            request.CheckOutTime,
+            checkOutTime,
             cutOffTime);
 
         if (occupant.IsRoomingIn)

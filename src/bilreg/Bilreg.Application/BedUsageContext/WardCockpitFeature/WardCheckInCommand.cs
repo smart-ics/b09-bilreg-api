@@ -7,6 +7,7 @@ using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
@@ -28,7 +29,8 @@ public record WardCheckInResult(
     string WaitingListId,
     string BedId,
     string RegId,
-    string Status
+    string Status,
+    string? BangsalId = null
 );
 
 public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, WardCheckInResult>
@@ -102,23 +104,31 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
             ? request.RegId
             : waitingList.RegId;
 
-        var tglJamIn = request.TglJamIn ?? _tglJamProvider.Now;
+        var tglJamIn = SimulationTimeGuard.Resolve(
+            request.TglJamIn,
+            _tglJamProvider,
+            operationName: "WardCheckIn");
 
         var layananId = request.LayananId;
         if (string.IsNullOrWhiteSpace(layananId))
         {
-            if (!string.IsNullOrWhiteSpace(waitingList.ReferringUnit.LayananId) &&
+            var maybeBed = _bedRepo.LoadEntity(BedType.Key(request.BedId));
+            if (maybeBed.HasValue)
+            {
+                var maybeBangsal = _bangsalRepo.LoadEntity(BangsalType.Key(maybeBed.Value.Bangsal.BangsalId));
+                if (maybeBangsal.HasValue &&
+                    !string.IsNullOrWhiteSpace(maybeBangsal.Value.Layanan.LayananId) &&
+                    maybeBangsal.Value.Layanan.LayananId != "-")
+                {
+                    layananId = maybeBangsal.Value.Layanan.LayananId;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(layananId) &&
+                !string.IsNullOrWhiteSpace(waitingList.ReferringUnit.LayananId) &&
                 waitingList.ReferringUnit.LayananId != "-")
             {
                 layananId = waitingList.ReferringUnit.LayananId;
-            }
-            else
-            {
-                var bed = _bedRepo.LoadEntity(BedType.Key(request.BedId))
-                    .GetValueOrThrow($"Bed '{request.BedId}' tidak ditemukan.");
-                var bangsal = _bangsalRepo.LoadEntity(BangsalType.Key(bed.Bangsal.BangsalId))
-                    .GetValueOrThrow($"Bangsal '{bed.Bangsal.BangsalId}' tidak ditemukan.");
-                layananId = bangsal.Layanan.LayananId;
             }
         }
 
@@ -150,12 +160,23 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
 
         var createResult = await _mediator.Send(createCmd, cancellationToken);
 
+        var resolvedBangsalId = waitingList.Bangsal?.BangsalId;
+        if (string.IsNullOrWhiteSpace(resolvedBangsalId) || resolvedBangsalId == "-")
+        {
+            var maybeBed = _bedRepo.LoadEntity(BedType.Key(request.BedId));
+            if (maybeBed.HasValue && !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-")
+            {
+                resolvedBangsalId = maybeBed.Value.Bangsal.BangsalId;
+            }
+        }
+
         return new WardCheckInResult(
             createResult.PakaiBedId,
             request.WaitingListId,
             request.BedId,
             regId,
-            "Placed"
+            "Placed",
+            resolvedBangsalId
         );
     }
 }

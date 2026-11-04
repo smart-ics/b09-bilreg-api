@@ -4,6 +4,7 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
@@ -12,28 +13,48 @@ using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using System.Text.Json.Serialization;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 
-public record PakaiBedTransferCommand(
-    string PakaiBedId,
-    string TargetBedId,
-    string UserId,
-    DateTime TglJamTransfer,
-    string? AlasanPindah = null,
-    string? TargetTipeKamarId = null,
-    string? TargetLayananId = null
-) : IRequest<PakaiBedTransferResult>
+public record PakaiBedTransferCommand : IRequest<PakaiBedTransferResult>
 {
+    public string PakaiBedId { get; init; } = string.Empty;
+    public string TargetBedId { get; init; } = string.Empty;
+    public string UserId { get; init; } = string.Empty;
+    public DateTime TglJamTransfer { get; init; }
+    public string? AlasanPindah { get; init; }
+    public string? TargetTipeKamarId { get; init; }
+    public string? TargetLayananId { get; init; }
+
     public string PakaiBedLamaId => PakaiBedId;
 
+    [JsonConstructor]
     public PakaiBedTransferCommand(
-        string pakaiBedId,
-        string targetBedId,
-        string userId) 
-        : this(pakaiBedId, targetBedId, userId, default, null, null, null)
+        string PakaiBedId,
+        string TargetBedId,
+        string UserId,
+        DateTime TglJamTransfer = default,
+        string? AlasanPindah = null,
+        string? TargetTipeKamarId = null,
+        string? TargetLayananId = null)
+    {
+        this.PakaiBedId = PakaiBedId;
+        this.TargetBedId = TargetBedId;
+        this.UserId = UserId;
+        this.TglJamTransfer = TglJamTransfer;
+        this.AlasanPindah = AlasanPindah;
+        this.TargetTipeKamarId = TargetTipeKamarId;
+        this.TargetLayananId = TargetLayananId;
+    }
+
+    public PakaiBedTransferCommand(
+        string PakaiBedId,
+        string TargetBedId,
+        string UserId) 
+        : this(PakaiBedId, TargetBedId, UserId, default, null, null, null)
     {
     }
 }
@@ -42,7 +63,10 @@ public record PakaiBedTransferResult(
     string PakaiBedBaruId,
     string PakaiBedLamaId,
     string TargetBedId,
-    DateTime TglJamTransfer
+    DateTime TglJamTransfer,
+    string SourceBedId = "",
+    string SourceBangsalId = "",
+    string TargetBangsalId = ""
 );
 
 public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCommand, PakaiBedTransferResult>
@@ -138,9 +162,18 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         var rate = roomRate.ListTipe.FirstOrDefault(x => x.TipeKamar.TipeKamarId == targetTipeKamarId)
             ?? throw new InvalidOperationException($"Room Rate for Tipe Kamar '{targetTipeKamarId}' not found in kamar '{targetKamar.KamarId}'.");
 
-        var targetLayananId = !string.IsNullOrWhiteSpace(request.TargetLayananId)
-            ? request.TargetLayananId
-            : pakaiBedLama.Layanan.LayananId;
+        string targetLayananId;
+        if (!string.IsNullOrWhiteSpace(request.TargetLayananId))
+        {
+            var maybeLayanan = _layananRepo.LoadEntity(LayananType.Key(request.TargetLayananId));
+            targetLayananId = maybeLayanan.HasValue
+                ? request.TargetLayananId
+                : pakaiBedLama.Layanan.LayananId;
+        }
+        else
+        {
+            targetLayananId = pakaiBedLama.Layanan.LayananId;
+        }
 
         var targetLayanan = _layananRepo.LoadEntity(LayananType.Key(targetLayananId))
             .GetValueOrThrow($"Layanan '{targetLayananId}' not found");
@@ -148,23 +181,45 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         var reg = _regRepo.LoadEntity(RegModel.Key(pakaiBedLama.Reg.RegId))
             .GetValueOrThrow($"Registration '{pakaiBedLama.Reg.RegId}' not found");
 
-        // 4. Validasi status kesiapan operasional target bed (AssertReadyForAllocation)
-        var targetBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(request.TargetBedId))
-            .GetValueOrThrow($"Target bed operational record for '{request.TargetBedId}' not found");
+        // 4. Validasi status kesiapan operasional target bed
+        var maybeTargetBedOp = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(request.TargetBedId));
+        BedOperationalModel targetBedOperational;
+        if (maybeTargetBedOp.HasValue)
+        {
+            targetBedOperational = maybeTargetBedOp.Value;
+            if (targetBedOperational.CurrentReadiness.HasValue &&
+                targetBedOperational.CurrentReadiness.Value != BedReadinessStatusEnum.Ready)
+            {
+                throw new InvalidOperationException(
+                    $"Target bed '{request.TargetBedId}' is not Ready for allocation (status: {targetBedOperational.CurrentReadiness.Value}).");
+            }
 
-        var targetSnapshot = new BedMasterSnapshotType(
-            targetBed.BedId,
-            targetBed.Bangsal.BangsalId,
-            targetBed.Kamar.KamarId,
-            targetBed.IsAktif);
+            if (targetBedOperational.HasUnresolvedBlocker)
+            {
+                throw new InvalidOperationException(
+                    $"Target bed '{request.TargetBedId}' has unresolved blocker: {targetBedOperational.CurrentBlockerState.Reason}.");
+            }
+        }
+        else
+        {
+            targetBedOperational = BedOperationalModel.Create(
+                targetBed.BedId,
+                targetBed.Bangsal.BangsalId,
+                targetBed.Kamar.KamarId,
+                OccupancyPolicyReff.Default);
+        }
 
-        targetBedOperational.AssertReadyForAllocation(targetSnapshot);
-
-        var transferTime = request.TglJamTransfer == default ? _tglJamProvider.Now : request.TglJamTransfer;
+        var transferTime = SimulationTimeGuard.Resolve(
+            request.TglJamTransfer,
+            _tglJamProvider,
+            operationName: "PakaiBedTransfer");
         var transferTimeUtc = transferTime.Kind == DateTimeKind.Utc 
             ? transferTime 
             : DateTime.SpecifyKind(transferTime, DateTimeKind.Utc);
-        var nowUtc = DateTime.UtcNow;
+        var businessNow = _tglJamProvider.Now;
+        var nowUtc = businessNow.Kind == DateTimeKind.Utc
+            ? businessNow
+            : DateTime.SpecifyKind(businessNow, DateTimeKind.Utc);
         if (nowUtc < transferTimeUtc)
         {
             nowUtc = transferTimeUtc;
@@ -178,13 +233,17 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         _pakaiBedRepo.SaveChanges(pakaiBedLama);
 
         // 5b. Otomatis mencatat bed lama menjadi berstatus kotor (CleaningRequired) via BedOperationalModel
+        var oldBed = _bedRepo.LoadEntity(BedType.Key(pakaiBedLama.Bed.BedId));
+        var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : targetBed.Bangsal.BangsalId;
+        var oldKamarId = oldBed.HasValue ? oldBed.Value.Kamar.KamarId : targetKamar.KamarId;
+
         var oldBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(pakaiBedLama.Bed.BedId))
             .Match(
                 onSome: bo => bo,
                 onNone: () => BedOperationalModel.Create(
                     pakaiBedLama.Bed.BedId,
-                    pakaiBedLama.Layanan.LayananId,
-                    targetKamar.KamarId,
+                    oldBangsalId,
+                    oldKamarId,
                     OccupancyPolicyReff.Default)
             );
 
@@ -228,6 +287,9 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             pakaiBedBaru.PakaiBedId,
             pakaiBedLama.PakaiBedId,
             targetBed.BedId,
-            transferTime));
+            transferTime,
+            SourceBedId: pakaiBedLama.Bed.BedId,
+            SourceBangsalId: oldBangsalId,
+            TargetBangsalId: targetBed.Bangsal.BangsalId));
     }
 }

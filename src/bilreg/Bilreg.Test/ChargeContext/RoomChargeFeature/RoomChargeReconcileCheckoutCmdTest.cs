@@ -125,6 +125,29 @@ public class RoomChargeReconcileCheckoutCmdTest
     }
 
     [Fact]
+    public async Task GivenSameDayStayWithCheckoutSlightlyEarlierThanCheckin_WhenReconciled_ThenNormalizesAndChargesMinimumOneFullDay()
+    {
+        // Arrange: Checkin on 2026-10-20 at 10:15:35, Checkout on 2026-10-20 at 10:15:00 (e.g. truncated seconds or skew)
+        var occupant = new BedOccupantItem("PB-SKEW", "REG-SKEW", "PAS01", "W01", "K01", "BED01",
+            new DateTime(2026, 10, 20, 10, 15, 35), "VIP", "VIP", BaseTariff: 400000m, PayerTariff: 400000m);
+        _bedOccupancyQueryMock.Setup(x => x.GetOccupant("PB-SKEW")).Returns(occupant);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 10, 15, 0);
+        var cmd = new RoomChargeReconcileCheckoutCmd("PB-SKEW", checkoutTime, "NURSE01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.ChargedUnits.Should().Be(1.0m);
+        result.TotalAmount.Should().Be(400000m);
+
+        _roomChargeRepoMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
+            m.ChargedUnits == 1.0m &&
+            m.TotalAmount == 400000m)), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenBillingIsFinal_WhenReconciled_ThenThrowsBillingEpisodeFinalException()
     {
         // Arrange

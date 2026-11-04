@@ -19,6 +19,7 @@ public class WardRoomingInCommandHandlerTest
 {
     private readonly Mock<IPakaiBedRepo> _pakaiBedRepoMock = new();
     private readonly Mock<IBedRepo> _bedRepoMock = new();
+    private readonly Mock<IWardCockpitDal> _wardCockpitDalMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
     private readonly WardRoomingInCommandHandler _sut;
     private readonly DateTime _fixedNowUtc = new(2026, 10, 24, 10, 0, 0, DateTimeKind.Utc);
@@ -30,6 +31,7 @@ public class WardRoomingInCommandHandlerTest
         _sut = new WardRoomingInCommandHandler(
             _pakaiBedRepoMock.Object,
             _bedRepoMock.Object,
+            _wardCockpitDalMock.Object,
             _tglJamProviderMock.Object);
     }
 
@@ -79,6 +81,77 @@ public class WardRoomingInCommandHandlerTest
         result.BedId.Should().Be("BED-01");
         result.Status.Should().Be("Active");
         result.TglJamIn.Should().Be(_fixedNowUtc);
+        result.BabyWaitingListBangsalId.Should().BeNull();
+
+        _wardCockpitDalMock.Verify(x => x.SaveRoomingInAsync(
+            "PKB-MOM",
+            "REG-BABY",
+            "BED-01",
+            "BGS-01",
+            "KMR-01",
+            "REG-MOM",
+            "NURSE-01",
+            _fixedNowUtc,
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBabyHasActiveWaitingList_ShouldReturnBangsalIdInResult()
+    {
+        var motherPakaiBed = new PakaiBedModel(
+            "PKB-MOM",
+            new PeriodePakaiBedType(
+                new AuditInfoType("ADM-01", _fixedNowUtc.AddDays(-1)),
+                new AuditInfoType(string.Empty, new DateTime(3000, 1, 1))),
+            new RegReff("REG-MOM", "PAS-01", "Ibu Pasien"),
+            LayananType.Default.ToReff(),
+            new BedReff("BED-01", "101-A", true),
+            TipeKamarType.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            300000m,
+            AuditTrailType.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-MOM")))
+            .Returns(MayBe.From(motherPakaiBed));
+
+        var bed = new BedType(
+            "BED-01",
+            "101-A",
+            new KamarReff("KMR-01", "Kamar 101"),
+            new BangsalReff("BGS-01", "Dahlia"),
+            true);
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED-01")))
+            .Returns(MayBe.From(bed));
+
+        _wardCockpitDalMock
+            .Setup(x => x.SaveRoomingInAsync(
+                "PKB-MOM",
+                "REG-BABY",
+                "BED-01",
+                "BGS-01",
+                "KMR-01",
+                "REG-MOM",
+                "NURSE-01",
+                _fixedNowUtc,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("BGS-PERI");
+
+        var cmd = new WardRoomingInCommand(
+            MotherPakaiBedId: "PKB-MOM",
+            BabyRegId: "REG-BABY",
+            BedId: "BED-01",
+            UserId: "NURSE-01",
+            TglJamIn: _fixedNowUtc);
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.BabyWaitingListBangsalId.Should().Be("BGS-PERI");
     }
 
     [Fact]

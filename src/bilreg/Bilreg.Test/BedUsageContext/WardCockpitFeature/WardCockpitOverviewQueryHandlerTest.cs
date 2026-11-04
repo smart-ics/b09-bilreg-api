@@ -2,6 +2,7 @@ using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature.UseCases;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.BedUsageContext.WardCockpitFeature;
@@ -9,12 +10,16 @@ namespace Bilreg.Test.BedUsageContext.WardCockpitFeature;
 public class WardCockpitOverviewQueryHandlerTest
 {
     private readonly Mock<IWardCockpitDal> _dalMock;
+    private readonly Mock<ITglJamProvider> _clockMock;
     private readonly WardCockpitOverviewQueryHandler _sut;
+    private readonly DateTime _testNow = new(2026, 10, 24, 10, 0, 0);
 
     public WardCockpitOverviewQueryHandlerTest()
     {
         _dalMock = new Mock<IWardCockpitDal>();
-        _sut = new WardCockpitOverviewQueryHandler(_dalMock.Object);
+        _clockMock = new Mock<ITglJamProvider>();
+        _clockMock.Setup(c => c.Now).Returns(_testNow);
+        _sut = new WardCockpitOverviewQueryHandler(_dalMock.Object, _clockMock.Object);
     }
 
     [Theory]
@@ -31,7 +36,7 @@ public class WardCockpitOverviewQueryHandlerTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
-        _dalMock.Verify(x => x.GetOverviewAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _dalMock.Verify(x => x.GetOverviewAsync(It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -47,7 +52,7 @@ public class WardCockpitOverviewQueryHandlerTest
         );
 
         _dalMock
-            .Setup(x => x.GetOverviewAsync(bangsalId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetOverviewAsync(bangsalId, _testNow, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDto);
 
         var query = new WardCockpitOverviewQuery("  BGS-01  ");
@@ -58,7 +63,7 @@ public class WardCockpitOverviewQueryHandlerTest
         // Assert
         result.Should().NotBeNull();
         result.Should().BeEquivalentTo(expectedDto);
-        _dalMock.Verify(x => x.GetOverviewAsync("BGS-01", It.IsAny<CancellationToken>()), Times.Once);
+        _dalMock.Verify(x => x.GetOverviewAsync("BGS-01", _testNow, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -66,7 +71,7 @@ public class WardCockpitOverviewQueryHandlerTest
     {
         // Arrange
         _dalMock
-            .Setup(x => x.GetOverviewAsync("BGS-999", It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetOverviewAsync("BGS-999", _testNow, It.IsAny<CancellationToken>()))
             .ReturnsAsync((WardCockpitOverviewDto?)null);
 
         var query = new WardCockpitOverviewQuery("BGS-999");

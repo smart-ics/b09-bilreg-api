@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
@@ -7,6 +8,7 @@ using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
@@ -31,6 +33,7 @@ public class PakaiBedCreateCommandHandlerTest
     private readonly Mock<IRoomRateRepo> _roomRateRepoMock = new();
     private readonly Mock<IKelasRepo> _kelasRepoMock = new();
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
+    private readonly Mock<IBedOperationalRepo> _bedOperationalRepoMock = new();
 
     private readonly PakaiBedCreateCommandHandler _sut;
 
@@ -54,7 +57,8 @@ public class PakaiBedCreateCommandHandlerTest
             _tipeKamarRepoMock.Object,
             _roomRateRepoMock.Object,
             _kelasRepoMock.Object,
-            _waitingListRepoMock.Object);
+            _waitingListRepoMock.Object,
+            _bedOperationalRepoMock.Object);
 
         _defaultReg = RegModel.Default;
 
@@ -109,6 +113,9 @@ public class PakaiBedCreateCommandHandlerTest
 
         _kelasRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
             .Returns(MayBe.From(_defaultKelas));
+
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedOperationalKey>()))
+            .Returns(MayBe<BedOperationalModel>.None);
     }
 
     [Fact]
@@ -307,5 +314,132 @@ public class PakaiBedCreateCommandHandlerTest
 
         _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
         _waitingListRepoMock.Verify(x => x.SaveChanges(It.IsAny<WaitingListModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedReadinessIsCleaningRequired_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var bedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default)
+            .SetCleaningRequired("Discharge patient", "USR01", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow);
+
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(bedOp));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*pembersihan/Housekeeping*");
+
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedReadinessIsNotReady_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var bedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default)
+            .RecordReadiness(
+                BedReadinessStatusEnum.Blocked,
+                BedRestrictionTypeEnum.Maintenance,
+                "Perbaikan AC",
+                "",
+                "USR01",
+                DateTime.UtcNow.AddHours(-1),
+                DateTime.UtcNow,
+                "BLOCKED-01",
+                "REQ-01");
+
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(bedOp));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*tidak siap pakai*");
+
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedHasUnresolvedBlocker_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var blockerState = new BedBlockerStateType(true, BedRestrictionTypeEnum.Maintenance, "Kerusakan fasilitas bed", "TX-01");
+        var bedOp = (BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default)
+            .VerifyReady("Siap pakai", "", "USR01", "NURSE01", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow, "READY-01", "REQ-01")) with
+        {
+            CurrentBlockerState = blockerState
+        };
+
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(bedOp));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*kendala/blocker aktif*");
+
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedOperationalIsReady_ShouldAdvanceOccupancyEpochAndSucceed()
+    {
+        // Arrange
+        var bedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default)
+            .VerifyReady("Siap pakai", "", "USR01", "NURSE01", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow, "READY-01", "REQ-01");
+
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(bedOp));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PakaiBedId.Should().NotBeNullOrWhiteSpace();
+
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Once);
+        _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.Is<BedOperationalModel>(m =>
+            m.BedId == "BED01" && m.OccupancyEpoch == bedOp.OccupancyEpoch + 1)), Times.Once);
     }
 }

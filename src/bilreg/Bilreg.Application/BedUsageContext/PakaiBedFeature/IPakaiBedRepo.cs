@@ -13,4 +13,5 @@ public interface IPakaiBedRepo :
     IListData<PakaiBedModel, IRegKey>
 {
     MayBe<PakaiBedModel> GetActiveOccupant(IBedKey bedKey);
+    Task<List<string>> VoidBedAndRoomChargeAsync(string pakaiBedId, string userId, string alasanBatal, DateTime? voidTime = null);
 }

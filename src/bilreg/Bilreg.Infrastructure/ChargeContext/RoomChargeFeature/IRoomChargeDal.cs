@@ -8,6 +8,7 @@ public interface IRoomChargeDal :
     IUpdate<RoomChargeDto>,
     IGetData<RoomChargeDto, IRoomChargeKey>
 {
+    void Delete(IRoomChargeKey key, string userId, DateTime occurredAt);
     RoomChargeDto? GetData(string roomChargeId);
     RoomChargeDto? GetByPakaiBedAndDate(string pakaiBedId, string chargeCycleDate);
     IEnumerable<RoomChargeDto> ListDataByReg(string regId);

@@ -24,7 +24,7 @@ public class RoomChargeRepo : IRoomChargeRepo
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        // 1. Primary write: modern schema BILRG_RnaRoomCharge
+        // 1. Primary write: legacy schema ta_trs_roomcharge
         var dto = RoomChargeDto.FromModel(model);
         var existing = _roomChargeDal.GetData(model);
         if (existing is null)
@@ -36,19 +36,23 @@ public class RoomChargeRepo : IRoomChargeRepo
             _roomChargeDal.Update(dto);
         }
 
-        // 2. Child entities write: BILRG_RnaRoomChargeKomponen
+        // 2. Child entities write: ta_trs_roomcharge2
         _roomChargeKomponenDal.DeleteByRoomChargeId(model.RoomChargeId);
         if (model.ListKomponen.Count > 0)
         {
             var komponenDtos = model.ListKomponen.Select(x => RoomChargeKomponenDto.FromModel(x, model.RoomChargeId));
             _roomChargeKomponenDal.Insert(komponenDtos);
         }
-
-        // 3. Dual-write projection to legacy tables (ta_trs_roomcharge, ta_trs_roomcharge2, ta_trs_roomcharge_log)
-        _legacyDal?.SaveChanges(model);
     }
 
     public void Save(RoomChargeModel model) => SaveChanges(model);
+
+    public void Delete(IRoomChargeKey key, string userId, DateTime occurredAt)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        _roomChargeKomponenDal.DeleteByRoomChargeId(key.RoomChargeId);
+        _roomChargeDal.Delete(key, userId, occurredAt);
+    }
 
     public MayBe<RoomChargeModel> LoadEntity(IRoomChargeKey key)
     {
@@ -78,12 +82,15 @@ public class RoomChargeRepo : IRoomChargeRepo
 
     public IEnumerable<RoomChargeModel> ListDataByReg(string regId)
     {
-        var listDto = _roomChargeDal.ListDataByReg(regId) ?? [];
-        return listDto.Select(dto =>
+        var dtos = _roomChargeDal.ListDataByReg(regId) ?? [];
+        return dtos.Select(dto =>
         {
             var listKomp = _roomChargeKomponenDal.ListDataByRoomChargeId(dto.RoomChargeId) ?? [];
             return dto.ToModel(listKomp.Select(x => x.ToModel()));
-        }).ToList();
+        })
+        .OrderBy(x => x.ChargeCycleDate)
+        .ThenBy(x => x.TimeCharge)
+        .ToList();
     }
 
     public IEnumerable<RoomChargeModel> ListActiveByBangsalAndDate(string bangsalId, string chargeCycleDate)

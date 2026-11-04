@@ -1,4 +1,4 @@
-using Bilreg.Domain.BedUsageContext.WardFeature;
+﻿using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Nuna.Lib.DataAccessHelper;
 
@@ -11,4 +11,5 @@ public interface IBangsalRepo :
     IListData<BangsalType>
 {
     IEnumerable<BangsalType> ListData(ILayananKey filter);
+    Nuna.Lib.PatternHelper.MayBe<BangsalType> GetByRegId(string regId);
 }

@@ -19,7 +19,7 @@ internal record RawRoomBedRow(
     string? MrNo,
     string? NamaPasien,
     string? Gender,
-    DateTime? TglLahir,
+    string? TglLahir,
     string? TglIn,
     string? JamIn,
     string? DpjpName,
@@ -27,7 +27,11 @@ internal record RawRoomBedRow(
     string? BillingKelasName,
     string? TransaksiKelasId,
     string? RegKelasId,
-    int PakaiBedPurpose
+    int PakaiBedPurpose,
+    string? BabyName = null,
+    string? BabyRegId = null,
+    string? BabyMrNo = null,
+    string? KdJenisInap = null
 );
 
 internal record RawBedOperationalRow(
@@ -45,7 +49,7 @@ internal record RawWaitingListRow(
     string MrNo,
     string NamaPasien,
     string Gender,
-    DateTime? TglLahir,
+    string? TglLahir,
     int ClinicalUrgency,
     int ArrivalSourceType,
     string? ReferringUnitName,
@@ -65,7 +69,7 @@ internal record RawBedDetailRow(
     string? MrNo,
     string? NamaPasien,
     string? Gender,
-    DateTime? TglLahir,
+    string? TglLahir,
     string? TglIn,
     string? JamIn,
     decimal TarifPerHari,
@@ -73,15 +77,48 @@ internal record RawBedDetailRow(
     string? PenjaminName,
     string? DokterId,
     string? DpjpName,
-    string? BillingKelasName
+    string? BillingKelasName,
+    string? BabyName = null,
+    string? BabyRegId = null,
+    string? BabyMrNo = null,
+    string? KdJenisInap = null
 );
 
-internal record RawTindakanRow(
-    DateTime TglJam,
-    string ItemTindakan,
-    string Petugas,
-    decimal Biaya
-);
+internal record RawTindakanRow
+{
+    public string TindakanId { get; init; } = string.Empty;
+    public DateTime TglJam { get; init; }
+    public string ItemTindakan { get; init; } = string.Empty;
+    public string Petugas { get; init; } = string.Empty;
+    public decimal Biaya { get; init; }
+    public bool HasJasaDokter { get; init; } = false;
+
+    public RawTindakanRow() { }
+
+    public RawTindakanRow(
+        string TindakanId,
+        DateTime TglJam,
+        string ItemTindakan,
+        string Petugas,
+        decimal Biaya)
+    {
+        this.TindakanId = TindakanId;
+        this.TglJam = TglJam;
+        this.ItemTindakan = ItemTindakan;
+        this.Petugas = Petugas;
+        this.Biaya = Biaya;
+    }
+
+    public RawTindakanRow(
+        DateTime TglJam,
+        string ItemTindakan,
+        string Petugas,
+        decimal Biaya,
+        string TindakanId = "")
+        : this(TindakanId, TglJam, ItemTindakan, Petugas, Biaya)
+    {
+    }
+}
 
 internal record RawMutasiRow(
     string TglIn,

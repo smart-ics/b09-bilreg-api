@@ -23,7 +23,12 @@ public record WardCockpitBedDetailOccupancyDto(
     WardCockpitBedDetailDpjpDto Dpjp,
     DateTime CheckInTime,
     int LosDays,
-    string BillingKelas
+    string BillingKelas,
+    bool IsRawatGabung = false,
+    string? BabyName = null,
+    string? BabyRegId = null,
+    string? BabyMrNo = null,
+    string? KdJenisInap = null
 );
 
 public record WardCockpitBedDetailPatientDto(
@@ -49,7 +54,9 @@ public record WardCockpitBedDetailTindakanDto(
     DateTime TglJam,
     string ItemTindakan,
     string Petugas,
-    decimal Biaya
+    decimal Biaya,
+    string TindakanId = "",
+    bool HasJasaDokter = false
 );
 
 public record WardCockpitBedDetailRoomChargeDto(

@@ -1,10 +1,12 @@
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
@@ -41,6 +43,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         private readonly IPakaiBedRepo _pakaiBedRepo;
         private readonly IPakaiBedAlokasiRepo _pakaiBedAlokasiRepo;
         private readonly IWaitingListRepo _waitingListRepo;
+        private readonly IBedOperationalRepo? _bedOperationalRepo;
 
         public PakaiBedCreateCommandHandler(IPakaiBedRepo pakaiBedRepo,
             IPakaiBedAlokasiRepo pakaiBedAlokasiRepo,
@@ -48,7 +51,8 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             ILayananRepo layananRepo, IKamarRepo kamarRepo,
             ITipeKamarRepo tipeKamarRepo, IRoomRateRepo roomRateRepo, 
             IKelasRepo kelasRepo,
-            IWaitingListRepo waitingListRepo)
+            IWaitingListRepo waitingListRepo,
+            IBedOperationalRepo? bedOperationalRepo = null)
         {
             _pakaiBedRepo = pakaiBedRepo;
             _pakaiBedAlokasiRepo = pakaiBedAlokasiRepo;
@@ -60,6 +64,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             _roomRateRepo = roomRateRepo;
             _kelasRepo = kelasRepo;
             _waitingListRepo = waitingListRepo;
+            _bedOperationalRepo = bedOperationalRepo;
         }
 
         public Task<PakaiBedCreateResult> Handle(PakaiBedCreateCommand request, CancellationToken cancellationToken)
@@ -69,6 +74,32 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
 
             var bed = _bedRepo.LoadEntity(BedType.Key(request.BedId))
                 .GetValueOrThrow("Bed not found");
+
+            if (_bedOperationalRepo != null)
+            {
+                var maybeBedOp = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(request.BedId));
+                if (maybeBedOp.HasValue)
+                {
+                    var bedOp = maybeBedOp.Value;
+                    if (bedOp.CurrentReadiness != BedReadinessStatusEnum.Ready)
+                    {
+                        if (bedOp.CurrentReadiness == BedReadinessStatusEnum.CleaningRequired)
+                        {
+                            throw new InvalidOperationException(
+                                $"Tempat tidur '{request.BedId}' masih dalam proses pembersihan/Housekeeping. Selesaikan pembersihan terlebih dahulu sebelum digunakan.");
+                        }
+
+                        throw new InvalidOperationException(
+                            $"Tempat tidur '{request.BedId}' tidak siap pakai (status kesiapan: {bedOp.CurrentReadiness?.ToString() ?? "None"}). Selesaikan pembersihan terlebih dahulu sebelum digunakan.");
+                    }
+
+                    if (bedOp.HasUnresolvedBlocker)
+                    {
+                        throw new InvalidOperationException(
+                            $"Tempat tidur '{request.BedId}' memiliki kendala/blocker aktif: {bedOp.CurrentBlockerState.Reason}.");
+                    }
+                }
+            }
 
             var kamar = _kamarRepo.LoadEntity(KamarType.Key(bed.Kamar.KamarId))
                 .GetValueOrThrow("Kamar not found");
@@ -124,6 +155,16 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             {
                 waitingList = waitingList.Place(bed.BedId, pakaiBed.PakaiBedId, request.UserId, request.TglJamIn);
                 _waitingListRepo.SaveChanges(waitingList);
+            }
+
+            if (_bedOperationalRepo != null)
+            {
+                var maybeBedOp = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(request.BedId));
+                if (maybeBedOp.HasValue)
+                {
+                    var bedOp = maybeBedOp.Value.AdvanceOccupancyEpoch();
+                    _bedOperationalRepo.SaveChanges(bedOp);
+                }
             }
 
             trans.Complete();

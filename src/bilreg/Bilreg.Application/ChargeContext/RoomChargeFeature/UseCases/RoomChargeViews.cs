@@ -36,7 +36,13 @@ public record RoomChargeView(
     string RoomChargeStatus,
     string BillingItemRefId,
     string ReversalOfRoomChargeId,
-    string ReversalReason
+    string ReversalReason,
+    string BedCode = "",
+    string KamarName = "",
+    string BangsalName = "",
+    string PhysicalClassName = "",
+    string PayerClassName = "",
+    string BillingClassName = ""
 );
 
 public record RoomChargeDetailView(
@@ -66,7 +72,13 @@ public record RoomChargeDetailView(
     string BillingItemRefId,
     string ReversalOfRoomChargeId,
     string ReversalReason,
-    IEnumerable<RoomChargeKomponenView> ListKomponen
+    IEnumerable<RoomChargeKomponenView> ListKomponen,
+    string BedCode = "",
+    string KamarName = "",
+    string BangsalName = "",
+    string PhysicalClassName = "",
+    string PayerClassName = "",
+    string BillingClassName = ""
 );
 
 public record RoomChargeSummaryView(

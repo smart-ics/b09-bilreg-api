@@ -88,7 +88,11 @@ public record TataRekeningModel : IRegKey
         EnsureNotLunas();
         EnsureOpenForBillMutation();
 
-        var index = _listTrsBill.FindIndex(x => x.TrsBillingId == trsBillingId);
+        var index = _listTrsBill.FindIndex(x =>
+            string.Equals(x.TrsBillingId, trsBillingId, StringComparison.OrdinalIgnoreCase)
+            || x.TrsBillingId.StartsWith(trsBillingId, StringComparison.OrdinalIgnoreCase)
+            || trsBillingId.StartsWith(x.TrsBillingId, StringComparison.OrdinalIgnoreCase));
+
         if (index < 0)
             throw new InvalidOperationException(
                 $"TrsBill '{trsBillingId}' tidak ditemukan pada list TrsBill.");

@@ -43,6 +43,7 @@ public class WardCockpitRegistrationTest
 
         services.AddApplication(configuration);
         services.AddScoped(_ => Mock.Of<IWardCockpitDal>());
+        services.AddScoped(_ => Mock.Of<Nuna.Lib.ValidationHelper.ITglJamProvider>());
 
         using var sp = services.BuildServiceProvider();
 

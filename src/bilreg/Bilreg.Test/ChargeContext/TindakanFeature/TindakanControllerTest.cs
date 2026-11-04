@@ -276,4 +276,33 @@ public class TindakanControllerTest
         jsend.status.Should().Be("FAIL");
         jsend.data.ToString().Should().Contain("Billing sudah lunas");
     }
+
+    [Fact]
+    public async Task DeleteById_WithRouteId_SendsTindakanVoidCmd_ReturnsOk()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
+        httpContext.Request.Headers.UserAgent = "TestAgent/1.0";
+        _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        TindakanVoidCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((c, _) => capturedCmd = (TindakanVoidCmd)c)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.DeleteById("TDK999", userId: "nurse01", voidReason: "Pasien membatalkan tindakan");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TindakanId.Should().Be("TDK999");
+        capturedCmd.UserId.Should().Be("nurse01");
+        capturedCmd.VoidReason.Should().Be("Pasien membatalkan tindakan");
+    }
 }

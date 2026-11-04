@@ -1,7 +1,12 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.BillingLockFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.RoomChargeFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -26,17 +31,23 @@ public class RoomChargeReverseHandler : IRequestHandler<RoomChargeReverseCmd, Ro
     private readonly IBillingLockValidationService _billingLockValidator;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IBusinessDateStatus? _businessDateStatus;
+    private readonly ITataRekeningRepo? _tataRekeningRepo;
 
     public RoomChargeReverseHandler(
         IRoomChargeRepo roomChargeRepo,
         IBillingLockValidationService billingLockValidator,
         ITrsBillingRepo trsBillingRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IBusinessDateStatus? businessDateStatus = null,
+        ITataRekeningRepo? tataRekeningRepo = null)
     {
         _roomChargeRepo = roomChargeRepo;
         _billingLockValidator = billingLockValidator;
         _trsBillingRepo = trsBillingRepo;
         _tglJamProvider = tglJamProvider;
+        _businessDateStatus = businessDateStatus;
+        _tataRekeningRepo = tataRekeningRepo;
     }
 
     public async Task<RoomChargeReverseResponse> Handle(RoomChargeReverseCmd request, CancellationToken cancellationToken)
@@ -55,29 +66,74 @@ public class RoomChargeReverseHandler : IRequestHandler<RoomChargeReverseCmd, Ro
         // 1. Checks billing lock
         await _billingLockValidator.EnsureCanModifyBillingAsync(sourceCharge.RegId, cancellationToken);
 
-        // 2. Validates status is Posted
-        if (sourceCharge.RoomChargeStatus != RoomChargeStatusEnum.Posted)
+        // 2. Validates status is not already reversed
+        if (sourceCharge.RoomChargeStatus == RoomChargeStatusEnum.Reversed)
         {
             throw new InvalidOperationException(
-                $"Cannot reverse room charge '{sourceCharge.RoomChargeId}' because current status is '{sourceCharge.RoomChargeStatus}', expected 'Posted'.");
+                $"Cannot reverse room charge '{sourceCharge.RoomChargeId}' because it has already been reversed.");
         }
 
-        var occurredAt = _tglJamProvider.Now;
+        var occurredAt = _businessDateStatus?.BusinessNow ?? _tglJamProvider.Now;
 
-        // 3. Creates reversal storno record (which also reverses sourceCharge)
-        var stornoRecord = sourceCharge.CreateReversalRecord("", request.UserId, request.Reason, occurredAt);
-
-        // 4. In TransHelper.NewScope(), saves both to _roomChargeRepo and saves storno item into _trsBillingRepo
-        var stornoBill = RoomChargeBillingMapper.ToTrsBill(stornoRecord);
+        // 3. Deletes room charge with void snapshot log and cleans up billing projections
+        var rawId = string.IsNullOrWhiteSpace(sourceCharge.BillingItemRefId)
+            ? sourceCharge.RoomChargeId
+            : sourceCharge.BillingItemRefId;
+        var billingId = rawId.Length > 15 ? rawId[..15] : rawId;
 
         using (var trans = TransHelper.NewScope())
         {
-            _roomChargeRepo.SaveChanges(sourceCharge);
-            _roomChargeRepo.SaveChanges(stornoRecord);
-            _trsBillingRepo.SaveChanges(stornoBill);
+            _roomChargeRepo.Delete(sourceCharge, request.UserId, occurredAt);
+
+            if (_tataRekeningRepo != null)
+            {
+                var tataRekening = _tataRekeningRepo.LoadEntity(RegModel.Key(sourceCharge.RegId))
+                    .Match<TataRekeningModel?>(
+                        onSome: x => x,
+                        onNone: () => null
+                    );
+
+                if (tataRekening != null)
+                {
+                    var matchedBill = tataRekening.ListTrsBill
+                        .FirstOrDefault(x => string.Equals(x.TrsBillingId, billingId, StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(x.TrsBillingId, rawId, StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(x.TrsBillingId, sourceCharge.RoomChargeId, StringComparison.OrdinalIgnoreCase)
+                                          || x.TrsBillingId.StartsWith(billingId, StringComparison.OrdinalIgnoreCase)
+                                          || (billingId.Length > 0 && billingId.StartsWith(x.TrsBillingId, StringComparison.OrdinalIgnoreCase)));
+
+                    if (matchedBill != null)
+                    {
+                        tataRekening.DeleteBill(matchedBill.TrsBillingId);
+                        _tataRekeningRepo.SaveChanges(tataRekening);
+                    }
+                    else
+                    {
+                        tataRekening.EnsureCanDeleteBill();
+                    }
+                }
+            }
+
+            try
+            {
+                _trsBillingRepo.DeleteEntity(TrsBillType.Key(billingId));
+                if (!string.Equals(rawId, billingId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(rawId));
+                }
+                if (!string.Equals(sourceCharge.RoomChargeId, billingId, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(sourceCharge.RoomChargeId, rawId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(sourceCharge.RoomChargeId));
+                }
+            }
+            catch
+            {
+                // In case billing ledger item projection encounters legacy schema constraints or was already deleted
+            }
             trans.Complete();
         }
 
-        return new RoomChargeReverseResponse(sourceCharge.RoomChargeId, stornoRecord.RoomChargeId);
+        return new RoomChargeReverseResponse(sourceCharge.RoomChargeId, string.Empty);
     }
 }

@@ -256,6 +256,44 @@ public class PakaiBedTransferCommandTest
     }
 
     [Fact]
+    public async Task Handle_WhenTargetBedOperationalRecordDoesNotExist_CreatesDefaultAndTransfersSuccessfully()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+
+        // Target bed has NO operational record yet
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED02")))
+            .Returns(MayBe<BedOperationalModel>.None);
+
+        var transferTime = new DateTime(2026, 10, 24, 10, 30, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Pindah kamar biasa"
+        );
+
+        var savedOperationalModels = new List<BedOperationalModel>();
+        _bedOperationalRepoMock.Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(op => savedOperationalModels.Add(op));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PakaiBedLamaId.Should().Be("PKB001");
+        result.TargetBedId.Should().Be("BED02");
+
+        var targetOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED02");
+        targetOp.Should().NotBeNull();
+        targetOp!.OccupancyEpoch.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Handle_WhenTargetBedIsOccupied_ThrowsInvalidOperationException()
     {
         // Arrange
@@ -373,5 +411,66 @@ public class PakaiBedTransferCommandTest
         var act = async () => await _sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenTargetLayananIdIsInvalidOrBangsalId_FallsBackToExistingLayanan()
+    {
+        // Arrange
+        SetupDefaultMocks();
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+
+        // Setup _layananRepo to return None for "04" (bangsal ID passed as layanan), but Value for default layanan
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "04")))
+            .Returns(MayBe<LayananType>.None);
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == _defaultLayanan.LayananId)))
+            .Returns(MayBe.From(_defaultLayanan));
+
+        var cmd = new PakaiBedTransferCommand(
+            "PKB001",
+            "BED02",
+            "nurse_01",
+            new DateTime(2026, 2, 11, 10, 0, 0),
+            "Permintaan pindah",
+            null,
+            "04");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TargetBedId.Should().Be("BED02");
+    }
+
+    [Fact]
+    public void SystemTextJson_Deserialize_ShouldSucceed()
+    {
+        // Arrange
+        var json = """
+        {
+            "pakaiBedId": "PKB001",
+            "targetBedId": "BED02",
+            "userId": "nurse_01",
+            "tglJamTransfer": "2026-02-11T11:58:28",
+            "alasanPindah": "Pindah kamar VIP"
+        }
+        """;
+
+        // Act
+        var result = System.Text.Json.JsonSerializer.Deserialize<PakaiBedTransferCommand>(json, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.PakaiBedId.Should().Be("PKB001");
+        result.TargetBedId.Should().Be("BED02");
+        result.UserId.Should().Be("nurse_01");
+        result.TglJamTransfer.Should().Be(new DateTime(2026, 2, 11, 11, 58, 28));
+        result.AlasanPindah.Should().Be("Pindah kamar VIP");
     }
 }

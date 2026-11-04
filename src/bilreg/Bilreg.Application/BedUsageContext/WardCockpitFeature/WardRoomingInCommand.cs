@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using MediatR;
@@ -23,26 +24,30 @@ public record WardRoomingInResult(
     string BabyRegId,
     string BedId,
     DateTime TglJamIn,
-    string Status
+    string Status,
+    string? BabyWaitingListBangsalId = null
 );
 
 public class WardRoomingInCommandHandler : IRequestHandler<WardRoomingInCommand, WardRoomingInResult>
 {
     private readonly IPakaiBedRepo _pakaiBedRepo;
     private readonly IBedRepo _bedRepo;
+    private readonly IWardCockpitDal _wardCockpitDal;
     private readonly ITglJamProvider _tglJamProvider;
 
     public WardRoomingInCommandHandler(
         IPakaiBedRepo pakaiBedRepo,
         IBedRepo bedRepo,
+        IWardCockpitDal wardCockpitDal,
         ITglJamProvider tglJamProvider)
     {
         _pakaiBedRepo = pakaiBedRepo;
         _bedRepo = bedRepo;
+        _wardCockpitDal = wardCockpitDal;
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task<WardRoomingInResult> Handle(WardRoomingInCommand request, CancellationToken cancellationToken)
+    public async Task<WardRoomingInResult> Handle(WardRoomingInCommand request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.MotherPakaiBedId, nameof(request.MotherPakaiBedId));
         Guard.Against.NullOrWhiteSpace(request.BabyRegId, nameof(request.BabyRegId));
@@ -59,16 +64,32 @@ public class WardRoomingInCommandHandler : IRequestHandler<WardRoomingInCommand,
         var bed = _bedRepo.LoadEntity(BedType.Key(request.BedId))
             .GetValueOrThrow($"Bed '{request.BedId}' tidak ditemukan.");
 
-        var occurredAt = request.TglJamIn ?? _tglJamProvider.Now;
+        var occurredAt = SimulationTimeGuard.Resolve(
+            request.TglJamIn,
+            _tglJamProvider,
+            operationName: "WardRoomingIn");
+
+        var babyWaitingListBangsalId = await _wardCockpitDal.SaveRoomingInAsync(
+            request.MotherPakaiBedId,
+            request.BabyRegId,
+            bed.BedId,
+            bed.Bangsal.BangsalId,
+            bed.Kamar.KamarId,
+            motherPakaiBed.Reg.RegId,
+            request.UserId,
+            occurredAt,
+            request.Catatan,
+            cancellationToken);
 
         var result = new WardRoomingInResult(
             request.MotherPakaiBedId,
             request.BabyRegId,
             bed.BedId,
             occurredAt,
-            "Active"
+            "Active",
+            babyWaitingListBangsalId
         );
 
-        return Task.FromResult(result);
+        return result;
     }
 }

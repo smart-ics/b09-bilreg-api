@@ -29,13 +29,21 @@ public class WaitingListDal : IWaitingListDal
         ISNULL(CONVERT(VARCHAR(10), bb.fd_tgl_lahir, 120), '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.KelasId, aa.KelasName, aa.BangsalId, aa.BangsalName,
-        aa.ArrivalSourceType, aa.ReferringUnitId, aa.ReferringUnitName,
-        aa.ReferringDoctorId, aa.ReferringDoctorName,
-        aa.ClinicalUrgency, aa.SpecialRequirements,
-        aa.PlannedBedId, aa.PlannedBedName,
-        aa.PlacedBedId, aa.PlacedPakaiBedId,
-        aa.CancellationReason, aa.RerouteReason, aa.PreviousWaitListId,
-        aa.Priority,
+        ISNULL(aa.EntrySource, 0) AS ArrivalSourceType,
+        ISNULL(aa.UnitPengirimId, '') AS ReferringUnitId,
+        ISNULL(aa.UnitPengirimName, '') AS ReferringUnitName,
+        ISNULL(aa.DpjpId, '') AS ReferringDoctorId,
+        ISNULL(aa.DpjpName, '') AS ReferringDoctorName,
+        ISNULL(aa.UrgencyLevel, 0) AS ClinicalUrgency,
+        ISNULL(aa.SpecialNeeds, '') AS SpecialRequirements,
+        ISNULL(aa.AdvisoryBedId, '') AS PlannedBedId,
+        ISNULL(aa.AdvisoryBedName, '') AS PlannedBedName,
+        ISNULL(aa.AdmittedBedId, '') AS PlacedBedId,
+        '' AS PlacedPakaiBedId,
+        ISNULL(aa.CancelReason, '') AS CancellationReason,
+        ISNULL(aa.RerouteReason, '') AS RerouteReason,
+        '' AS PreviousWaitListId,
+        ISNULL(aa.Priority, 0) AS Priority,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
         """;
 
@@ -49,12 +57,12 @@ public class WaitingListDal : IWaitingListDal
             INSERT INTO BILRG_BedWaitingList (
                 WaitingListId, WaitingListStatus, RegId, PasienId,
                 KelasId, KelasName, BangsalId, BangsalName,
-                ArrivalSourceType, ReferringUnitId, ReferringUnitName,
-                ReferringDoctorId, ReferringDoctorName,
-                ClinicalUrgency, SpecialRequirements,
-                PlannedBedId, PlannedBedName,
-                PlacedBedId, PlacedPakaiBedId,
-                CancellationReason, RerouteReason, PreviousWaitListId,
+                EntrySource, UnitPengirimId, UnitPengirimName,
+                DpjpId, DpjpName,
+                UrgencyLevel, SpecialNeeds,
+                AdvisoryBedId, AdvisoryBedName,
+                AdmittedBedId,
+                CancelReason, RerouteReason,
                 Priority,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
@@ -64,8 +72,8 @@ public class WaitingListDal : IWaitingListDal
                 @ReferringDoctorId, @ReferringDoctorName,
                 @ClinicalUrgency, @SpecialRequirements,
                 @PlannedBedId, @PlannedBedName,
-                @PlacedBedId, @PlacedPakaiBedId,
-                @CancellationReason, @RerouteReason, @PreviousWaitListId,
+                @PlacedBedId,
+                @CancellationReason, @RerouteReason,
                 @Priority,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -86,27 +94,41 @@ public class WaitingListDal : IWaitingListDal
                 KelasName = @KelasName,
                 BangsalId = @BangsalId,
                 BangsalName = @BangsalName,
-                ArrivalSourceType = @ArrivalSourceType,
-                ReferringUnitId = @ReferringUnitId,
-                ReferringUnitName = @ReferringUnitName,
-                ReferringDoctorId = @ReferringDoctorId,
-                ReferringDoctorName = @ReferringDoctorName,
-                ClinicalUrgency = @ClinicalUrgency,
-                SpecialRequirements = @SpecialRequirements,
-                PlannedBedId = @PlannedBedId,
-                PlannedBedName = @PlannedBedName,
-                PlacedBedId = @PlacedBedId,
-                PlacedPakaiBedId = @PlacedPakaiBedId,
-                CancellationReason = @CancellationReason,
+                EntrySource = @ArrivalSourceType,
+                UnitPengirimId = @ReferringUnitId,
+                UnitPengirimName = @ReferringUnitName,
+                DpjpId = @ReferringDoctorId,
+                DpjpName = @ReferringDoctorName,
+                UrgencyLevel = @ClinicalUrgency,
+                SpecialNeeds = @SpecialRequirements,
+                AdvisoryBedId = @PlannedBedId,
+                AdvisoryBedName = @PlannedBedName,
+                AdmittedBedId = @PlacedBedId,
+                CancelReason = @CancellationReason,
                 RerouteReason = @RerouteReason,
-                PreviousWaitListId = @PreviousWaitListId,
                 Priority = @Priority,
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
                 VodDate = @VodDate
             WHERE
-                WaitingListId = @WaitingListId
+                WaitingListId = @WaitingListId;
+
+            IF @WaitingListStatus = 0
+            BEGIN
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedNurseId') IS NOT NULL
+                BEGIN
+                    UPDATE BILRG_BedWaitingList
+                    SET AdmittedNurseId = ''
+                    WHERE WaitingListId = @WaitingListId;
+                END
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedDate') IS NOT NULL
+                BEGIN
+                    UPDATE BILRG_BedWaitingList
+                    SET AdmittedDate = '3000-01-01'
+                    WHERE WaitingListId = @WaitingListId;
+                END
+            END
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

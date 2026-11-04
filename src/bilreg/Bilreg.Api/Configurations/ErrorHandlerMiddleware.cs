@@ -134,7 +134,7 @@ public class ErrorHandlerMiddleware
                 new KeyValuePair<string, object?>("error_code", status));
             LogAdmissionQueueOperation(context, "Failed", status, stopwatch.ElapsedMilliseconds);
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
-                ? "The request could not be completed."
+                ? error.Message
                 : error.Message;
             var resultObj = new JSend(statusCode, status, safeMessage);
             var result = JsonSerializer.Serialize(resultObj);

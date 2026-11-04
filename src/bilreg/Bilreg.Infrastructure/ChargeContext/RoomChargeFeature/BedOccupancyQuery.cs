@@ -22,41 +22,10 @@ public class BedOccupancyQuery : IBedOccupancyQuery
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dp = new DynamicParameters();
         dp.AddParam("@BangsalId", bangsalId ?? string.Empty, SqlDbType.VarChar);
+        var cutOffStr = cutOffDate.Year >= 1900 ? cutOffDate.ToString("yyyy-MM-dd") : string.Empty;
+        dp.AddParam("@CutOffDate", cutOffStr, SqlDbType.VarChar);
 
-        const string modernSql = """
-            SELECT 
-                aa.PakaiBedId,
-                aa.RegId,
-                aa.PasienId,
-                aa.BangsalId,
-                aa.KamarId,
-                aa.BedId,
-                aa.StartedAt AS CheckInTime,
-                ISNULL(ee.fs_kd_kelas, '') AS PhysicalClassId,
-                ISNULL(bb.fs_kd_kelas, ISNULL(ee.fs_kd_kelas, '')) AS PayerClassId,
-                CASE WHEN aa.PakaiBedPurpose = 4 THEN 1 ELSE 0 END AS IsRoomingIn,
-                ISNULL(bb.fs_kd_tipe_jaminan, '') AS TipeJaminanId,
-                ISNULL(ee.fn_tarif, 0) AS BaseTariff,
-                ISNULL(ee.fn_tarif, 0) AS PayerTariff
-            FROM BILRG_RnaPakaiBedAlokasi aa
-            LEFT JOIN ta_registrasi bb ON aa.RegId = bb.fs_kd_reg
-            LEFT JOIN ta_bed ee ON aa.BedId = ee.fs_kd_bed
-            WHERE aa.PakaiBedStatus = 2
-              AND (@BangsalId = '' OR aa.BangsalId = @BangsalId)
-            """;
-
-        try
-        {
-            var results = conn.Read<BedOccupantItem>(modernSql, dp)?.ToList();
-            if (results != null && results.Count > 0)
-                return results;
-        }
-        catch
-        {
-            // Fall back to legacy table
-        }
-
-        const string legacySql = """
+        const string sql = """
             SELECT 
                 aa.fs_kd_trs AS PakaiBedId,
                 aa.fs_kd_reg AS RegId,
@@ -66,20 +35,37 @@ public class BedOccupancyQuery : IBedOccupancyQuery
                 aa.fs_kd_bed AS BedId,
                 TRY_CONVERT(DATETIME, aa.fd_tgl_in + ' ' + aa.fs_jam_in) AS CheckInTime,
                 ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
-                ISNULL(bb.fs_kd_kelas, ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
-                0 AS IsRoomingIn,
+                ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
+                CASE 
+                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
+                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    ELSE CAST(0 AS BIT) 
+                END AS IsRoomingIn,
+                ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,
                 ISNULL(bb.fs_kd_tipe_jaminan, '') AS TipeJaminanId,
                 ISNULL(aa.fn_tarif, 0) AS BaseTariff,
                 ISNULL(aa.fn_tarif, 0) AS PayerTariff
             FROM ta_trs_bed aa
             LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg
             LEFT JOIN ta_bed ee ON aa.fs_kd_bed = ee.fs_kd_bed
-            WHERE (aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01' OR aa.fd_tgl_out IS NULL)
-              AND (aa.fd_tgl_void = '' OR aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void IS NULL)
+            LEFT JOIN ta_kamar_tipe kt ON aa.fs_kd_kamar_tipe = kt.fs_kd_kamar_tipe
+            LEFT JOIN ta_trs_bed mother ON mother.fs_kd_reg = bb.fs_reg_ibu 
+                AND mother.fs_kd_bed = aa.fs_kd_bed
+                AND (mother.fd_tgl_out = '' OR mother.fd_tgl_out = '3000-01-01' OR mother.fd_tgl_out IS NULL)
+                AND (mother.fd_tgl_void = '' OR mother.fd_tgl_void = '3000-01-01' OR mother.fd_tgl_void IS NULL)
+            WHERE (aa.fd_tgl_void = '' OR aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void IS NULL)
               AND (@BangsalId = '' OR aa.fs_kd_layanan = @BangsalId)
+              AND (
+                  (@CutOffDate = '' AND (aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01' OR aa.fd_tgl_out IS NULL))
+                  OR
+                  (@CutOffDate <> '' 
+                   AND (aa.fd_tgl_in <= @CutOffDate OR aa.fd_tgl_in = '' OR aa.fd_tgl_in IS NULL)
+                   AND (aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01' OR aa.fd_tgl_out IS NULL OR aa.fd_tgl_out >= @CutOffDate))
+              )
+            ORDER BY aa.fd_tgl_in ASC, aa.fs_jam_in ASC
             """;
 
-        return conn.Read<BedOccupantItem>(legacySql, dp) ?? [];
+        return conn.Read<BedOccupantItem>(sql, dp) ?? [];
     }
 
     public BedOccupantItem? GetOccupant(string pakaiBedId)
@@ -91,39 +77,7 @@ public class BedOccupancyQuery : IBedOccupancyQuery
         var dp = new DynamicParameters();
         dp.AddParam("@PakaiBedId", pakaiBedId, SqlDbType.VarChar);
 
-        const string modernSql = """
-            SELECT 
-                aa.PakaiBedId,
-                aa.RegId,
-                aa.PasienId,
-                aa.BangsalId,
-                aa.KamarId,
-                aa.BedId,
-                aa.StartedAt AS CheckInTime,
-                ISNULL(ee.fs_kd_kelas, '') AS PhysicalClassId,
-                ISNULL(bb.fs_kd_kelas, ISNULL(ee.fs_kd_kelas, '')) AS PayerClassId,
-                CASE WHEN aa.PakaiBedPurpose = 4 THEN 1 ELSE 0 END AS IsRoomingIn,
-                ISNULL(bb.fs_kd_tipe_jaminan, '') AS TipeJaminanId,
-                ISNULL(ee.fn_tarif, 0) AS BaseTariff,
-                ISNULL(ee.fn_tarif, 0) AS PayerTariff
-            FROM BILRG_RnaPakaiBedAlokasi aa
-            LEFT JOIN ta_registrasi bb ON aa.RegId = bb.fs_kd_reg
-            LEFT JOIN ta_bed ee ON aa.BedId = ee.fs_kd_bed
-            WHERE aa.PakaiBedId = @PakaiBedId
-            """;
-
-        try
-        {
-            var item = conn.ReadSingle<BedOccupantItem>(modernSql, dp);
-            if (item != null)
-                return item;
-        }
-        catch
-        {
-            // Fall back to legacy table
-        }
-
-        const string legacySql = """
+        const string sql = """
             SELECT 
                 aa.fs_kd_trs AS PakaiBedId,
                 aa.fs_kd_reg AS RegId,
@@ -133,17 +87,73 @@ public class BedOccupancyQuery : IBedOccupancyQuery
                 aa.fs_kd_bed AS BedId,
                 TRY_CONVERT(DATETIME, aa.fd_tgl_in + ' ' + aa.fs_jam_in) AS CheckInTime,
                 ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
-                ISNULL(bb.fs_kd_kelas, ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
-                0 AS IsRoomingIn,
+                ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
+                CASE 
+                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
+                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    ELSE CAST(0 AS BIT) 
+                END AS IsRoomingIn,
+                ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,
                 ISNULL(bb.fs_kd_tipe_jaminan, '') AS TipeJaminanId,
                 ISNULL(aa.fn_tarif, 0) AS BaseTariff,
                 ISNULL(aa.fn_tarif, 0) AS PayerTariff
             FROM ta_trs_bed aa
             LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg
             LEFT JOIN ta_bed ee ON aa.fs_kd_bed = ee.fs_kd_bed
+            LEFT JOIN ta_kamar_tipe kt ON aa.fs_kd_kamar_tipe = kt.fs_kd_kamar_tipe
+            LEFT JOIN ta_trs_bed mother ON mother.fs_kd_reg = bb.fs_reg_ibu 
+                AND mother.fs_kd_bed = aa.fs_kd_bed
+                AND (mother.fd_tgl_out = '' OR mother.fd_tgl_out = '3000-01-01' OR mother.fd_tgl_out IS NULL)
+                AND (mother.fd_tgl_void = '' OR mother.fd_tgl_void = '3000-01-01' OR mother.fd_tgl_void IS NULL)
             WHERE aa.fs_kd_trs = @PakaiBedId
             """;
 
-        return conn.ReadSingle<BedOccupantItem>(legacySql, dp);
+        return conn.ReadSingle<BedOccupantItem>(sql, dp);
+    }
+
+    public BedOccupantItem? GetActiveOccupantByReg(string regId)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+
+        const string sql = """
+            SELECT TOP 1
+                aa.fs_kd_trs AS PakaiBedId,
+                aa.fs_kd_reg AS RegId,
+                ISNULL(bb.fs_mr, '') AS PasienId,
+                aa.fs_kd_layanan AS BangsalId,
+                ISNULL(ee.fs_kd_kamar, '') AS KamarId,
+                aa.fs_kd_bed AS BedId,
+                TRY_CONVERT(DATETIME, aa.fd_tgl_in + ' ' + aa.fs_jam_in) AS CheckInTime,
+                ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
+                ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
+                CASE 
+                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
+                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    ELSE CAST(0 AS BIT) 
+                END AS IsRoomingIn,
+                ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,
+                ISNULL(bb.fs_kd_tipe_jaminan, '') AS TipeJaminanId,
+                ISNULL(aa.fn_tarif, 0) AS BaseTariff,
+                ISNULL(aa.fn_tarif, 0) AS PayerTariff
+            FROM ta_trs_bed aa
+            LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg
+            LEFT JOIN ta_bed ee ON aa.fs_kd_bed = ee.fs_kd_bed
+            LEFT JOIN ta_kamar_tipe kt ON aa.fs_kd_kamar_tipe = kt.fs_kd_kamar_tipe
+            LEFT JOIN ta_trs_bed mother ON mother.fs_kd_reg = bb.fs_reg_ibu 
+                AND mother.fs_kd_bed = aa.fs_kd_bed
+                AND (mother.fd_tgl_out = '' OR mother.fd_tgl_out = '3000-01-01' OR mother.fd_tgl_out IS NULL)
+                AND (mother.fd_tgl_void = '' OR mother.fd_tgl_void = '3000-01-01' OR mother.fd_tgl_void IS NULL)
+            WHERE aa.fs_kd_reg = @RegId
+              AND (aa.fd_tgl_out IS NULL OR aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01')
+              AND (aa.fd_tgl_void IS NULL OR aa.fd_tgl_void = '' OR aa.fd_tgl_void = '3000-01-01')
+            ORDER BY 
+                CASE WHEN aa.fn_tarif > 0 THEN 1 ELSE 2 END,
+                aa.fd_tgl_in DESC, 
+                aa.fs_jam_in DESC
+            """;
+
+        return conn.ReadSingle<BedOccupantItem>(sql, dp);
     }
 }

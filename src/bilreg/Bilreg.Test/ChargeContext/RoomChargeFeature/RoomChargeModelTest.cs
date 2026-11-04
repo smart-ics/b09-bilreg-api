@@ -198,7 +198,46 @@ public class RoomChargeModelTest
 
         var act = () => model.Reverse("supervisor02", "Batal kedua", new DateTime(2026, 10, 19, 14, 0, 0));
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Cannot reverse room charge*expected 'Posted'*");
+            .WithMessage("*Cannot reverse room charge*already been reversed*");
+    }
+
+    [Fact]
+    public void GivenAdjustedCharge_WhenReverse_ThenSuccessfullyReversesCharge()
+    {
+        var model = RoomChargeModel.Create(
+            pakaiBedId: "PKB001",
+            regId: "REG001",
+            pasienId: "PAS001",
+            bangsalId: "W01",
+            kamarId: "K01",
+            bedId: "BED01",
+            chargeCycleDate: "2026-10-19",
+            timeCharge: new DateTime(2026, 10, 19, 12, 0, 0),
+            chargeTriggerType: ChargeTriggerTypeEnum.DailyCutOff,
+            physicalClassId: "VIP",
+            payerClassId: "VIP",
+            billingClassId: "VIP",
+            isTitipKelas: false,
+            isNaikKelas: false,
+            differentialAmount: 0m,
+            isRoomingIn: false,
+            motherPakaiBedId: string.Empty,
+            chargedUnits: 1.0m,
+            baseTariff: 300_000m,
+            discountAmount: 0m,
+            listKomponen: [],
+            userId: "nurse01");
+
+        // Adjust the model
+        model.Adjust(1.0m, 350_000m, 0m, 350_000m, [], "user01", new DateTime(2026, 10, 19, 13, 0, 0));
+        model.RoomChargeStatus.Should().Be(RoomChargeStatusEnum.Adjusted);
+
+        // Act - reverse the adjusted charge
+        model.Reverse("supervisor01", "Batal adjusted sewa", new DateTime(2026, 10, 19, 14, 0, 0));
+
+        // Assert
+        model.RoomChargeStatus.Should().Be(RoomChargeStatusEnum.Reversed);
+        model.ReversalReason.Should().Be("Batal adjusted sewa");
     }
 
     [Fact]

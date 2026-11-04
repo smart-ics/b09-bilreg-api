@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using MediatR;
@@ -16,7 +17,8 @@ public record BedOperationalVerifyReadyCommand(
     string? EvidenceReference = null,
     DateTime? OccurredAt = null,
     string? SourceFactId = null,
-    string? RequestId = null
+    string? RequestId = null,
+    string? LayananId = null
 ) : IRequest<BedOperationalVerifyReadyResult>;
 
 public record BedOperationalVerifyReadyResult(
@@ -52,9 +54,11 @@ public class BedOperationalVerifyReadyCommandHandler
         cancellationToken.ThrowIfCancellationRequested();
 
         var nowUtc = NormalizeToUtc(_tglJamProvider.Now);
-        var occurredAt = request.OccurredAt.HasValue
-            ? NormalizeToUtc(request.OccurredAt.Value)
-            : nowUtc;
+        var resolvedOccurredAt = SimulationTimeGuard.Resolve(
+            request.OccurredAt,
+            _tglJamProvider,
+            operationName: "BedOperationalVerifyReady");
+        var occurredAt = NormalizeToUtc(resolvedOccurredAt);
         var recordedAt = nowUtc >= occurredAt ? nowUtc : occurredAt;
 
         var reason = string.IsNullOrWhiteSpace(request.Reason)
@@ -84,6 +88,21 @@ public class BedOperationalVerifyReadyCommandHandler
                 bed.Bangsal.BangsalId,
                 bed.Kamar.KamarId,
                 OccupancyPolicyReff.Default);
+        }
+
+        // Pastikan occurredAt transaksi verifikasi ready tidak lebih lampau daripada transaksi terakhir
+        var latestTx = bedOp.ListReadinessTransaction
+            .OrderBy(x => x.OccurredAt)
+            .ThenBy(x => x.TransactionId, StringComparer.Ordinal)
+            .LastOrDefault();
+
+        if (latestTx != null && occurredAt <= latestTx.OccurredAt)
+        {
+            occurredAt = latestTx.OccurredAt.AddSeconds(1);
+        }
+        if (recordedAt < occurredAt)
+        {
+            recordedAt = occurredAt;
         }
 
         var updated = bedOp.VerifyReady(

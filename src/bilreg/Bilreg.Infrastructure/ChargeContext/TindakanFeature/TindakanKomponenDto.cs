@@ -10,6 +10,10 @@ public record TindakanKomponenDto(
     string PpaId, string PpaName,
     decimal Qty, decimal Nilai, decimal SubTotal)
 {
+    public TindakanKomponenDto() : this("", 0, "", "", "", "", 0, 0, 0)
+    {
+    }
+
     public static TindakanKomponenDto FromModel(TindakanKomponenBase model, string tindakanId)
     {
         var (ppaId, ppaName) = model is TindakanKomponenWithPpaType kompPpa

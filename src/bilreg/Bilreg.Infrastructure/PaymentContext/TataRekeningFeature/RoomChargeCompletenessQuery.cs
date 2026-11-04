@@ -12,11 +12,9 @@ namespace Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 /// <summary>
 /// Implementasi pembacaan data pendukung validasi kelengkapan sewa kamar (Room Charge).
 /// <para>
-/// Interval okupansi tempat tidur dibaca dari RNA-BED (PakaiBed): data modern
-/// <c>BILRG_RnaPakaiBedAlokasi</c> + <c>BILRG_RnaPakaiBedTransisi</c>, dengan fallback ke
-/// tabel legacy <c>ta_trs_bed</c>. Catatan Room Charge yang sudah dibebankan dibaca dari
-/// billing room charge pada <c>ta_trs_billing2</c> yang ditautkan ke tabel Room Charge
-/// modern <c>BILRG_RnaRoomCharge</c> maupun legacy <c>ta_trs_roomcharge</c>.
+/// Interval okupansi tempat tidur dibaca langsung dari tabel transaksi legacy <c>ta_trs_bed</c>.
+/// Catatan Room Charge yang sudah dibebankan dibaca dari billing room charge pada <c>ta_trs_billing2</c>
+/// yang ditautkan ke tabel Room Charge <c>ta_trs_roomcharge</c>.
 /// </para>
 /// </summary>
 public class RoomChargeCompletenessQuery : IRoomChargeCompletenessQuery
@@ -35,74 +33,12 @@ public class RoomChargeCompletenessQuery : IRoomChargeCompletenessQuery
         if (string.IsNullOrWhiteSpace(regId))
             return null;
 
-        var modern = GetModernStayInterval(regId);
-        if (modern is not null)
-            return modern;
-
-        return GetLegacyStayInterval(regId);
-    }
-
-    public IEnumerable<DateTime> ListBilledRoomChargeDates(string regId)
-    {
-        if (string.IsNullOrWhiteSpace(regId))
-            return [];
-
-        var billedDates = new HashSet<DateTime>();
-
-        foreach (var date in ListModernBilledRoomChargeDates(regId))
-            billedDates.Add(date);
-
-        foreach (var date in ListLegacyBilledRoomChargeDates(regId))
-            billedDates.Add(date);
-
-        return billedDates.OrderBy(x => x).ToList();
-    }
-
-    private InpatientStayInterval? GetModernStayInterval(string regId)
-    {
-        const string sql = """
-            SELECT
-                MIN(aa.StartedAt) AS AdmissionDate,
-                MAX(CASE WHEN tt.PakaiBedTransition = 6 THEN tt.OccurredAt END) AS DischargeDate,
-                MIN(CASE WHEN aa.PakaiBedStatus = 2 THEN 1 ELSE 0 END) AS HasOpenOccupancy
-            FROM BILRG_RnaPakaiBedAlokasi aa
-            LEFT JOIN BILRG_RnaPakaiBedTransisi tt
-                   ON tt.PakaiBedId = aa.PakaiBedId
-                  AND tt.PakaiBedTransition IN (5, 6)
-            WHERE aa.RegId = @RegId
-              AND aa.PakaiBedStatus IN (2, 3)
-            """;
-
-        try
-        {
-            var row = ReadStayInterval(sql, regId);
-            if (row is null)
-                return null;
-
-            //okupansi yang masih aktif berarti bed belum benar-benar dilepas
-            var isReleased = row.HasOpenOccupancy.GetValueOrDefault() == 0
-                && row.DischargeDate.HasValue;
-
-            return new InpatientStayInterval(
-                regId,
-                row.AdmissionDate!.Value,
-                isReleased ? row.DischargeDate : null);
-        }
-        catch
-        {
-            // Tabel modern tidak tersedia, lanjutkan ke tabel legacy
-            return null;
-        }
-    }
-
-    private InpatientStayInterval? GetLegacyStayInterval(string regId)
-    {
         const string sql = """
             SELECT
                 MIN(TRY_CONVERT(DATETIME, aa.fd_tgl_in + ' ' + aa.fs_jam_in)) AS AdmissionDate,
                 MAX(CASE WHEN aa.fd_tgl_out NOT IN ('', '3000-01-01')
                     THEN TRY_CONVERT(DATETIME, aa.fd_tgl_out + ' ' + aa.fs_jam_out) END) AS DischargeDate,
-                MIN(CASE WHEN aa.fd_tgl_out IN ('', '3000-01-01') THEN 1 ELSE 0 END) AS HasOpenOccupancy
+                MAX(CASE WHEN aa.fd_tgl_out IN ('', '3000-01-01') OR aa.fd_tgl_out IS NULL THEN 1 ELSE 0 END) AS HasOpenOccupancy
             FROM ta_trs_bed aa
             WHERE aa.fs_kd_reg = @RegId
               AND aa.fd_tgl_in NOT IN ('', '3000-01-01')
@@ -129,6 +65,14 @@ public class RoomChargeCompletenessQuery : IRoomChargeCompletenessQuery
         }
     }
 
+    public IEnumerable<DateTime> ListBilledRoomChargeDates(string regId)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            return [];
+
+        return ListLegacyBilledRoomChargeDates(regId).OrderBy(x => x).ToList();
+    }
+
     private StayIntervalRow? ReadStayInterval(string sql, string regId)
     {
         var dp = new DynamicParameters();
@@ -140,21 +84,6 @@ public class RoomChargeCompletenessQuery : IRoomChargeCompletenessQuery
             return null;
 
         return row;
-    }
-
-    private IEnumerable<DateTime> ListModernBilledRoomChargeDates(string regId)
-    {
-        const string sql = """
-            SELECT DISTINCT rc.ChargeCycleDate
-            FROM ta_trs_billing2 aa
-            INNER JOIN ta_trs_billing bb ON bb.fs_kd_trs = aa.fs_kd_trs
-            INNER JOIN BILRG_RnaRoomCharge rc ON rc.RoomChargeId = bb.fs_kd_ref_biaya
-            WHERE bb.fs_kd_reg = @RegId
-              AND rc.RoomChargeStatus <> 'Reversed'
-              AND rc.ChargeCycleDate NOT IN ('', '3000-01-01')
-            """;
-
-        return ReadBilledDates(sql, regId);
     }
 
     private IEnumerable<DateTime> ListLegacyBilledRoomChargeDates(string regId)

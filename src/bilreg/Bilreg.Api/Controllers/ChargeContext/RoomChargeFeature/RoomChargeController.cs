@@ -43,11 +43,57 @@ public class RoomChargeController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
-    [HttpPost("{id}/reverse")]
-    public async Task<IActionResult> Reverse(string id, [FromBody] RoomChargeReverseRequest req)
+    [HttpPost("manual-charge")]
+    public async Task<IActionResult> PostManualCharge([FromBody] RoomChargePostManualRequest req)
     {
-        var userId = GetActorUserId(req.UserId);
-        var cmd = new RoomChargeReverseCmd(id, userId, req.Reason);
+        var userId = GetActorUserId(req?.UserId);
+        var cmd = new RoomChargePostManualCmd(
+            req?.PakaiBedId,
+            req?.RegId,
+            req?.ChargeDate,
+            userId,
+            req?.Notes,
+            req?.Rate
+        );
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("{id}/reverse")]
+    [HttpPost("{id}/batal")]
+    [HttpPost("{id}/void")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Reverse(string id, [FromBody] RoomChargeReverseRequest? req = null)
+    {
+        var userId = GetActorUserId(req?.UserId);
+        var reason = !string.IsNullOrWhiteSpace(req?.Reason)
+            ? req.Reason
+            : (!string.IsNullOrWhiteSpace(req?.VoidReason)
+                ? req.VoidReason
+                : (!string.IsNullOrWhiteSpace(req?.Alasan) ? req.Alasan : "Pembatalan sewa kamar (storno)"));
+        var cmd = new RoomChargeReverseCmd(id, userId, reason);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("reverse")]
+    [HttpPost("batal")]
+    [HttpPost("void")]
+    public async Task<IActionResult> BatalFromBody([FromBody] RoomChargeReverseRequest req)
+    {
+        var targetId = !string.IsNullOrWhiteSpace(req?.RoomChargeId) ? req.RoomChargeId : req?.Id;
+        if (string.IsNullOrWhiteSpace(targetId))
+        {
+            return BadRequest(new { message = "RoomChargeId wajib diisi." });
+        }
+
+        var userId = GetActorUserId(req?.UserId);
+        var reason = !string.IsNullOrWhiteSpace(req?.Reason)
+            ? req.Reason
+            : (!string.IsNullOrWhiteSpace(req?.VoidReason)
+                ? req.VoidReason
+                : (!string.IsNullOrWhiteSpace(req?.Alasan) ? req.Alasan : "Pembatalan sewa kamar (storno)"));
+        var cmd = new RoomChargeReverseCmd(targetId, userId, reason);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -99,4 +145,11 @@ public class RoomChargeController : ControllerBase
 
 public record RoomChargePostDailyCutOffRequest(string? BangsalId = null, DateTime? CutOffDate = null, string? UserId = null);
 public record RoomChargeReconcileCheckoutRequest(string PakaiBedId, DateTime CheckOutTime, string? UserId = null);
-public record RoomChargeReverseRequest(string Reason, string? UserId = null);
+public record RoomChargePostManualRequest(string? PakaiBedId = null, string? RegId = null, DateTime? ChargeDate = null, string? UserId = null, string? Notes = null, decimal? Rate = null);
+public record RoomChargeReverseRequest(
+    string? Reason = null, 
+    string? UserId = null, 
+    string? RoomChargeId = null, 
+    string? Id = null, 
+    string? VoidReason = null,
+    string? Alasan = null);

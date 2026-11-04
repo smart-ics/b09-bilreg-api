@@ -106,6 +106,17 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
+    public void UT07b_GivenOpenedTataRekening_WhenDeleteBillWithTruncatedPrefix_ThenShouldMatchAndRemove()
+    {
+        var bill = CreateBill("TDK09KZ0XHX7", BillModulGroup.Jasa, 700_000m);
+        var tataRekening = HydrateOpened(bill);
+
+        tataRekening.DeleteBill("TDK09KZ0XH");
+
+        tataRekening.ListTrsBill.Should().BeEmpty();
+    }
+
+    [Fact]
     public void UT08_GivenPartialAllocationInput_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-02", BillModulGroup.Jasa, 100_000m));

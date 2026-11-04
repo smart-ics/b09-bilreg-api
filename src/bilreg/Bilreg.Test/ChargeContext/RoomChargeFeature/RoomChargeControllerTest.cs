@@ -138,6 +138,50 @@ public class RoomChargeControllerTest
     }
 
     [Fact]
+    public async Task BatalFromBody_DelegatesToRoomChargeReverseCmd_ReturnsOk()
+    {
+        // Arrange
+        var req = new RoomChargeReverseRequest(
+            Reason: "Batal via body",
+            UserId: "user_batal",
+            RoomChargeId: "RC099"
+        );
+        var reverseResponse = new RoomChargeReverseResponse("RC099", "RC099-REV");
+
+        RoomChargeReverseCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<RoomChargeReverseCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<RoomChargeReverseResponse>, CancellationToken>((cmd, _) => capturedCmd = (RoomChargeReverseCmd)cmd)
+            .ReturnsAsync(reverseResponse);
+
+        // Act
+        var result = await _sut.BatalFromBody(req);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(reverseResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.RoomChargeId.Should().Be("RC099");
+        capturedCmd.UserId.Should().Be("user_batal");
+        capturedCmd.Reason.Should().Be("Batal via body");
+    }
+
+    [Fact]
+    public async Task BatalFromBody_ReturnsBadRequest_WhenNoRoomChargeIdProvided()
+    {
+        // Arrange
+        var req = new RoomChargeReverseRequest(Reason: "Alasan tanpa id");
+
+        // Act
+        var result = await _sut.BatalFromBody(req);
+
+        // Assert
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
     public async Task GetById_DelegatesToRoomChargeGetQuery_ReturnsOk()
     {
         // Arrange

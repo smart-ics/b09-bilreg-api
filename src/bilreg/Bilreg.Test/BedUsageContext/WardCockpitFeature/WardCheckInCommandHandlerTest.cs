@@ -128,6 +128,7 @@ public class WardCheckInCommandHandlerTest
         result.BedId.Should().Be("BED-01");
         result.RegId.Should().Be("REG-01");
         result.Status.Should().Be("Placed");
+        result.BangsalId.Should().Be("BGS-01");
 
         _mediatorMock.Verify(m => m.Send(It.Is<PakaiBedCreateCommand>(c =>
             c.WaitingListId == "WTL-01" &&
@@ -392,5 +393,48 @@ public class WardCheckInCommandHandlerTest
         result.Should().NotBeNull();
         _mediatorMock.Verify(m => m.Send(It.Is<PakaiBedCreateCommand>(c =>
             c.LayananId == "LYN-BANGSAL-01"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenWaitingListBangsalEmpty_ResolvesBangsalIdFromBedRepo()
+    {
+        // Arrange
+        var waitingList = CreateSampleWaitingList() with
+        {
+            Bangsal = new BangsalReff("-", "-")
+        };
+        _waitingListRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IWaitingListKey>(k => k.WaitingListId == "WTL-01")))
+            .Returns(MayBe.From(waitingList));
+
+        var readyBedOp = CreateReadyBedOperational("BED-01");
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED-01")))
+            .Returns(MayBe.From(readyBedOp));
+
+        var bedType = new BedType(
+            "BED-01",
+            "Bed 01",
+            new KamarReff("KMR-01", "Kamar Dahlia 1"),
+            new BangsalReff("BGS-FROM-BED", "Bangsal From Bed"),
+            true);
+        _bedRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedKey>())).Returns(MayBe.From(bedType));
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<PakaiBedCreateCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PakaiBedCreateResult("PKB-20261024-002"));
+
+        var cmd = new WardCheckInCommand(
+            WaitingListId: "WTL-01",
+            BedId: "BED-01",
+            TipeKamarId: "TK-01",
+            UserId: "NURSE-01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.BangsalId.Should().Be("BGS-FROM-BED");
     }
 }
