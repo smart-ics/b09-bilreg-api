@@ -61,7 +61,6 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
-using Bilreg.Infrastructure.BrmContext;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
 using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
@@ -240,7 +239,6 @@ public static class InfrastructureService
         services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
 
         services.AddBrgFeature();
-        services.AddBrmInfrastructure();
 
         services.AddScoped<IDeliveryOrderDal, DeliveryOrderDal>();
         services.AddScoped<IDeliveryOrderItemDal, DeliveryOrderItemDal>();

@@ -1,6 +1,5 @@
 using Bilreg.Api.SignalR;
 using Bilreg.Application;
-using Bilreg.Application.BrmContext;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -44,7 +43,6 @@ public static class ApplicationService
             return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
         });
 
-        services.AddBrmApplication();
         
         services
             .Scan(selector => selector
