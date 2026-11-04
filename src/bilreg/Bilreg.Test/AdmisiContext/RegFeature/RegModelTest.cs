@@ -27,15 +27,19 @@ public class RegModelTest
             listLayanan: [], listSatTugas: [new PpaSatTugasType(satTugas, true)], listContact: []);
     }
 
-    private static RegModel CreateReg(PpaReff? dokter = null)
+    private static RegModel CreateReg(
+        PpaReff? dokter = null,
+        AuditInfoType? regKeluarAudit = null,
+        AuditInfoType? regVoidAudit = null,
+        AuditInfoType? regCancelOutAudit = null)
     {
         var result = new RegModel(
             "RG00000001",
             RegDate,
             new AuditInfoType("tester", new DateTime(2026, 6, 14, 8, 0, 0)),
-            AuditInfoType.Default,
-            AuditInfoType.Default,
-            AuditInfoType.Default,
+            regKeluarAudit ?? AuditInfoType.Default,
+            regCancelOutAudit ?? AuditInfoType.Default,
+            regVoidAudit ?? AuditInfoType.Default,
             JenisRegEnum.RegJalan,
             PasienModel.Default.ToReff(),
             TipeJaminanType.Default.ToReff(),

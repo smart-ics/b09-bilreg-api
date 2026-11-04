@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -13,8 +13,8 @@ public interface IOpCaseAktifDal :
     IUpdate<OpCaseAktifDto>,
     IDelete<IOrderOpKey>,
     IGetData<OpCaseAktifDto, IOrderOpKey>,
-    IListData<OpCaseAktifDto>
-    
+    IListData<OpCaseAktifDto>,
+    IListData<OpCaseAktifDto, OpCaseAktifFilter>
 {
 }
 
@@ -87,23 +87,30 @@ public class OpCaseAktifDal : IOpCaseAktifDal
     {
         const string sql = """
             SELECT
-               aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
+               aa.OrderOpId,
+               aa.OrderOpDate,
+               aa.PasienId,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
-               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-               ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-               ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+               ISNULL(dd.DokterPengorderId, '') AS DokterPengorderId,
+               ISNULL(ff.fs_nm_peg, '') AS DokterPengorderName,
+               ISNULL(dd.DokterOperatorId, '') AS DokterOperatorId,
+               ISNULL(hh.fs_nm_peg, '') AS DokterOperatorName,
+               ISNULL(dd.NamaOperasi, ISNULL(cc.NamaOperasi, '')) AS NamaOperasi,
+               ISNULL(dd.ProsedurTambahan, '') AS ProsedurTambahan,
+               ISNULL(dd.KlasifikasiOperasi, 1) AS KlasifikasiOperasi,
+               ISNULL(dd.PreferedDate, aa.OrderOpDate) AS PreferedDate,
                ISNULL(dd.EstimasiDurasi, 0) AS EstimasiDurasi,
                ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
-               ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate,
-               ISNULL(ee.PpaId, '') AS DokterId,
-               ISNULL(ff.fs_nm_peg, '') AS DokterName
+               aa.OpCaseState,
+               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+               ISNULL(bb.fs_jns_kelamin, '') AS Gender
             FROM 
                BILRG_OpCaseAktif aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
-               LEFT JOIN BILRG_OpCasePpa ee ON aa.OrderOpId = ee.OrderOpId AND ee.Role = 'REQUESTER'
-               LEFT JOIN td_peg ff ON ee.PpaId = ff.fs_kd_peg
+               LEFT JOIN td_peg ff ON dd.DokterPengorderId = ff.fs_kd_peg
+               LEFT JOIN td_peg hh ON dd.DokterOperatorId = hh.fs_kd_peg
             WHERE
                aa.OrderOpId = @OrderOpId
             """;
@@ -118,28 +125,58 @@ public class OpCaseAktifDal : IOpCaseAktifDal
 
     public IEnumerable<OpCaseAktifDto> ListData()
     {
-        const string sql = """
-            SELECT
-                aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
+        return ListData(new OpCaseAktifFilter());
+    }
+
+    public IEnumerable<OpCaseAktifDto> ListData(OpCaseAktifFilter filter)
+    {
+        var topClause = filter.Limit.HasValue && filter.Limit.Value > 0
+            ? "TOP (@Limit)"
+            : string.Empty;
+
+        var sql = $"""
+            SELECT {topClause}
+                aa.OrderOpId,
+                aa.OrderOpDate,
+                aa.PasienId,
                 ISNULL(bb.fs_nm_pasien, '') AS PasienName,
-                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-                ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(dd.DokterPengorderId, '') AS DokterPengorderId,
+                ISNULL(ff.fs_nm_peg, '') AS DokterPengorderName,
+                ISNULL(dd.DokterOperatorId, '') AS DokterOperatorId,
+                ISNULL(hh.fs_nm_peg, '') AS DokterOperatorName,
+                ISNULL(dd.NamaOperasi, ISNULL(cc.NamaOperasi, '')) AS NamaOperasi,
+                ISNULL(dd.ProsedurTambahan, '') AS ProsedurTambahan,
+                ISNULL(dd.KlasifikasiOperasi, 1) AS KlasifikasiOperasi,
+                ISNULL(dd.PreferedDate, aa.OrderOpDate) AS PreferedDate,
                 ISNULL(dd.EstimasiDurasi, 0) AS EstimasiDurasi,
                 ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
-                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate,
-                ISNULL(ee.PpaId, '') AS DokterId,
-                ISNULL(ff.fs_nm_peg, '') AS DokterName
-            FROM 
-                BILRG_OpCaseAktif aa
-                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
-                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
-                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
-                LEFT JOIN BILRG_OpCasePpa ee ON aa.OrderOpId = ee.OrderOpId AND ee.Role = 'REQUESTER'
-                LEFT JOIN td_peg ff ON ee.PpaId = ff.fs_kd_peg
+                aa.OpCaseState,
+                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender
+            FROM BILRG_OpCaseAktif aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
+            LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
+            LEFT JOIN td_peg ff ON dd.DokterPengorderId = ff.fs_kd_peg
+            LEFT JOIN td_peg hh ON dd.DokterOperatorId = hh.fs_kd_peg
+            WHERE (@OpCaseState IS NULL OR aa.OpCaseState = @OpCaseState)
+              AND (@TglAwal IS NULL OR dd.PreferedDate >= @TglAwal)
+              AND (@TglAkhir IS NULL OR dd.PreferedDate <= @TglAkhir)
+            ORDER BY 
+              CASE WHEN dd.UrgencyLevel = 2 THEN 0 ELSE 1 END,
+              aa.OrderOpDate ASC
             """;
-        
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@OpCaseState", filter.OpCaseState, SqlDbType.Int);
+        dp.AddParam("@TglAwal", filter.TglAwal, SqlDbType.DateTime);
+        dp.AddParam("@TglAkhir", filter.TglAkhir, SqlDbType.DateTime);
+        if (filter.Limit.HasValue && filter.Limit.Value > 0)
+        {
+            dp.AddParam("@Limit", filter.Limit.Value, SqlDbType.Int);
+        }
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OpCaseAktifDto>(sql);
+        return conn.Read<OpCaseAktifDto>(sql, dp);
     }
 }
