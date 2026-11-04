@@ -81,7 +81,7 @@ public class OkScheduleOpAssignLeaderHandlerTest
     private static ScheduleOpModel CreateSampleScheduleOp(
         string scheduleOpId = "SCH-001",
         string orderOpId = "ORD-001",
-        string leadDoctorId = "DOC-01")
+        string leadDoctorId = "DOC-01", bool isDraft = false)
     {
         var opTime = new DateTime(2026, 10, 20, 8, 0, 0);
         return new ScheduleOpModel(
@@ -102,7 +102,8 @@ public class OkScheduleOpAssignLeaderHandlerTest
             [new ScheduleOpPpaType(1, new PpaReff(leadDoctorId, "dr. Bedah Sp.B"), ProfesiType.Dokter, GroupSpesialisType.Default)],
             "",
             30,
-            []);
+            [],
+            isDraft);
     }
 
     [Theory]
