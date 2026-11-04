@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -18,7 +19,7 @@ public class RegDalTest
             "D", "E", "F", "G", "H", "I", "J",
             "3000-01-01", "J2", "J3", "K",
             "L", "M", "N", "O", "P", "Q", "R",
-            "S", "T", "U", "V", "W", "X", 100, "Y", 
+            "S", "T", "U", "V", "W", "X", 100, "1", "REG-IBU", "Y", 
             "Z", "AA", "AB", "AC","AD", "AE", "AF", "AG", "AH");
 
     private static IRegKey FakerKey()

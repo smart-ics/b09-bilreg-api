@@ -211,7 +211,6 @@ public sealed partial class JourneyDal
             OpnIds = ToInList(opnIds),
             RsvIds = ToInList(rsvIds),
             RegIds = ToInList(regIds),
-            RegIdCsv = string.Join(",", regIds.Where(HasId).Distinct(StringComparer.OrdinalIgnoreCase)),
             HasRegIds = regIds.Any(HasId) ? 1 : 0
         };
 
@@ -272,7 +271,7 @@ public sealed partial class JourneyDal
     private static string BuildRegExtrasSelectSql() =>
         """
         SELECT
-            x.RegId,
+            reg.fs_kd_reg AS RegId,
             ISNULL(reg.fs_kd_tipe_jaminan,'') AS TipeJaminanId,
             ISNULL(tj.fs_nm_tipe_jaminan,'') AS TipeJaminanName,
             ISNULL(reg.fs_kd_kelas,'') AS KelasId,
@@ -280,21 +279,21 @@ public sealed partial class JourneyDal
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
             ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
-        FROM (SELECT DISTINCT LTRIM(RTRIM(value)) AS RegId FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '') x
-        LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
+        FROM ta_registrasi reg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
         LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
-        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = x.RegId
+        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = reg.fs_kd_reg
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
             FROM ta_reg_history_dokter h
             LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
             WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-              AND h.fs_kd_reg IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '')
-        ) hd ON hd.fs_kd_reg = x.RegId AND hd.rn = 1
+              AND h.fs_kd_reg IN @RegIds
+        ) hd ON hd.fs_kd_reg = reg.fs_kd_reg AND hd.rn = 1
         LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
         WHERE @HasRegIds = 1
+          AND reg.fs_kd_reg IN @RegIds
         """;
 
     private JourneyFactBag? FoldOpnameJourney(

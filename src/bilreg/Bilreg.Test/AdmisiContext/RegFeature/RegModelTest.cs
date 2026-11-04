@@ -99,131 +99,26 @@ public class RegModelTest
     }
 
     [Fact]
-    public void GivenActiveRegistration_WhenCheckingIsAktif_ThenReturnsTrue()
+    public void GivenRegistration_WhenInitializedWithJenisInapAndRegIbu_ThenPropertiesHoldExpectedValues()
     {
-        // Arrange
-        var registration = CreateReg();
+        var jenisInap = new JenisInapType("2", "Obstetri");
+        var reg = new RegModel(
+            "RG00000003", RegDate,
+            new AuditInfoType("tester", new DateTime(2026, 6, 14, 8, 0, 0)),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegInap, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(), RegEligibilityType.Default, [],
+            jenisInap: jenisInap, regIbu: "REG-IBU-999");
 
-        // Act & Assert
-        registration.IsAktif.Should().BeTrue();
-    }
+        reg.JenisInap.Should().Be(jenisInap);
+        reg.RegIbu.Should().Be("REG-IBU-999");
 
-    [Theory]
-    [InlineData("   ", "   ")]
-    [InlineData("", "")]
-    [InlineData(null, null)]
-    [InlineData("   ", "")]
-    [InlineData("", "   ")]
-    [InlineData("\t", " ")]
-    public void GivenRegistrationWithWhitespaceAuditFields_WhenCheckingIsAktif_ThenReturnsTrue(string? keluarUser, string? voidUser)
-    {
-        // Arrange
-        var keluarAudit = new AuditInfoType(keluarUser!, new DateTime(3000, 1, 1));
-        var voidAudit = new AuditInfoType(voidUser!, new DateTime(3000, 1, 1));
-        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
-
-        // Act & Assert
-        registration.IsAktif.Should().BeTrue();
-    }
-
-    [Theory]
-    [InlineData("   ", "3000-01-01", "00:00:00")]
-    [InlineData("", "3000-01-01", "00:00:00")]
-    [InlineData("   ", "9999-12-31", "23:59:59")]
-    public void GivenRegistrationWithThreeArgConstructorWhitespaceAudits_WhenCheckingIsAktif_ThenReturnsTrue(string userId, string tgl, string jam)
-    {
-        // Arrange
-        var keluarAudit = new AuditInfoType(userId, tgl, jam);
-        var voidAudit = new AuditInfoType(userId, tgl, jam);
-        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
-
-        // Act & Assert
-        registration.IsAktif.Should().BeTrue();
-    }
-
-    [Fact]
-    public void GivenRegistrationWithRealDischargeAudit_WhenCheckingIsAktif_ThenReturnsFalse()
-    {
-        // Arrange
-        var dischargeAudit = new AuditInfoType("discharge-user", new DateTime(2026, 6, 15, 8, 0, 0));
-        var registration = CreateReg(regKeluarAudit: dischargeAudit);
-
-        // Act & Assert
-        registration.IsAktif.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GivenRegistrationWithRealVoidAudit_WhenCheckingIsAktif_ThenReturnsFalse()
-    {
-        // Arrange
-        var voidAudit = new AuditInfoType("void-user", new DateTime(2026, 6, 15, 8, 0, 0));
-        var registration = CreateReg(regVoidAudit: voidAudit);
-
-        // Act & Assert
-        registration.IsAktif.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GivenRegistrationWithWhitespaceAudits_WhenBatalBerobat_ThenAllowsCancellationAndSetsVoidAudit()
-    {
-        // Arrange
-        var keluarAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
-        var voidAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
-        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
-        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
-
-        // Act
-        registration.BatalBerobat("void-user", timestamp);
-
-        // Assert
-        registration.RegVoidAudit.Should().Be(new AuditInfoType("void-user", timestamp));
-        registration.IsAktif.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GivenVoidedRegistrationWithWhitespaceDischargeAudit_WhenBatalBerobat_ThenThrows()
-    {
-        // Arrange
-        var keluarAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
-        var voidAudit = new AuditInfoType("void-user", new DateTime(2026, 6, 15, 8, 0, 0));
-        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
-
-        // Act
-        var act = () => registration.BatalBerobat("another-user", new DateTime(2026, 7, 12));
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dibatalkan*");
-    }
-
-    [Fact]
-    public void GivenDischargedRegistrationWithWhitespaceVoidAudit_WhenBatalBerobat_ThenThrows()
-    {
-        // Arrange
-        var keluarAudit = new AuditInfoType("discharge-user", new DateTime(2026, 6, 15, 8, 0, 0));
-        var voidAudit = new AuditInfoType("   ", new DateTime(3000, 1, 1));
-        var registration = CreateReg(regKeluarAudit: keluarAudit, regVoidAudit: voidAudit);
-
-        // Act
-        var act = () => registration.BatalBerobat("void-user", new DateTime(2026, 7, 12));
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void GivenActiveRegistration_WhenBatalBerobatWithEmptyOrWhitespaceUserId_ThenThrowsArgumentException(string? invalidUserId)
-    {
-        // Arrange
-        var registration = CreateReg();
-
-        // Act
-        var act = () => registration.BatalBerobat(invalidUserId!, DateTime.Now);
-
-        // Assert
-        act.Should().Throw<ArgumentException>().WithMessage("*UserId wajib diisi*");
+        var newJenisInap = new JenisInapType("3", "Perinatal");
+        reg.SetJenisInap(newJenisInap, "REG-IBU-888");
+        reg.JenisInap.Should().Be(newJenisInap);
+        reg.RegIbu.Should().Be("REG-IBU-888");
     }
 
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")

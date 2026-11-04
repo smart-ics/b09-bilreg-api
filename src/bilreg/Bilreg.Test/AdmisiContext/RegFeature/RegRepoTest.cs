@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -55,6 +56,8 @@ public class RegRepoTest
             {
                 reg.KelasDk.KelasDkId.Should().Be("1");
                 reg.Bangsal.BangsalId.Should().Be("B1");
+                reg.JenisInap.JenisInapId.Should().Be("1");
+                reg.RegIbu.Should().Be("REG-IBU");
             },
             onNone: () => Assert.Fail("Expected RegModel"));
     }
@@ -122,6 +125,30 @@ public class RegRepoTest
         _regKomponenDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGINAP0001")), Times.Once);
         _regKomponenDal.Verify(x => x.Insert(It.IsAny<IEnumerable<RegKomponenDto>>()), Times.Never);
         _regJaminanDal.Verify(x => x.Insert(It.IsAny<RegJaminanDto>()), Times.Once);
+    }
+
+    [Fact]
+    public void GivenRawatInapRegistration_WhenSaveChanges_ThenDoesNotDeleteHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegInap, "RGINAP0001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNonRawatInapRegistration_WhenSaveChanges_ThenDeletesHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegJalan, "RGJALAN001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGJALAN001")), Times.Once);
     }
 
     [Fact]
@@ -271,6 +298,8 @@ public class RegRepoTest
             "2026-07-07 08:00:00",
             "3000-01-01 00:00:00",
             0,
+            "1",
+            "REG-IBU",
             "Pasien Test",
             "1990-01-01",
             "L",

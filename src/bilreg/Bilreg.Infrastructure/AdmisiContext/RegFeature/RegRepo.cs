@@ -62,7 +62,10 @@ public class RegRepo : IRegRepo
             _regKomponenDal.Insert(listKomponen);
         }
 
-        _regHistoryDokterDal.Delete(model);
+        if (model.JenisReg != JenisRegEnum.RegInap)
+        {
+            _regHistoryDokterDal.Delete(model);
+        }
     }
 
     public MayBe<RegModel> LoadEntity(IRegKey key)
@@ -97,13 +100,18 @@ public class RegRepo : IRegRepo
         //  komponen
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
 
+        var jenisInap = string.IsNullOrWhiteSpace(regDto.fs_kd_jenis_inap) || regDto.fs_kd_jenis_inap == "-"
+            ? JenisInapType.Default
+            : new JenisInapType(regDto.fs_kd_jenis_inap, "-");
+
         //  main object
         var result = new RegModel(
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
             regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
             layanan, karcis,
-            eligibility, listKomponenDto.Select(x => x.ToModel()), kelasDk, bangsal);
+            eligibility, listKomponenDto.Select(x => x.ToModel()), kelasDk, bangsal,
+            jenisInap, regDto.fs_reg_ibu);
         return MayBe.From(result);
     }
 
