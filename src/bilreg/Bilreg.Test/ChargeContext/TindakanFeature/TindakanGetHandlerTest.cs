@@ -86,6 +86,8 @@ public class TindakanGetHandlerTest
         result.Total.Should().Be(300000m);
         result.IsVoid.Should().BeFalse();
         result.AuditTrail.Should().NotBeNull();
+        result.IsDiskonDokter.Should().BeFalse();
+        result.DiskonDokter.Should().Be(0m);
 
         var listKomponen = result.ListKomponen.ToList();
         listKomponen.Should().HaveCount(2);
@@ -95,6 +97,7 @@ public class TindakanGetHandlerTest
         firstKomp.KomponenName.Should().Be("Jasa Dokter");
         firstKomp.Nilai.Should().Be(100000m);
         firstKomp.Qty.Should().Be(2);
+        firstKomp.Diskon.Should().Be(0m);
         firstKomp.SubTotal.Should().Be(200000m);
         firstKomp.PpaId.Should().Be("PPA-01");
         firstKomp.PpaName.Should().Be("dr. Smith");
@@ -104,9 +107,130 @@ public class TindakanGetHandlerTest
         secondKomp.KomponenName.Should().Be("Sarana RS");
         secondKomp.Nilai.Should().Be(50000m);
         secondKomp.Qty.Should().Be(2);
+        secondKomp.Diskon.Should().Be(0m);
         secondKomp.SubTotal.Should().Be(100000m);
         secondKomp.PpaId.Should().BeEmpty();
         secondKomp.PpaName.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WhenTindakanHasDiskonDokter_ReturnsResponseWithDiskonDokterAndKomponenDiskon()
+    {
+        // Arrange
+        const string tindakanId = "TDK-003";
+        var komp1 = new TindakanKomponenWithPpaType(
+            new KomponenReff("KOMP-01", "Jasa Dokter"),
+            new PpaReff("PPA-01", "dr. Smith"),
+            NoUrut: 1,
+            Nilai: 100000m,
+            Qty: 2,
+            SubTotal: 0m,
+            Diskon: 200000m
+        );
+
+        var komp2 = new TindakanKomponenWithoutPpaType(
+            new KomponenReff("KOMP-02", "Sarana RS"),
+            NoUrut: 2,
+            Nilai: 50000m,
+            Qty: 2,
+            SubTotal: 100000m,
+            Diskon: 0m
+        );
+
+        var tindakan = new TindakanModel(
+            tindakanId,
+            new DateTime(2026, 10, 16, 8, 30, 0),
+            orderTindakanId: "ORD-123",
+            new RegReff("REG-01", "MED-01", "Pasien A"),
+            new LayananReff("LYN-01", "Poli Umum"),
+            new KelasReff("KLS-01", "Kelas 1"),
+            new TipeTarifReff("TT-01", "Umum"),
+            new TarifReff("TRF-01", "Pemeriksaan Dokter"),
+            [komp1, komp2],
+            AuditTrailType.Create("USER-01", new DateTime(2026, 10, 16, 8, 30, 0)),
+            qty: 2,
+            isDiskonDokter: true
+        );
+
+        var query = new TindakanGetQuery(tindakanId);
+        _tdkRepoMock.Setup(x => x.LoadEntity(query))
+            .Returns(MayBe.From(tindakan));
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsDiskonDokter.Should().BeTrue();
+        result.DiskonDokter.Should().Be(200000m);
+        result.Total.Should().Be(100000m);
+
+        var listKomponen = result.ListKomponen.ToList();
+        listKomponen.Should().HaveCount(2);
+
+        var doctorKomp = listKomponen[0];
+        doctorKomp.KomponenId.Should().Be("KOMP-01");
+        doctorKomp.Nilai.Should().Be(100000m);
+        doctorKomp.Qty.Should().Be(2);
+        doctorKomp.Diskon.Should().Be(200000m);
+        doctorKomp.SubTotal.Should().Be(0m);
+
+        var rsKomp = listKomponen[1];
+        rsKomp.KomponenId.Should().Be("KOMP-02");
+        rsKomp.Nilai.Should().Be(50000m);
+        rsKomp.Qty.Should().Be(2);
+        rsKomp.Diskon.Should().Be(0m);
+        rsKomp.SubTotal.Should().Be(100000m);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTindakanHasDiskonDokter_ReturnsResponseWithDiskonDokterAndComponentDiskon()
+    {
+        // Arrange
+        const string tindakanId = "TDK-DISKON-01";
+        var komp = new TindakanKomponenWithPpaType(
+            new KomponenReff("KOMP-01", "Jasa Dokter"),
+            new PpaReff("PPA-01", "dr. Smith"),
+            NoUrut: 1,
+            Nilai: 100000m,
+            Qty: 2,
+            SubTotal: 0m,
+            Diskon: 200000m
+        );
+
+        var tindakan = new TindakanModel(
+            tindakanId,
+            new DateTime(2026, 10, 16, 8, 30, 0),
+            orderTindakanId: "ORD-123",
+            new RegReff("REG-01", "MED-01", "Pasien A"),
+            new LayananReff("LYN-01", "Poli Umum"),
+            new KelasReff("KLS-01", "Kelas 1"),
+            new TipeTarifReff("TT-01", "Umum"),
+            new TarifReff("TRF-01", "Pemeriksaan Dokter"),
+            [komp],
+            AuditTrailType.Create("USER-01", new DateTime(2026, 10, 16, 8, 30, 0)),
+            qty: 2,
+            isDiskonDokter: true
+        );
+
+        var query = new TindakanGetQuery(tindakanId);
+        _tdkRepoMock.Setup(x => x.LoadEntity(query)).Returns(MayBe.From(tindakan));
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsDiskonDokter.Should().BeTrue();
+        result.DiskonDokter.Should().Be(200000m);
+        result.Total.Should().Be(0m);
+
+        var firstKomp = result.ListKomponen.Should().ContainSingle().Subject;
+        firstKomp.KomponenId.Should().Be("KOMP-01");
+        firstKomp.Nilai.Should().Be(100000m);
+        firstKomp.Qty.Should().Be(2);
+        firstKomp.Diskon.Should().Be(200000m);
+        firstKomp.SubTotal.Should().Be(0m);
     }
 
     [Fact]

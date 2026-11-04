@@ -19,6 +19,8 @@ CREATE TABLE BILRG_Tindakan
     TarifName        VARCHAR(55)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifName DEFAULT(''),
     Qty              INT           NOT NULL CONSTRAINT DF_BILRG_Tindakan_Qty DEFAULT(1),
     Total            DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_Tindakan_Total DEFAULT(0),
+    IsDiskonDokter   BIT           NOT NULL CONSTRAINT DF_BILRG_Tindakan_IsDiskonDokter DEFAULT(0),
+    DiskonDokter     DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_Tindakan_DiskonDokter DEFAULT(0),
     
 	CrtUser          VARCHAR(50)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_CrtUser DEFAULT(''),
     CrtDate          DATETIME      NOT NULL CONSTRAINT DF_BILRG_Tindakan_CrtDate DEFAULT('3000-01-01'),

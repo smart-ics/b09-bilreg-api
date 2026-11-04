@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -37,6 +37,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
         bcp.AddMap("PpaName", "PpaName");
         bcp.AddMap("Qty", "Qty");
         bcp.AddMap("Nilai", "Nilai");
+        bcp.AddMap("Diskon", "Diskon");
         bcp.AddMap("SubTotal", "SubTotal");
         
         var fetched = listModel.ToList();
@@ -64,7 +65,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
         const string sql = """
            SELECT
                TindakanId, NoUrut, KomponenTarifId, KomponenTarifName,
-               PpaId, PpaName, Qty, Nilai, SubTotal
+               PpaId, PpaName, Qty, Nilai, Diskon, SubTotal
            FROM
                BILRG_TindakanKomponen
            WHERE

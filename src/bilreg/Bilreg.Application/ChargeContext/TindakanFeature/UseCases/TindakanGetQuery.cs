@@ -24,7 +24,9 @@ public record TindakanGetResponse(
     decimal Total,
     bool IsVoid,
     AuditTrailType AuditTrail,
-    IEnumerable<TindakanGetKomponenResponse> ListKomponen
+    IEnumerable<TindakanGetKomponenResponse> ListKomponen,
+    bool IsDiskonDokter = false,
+    decimal DiskonDokter = 0
 );
 
 public record TindakanGetKomponenResponse(
@@ -34,7 +36,8 @@ public record TindakanGetKomponenResponse(
     int Qty,
     decimal SubTotal,
     string PpaId,
-    string PpaName
+    string PpaName,
+    decimal Diskon = 0
 );
 
 public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetResponse>
@@ -69,7 +72,8 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
                 item.Qty,
                 item.SubTotal,
                 ppaId,
-                ppaName
+                ppaName,
+                item.Diskon
             );
         }).ToList();
 
@@ -86,7 +90,9 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
             tdk.Total,
             tdk.AuditTrail.IsVoided,
             tdk.AuditTrail,
-            listKomponen
+            listKomponen,
+            tdk.IsDiskonDokter,
+            tdk.DiskonDokter
         );
 
         return Task.FromResult(result);

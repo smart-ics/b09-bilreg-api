@@ -15,10 +15,28 @@ public record TindakanDto(
     string TipeTarifId, string TipeTarifName,
     string TarifId, string TarifName, 
     int Qty, decimal Total,
+    bool IsDiskonDokter, decimal DiskonDokter,
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
     string VodUser, DateTime VodDate)
 {
+    public TindakanDto(
+        string TindakanId, DateTime TindakanDate, string OrderTdkId,
+        string RegId, string PasienId, string PasienName,
+        string LayananId, string LayananName,
+        string KelasId, string KelasName,
+        string TipeTarifId, string TipeTarifName,
+        string TarifId, string TarifName, 
+        int Qty, decimal Total,
+        string CrtUser, DateTime CrtDate,
+        string UpdUser, DateTime UpdDate,
+        string VodUser, DateTime VodDate)
+        : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
+               LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+               TarifId, TarifName, Qty, Total, false, 0m, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+    {
+    }
+
     public TindakanDto(
         string TindakanId, DateTime TindakanDate, string OrderTdkId,
         string RegId, string PasienId, string PasienName,
@@ -31,7 +49,7 @@ public record TindakanDto(
         string VodUser, DateTime VodDate)
         : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
                LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
-               TarifId, TarifName, 1, Total, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+               TarifId, TarifName, 1, Total, false, 0m, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
     {
     }
 
@@ -48,6 +66,7 @@ public record TindakanDto(
             model.TipeTarif.TipeTarifId, model.TipeTarif.TipeTarifName,
             model.Tarif.TarifId, model.Tarif.TarifName, 
             qty, model.Total,
+            model.IsDiskonDokter, model.DiskonDokter,
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp);
@@ -77,7 +96,8 @@ public record TindakanDto(
             tarif,
             listKomponen,
             auditTrail,
-            Qty <= 0 ? 1 : Qty
+            Qty <= 0 ? 1 : Qty,
+            IsDiskonDokter
         );
         return result;
     }

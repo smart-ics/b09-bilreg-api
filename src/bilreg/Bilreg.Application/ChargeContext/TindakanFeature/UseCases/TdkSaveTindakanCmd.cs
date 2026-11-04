@@ -23,7 +23,8 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 public record TdkSaveTindakanCmd(string TindakanId, string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkSaveTindakanPpaCmd> ListPpa,
-    int Qty = 1)
+    int Qty = 1,
+    bool IsDiskonDokter = false)
     : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey;
 
 public record TdkSaveTindakanPpaCmd(string KomponenId, string PpaId);
@@ -95,7 +96,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty);
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty, request.IsDiskonDokter);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
@@ -198,15 +199,15 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
         NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
-        DateTime occurredAt, int qty = 1)
+        DateTime occurredAt, int qty = 1, bool isDiskonDokter = false)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, qty);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, qty, isDiskonDokter);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, qty
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, qty, isDiskonDokter
         );
     }
 

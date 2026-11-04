@@ -93,4 +93,30 @@ public class TindakanDalTest
         actual.Qty.Should().Be(3);
         actual.Total.Should().Be(450000);
     }
+
+    [Fact]
+    public void InsertAndGetData_WithDiskonDokter_ShouldPersistAndReadDiskonDokter()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = Faker() with { IsDiskonDokter = true, DiskonDokter = 60000m, Total = 90000m };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(FakerKey());
+        actual.IsDiskonDokter.Should().BeTrue();
+        actual.DiskonDokter.Should().Be(60000m);
+        actual.Total.Should().Be(90000m);
+    }
+
+    [Fact]
+    public void Update_WithDiskonDokter_ShouldPersistUpdatedValues()
+    {
+        using var trans = TransHelper.NewScope();
+        var initial = Faker();
+        _sut.Insert(initial);
+        var updated = initial with { IsDiskonDokter = true, DiskonDokter = 75000m, Total = 75000m };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.IsDiskonDokter.Should().BeTrue();
+        actual.DiskonDokter.Should().Be(75000m);
+        actual.Total.Should().Be(75000m);
+    }
 }

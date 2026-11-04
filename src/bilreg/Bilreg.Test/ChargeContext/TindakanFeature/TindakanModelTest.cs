@@ -245,6 +245,196 @@ public class TindakanModelTest
             .WithMessage("*Qty tindakan minimal 1*");
     }
 
+    [Fact]
+    public void Create_WhenDiskonDokterFalse_ShouldNotDiscountDoctorComponent()
+    {
+        // Arrange
+        var reg = RegModel.Default;
+        var layanan = LayananType.Default;
+        var nilaiTarif = CreateTestNilaiTarif(50000m, 30000m);
+        var (komp, ppa) = CreateValidKomponenAndPpa();
+        var listPpa = new List<KomponenPpaView> { new(komp, ppa) };
+
+        // Act
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, UserId, _occurredAt, qty: 1, isDiskonDokter: false);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeFalse();
+        tindakan.DiskonDokter.Should().Be(0m);
+        tindakan.Total.Should().Be(80000m);
+
+        var kompDoc = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().Single();
+        kompDoc.Diskon.Should().Be(0m);
+        kompDoc.SubTotal.Should().Be(30000m);
+
+        var kompSarana = tindakan.ListKomponen.OfType<TindakanKomponenWithoutPpaType>().Single();
+        kompSarana.Diskon.Should().Be(0m);
+        kompSarana.SubTotal.Should().Be(50000m);
+    }
+
+    [Fact]
+    public void Create_WhenDiskonDokterTrue_WithQtyOne_ShouldDiscountDoctorComponentFully()
+    {
+        // Arrange
+        var reg = RegModel.Default;
+        var layanan = LayananType.Default;
+        var nilaiTarif = CreateTestNilaiTarif(50000m, 30000m);
+        var (komp, ppa) = CreateValidKomponenAndPpa();
+        var listPpa = new List<KomponenPpaView> { new(komp, ppa) };
+
+        // Act
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, UserId, _occurredAt, qty: 1, isDiskonDokter: true);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeTrue();
+        tindakan.DiskonDokter.Should().Be(30000m);
+        tindakan.Total.Should().Be(50000m); // Sarana only
+
+        var kompDoc = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().Single();
+        kompDoc.Diskon.Should().Be(30000m);
+        kompDoc.SubTotal.Should().Be(0m);
+
+        var kompSarana = tindakan.ListKomponen.OfType<TindakanKomponenWithoutPpaType>().Single();
+        kompSarana.Diskon.Should().Be(0m);
+        kompSarana.SubTotal.Should().Be(50000m);
+    }
+
+    [Fact]
+    public void Create_WhenDiskonDokterTrue_WithMultiQty_ShouldDiscountDoctorComponentProportionally()
+    {
+        // Arrange
+        const int qty = 3;
+        var reg = RegModel.Default;
+        var layanan = LayananType.Default;
+        var nilaiTarif = CreateTestNilaiTarif(50000m, 30000m);
+        var (komp, ppa) = CreateValidKomponenAndPpa();
+        var listPpa = new List<KomponenPpaView> { new(komp, ppa) };
+
+        // Act
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, UserId, _occurredAt, qty: qty, isDiskonDokter: true);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeTrue();
+        tindakan.DiskonDokter.Should().Be(30000m * qty); // 90000m
+        tindakan.Total.Should().Be(50000m * qty); // 150000m (sarana only)
+
+        var kompDoc = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().Single();
+        kompDoc.Diskon.Should().Be(90000m);
+        kompDoc.SubTotal.Should().Be(0m);
+
+        var kompSarana = tindakan.ListKomponen.OfType<TindakanKomponenWithoutPpaType>().Single();
+        kompSarana.Diskon.Should().Be(0m);
+        kompSarana.SubTotal.Should().Be(150000m);
+    }
+
+    [Fact]
+    public void Create_WhenDiskonDokterTrue_WithMultipleDoctorComponents_ShouldTargetDpjpDoctorOnly()
+    {
+        // Arrange
+        var satTugasDoc = new SatTugasType("ST01", "Dokter Umum", ProfesiType.Dokter);
+        var ppaDpjp = new PpaType("PPA-DPJP", "dr. DPJP", "dr. DPJP", SmfType.Default, GroupSpesialisType.Default,
+            [], [new PpaSatTugasType(satTugasDoc, true)], []);
+        var ppaPendamping = new PpaType("PPA-ANESTESI", "dr. Anestesi", "dr. Anestesi", SmfType.Default, GroupSpesialisType.Default,
+            [], [new PpaSatTugasType(satTugasDoc, true)], []);
+
+        var kompDpjp = new KomponenType("KOMP-DPJP", "Jasa Dokter DPJP", GroupKomponenType.Default, CoaType.Default, CoaType.Default, [satTugasDoc]);
+        var kompPendamping = new KomponenType("KOMP-ANESTESI", "Jasa Dokter Anestesi", GroupKomponenType.Default, CoaType.Default, CoaType.Default, [satTugasDoc]);
+
+        var listKomponenTarif = new List<NilaiTarifKomponenType>
+        {
+            new(1, new KomponenReff("KOMP-SARANA", "Sarana RS"), 50000m),
+            new(2, kompDpjp.ToReff(), 60000m),
+            new(3, kompPendamping.ToReff(), 40000m)
+        };
+
+        var nilaiTarif = new NilaiTarifType("NT-MULTI", "TRF-MULTI", "Operasi Kecil",
+            TipeTarifType.Default.ToReff(), KelasType.Default.ToReff(), 150000m, listKomponenTarif);
+
+        var listPpa = new List<KomponenPpaView>
+        {
+            new(kompDpjp, ppaDpjp),
+            new(kompPendamping, ppaPendamping)
+        };
+
+        // RegModel with DPJP = ppaDpjp
+        var reg = RegModel.Default;
+        reg.AssignInpatientVisitTo(ppaDpjp, LayananType.Default with { InstalasiDk = InstalasiDkType.RawatInap });
+
+        // Act
+        var tindakan = TindakanModel.Create(reg, LayananType.Default, nilaiTarif, listPpa, UserId, _occurredAt, qty: 1, isDiskonDokter: true);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeTrue();
+        tindakan.DiskonDokter.Should().Be(60000m); // Only DPJP is discounted
+        tindakan.Total.Should().Be(90000m); // 50000 (sarana) + 40000 (anestesi)
+
+        var kompDpjpActual = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().First(x => x.Komponen.KomponenId == "KOMP-DPJP");
+        kompDpjpActual.Diskon.Should().Be(60000m);
+        kompDpjpActual.SubTotal.Should().Be(0m);
+
+        var kompAnestesiActual = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().First(x => x.Komponen.KomponenId == "KOMP-ANESTESI");
+        kompAnestesiActual.Diskon.Should().Be(0m);
+        kompAnestesiActual.SubTotal.Should().Be(40000m);
+    }
+
+    [Fact]
+    public void Save_WhenDiskonDokterTrue_ShouldDiscountDoctorComponentProportionallyAndLeaveRsUntouched()
+    {
+        // Arrange
+        const int qty = 3;
+        var reg = RegModel.Default;
+        var layanan = LayananType.Default;
+        var nilaiTarif = CreateTestNilaiTarif(50000m, 30000m);
+        var (komp, ppa) = CreateValidKomponenAndPpa();
+        var listPpa = new List<KomponenPpaView> { new(komp, ppa) };
+        var audit = AuditTrailType.Create(UserId, _occurredAt);
+
+        // Act
+        var tindakan = TindakanModel.Save("TDK02", reg, layanan, nilaiTarif, listPpa, audit, _occurredAt, qty: qty, isDiskonDokter: true);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeTrue();
+        tindakan.Qty.Should().Be(3);
+        tindakan.DiskonDokter.Should().Be(90000m); // 30k * 3
+        tindakan.Total.Should().Be(150000m);       // 50k * 3 (sarana RS untouched)
+
+        var kompDoc = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().Single();
+        kompDoc.Diskon.Should().Be(90000m);
+        kompDoc.SubTotal.Should().Be(0m);
+
+        var kompSarana = tindakan.ListKomponen.OfType<TindakanKomponenWithoutPpaType>().Single();
+        kompSarana.Diskon.Should().Be(0m);
+        kompSarana.SubTotal.Should().Be(150000m);
+    }
+
+    [Fact]
+    public void FromReg_WhenDiskonDokterTrue_ShouldDiscountDoctorComponentProportionallyAndLeaveRsUntouched()
+    {
+        // Arrange
+        const int qty = 2;
+        var reg = RegModel.Default;
+        var nilaiTarif = CreateTestNilaiTarif(100000m, 50000m);
+        var (komp, ppa) = CreateValidKomponenAndPpa();
+        var listPpa = new List<KomponenPpaView> { new(komp, ppa) };
+
+        // Act
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, UserId, _occurredAt, qty: qty, isDiskonDokter: true);
+
+        // Assert
+        tindakan.IsDiskonDokter.Should().BeTrue();
+        tindakan.Qty.Should().Be(2);
+        tindakan.DiskonDokter.Should().Be(100000m); // 50k * 2
+        tindakan.Total.Should().Be(200000m);        // 100k * 2 (sarana RS untouched)
+
+        var kompDoc = tindakan.ListKomponen.OfType<TindakanKomponenWithPpaType>().Single();
+        kompDoc.Diskon.Should().Be(100000m);
+        kompDoc.SubTotal.Should().Be(0m);
+
+        var kompSarana = tindakan.ListKomponen.OfType<TindakanKomponenWithoutPpaType>().Single();
+        kompSarana.Diskon.Should().Be(0m);
+        kompSarana.SubTotal.Should().Be(200000m);
+    }
+
     private static NilaiTarifType CreateTestNilaiTarif(decimal nilaiKomp1 = 50000m, decimal nilaiKomp2 = 30000m)
     {
         var komp1 = new KomponenReff("KOMP-01", "Jasa Sarana");
