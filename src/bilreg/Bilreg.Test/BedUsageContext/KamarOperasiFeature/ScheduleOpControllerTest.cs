@@ -557,4 +557,180 @@ public class ScheduleOpControllerTest
             d.ImplementationType == typeof(PublishTrackerOnScheduleOpSetEvHandler),
             "PublishTrackerOnScheduleOpSetEvHandler must be registered as INotificationHandler<OkScheduleOpConfirmedEvent> via MediatR");
     }
+
+    [Fact]
+    public async Task ConfirmSchedule_GivenValidRequest_WhenSuccess_Returns200OkWithJSendOk()
+    {
+        // ARRANGE
+        var req = new ConfirmScheduleRequest("ORD-001", "user-01");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<OkScheduleOpConfirmCommand>(c => c.OrderOpId == "ORD-001" && c.UserId == "user-01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.ConfirmSchedule(req);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<OkScheduleOpConfirmCommand>(c => c.OrderOpId == "ORD-001" && c.UserId == "user-01"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmSchedule_WhenUserClaimExists_OverridesUserIdWithClaim()
+    {
+        // ARRANGE
+        const string claimUserId = "auth-confirm-user";
+        var user = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("UserId", claimUserId)
+        ], "TestAuth"));
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = user }
+        };
+
+        var req = new ConfirmScheduleRequest("ORD-001", "original-user");
+        OkScheduleOpConfirmCommand? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpConfirmCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((cmd, _) => capturedCmd = cmd as OkScheduleOpConfirmCommand)
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.ConfirmSchedule(req);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.UserId.Should().Be(claimUserId, "UserId must be forwarded from ClaimsPrincipal");
+        capturedCmd.OrderOpId.Should().Be("ORD-001");
+    }
+
+    [Fact]
+    public async Task ConfirmSchedule_WhenRoomCollisionOccurs_Returns409ConflictWithJSendFail()
+    {
+        // ARRANGE
+        var req = new ConfirmScheduleRequest("ORD-001", "user-01");
+        const string collisionMessage = "Bentrok jadwal kamar operasi: Kamar KMR-01 telah terisi oleh jadwal lain dari jam 08:00 s/d 09:30.";
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpConfirmCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ScheduleCollisionException(collisionMessage));
+
+        // ACT
+        var result = await _sut.ConfirmSchedule(req);
+
+        // ASSERT
+        var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
+        conflict.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        var jsend = conflict.Value.Should().BeOfType<JSendFail>().Subject;
+        jsend.Status.Should().Be("fail");
+        jsend.Data.Should().Be(collisionMessage);
+    }
+
+    [Fact]
+    public async Task ConfirmSchedule_GivenCommandImplicitlyConverted_WhenInvoked_Returns200Ok()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpConfirmCommand("ORD-001", "user-01");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.ConfirmSchedule(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+    }
+
+    [Fact]
+    public async Task DiscardDraft_GivenValidRequest_WhenSuccess_Returns200OkWithJSendOk()
+    {
+        // ARRANGE
+        var req = new DiscardDraftRequest("ORD-001", "user-01");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<OkScheduleOpDiscardDraftCommand>(c => c.OrderOpId == "ORD-001" && c.UserId == "user-01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.DiscardDraft(req);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<OkScheduleOpDiscardDraftCommand>(c => c.OrderOpId == "ORD-001" && c.UserId == "user-01"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DiscardDraft_WhenUserClaimExists_OverridesUserIdWithClaim()
+    {
+        // ARRANGE
+        const string claimUserId = "auth-discard-user";
+        var user = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("UserId", claimUserId)
+        ], "TestAuth"));
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = user }
+        };
+
+        var req = new DiscardDraftRequest("ORD-001", "original-user");
+        OkScheduleOpDiscardDraftCommand? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpDiscardDraftCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((cmd, _) => capturedCmd = cmd as OkScheduleOpDiscardDraftCommand)
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.DiscardDraft(req);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.UserId.Should().Be(claimUserId, "UserId must be forwarded from ClaimsPrincipal");
+        capturedCmd.OrderOpId.Should().Be("ORD-001");
+    }
+
+    [Fact]
+    public async Task DiscardDraft_GivenCommandImplicitlyConverted_WhenInvoked_Returns200Ok()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpDiscardDraftCommand("ORD-001", "user-01");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // ACT
+        var result = await _sut.DiscardDraft(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+    }
 }

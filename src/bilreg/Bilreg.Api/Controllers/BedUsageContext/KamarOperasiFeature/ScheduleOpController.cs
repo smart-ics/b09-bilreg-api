@@ -119,6 +119,41 @@ public class ScheduleOpController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    [Route("ConfirmSchedule")]
+    public async Task<IActionResult> ConfirmSchedule(ConfirmScheduleRequest req)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                userId = req.UserId;
+            }
+            var cmd = new OkScheduleOpConfirmCommand(req.OrderOpId, userId);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (ScheduleCollisionException ex)
+        {
+            return Conflict(new JSendFail(ex.Message));
+        }
+    }
+
+    [HttpPost]
+    [Route("DiscardDraft")]
+    public async Task<IActionResult> DiscardDraft(DiscardDraftRequest req)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            userId = req.UserId;
+        }
+        var cmd = new OkScheduleOpDiscardDraftCommand(req.OrderOpId, userId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpGet]
     [Route("{orderOpId}")]
     public async Task<IActionResult> GetSchedule(string orderOpId)
@@ -148,6 +183,22 @@ public record ScheduleOpCancelRequest(string OrderOpId, string AlasanBatal)
 {
     public static implicit operator OkScheduleOpCancelCommand(ScheduleOpCancelRequest req) =>
         new(req.OrderOpId, string.Empty, req.AlasanBatal);
+}
+
+public record ConfirmScheduleRequest(string OrderOpId, string UserId = "")
+{
+    public static implicit operator OkScheduleOpConfirmCommand(ConfirmScheduleRequest req) =>
+        new(req.OrderOpId, req.UserId);
+    public static implicit operator ConfirmScheduleRequest(OkScheduleOpConfirmCommand cmd) =>
+        new(cmd.OrderOpId, cmd.UserId);
+}
+
+public record DiscardDraftRequest(string OrderOpId, string UserId = "")
+{
+    public static implicit operator OkScheduleOpDiscardDraftCommand(DiscardDraftRequest req) =>
+        new(req.OrderOpId, req.UserId);
+    public static implicit operator DiscardDraftRequest(OkScheduleOpDiscardDraftCommand cmd) =>
+        new(cmd.OrderOpId, cmd.UserId);
 }
 
 public record JSendFail(object Data, string Status = "fail");
