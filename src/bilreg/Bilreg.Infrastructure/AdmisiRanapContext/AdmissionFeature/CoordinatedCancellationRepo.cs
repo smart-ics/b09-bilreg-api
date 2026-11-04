@@ -32,7 +32,7 @@ public sealed class CoordinatedCancellationRepo : ICoordinatedCancellationRepo
     {
         using var c = Open();
         var reg = c.QuerySingleOrDefault<RegRow>("SELECT fs_kd_reg RegId, fs_kd_jenis_reg JenisReg, fd_tgl_void VoidDate, fd_tgl_keluar ExitDate FROM ta_registrasi WITH (UPDLOCK,HOLDLOCK) WHERE fs_kd_reg=@regId", new { regId });
-        var admission = c.QuerySingleOrDefault<AdmissionRow>("SELECT RegId,AdmissionStatus,AdmissionSource,OpnameRequestId,ReservationId,UpdDate FROM BILRG_AdmAdmission WITH (UPDLOCK,HOLDLOCK) WHERE RegId=@regId", new { regId });
+        var admission = c.QuerySingleOrDefault<AdmissionRow>("SELECT RegId,AdmissionStatus,AdmissionSource,OpnameRequestId,ReservationId,ISNULL(InpatientOrderId,'-') InpatientOrderId,UpdDate FROM BILRG_AdmAdmission WITH (UPDLOCK,HOLDLOCK) WHERE RegId=@regId", new { regId });
         var inap = c.QuerySingleOrDefault<int?>("SELECT 1 FROM ta_reg_inap WITH (UPDLOCK,HOLDLOCK) WHERE fs_kd_reg=@regId", new { regId }) == 1;
         var doctors = c.Query<int>("SELECT 1 FROM ta_reg_history_dokter WITH (UPDLOCK,HOLDLOCK) WHERE fs_kd_reg=@regId AND ISNULL(LTRIM(RTRIM(fd_tgl_selesai)),'')=''", new { regId }).Count();
         var waiting = c.QuerySingleOrDefault<WaitingRow>("SELECT TOP 1 WaitingListId,WaitingListStatus FROM BILRG_BedWaitingList WITH (UPDLOCK,HOLDLOCK) WHERE RegId=@regId AND WaitingListStatus IN (0,1) ORDER BY CrtDate DESC", new { regId });
@@ -45,19 +45,38 @@ public sealed class CoordinatedCancellationRepo : ICoordinatedCancellationRepo
                 AuditSnapshots: new CoordinatedCancellationAuditSnapshots(null, reg, new { RegInap = regInapSnapshot, DoctorHistory = doctorHistorySnapshot }, regAktifSnapshot, waiting, null));
 
         string? sourceId = null, sourceKind = null; var sourceOk = true; var sourceRestored = true; object? sourceSnapshot = null;
-        if (admission.AdmissionSource == (int)AdmissionSourceEnum.Admission && admission.OpnameRequestId != "-")
+        var orderId = !string.IsNullOrWhiteSpace(admission.InpatientOrderId) && admission.InpatientOrderId != "-"
+            ? admission.InpatientOrderId
+            : (admission.OpnameRequestId != "-" ? admission.OpnameRequestId : (admission.ReservationId != "-" ? admission.ReservationId : null));
+
+        if (admission.AdmissionSource == (int)AdmissionSourceEnum.Admission && !string.IsNullOrWhiteSpace(orderId))
         {
-            var source = c.QuerySingleOrDefault<OpnameRow>("SELECT OpnameRequestId,OpnameRequestStatus,FulfilledRegId FROM BILRG_AdmOpnameRequest WITH (UPDLOCK,HOLDLOCK) WHERE OpnameRequestId=@id", new { id = admission.OpnameRequestId });
-            sourceId = admission.OpnameRequestId; sourceKind = "OpnameRequestModel"; sourceOk = source is not null && source.OpnameRequestStatus == 1 && source.FulfilledRegId == regId;
-            sourceRestored = source is not null && ((source.OpnameRequestStatus == 0 && source.FulfilledRegId == "-") || source.OpnameRequestStatus == 2);
-            sourceSnapshot = source;
-        }
-        else if (admission.AdmissionSource == (int)AdmissionSourceEnum.Admission && admission.ReservationId != "-")
-        {
-            var source = c.QuerySingleOrDefault<ReservationRow>("SELECT ReservationId,ReservationStatus,RealizedRegId FROM BILRG_AdmReservation WITH (UPDLOCK,HOLDLOCK) WHERE ReservationId=@id", new { id = admission.ReservationId });
-            sourceId = admission.ReservationId; sourceKind = "ReservationModel"; sourceOk = source is not null && source.ReservationStatus == 2 && source.RealizedRegId == regId;
-            sourceRestored = source is not null && ((source.ReservationStatus == 1 && source.RealizedRegId == "-") || source.ReservationStatus == 3);
-            sourceSnapshot = source;
+            var source = c.QuerySingleOrDefault<InpatientOrderRow>(
+                "SELECT InpatientOrderId,OrderStatus,FulfilledRegId FROM BILRG_AdmInpatientOrder WITH (UPDLOCK,HOLDLOCK) WHERE InpatientOrderId=@id",
+                new { id = orderId });
+
+            if (source is not null)
+            {
+                sourceId = source.InpatientOrderId;
+                sourceKind = "InpatientOrderModel";
+                sourceOk = source.OrderStatus == 2 && source.FulfilledRegId == regId;
+                sourceRestored = (source.OrderStatus is 0 or 1 && source.FulfilledRegId == "-") || source.OrderStatus == 3;
+                sourceSnapshot = source;
+            }
+            else if (admission.OpnameRequestId != "-")
+            {
+                var opname = c.QuerySingleOrDefault<OpnameRow>("SELECT OpnameRequestId,OpnameRequestStatus,FulfilledRegId FROM BILRG_AdmOpnameRequest WITH (UPDLOCK,HOLDLOCK) WHERE OpnameRequestId=@id", new { id = admission.OpnameRequestId });
+                sourceId = admission.OpnameRequestId; sourceKind = "OpnameRequestModel"; sourceOk = opname is not null && opname.OpnameRequestStatus == 1 && opname.FulfilledRegId == regId;
+                sourceRestored = opname is not null && ((opname.OpnameRequestStatus == 0 && opname.FulfilledRegId == "-") || opname.OpnameRequestStatus == 2);
+                sourceSnapshot = opname;
+            }
+            else if (admission.ReservationId != "-")
+            {
+                var res = c.QuerySingleOrDefault<ReservationRow>("SELECT ReservationId,ReservationStatus,RealizedRegId FROM BILRG_AdmReservation WITH (UPDLOCK,HOLDLOCK) WHERE ReservationId=@id", new { id = admission.ReservationId });
+                sourceId = admission.ReservationId; sourceKind = "ReservationModel"; sourceOk = res is not null && res.ReservationStatus == 2 && res.RealizedRegId == regId;
+                sourceRestored = res is not null && ((res.ReservationStatus == 1 && res.RealizedRegId == "-") || res.ReservationStatus == 3);
+                sourceSnapshot = res;
+            }
         }
         var coherent = admission.AdmissionStatus == (int)AdmissionStatusEnum.Cancelled && reg is not null && reg.VoidDate != "3000-01-01" && activeCount == 0 && doctors == 0 && waiting is null && sourceRestored;
         return new CoordinatedCancellationState(regId, (AdmissionStatusEnum)admission.AdmissionStatus, admission.UpdDate,
@@ -65,30 +84,52 @@ public sealed class CoordinatedCancellationRepo : ICoordinatedCancellationRepo
             reg is not null && reg.JenisReg == "1" && reg.VoidDate == "3000-01-01" && reg.ExitDate == "3000-01-01", inap, doctors,
             waiting?.WaitingListId, waiting is null ? null : (WaitingListStatusEnum)waiting.WaitingListStatus, activeCount, sourceId, sourceKind, sourceOk, coherent,
             new { Registration = reg, Admission = admission, WaitingList = waiting, SourceId = sourceId, SourceKind = sourceKind },
-            AuditSnapshots: new CoordinatedCancellationAuditSnapshots(admission, reg, new { RegInap = regInapSnapshot, DoctorHistory = doctorHistorySnapshot }, regAktifSnapshot, waiting, sourceSnapshot));
+            AuditSnapshots: new CoordinatedCancellationAuditSnapshots(admission, reg, new { RegInap = regInapSnapshot, DoctorHistory = doctorHistorySnapshot }, regAktifSnapshot, waiting, sourceSnapshot),
+            InpatientOrderId: admission.InpatientOrderId ?? "-");
     }
     public int CancelWaitingList(CoordinatedCancellationState state, string userId, DateTime now) => Execute("UPDATE BILRG_BedWaitingList SET WaitingListStatus=3, VodUser=@userId, VodDate=@now, UpdUser=@userId, UpdDate=@now WHERE WaitingListId=@id AND RegId=@regId AND WaitingListStatus IN (0,1)", new { id = state.WaitingListId, regId = state.RegId, userId, now });
     public int EndDoctorAssignments(string regId, DateOnly effectiveDate) => Execute("UPDATE ta_reg_history_dokter SET fd_tgl_selesai=@date WHERE fs_kd_reg=@regId AND ISNULL(LTRIM(RTRIM(fd_tgl_selesai)),'')=''", new { regId, date = effectiveDate.ToString("yyyy-MM-dd") });
     public int VoidRegistration(string regId, string userId, DateTime now) => Execute("UPDATE ta_registrasi SET fd_tgl_void=@date, fs_jam_void=@time, fs_kd_petugas_void=@userId WHERE fs_kd_reg=@regId AND fs_kd_jenis_reg='1' AND fd_tgl_void='3000-01-01' AND fd_tgl_keluar='3000-01-01'", new { regId, userId, date = now.ToString("yyyy-MM-dd"), time = now.ToString("HH:mm:ss") });
     public int DeleteRegAktif(string regId) => Execute("DELETE FROM BILRG_RegAktif WHERE RegId=@regId", new { regId });
-    public int RestoreSource(CoordinatedCancellationState state, string userId, DateTime now) => state.SourceKind switch
+    public int RestoreSource(CoordinatedCancellationState state, string userId, DateTime now)
     {
-        "OpnameRequestModel" => Execute("UPDATE BILRG_AdmOpnameRequest SET OpnameRequestStatus=0,FulfilledRegId='-',UpdUser=@userId,UpdDate=@now WHERE OpnameRequestId=@id AND OpnameRequestStatus=1 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
-        "ReservationModel" => Execute("UPDATE BILRG_AdmReservation SET ReservationStatus=1,RealizedRegId='-',UpdUser=@userId,UpdDate=@now WHERE ReservationId=@id AND ReservationStatus=2 AND RealizedRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
-        _ => 1
-    };
-    public int VoidSource(CoordinatedCancellationState state, string reason, string userId, DateTime now) => state.SourceKind switch
+        if (string.IsNullOrWhiteSpace(state.SourceId)) return 1;
+
+        if (state.SourceKind == "InpatientOrderModel" || (state.SourceKind != "OpnameRequestModel" && state.SourceKind != "ReservationModel"))
+        {
+            return Execute("UPDATE BILRG_AdmInpatientOrder SET OrderStatus=0,FulfilledRegId='-',UpdUser=@userId,UpdDate=@now WHERE InpatientOrderId=@id AND OrderStatus=2 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now });
+        }
+
+        return state.SourceKind switch
+        {
+            "OpnameRequestModel" => Execute("UPDATE BILRG_AdmOpnameRequest SET OpnameRequestStatus=0,FulfilledRegId='-',UpdUser=@userId,UpdDate=@now WHERE OpnameRequestId=@id AND OpnameRequestStatus=1 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
+            "ReservationModel" => Execute("UPDATE BILRG_AdmReservation SET ReservationStatus=1,RealizedRegId='-',UpdUser=@userId,UpdDate=@now WHERE ReservationId=@id AND ReservationStatus=2 AND RealizedRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
+            _ => 1
+        };
+    }
+    public int VoidSource(CoordinatedCancellationState state, string reason, string userId, DateTime now)
     {
-        "OpnameRequestModel" => Execute("UPDATE BILRG_AdmOpnameRequest SET OpnameRequestStatus=2,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE OpnameRequestId=@id AND OpnameRequestStatus=1 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
-        "ReservationModel" => Execute("UPDATE BILRG_AdmReservation SET ReservationStatus=3,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE ReservationId=@id AND ReservationStatus=2 AND RealizedRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
-        _ => 1
-    };
+        if (string.IsNullOrWhiteSpace(state.SourceId)) return 1;
+
+        if (state.SourceKind == "InpatientOrderModel" || (state.SourceKind != "OpnameRequestModel" && state.SourceKind != "ReservationModel"))
+        {
+            return Execute("UPDATE BILRG_AdmInpatientOrder SET OrderStatus=3,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE InpatientOrderId=@id AND OrderStatus=2 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now });
+        }
+
+        return state.SourceKind switch
+        {
+            "OpnameRequestModel" => Execute("UPDATE BILRG_AdmOpnameRequest SET OpnameRequestStatus=2,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE OpnameRequestId=@id AND OpnameRequestStatus=1 AND FulfilledRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
+            "ReservationModel" => Execute("UPDATE BILRG_AdmReservation SET ReservationStatus=3,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE ReservationId=@id AND ReservationStatus=2 AND RealizedRegId=@regId", new { id = state.SourceId, regId = state.RegId, userId, now }),
+            _ => 1
+        };
+    }
     public int CancelAdmission(CoordinatedCancellationState state, DateTime? expectedUpdatedAt, string userId, DateTime now) => Execute("UPDATE BILRG_AdmAdmission SET AdmissionStatus=4,VodUser=@userId,VodDate=@now,UpdUser=@userId,UpdDate=@now WHERE RegId=@regId AND AdmissionStatus=@status AND (@expected IS NULL OR UpdDate=@expected)", new { regId = state.RegId, status = (int)state.AdmissionStatus, expected = expectedUpdatedAt, userId, now });
     public int CompleteLedger(string requestId, string responseJson, DateTime now) => Execute("UPDATE BILRG_AdmCoordinatedCancellationRequest SET Lifecycle='Completed',ResponseJson=@responseJson,CompletedAt=@now WHERE RequestId=@requestId AND Lifecycle='InProgress'", new { requestId, responseJson, now });
     private int Execute(string sql, object args) { using var c = Open(); return c.Execute(sql, args); }
     private sealed record RegRow(string RegId, string JenisReg, string VoidDate, string ExitDate);
-    private sealed record AdmissionRow(string RegId, int AdmissionStatus, int AdmissionSource, string OpnameRequestId, string ReservationId, DateTime UpdDate);
+    private sealed record AdmissionRow(string RegId, int AdmissionStatus, int AdmissionSource, string OpnameRequestId, string ReservationId, string InpatientOrderId, DateTime UpdDate);
     private sealed record WaitingRow(string WaitingListId, int WaitingListStatus);
     private sealed record OpnameRow(string OpnameRequestId, int OpnameRequestStatus, string FulfilledRegId);
     private sealed record ReservationRow(string ReservationId, int ReservationStatus, string RealizedRegId);
+    private sealed record InpatientOrderRow(string InpatientOrderId, int OrderStatus, string FulfilledRegId);
 }

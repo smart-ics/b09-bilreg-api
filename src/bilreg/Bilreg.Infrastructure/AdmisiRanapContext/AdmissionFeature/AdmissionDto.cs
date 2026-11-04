@@ -25,7 +25,8 @@ public record AdmissionDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate)
+    DateTime VodDate,
+    string InpatientOrderId = "-")
 {
     public static AdmissionDto FromModel(AdmissionModel model) =>
         new(
@@ -48,7 +49,8 @@ public record AdmissionDto(
             model.AuditTrail.Modified.UserId,
             model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId,
-            model.AuditTrail.Voided.Timestamp);
+            model.AuditTrail.Voided.Timestamp,
+            model.InpatientOrderId);
 
     public AdmissionModel ToModel()
     {
@@ -72,6 +74,7 @@ public record AdmissionDto(
             bangsal,
             AdmissionDate,
             audit,
-            (AdmissionSourceEnum)AdmissionSource);
+            (AdmissionSourceEnum)AdmissionSource,
+            InpatientOrderId);
     }
 }

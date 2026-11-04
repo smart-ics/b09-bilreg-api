@@ -6,6 +6,8 @@ using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
@@ -590,6 +592,63 @@ public class AdmissionRegistrationOrchestratorTest
         trackerCoordinator.Verify(
             x => x.RecordAdmissionRegistered(harness.Reservation, response.RegId, TestTglJamProvider.Instance.Now),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenInpatientOrder_WhenProcessInpatientOrder_ThenCreatesAdmissionWithInpatientOrderIdAndFulfillsOrder()
+    {
+        var harness = CreateInpatientOrderHarness(OrderSourceEnum.EmrRawatJalan);
+        var command = new AdmProcessInpatientOrderCmd(
+            harness.Order.InpatientOrderId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessInpatientOrder(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedOrder.Should().NotBeNull();
+        harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
+        harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);
+        harness.InpatientOrderRepo.Verify(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()), Times.Once);
+        harness.TrackerCoordinator.Verify(
+            x => x.RecordAdmissionRegistered(harness.Order, response.RegId, TestTglJamProvider.Instance.Now),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequestInInpatientOrderRepo_WhenProcessed_ThenFulfillsOrderAndPopulatesInpatientOrderId()
+    {
+        var harness = CreateInpatientOrderHarness(OrderSourceEnum.EmrRawatJalan);
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Order.InpatientOrderId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedOrder.Should().NotBeNull();
+        harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
+        harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);
+        harness.InpatientOrderRepo.Verify(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenReservationInInpatientOrderRepo_WhenProcessed_ThenFulfillsOrderAndPopulatesInpatientOrderId()
+    {
+        var harness = CreateInpatientOrderHarness(OrderSourceEnum.AdmisiBooking);
+        var command = new AdmProcessReservationCmd(
+            harness.Order.InpatientOrderId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedOrder.Should().NotBeNull();
+        harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
+        harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);
+        harness.InpatientOrderRepo.Verify(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()), Times.Once);
     }
 
     #region SOP Rawat Inap - Jenis Inap & Relasi Perinatal-Obstetri Tests
@@ -1495,6 +1554,149 @@ public class AdmissionRegistrationOrchestratorTest
             pasienRepo, regDal,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif,
             () => savedWaitingList);
+    }
+
+    private static InpatientOrderHarness CreateInpatientOrderHarness(
+        OrderSourceEnum source = OrderSourceEnum.EmrRawatJalan,
+        InpatientOrderStatusEnum status = InpatientOrderStatusEnum.Requested)
+    {
+        var order = InpatientOrderModel.Create(
+            source,
+            PasienModel.Default.ToReff(),
+            new PpaReff("D001", "dr. Budi"),
+            DateTime.Today.AddDays(1),
+            "Clinical notes",
+            "user1",
+            new KelasReff("K1", "Kelas 1"),
+            new BangsalReff("B1", "Bangsal 1"));
+
+        if (status == InpatientOrderStatusEnum.Maintained)
+        {
+            order = order.Maintain(order.PlannedDate, order.KelasRawat, order.Bangsal, "user1");
+        }
+
+        var admissionRepo = new Mock<IAdmissionRepo>();
+        var opnameRepo = new Mock<IOpnameRequestRepo>();
+        var reservationRepo = new Mock<IReservationRepo>();
+        var inpatientOrderRepo = new Mock<IInpatientOrderRepo>();
+        var regRepo = new Mock<IRegRepo>();
+        var regInapRepo = new Mock<IRegInapRepo>();
+        var regAktifRepo = new Mock<IRegAktifRepo>();
+        var prosedurRepo = new Mock<IProsedureMasukInapRepo>();
+
+        inpatientOrderRepo.Setup(x => x.LoadEntity(It.IsAny<IInpatientOrderKey>()))
+            .Returns(MayBe.From(order));
+        admissionRepo.Setup(x => x.ListData(It.IsAny<AdmissionListFilter>())).Returns([]);
+        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(false);
+        prosedurRepo.Setup(x => x.LoadEntity(It.IsAny<IProsedurMasukInapKey>()))
+            .Returns(MayBe.From(new ProsedurMasukInapType("IGD", "Dari IGD", ProsedurMasukInapDkType.Default)));
+
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(PasienModel.Default));
+        var tipeJaminanRepo = new Mock<ITipeJaminanRepo>();
+        tipeJaminanRepo.Setup(x => x.LoadEntity(It.IsAny<ITipeJaminanKey>()))
+            .Returns(MayBe.From(TipeJaminanType.BayarSendiri));
+        var caraMasukRepo = new Mock<ICaraMasukDkRepo>();
+        caraMasukRepo.Setup(x => x.LoadEntity(It.IsAny<ICaraMasukDkKey>()))
+            .Returns(MayBe.From(CaraMasukDkType.DatangSendiri));
+        var rujukanRepo = new Mock<IRujukanRepo>();
+        rujukanRepo.Setup(x => x.LoadEntity(It.IsAny<IRujukanKey>()))
+            .Returns(MayBe.From(RujukanType.Default));
+        var ppaRepo = new Mock<IPpaRepo>();
+        ppaRepo.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(PpaType.Default));
+        var layanan = InpatientLayanan();
+        var layananRepo = new Mock<ILayananRepo>();
+        layananRepo.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
+        var bangsalRepo = new Mock<IBangsalRepo>();
+        bangsalRepo.Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, layanan.ToReff())));
+
+        var ward = new Mock<IWardAccommodationGateway>();
+        ward.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas 1"));
+        ward.Setup(x => x.ResolveBangsalForCareClass("B1", "1"))
+            .Returns(new BangsalReff("B1", "Bangsal 1"));
+        ward.Setup(x => x.ResolveKelas("K1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveKelas("VIP")).Returns(new KelasReff("VIP", "Kelas VIP"));
+        ward.Setup(x => x.ResolveKelasForCareClass("B1", "1")).Returns(new KelasReff("K1", "Kelas 1"));
+        ward.Setup(x => x.ResolveBangsal("B1")).Returns(new BangsalReff("B1", "Bangsal 1"));
+
+        var waitingListRepo = new Mock<IWaitingListRepo>();
+        WaitingListModel? savedWaitingList = null;
+        waitingListRepo.Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(x => savedWaitingList = x);
+
+        var factory = new RegFactory(Mock.Of<ISequencerManual>(),
+            Mock.Of<IGetKelasRajalService>(), Mock.Of<IGetKelasRadarService>());
+
+        AdmissionModel? savedAdmission = null;
+        RegModel? savedReg = null;
+        RegInapModel? savedRegInap = null;
+        RegAktifModel? savedRegAktif = null;
+        InpatientOrderModel? savedOrder = null;
+        var auditRepo = new Mock<IAuditRepo>();
+
+        admissionRepo.Setup(x => x.SaveChanges(It.IsAny<AdmissionModel>()))
+            .Callback<AdmissionModel>(x => savedAdmission = x);
+        regRepo.Setup(x => x.SaveChanges(It.IsAny<RegModel>()))
+            .Callback<RegModel>(x => savedReg = x);
+        regInapRepo.Setup(x => x.SaveChanges(It.IsAny<RegInapModel>()))
+            .Callback<RegInapModel>(x => savedRegInap = x);
+        regAktifRepo.Setup(x => x.SaveChanges(It.IsAny<RegAktifModel>()))
+            .Callback<RegAktifModel>(x => savedRegAktif = x);
+        inpatientOrderRepo.Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(x => savedOrder = x);
+
+        var regDal = new Mock<IRegDal>();
+        var publisher = new Mock<IAdmisiEventPublisher>();
+        var trackerCoordinator = new Mock<IPasienTrackerInpatientCoordinator>();
+
+        var sut = new AdmissionRegistrationOrchestrator(
+            admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
+            bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
+            caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
+            prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
+            regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
+            publisher.Object, waitingListRepo.Object, trackerCoordinator.Object,
+            regDal.Object, null, inpatientOrderRepo.Object);
+
+        return new InpatientOrderHarness(
+            sut, order, publisher, admissionRepo, inpatientOrderRepo, regRepo, regInapRepo, regAktifRepo,
+            trackerCoordinator, () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif,
+            () => savedOrder, () => savedWaitingList);
+    }
+
+    private sealed class InpatientOrderHarness(
+        AdmissionRegistrationOrchestrator sut,
+        InpatientOrderModel order,
+        Mock<IAdmisiEventPublisher> publisher,
+        Mock<IAdmissionRepo> admissionRepo,
+        Mock<IInpatientOrderRepo> inpatientOrderRepo,
+        Mock<IRegRepo> regRepo,
+        Mock<IRegInapRepo> regInapRepo,
+        Mock<IRegAktifRepo> regAktifRepo,
+        Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
+        Func<AdmissionModel?> savedAdmission,
+        Func<RegModel?> savedReg,
+        Func<RegInapModel?> savedRegInap,
+        Func<RegAktifModel?> savedRegAktif,
+        Func<InpatientOrderModel?> savedOrder,
+        Func<WaitingListModel?> savedWaitingList)
+    {
+        public AdmissionRegistrationOrchestrator Sut { get; } = sut;
+        public InpatientOrderModel Order { get; } = order;
+        public Mock<IAdmisiEventPublisher> Publisher { get; } = publisher;
+        public Mock<IAdmissionRepo> AdmissionRepo { get; } = admissionRepo;
+        public Mock<IInpatientOrderRepo> InpatientOrderRepo { get; } = inpatientOrderRepo;
+        public Mock<IRegRepo> RegRepo { get; } = regRepo;
+        public Mock<IRegInapRepo> RegInapRepo { get; } = regInapRepo;
+        public Mock<IRegAktifRepo> RegAktifRepo { get; } = regAktifRepo;
+        public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
+        public AdmissionModel? SavedAdmission => savedAdmission();
+        public RegModel? SavedReg => savedReg();
+        public RegInapModel? SavedRegInap => savedRegInap();
+        public RegAktifModel? SavedRegAktif => savedRegAktif();
+        public InpatientOrderModel? SavedOrder => savedOrder();
+        public WaitingListModel? SavedWaitingList => savedWaitingList();
     }
 
     private sealed class DirectHarness(

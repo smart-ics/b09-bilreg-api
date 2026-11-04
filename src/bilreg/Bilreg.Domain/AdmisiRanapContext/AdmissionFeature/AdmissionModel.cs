@@ -23,14 +23,20 @@ public record AdmissionModel : IRegKey
         BangsalReff bangsal,
         DateTime admissionDate,
         AuditTrailType auditTrail,
-        AdmissionSourceEnum admissionSource = AdmissionSourceEnum.Admission)
+        AdmissionSourceEnum admissionSource = AdmissionSourceEnum.Admission,
+        string inpatientOrderId = EMPTY_REF_ID)
     {
         RegId = regId;
         AdmissionStatus = admissionStatus;
         AdmissionSource = admissionSource;
         Pasien = pasien;
-        OpnameRequestId = opnameRequestId;
-        ReservationId = reservationId;
+        OpnameRequestId = string.IsNullOrWhiteSpace(opnameRequestId) ? EMPTY_REF_ID : opnameRequestId;
+        ReservationId = string.IsNullOrWhiteSpace(reservationId) ? EMPTY_REF_ID : reservationId;
+        InpatientOrderId = string.IsNullOrWhiteSpace(inpatientOrderId) || inpatientOrderId == EMPTY_REF_ID
+            ? (OpnameRequestId != EMPTY_REF_ID
+                ? OpnameRequestId
+                : (ReservationId != EMPTY_REF_ID ? ReservationId : EMPTY_REF_ID))
+            : inpatientOrderId;
         KelasDk = kelasDk;
         Bangsal = bangsal;
         AdmissionDate = admissionDate;
@@ -46,7 +52,8 @@ public record AdmissionModel : IRegKey
         string? opnameRequestId,
         string? reservationId,
         string auditUserId,
-        DateTime admittedAt = default)
+        DateTime admittedAt = default,
+        string inpatientOrderId = EMPTY_REF_ID)
     {
         Guard.Against.Null(pasien);
         Guard.Against.Null(kelasDk);
@@ -64,7 +71,27 @@ public record AdmissionModel : IRegKey
             bangsal,
             admittedAt,
             AuditTrailType.Create(auditUserId, admittedAt),
-            AdmissionSourceEnum.Admission);
+            AdmissionSourceEnum.Admission,
+            inpatientOrderId);
+    }
+
+    public static AdmissionModel Admit(
+        PasienReff pasien,
+        KelasDkType kelasDk,
+        BangsalReff bangsal,
+        string inpatientOrderId,
+        string auditUserId,
+        DateTime admittedAt = default)
+    {
+        return Admit(
+            pasien,
+            kelasDk,
+            bangsal,
+            EMPTY_REF_ID,
+            EMPTY_REF_ID,
+            auditUserId,
+            admittedAt,
+            inpatientOrderId);
     }
 
     public static AdmissionModel CreateFromLegacyRegistration(
@@ -96,7 +123,8 @@ public record AdmissionModel : IRegKey
             reg.Bangsal,
             admittedAt,
             AuditTrailType.Create(auditUserId, admittedAt),
-            AdmissionSourceEnum.Legacy);
+            AdmissionSourceEnum.Legacy,
+            EMPTY_REF_ID);
     }
 
     public static AdmissionModel Default => new(
@@ -109,7 +137,8 @@ public record AdmissionModel : IRegKey
         new BangsalReff("-", "-"),
         EmptyDate,
         AuditTrailType.Default,
-        AdmissionSourceEnum.Admission);
+        AdmissionSourceEnum.Admission,
+        EMPTY_REF_ID);
 
     public static IRegKey Key(string id) => Default with { RegId = id };
 
@@ -123,6 +152,7 @@ public record AdmissionModel : IRegKey
     public PasienReff Pasien { get; init; }
     public string OpnameRequestId { get; init; }
     public string ReservationId { get; init; }
+    public string InpatientOrderId { get; init; }
     public KelasDkType KelasDk { get; init; }
     public BangsalReff Bangsal { get; init; }
     public DateTime AdmissionDate { get; init; }
@@ -236,7 +266,8 @@ public record AdmissionModel : IRegKey
             bangsal,
             AdmissionDate,
             audit,
-            AdmissionSource);
+            AdmissionSource,
+            InpatientOrderId);
 
     #endregion
 }
