@@ -28,11 +28,13 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
                 aa.LastBillingReleaseStatus, aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
                 aa.Urgency, aa.DokterPerujukName, aa.LayananPerujukName, aa.DeferredReason,
                 (SELECT COUNT(*) FROM BILRG_LabOrderItem bb WHERE bb.OrderId = aa.OrderId) AS ItemCount,
-                (
-                    SELECT STRING_AGG(bb.LabTestName, ', ') WITHIN GROUP (ORDER BY bb.ItemNo)
+                STUFF((
+                    SELECT ', ' + bb.LabTestName
                     FROM BILRG_LabOrderItem bb
                     WHERE bb.OrderId = aa.OrderId
-                ) AS TestNamesCsv
+                    ORDER BY bb.ItemNo
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS TestNamesCsv
             FROM BILRG_LabOrder aa
             WHERE aa.VodDate = @VodDate
               AND (@OrderSource IS NULL OR aa.OrderSource = @OrderSource)
