@@ -195,7 +195,7 @@ public class OrderTdkModelTests
     private static RegModel CreateTestNonAktifRegModel()
     {
         var reg = RegModel.Default;
-        reg.BatalBerobat("test", DateTime.Now);
+        reg.BatalBerobat("TEST_USER", DateTime.Now);
         return reg;
     }
 }

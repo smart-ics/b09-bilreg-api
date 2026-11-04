@@ -13,4 +13,5 @@ public interface IAdmissionRepo :
 
 public record AdmissionListFilter(
     AdmissionStatusEnum? Status = null,
-    string? PasienId = null);
+    string? PasienId = null,
+    string? Search = null);

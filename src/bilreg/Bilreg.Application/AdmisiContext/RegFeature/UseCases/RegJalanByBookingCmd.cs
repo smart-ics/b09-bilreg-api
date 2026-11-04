@@ -3,6 +3,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -19,6 +20,7 @@ using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -90,6 +92,8 @@ public class RegJalanByBookingHandler
     private readonly IJurnalRepo _jurnalRepo;
     private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
     private readonly IAntrianMapRepo _antrianMapRepo;
+    private readonly IJadwalPraktekRepo _jadwalRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
@@ -129,6 +133,8 @@ public class RegJalanByBookingHandler
         EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         IAntrianMapRepo antrianMapRepo,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
+        IJadwalPraktekRepo jadwalRepo,
+        IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider,
         IAdmissionServicePointResolver admissionServicePointResolver,
         IAdmisiEventPublisher publisher,
@@ -165,6 +171,8 @@ public class RegJalanByBookingHandler
         _emrOutboundEnqueue = emrOutboundEnqueue;
         _antrianMapRepo = antrianMapRepo;
         _queueNumberAdapter = queueNumberAdapter;
+        _jadwalRepo = jadwalRepo;
+        _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
         _admissionServicePointResolver = admissionServicePointResolver;
         _publisher = publisher;
@@ -335,12 +343,18 @@ public class RegJalanByBookingHandler
 
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var schedule = BookingScheduleResolver.Resolve(
+                _featureResolver, _jadwalRepo, booking.Dokter, booking.TglBerobat, booking.JamPraktek, allowSynthetic: true);
+            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            var prefix = NormalizePrefix(rawPrefix);
+
             var emrPayload = new AddAntrianEmrByRegCommand(
                 reg.RegId, booking.BookingId, reg.Pasien.PasienId,
                 reg.Pasien.PasienName, reg.Layanan.LayananId,
                 reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
                 booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
-                booking.NoAntrian);
+                booking.NoAntrian,
+                prefix);
             _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
 
             trans.Complete();
@@ -356,6 +370,13 @@ public class RegJalanByBookingHandler
     }
 
     #region PRIVATE HELPER
+    private static string NormalizePrefix(string? rawPrefix)
+    {
+        var prefix = (rawPrefix ?? string.Empty).Trim();
+        if (prefix.Length > 2)
+            prefix = prefix.Substring(0, 2);
+        return prefix;
+    }
     private void EnsureAdmissionEntryInService(AdmissionRegistrationQueueContext context)
     {
         var queue = _antrianRepo.LoadEntity(AntrianModel.Key(context.AntrianId))

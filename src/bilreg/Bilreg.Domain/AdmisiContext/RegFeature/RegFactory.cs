@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
@@ -32,7 +32,9 @@ public interface IRegFactory
     RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
         TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
         RujukanType rujukan, PpaType dokter, LayananType layanan,
-        string pesertaJaminanId);
+        string pesertaJaminanId,
+        JenisInapType? jenisInap = null,
+        string regIbu = "");
 }
 
 
@@ -70,7 +72,10 @@ public class RegFactory : IRegFactory
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(),  
             LayananType.Default.ToReff(), KarcisType.Default.ToReff(), 
-            eligibility, [], kelasRajal.KelasDk);
+            eligibility, [], kelasRajal.KelasDk,
+            bangsal: null,
+            jenisInap: JenisInapType.Empty,
+            regIbu: string.Empty);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);
@@ -95,7 +100,10 @@ public class RegFactory : IRegFactory
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, [], kelasRajal.KelasDk);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, [], kelasRajal.KelasDk,
+            bangsal: null,
+            jenisInap: JenisInapType.Empty,
+            regIbu: string.Empty);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, RujukanType.Default);
@@ -107,7 +115,9 @@ public class RegFactory : IRegFactory
     public RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
         TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
         RujukanType rujukan, PpaType dokter, LayananType layanan,
-        string pesertaJaminanId)
+        string pesertaJaminanId,
+        JenisInapType? jenisInap = null,
+        string regIbu = "")
     {
         var regMasukAudit = admission.AuditTrail.Created;
         var eligibility = new RegEligibilityType("-", "-", pesertaJaminanId);
@@ -131,7 +141,9 @@ public class RegFactory : IRegFactory
             eligibility,
             [],
             admission.KelasDk,
-            admission.Bangsal);
+            admission.Bangsal,
+            jenisInap ?? JenisInapType.Default,
+            regIbu ?? string.Empty);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, rujukan);

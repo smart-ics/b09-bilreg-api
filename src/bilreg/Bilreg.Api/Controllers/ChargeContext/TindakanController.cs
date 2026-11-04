@@ -28,6 +28,8 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    public Task<IActionResult> CreateTindakan(TdkCreateTindakanCmd cmd) => Create(cmd);
+
     [HttpPost]
     [Route("save")]
     public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
@@ -40,7 +42,7 @@ public class TindakanController : Controller
     [HttpPatch("update-petugas")]
     [HttpPost("update-dokter")]
     [HttpPatch("update-dokter")]
-    public async Task<IActionResult> UpdatePetugasMedis([FromBody] TindakanUpdatePetugasRequest req)
+    public async Task<IActionResult> UpdatePetugas([FromBody] TindakanUpdatePetugasRequest req)
     {
         var resolvedTindakanId = !string.IsNullOrWhiteSpace(req.TindakanId)
             ? req.TindakanId
@@ -55,6 +57,8 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    public Task<IActionResult> UpdatePetugasMedis([FromBody] TindakanUpdatePetugasRequest req) => UpdatePetugas(req);
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> Get(string id)
@@ -63,6 +67,8 @@ public class TindakanController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    public Task<IActionResult> GetTindakan(string id) => Get(id);
 
     [HttpGet]
     [Route("list/{regId}")]
@@ -81,6 +87,8 @@ public class TindakanController : Controller
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+
+    public Task<IActionResult> ListTindakanJual(string regId) => ListTdkJual(regId);
     
     [HttpPatch]
     [Route("batal")]

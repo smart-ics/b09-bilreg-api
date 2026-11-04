@@ -219,7 +219,7 @@ public class TdkCreateTindakanCmdTest
     }
 
     [Fact]
-    public async Task Handle_WhenQtyLessThan1_ShouldThrowArgumentException()
+    public async Task Handle_WhenQtyLessThan1_ShouldDefaultToQty1()
     {
         // Arrange
         var ppaCmd = new TdkCreateTindakanPpaCmd("K01", "PPA01");
@@ -228,10 +228,10 @@ public class TdkCreateTindakanCmdTest
             [ppaCmd], PakaiBedId: "BED-01", Qty: 0);
 
         // Act
-        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+        var response = await _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Qty must be at least 1*");
+        response.Should().NotBeNull();
+        response.TindakanId.Should().NotBeNullOrEmpty();
     }
 }

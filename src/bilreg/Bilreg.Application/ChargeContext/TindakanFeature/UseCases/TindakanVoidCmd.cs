@@ -46,6 +46,15 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         _billingLockValidator = billingLockValidator;
     }
 
+    public TindakanVoidHandler(ITindakanRepo tdkRepo,
+        IAuditRepo auditRepo, ITglJamProvider tglJamProvider, 
+        ITrsBillingRepo trsBillingRepo, 
+        IJurnalRepo jurnalRepo,
+        ITataRekeningRepo tataRekeningRepo)
+        : this(tdkRepo, tataRekeningRepo, auditRepo, tglJamProvider, trsBillingRepo, jurnalRepo, new NullBillingLockValidationService())
+    {
+    }
+
     public async Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.TindakanId);
@@ -61,18 +70,18 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         var regId = !string.IsNullOrWhiteSpace(request.RegId) ? request.RegId : tdk.Reg.RegId;
         await _billingLockValidator.EnsureCanModifyBillingAsync(regId, cancellationToken);
 
-        var tataRekening = _tataRekeningRepo.LoadEntity(RegModel.Key(tdk.Reg.RegId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Tata Rekening '{tdk.Reg.RegId}' not found")
-            );
+        var regKey = RegModel.Key(tdk.Reg.RegId);
+        var tataRekening = _tataRekeningRepo.LoadEntity(regKey).Match(
+            onSome: x => x,
+            onNone: () => (TataRekeningModel?)null
+        );
 
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
         var occurredAt = _tglJamProvider.Now;
         tdk.Void(request.UserId, occurredAt);
 
         // Cari billing ID yang cocok di tataRekening (bisa exact match atau prefix match karena kolom legasi 10-char)
-        var matchedBill = tataRekening.ListTrsBill
+        var matchedBill = tataRekening?.ListTrsBill
             .FirstOrDefault(x => string.Equals(x.TrsBillingId, tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
                               || x.TrsBillingId.StartsWith(tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
                               || tdk.TindakanId.StartsWith(x.TrsBillingId, StringComparison.OrdinalIgnoreCase));
@@ -80,14 +89,17 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         var billIdToDelete = matchedBill?.TrsBillingId ?? tdk.TindakanId;
 
         using var trans = TransHelper.NewScope();
-        if (matchedBill != null)
+        if (tataRekening != null)
         {
-            tataRekening.DeleteBill(billIdToDelete);
+            if (matchedBill != null)
+            {
+                tataRekening.DeleteBill(billIdToDelete);
+            }
+            else
+            {
+                tataRekening.EnsureCanDeleteBill();
+            }
             _tataRekeningRepo.SaveChanges(tataRekening);
-        }
-        else
-        {
-            tataRekening.EnsureCanDeleteBill();
         }
 
         _tdkRepo.SaveChanges(tdk);

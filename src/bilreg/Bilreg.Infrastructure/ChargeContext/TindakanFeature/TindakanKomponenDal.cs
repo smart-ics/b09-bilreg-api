@@ -44,7 +44,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
                 CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
             )
             VALUES(
-                @FS_KD_TRS, @FS_KD_DETIL_TARIF, @FN_TARIF, @FN_JML, @FN_SUB_TOTAL, 0, @FN_TOTAL,
+                @FS_KD_TRS, @FS_KD_DETIL_TARIF, @FN_TARIF, @FN_JML, @FN_SUB_TOTAL, @FN_DISKON, @FN_TOTAL,
                 @FS_KD_PETUGAS_MEDIS, 0, '', '', '',
                 @CRTTGL, @CRTJAM, '', '', @CRTUSR, '3000-01-01', '00:00:00', '', '', ''
             )
@@ -59,7 +59,8 @@ public class TindakanKomponenDal : ITindakanKomponenDal
             FS_KD_DETIL_TARIF = SafeTruncate(x.KomponenTarifId, 3),
             FN_TARIF = x.Nilai,
             FN_JML = x.Qty,
-            FN_SUB_TOTAL = x.SubTotal,
+            FN_SUB_TOTAL = x.SubTotal + x.Diskon,
+            FN_DISKON = x.Diskon,
             FN_TOTAL = x.SubTotal,
             FS_KD_PETUGAS_MEDIS = SafeTruncate(x.PpaId, 10),
             CRTTGL = today,
@@ -99,7 +100,8 @@ public class TindakanKomponenDal : ITindakanKomponenDal
                 ISNULL(p.FS_NM_PEG, '') AS PpaName,
                 k.FN_JML AS Qty,
                 k.FN_TARIF AS Nilai,
-                k.FN_SUB_TOTAL AS SubTotal
+                ISNULL(k.FN_DISKON, 0) AS Diskon,
+                k.FN_TOTAL AS SubTotal
             FROM
                 TA_TRS_TINDAKAN2 k
                 LEFT JOIN TA_DETIL_TARIF d ON k.FS_KD_DETIL_TARIF = d.FS_KD_DETIL_TARIF

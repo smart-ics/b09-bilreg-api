@@ -13,14 +13,51 @@ public record TindakanDto(
     string LayananId, string LayananName,
     string KelasId, string KelasName,
     string TipeTarifId, string TipeTarifName,
-    string TarifId, string TarifName, decimal Total,
+    string TarifId, string TarifName, 
+    int Qty, decimal Total,
+    bool IsDiskonDokter, decimal DiskonDokter,
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
     string VodUser, DateTime VodDate,
-    string PakaiBedId = "",
-    int Qty = 1)
+    string PakaiBedId = "")
 {
-    public TindakanDto() : this("", default, "", "", "", "", "", "", "", "", "", "", "", "", 0, "", default, "", default, "", default, "", 1)
+    public TindakanDto() : this("", default, "", "", "", "", "", "", "", "", "", "", "", "", 1, 0, false, 0m, "", default, "", default, "", default, "")
+    {
+    }
+
+    public TindakanDto(
+        string TindakanId, DateTime TindakanDate, string OrderTdkId,
+        string RegId, string PasienId, string PasienName,
+        string LayananId, string LayananName,
+        string KelasId, string KelasName,
+        string TipeTarifId, string TipeTarifName,
+        string TarifId, string TarifName, decimal Total,
+        string CrtUser, DateTime CrtDate,
+        string UpdUser, DateTime UpdDate,
+        string VodUser, DateTime VodDate,
+        string PakaiBedId, int Qty)
+        : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
+               LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+               TarifId, TarifName, Qty, Total, false, 0m,
+               CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate, PakaiBedId)
+    {
+    }
+
+
+    public TindakanDto(
+        string TindakanId, DateTime TindakanDate, string OrderTdkId,
+        string RegId, string PasienId, string PasienName,
+        string LayananId, string LayananName,
+        string KelasId, string KelasName,
+        string TipeTarifId, string TipeTarifName,
+        string TarifId, string TarifName, 
+        int Qty, decimal Total,
+        string CrtUser, DateTime CrtDate,
+        string UpdUser, DateTime UpdDate,
+        string VodUser, DateTime VodDate)
+        : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
+               LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+               TarifId, TarifName, Qty, Total, false, 0m, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate, "")
     {
     }
 
@@ -36,12 +73,31 @@ public record TindakanDto(
         string vodUser, DateTime vodDate)
         : this(tindakanId, tindakanDate, orderTdkId, regId, pasienId, pasienName,
             layananId, layananName, kelasId, kelasName, tipeTarifId, tipeTarifName,
-            tarifId, tarifName, total, crtUser, crtDate, updUser, updDate, vodUser, vodDate,
-            pakaiBedId, qty)
+            tarifId, tarifName, qty, total, false, 0m, crtUser, crtDate, updUser, updDate, vodUser, vodDate,
+            pakaiBedId)
+    {
+    }
+
+    public TindakanDto(
+        string TindakanId, DateTime TindakanDate, string OrderTdkId,
+        string RegId, string PasienId, string PasienName,
+        string LayananId, string LayananName,
+        string KelasId, string KelasName,
+        string TipeTarifId, string TipeTarifName,
+        string TarifId, string TarifName, decimal Total,
+        string CrtUser, DateTime CrtDate,
+        string UpdUser, DateTime UpdDate,
+        string VodUser, DateTime VodDate)
+        : this(TindakanId, TindakanDate, OrderTdkId, RegId, PasienId, PasienName,
+               LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+               TarifId, TarifName, 1, Total, false, 0m, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate, "")
     {
     }
 
     public static TindakanDto FromModel(TindakanModel model)
+        => FromModel(model, model.Qty);
+
+    public static TindakanDto FromModel(TindakanModel model, int qty)
     {
         var result = new TindakanDto(
             model.TindakanId, model.TindakanDate, model.OrderTindakanId, 
@@ -49,11 +105,13 @@ public record TindakanDto(
             model.Layanan.LayananId, model.Layanan.LayananName,
             model.Kelas.KelasId, model.Kelas.KelasName,
             model.TipeTarif.TipeTarifId, model.TipeTarif.TipeTarifName,
-            model.Tarif.TarifId, model.Tarif.TarifName, model.Total,
+            model.Tarif.TarifId, model.Tarif.TarifName, 
+            qty, model.Total,
+            model.IsDiskonDokter, model.DiskonDokter,
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp,
-            model.PakaiBedId, model.Qty);
+            model.PakaiBedId);
         return result;
     }
 
@@ -80,8 +138,9 @@ public record TindakanDto(
             tarif,
             listKomponen,
             auditTrail,
-            PakaiBedId,
-            Qty
+            PakaiBedId ?? "",
+            Qty <= 0 ? 1 : Qty,
+            IsDiskonDokter
         );
         return result;
     }

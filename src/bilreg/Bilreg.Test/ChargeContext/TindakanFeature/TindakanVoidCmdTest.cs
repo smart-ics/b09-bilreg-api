@@ -242,7 +242,7 @@ public class TindakanVoidCmdTest
     }
 
     [Fact]
-    public async Task Handle_WhenTataRekeningNotFound_ShouldThrowKeyNotFoundException()
+    public async Task Handle_WhenTataRekeningNotFound_ShouldProceedGracefully()
     {
         // Arrange
         var tdk = CreateTestTindakan("TDK-001", "REG-MISSING");
@@ -254,10 +254,11 @@ public class TindakanVoidCmdTest
         var cmd = new TindakanVoidCmd("TDK-001", "USER01", "Alasan", "127.0.0.1", "Mozilla/5.0");
 
         // Act
-        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+        await _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage("*Tata Rekening 'REG-MISSING' not found*");
+        tdk.AuditTrail.IsVoided.Should().BeTrue();
+        _tdkRepoMock.Verify(x => x.SaveChanges(tdk), Times.Once);
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
     }
 }

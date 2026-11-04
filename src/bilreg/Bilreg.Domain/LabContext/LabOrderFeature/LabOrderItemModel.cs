@@ -10,8 +10,11 @@ public record LabOrderItemModel(
     string TarifName,
     VacutainerTypeEnum TubeType,
     string SpecimenType,
-    int RequiredTubeCount)
+    int RequiredTubeCount,
+    LabOrderUrgencyEnum Urgency = LabOrderUrgencyEnum.Rutin)
 {
+    public bool IsCito => Urgency == LabOrderUrgencyEnum.Cito;
+
     public static LabOrderItemModel Create(
         string testDefinitionId,
         string labTestCode,
@@ -21,7 +24,8 @@ public record LabOrderItemModel(
         string tarifName,
         VacutainerTypeEnum tubeType,
         string specimenType,
-        int requiredTubeCount)
+        int requiredTubeCount,
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
         => new(
             ItemNo: 0,
             TestDefinitionId: testDefinitionId,
@@ -32,5 +36,6 @@ public record LabOrderItemModel(
             TarifName: tarifName,
             TubeType: tubeType,
             SpecimenType: specimenType,
-            RequiredTubeCount: requiredTubeCount);
+            RequiredTubeCount: requiredTubeCount,
+            Urgency: urgency);
 }

@@ -85,4 +85,29 @@ public class NilaiTarifRepoTest
             dal.Delete(NilaiTarifType.Key(markerId));
         }
     }
+
+    [Fact]
+    public void UT3_GivenTarifKey_WhenLoadFirstActiveRate_ThenReturnsFirstWithPositiveNilai()
+    {
+        // Arrange
+        var tarifKey = TarifType.Key("TRF-01");
+        var zeroDto = new NilaiTarifDto("01AR00000000000000000001", "TRF-01", "01", "K1", 0, "", "", "", "");
+        var positiveDto = new NilaiTarifDto("01AR00000000000000000002", "TRF-01", "02", "K2", 150000, "", "", "", "");
+
+        _nilaiTarifDalMock
+            .Setup(x => x.ListData(tarifKey))
+            .Returns([zeroDto, positiveDto]);
+        _nilaiTarifKompDalMock
+            .Setup(x => x.ListData(It.Is<INilaiTarifKey>(k => k.NilaiTarifId == positiveDto.NilaiTarifId)))
+            .Returns([]);
+
+        // Act
+        var result = _repository.LoadFirstActiveRate(tarifKey);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: model => model.Nilai.Should().Be(150000m),
+            onNone: () => Assert.Fail("Expected Some"));
+    }
 }

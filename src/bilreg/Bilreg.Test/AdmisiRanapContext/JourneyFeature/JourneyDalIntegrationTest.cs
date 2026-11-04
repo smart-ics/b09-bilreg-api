@@ -60,6 +60,31 @@ public class JourneyDalIntegrationTest
     }
 
     [Fact]
+    public async Task ListAsync_And_GetByJourneyIdAsync_Return_OneJourney()
+    {
+        using var trans = TransHelper.NewScope();
+        var ids = NewIds();
+        SeedAdmission(ids.RegId, ids.PasienId, "-", "-");
+        SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Waiting);
+
+        var list = await _sut.ListAsync(new JourneyListFilter(
+            JourneyListScope.Active,
+            SearchTerm: ids.RegId,
+            PageSize: 50));
+
+        list.Items.Count(i => i.RegId == ids.RegId).Should().Be(1);
+        var item = list.Items.Single(i => i.RegId == ids.RegId);
+        item.JourneyId.Should().Be($"reg:{ids.RegId}");
+        item.Stage.Should().Be(JourneyOperationalStage.WardAcceptanceRequired);
+
+        var detail = await _sut.GetByJourneyIdAsync(item.JourneyId);
+        detail.Should().NotBeNull();
+        detail!.Timeline.Count(t => t.RelatedRecordId == ids.WlId1).Should().BeGreaterThan(0);
+        detail.CandidateAdmisiActions.Should().NotBeNull();
+        detail.AllowedAdmisiActions.Should().NotBeNull();
+    }
+
+    [Fact]
     public void Admission_And_WaitingList_SameRegId_Return_OneJourney()
     {
         using var trans = TransHelper.NewScope();

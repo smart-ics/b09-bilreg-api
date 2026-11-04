@@ -138,6 +138,31 @@ public class AddBillAppServiceTest
             Times.Once);
     }
 
+    [Fact]
+    public void UT05_GivenClosedTataRekening_WhenCreateFromTindakan_ThenThrowsInvalidOperationExceptionAndDoesNotPersist()
+    {
+        var reg = CreateRegForTindakan("REG-005");
+        var tindakan = CreateTindakan("TDK-005", reg);
+        var closedTataRekening = TataRekeningModel.Create(reg.RegId);
+        closedTataRekening.Close();
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(closedTataRekening));
+
+        Action act = () => _sut.FromTindakan(
+            tindakan,
+            reg,
+            TarifType.Default,
+            CreateJaminanForReg(reg),
+            [KomponenType.Default with { KomponenId = "KOMP-01", KomponenName = "Komponen Test" }]);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*OPEN*");
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
     private static RegModel CreateRegWithKomponen(string regId)
     {
         var komponen = new RegKomponenType(

@@ -43,7 +43,7 @@ public sealed class JourneyController : ControllerBase
             return BadRequest(new JSend(StatusCodes.Status400BadRequest, "Bad Request", error));
 
         var stopwatch = Stopwatch.StartNew();
-        var result = await _mediator.Send(query!);
+        var result = await _mediator.Send(query!, HttpContext.RequestAborted);
         stopwatch.Stop();
         Response.Headers.Append("Server-Timing", $"journey;dur={stopwatch.Elapsed.TotalMilliseconds:F0}");
         return Ok(new JSendOk(result));
@@ -55,7 +55,7 @@ public sealed class JourneyController : ControllerBase
         if (!TryLegacyInput(recordType, recordId, out var type, out var id, out var error))
             return BadRequest(new JSend(StatusCodes.Status400BadRequest, "Bad Request", error));
 
-        var resolution = await _mediator.Send(new AdmResolveJourneyLegacyRecordQry(type!, id!));
+        var resolution = await _mediator.Send(new AdmResolveJourneyLegacyRecordQry(type!, id!), HttpContext.RequestAborted);
         if (resolution is null)
             return NotFound(new JSend(StatusCodes.Status404NotFound, "Not Found", "Legacy record was not found."));
         if (resolution.RequiresReconciliation)
@@ -71,7 +71,7 @@ public sealed class JourneyController : ControllerBase
             return BadRequest(new JSend(StatusCodes.Status400BadRequest, "Bad Request", error));
 
         var stopwatch = Stopwatch.StartNew();
-        var result = await _mediator.Send(new AdmGetJourneyQry(normalized!));
+        var result = await _mediator.Send(new AdmGetJourneyQry(normalized!), HttpContext.RequestAborted);
         stopwatch.Stop();
         Response.Headers.Append("Server-Timing", $"journey;dur={stopwatch.Elapsed.TotalMilliseconds:F0}");
         return result is null

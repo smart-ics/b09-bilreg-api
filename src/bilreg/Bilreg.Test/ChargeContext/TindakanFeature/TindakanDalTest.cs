@@ -10,13 +10,9 @@ namespace Bilreg.Test.ChargeContext.TindakanFeature;
 
 public class TindakanDalTest
 {
-    private readonly TindakanDal _sut = new(Options.Create(new DatabaseOptions
-    {
-        ServerName = "dev.smart-ics.com",
-        DbName = "HOSPITAL_PKL"
-    }));
+    private readonly TindakanDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static TindakanDto Faker()
+    private static TindakanDto Faker(int qty = 1)
         => new TindakanDto(
             TindakanId: "TND0000001",
             TindakanDate: new DateTime(2025, 12, 30),
@@ -32,7 +28,8 @@ public class TindakanDalTest
             TipeTarifName: "ASKES",
             TarifId: "A0401101",
             TarifName: "Abdomen 1 Posisi",
-            Total: 150000,
+            Qty: qty,
+            Total: 150000 * qty,
             CrtUser: "USR001",
             CrtDate: new DateTime(2025, 2, 3),
             UpdUser: "USR001",
@@ -40,7 +37,8 @@ public class TindakanDalTest
             VodUser: "",
             VodDate: new DateTime(3000, 1, 1),
             PakaiBedId: "",
-            Qty: 1
+            IsDiskonDokter: false,
+            DiskonDokter: 0m
         );
     
     private static ITindakanKey FakerKey()
@@ -111,5 +109,44 @@ public class TindakanDalTest
         var item = actual.FirstOrDefault(x => x.TransaksiId == "TND0000001");
         item.Should().NotBeNull();
         item!.Total.Should().Be(150000);
+    }
+
+    [Fact]
+    public void InsertAndGetData_WithCustomQty_ShouldPersistAndReadQty()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = Faker(qty: 3);
+        _sut.Insert(dto);
+        var kompDal = new TindakanKomponenDal(ConnStringHelper.GetTestEnv());
+        kompDal.Insert([new TindakanKomponenDto(dto.TindakanId, 0, "K01", "Komp 1", "", "", 3, 150000, 450000, 0)]);
+        var actual = _sut.GetData(FakerKey());
+        actual.Qty.Should().Be(3);
+        actual.Total.Should().Be(450000);
+    }
+
+    [Fact]
+    public void InsertAndGetData_WithDiskonDokter_ShouldPersistAndReadDiskonDokter()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = Faker() with { IsDiskonDokter = true, DiskonDokter = 60000m, Total = 90000m };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(FakerKey());
+        actual.IsDiskonDokter.Should().BeTrue();
+        actual.DiskonDokter.Should().Be(60000m);
+        actual.Total.Should().Be(90000m);
+    }
+
+    [Fact]
+    public void Update_WithDiskonDokter_ShouldPersistUpdatedValues()
+    {
+        using var trans = TransHelper.NewScope();
+        var initial = Faker();
+        _sut.Insert(initial);
+        var updated = initial with { IsDiskonDokter = true, DiskonDokter = 75000m, Total = 75000m };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.IsDiskonDokter.Should().BeTrue();
+        actual.DiskonDokter.Should().Be(75000m);
+        actual.Total.Should().Be(75000m);
     }
 }

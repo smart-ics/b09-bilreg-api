@@ -324,7 +324,8 @@ public class LabResultDocumentModel : ILabResultDocumentKey
 
         _items.Clear();
         _items.AddRange(next);
-        AuditTrail.Modif(userId, recordedAt);
+        var recordAt = recordedAt == default ? DateTime.Now : recordedAt;
+        AuditTrail.Modif(userId, recordAt);
     }
 
     public void MarkRecorded(string userId, DateTime recordedAt = default)
@@ -339,10 +340,11 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah diverifikasi; MarkRecorded tidak diperbolehkan.");
 
+        var at = recordedAt == default ? DateTime.Now : recordedAt;
         ResultStatus = LabResultStatusEnum.Recorded;
-        RecordedDate = recordedAt;
+        RecordedDate = at;
         RecordedUserId = userId;
-        AuditTrail.Modif(userId, recordedAt);
+        AuditTrail.Modif(userId, at);
     }
 
     public void Verify(string verifiedUserId, DateTime verifiedDate)

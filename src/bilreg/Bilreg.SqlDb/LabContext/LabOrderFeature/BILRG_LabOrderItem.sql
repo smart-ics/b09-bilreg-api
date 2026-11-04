@@ -14,6 +14,7 @@ CREATE TABLE BILRG_LabOrderItem
     TubeType INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_TubeType DEFAULT(0),
     SpecimenType VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_SpecimenType DEFAULT(''),
     RequiredTubeCount INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_RequiredTubeCount DEFAULT(0),
+    Urgency INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_Urgency DEFAULT(0),
 
     CONSTRAINT PK_BILRG_LabOrderItem PRIMARY KEY CLUSTERED (OrderId, ItemNo)
 )

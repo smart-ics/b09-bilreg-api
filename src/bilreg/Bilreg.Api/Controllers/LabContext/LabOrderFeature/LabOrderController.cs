@@ -1,4 +1,6 @@
+using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +20,7 @@ public class LabOrderController : ControllerBase
         _mediator = mediator;
     }
 
+    [HttpPost("from-emr")]
     [HttpPost("fromEmr")]
     public async Task<IActionResult> CreateFromEmr(LabOrderCreateFromEmrCmd cmd)
     {
@@ -25,6 +28,7 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("external-patient")]
     [HttpPost("external")]
     public async Task<IActionResult> CreateExternal(LabOrderCreateExternalPatientCmd cmd)
     {
@@ -37,10 +41,12 @@ public class LabOrderController : ControllerBase
         [FromQuery] int? labOrderStatus,
         [FromQuery] string? searchTerm,
         [FromQuery] DateTime? date1,
-        [FromQuery] DateTime? date2)
+        [FromQuery] DateTime? date2,
+        [FromQuery] bool? isCitoOnly = null,
+        [FromQuery] int? orderSource = null)
     {
         var response = await _mediator.Send(new LabOrderWorklistQuery(
-            labOrderStatus, searchTerm, date1, date2));
+            labOrderStatus, searchTerm, date1, date2, isCitoOnly, orderSource));
         return Ok(new JSendOk(response));
     }
 
@@ -72,6 +78,20 @@ public class LabOrderController : ControllerBase
     public async Task<IActionResult> Get(string orderId)
     {
         var response = await _mediator.Send(new LabOrderGetQuery(orderId));
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch("{orderId}")]
+    public async Task<IActionResult> Update(string orderId, [FromBody] LabOrderUpdateDto dto)
+    {
+        var cmd = new LabOrderUpdateCmd(
+            orderId,
+            dto.UserId,
+            dto.Items,
+            (LabOrderUrgencyEnum)dto.Urgency,
+            dto.ClinicalNote ?? string.Empty,
+            dto.AllowDuplicateConfirmation);
+        var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
 
@@ -110,6 +130,7 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("cancel")]
     [HttpPatch("cancel")]
     public async Task<IActionResult> Cancel(LabOrderCancelCmd cmd)
     {
@@ -124,3 +145,10 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 }
+
+public record LabOrderUpdateDto(
+    string UserId,
+    List<LabOrderTarifItemInput> Items,
+    int Urgency = 0,
+    string ClinicalNote = "",
+    bool AllowDuplicateConfirmation = false);

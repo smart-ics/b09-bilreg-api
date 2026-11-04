@@ -7,7 +7,7 @@ public class AuditTrailType
         Created = created;
         Modified = modified;
         Voided = voided;
-        IsVoided = false;
+        IsVoided = !string.IsNullOrWhiteSpace(voided.UserId) && voided.Timestamp.Date != new DateTime(3000, 1, 1);
     }
     public AuditInfoType Created { get; init; }
     public AuditInfoType Modified { get; private set; }
@@ -28,6 +28,12 @@ public class AuditTrailType
             throw new ArgumentException("ModifDate-UserId invalid");
 
         Modified = new AuditInfoType(userId, timestamp);
+    }
+
+    public AuditTrailType Update(string userId, DateTime timestamp)
+    {
+        Modif(userId, timestamp);
+        return this;
     }
     
     public static AuditTrailType Default 

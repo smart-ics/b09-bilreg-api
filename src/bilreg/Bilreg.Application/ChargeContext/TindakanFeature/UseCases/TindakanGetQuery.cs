@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -12,18 +13,33 @@ public record TindakanGetQuery(string TindakanId) : IRequest<TindakanGetResponse
 
 public record TindakanGetResponse(
     string TindakanId,
-    string TindakanDate,
-    string PakaiBedId,
-    int Qty,
-    decimal Total,
+    DateTime TindakanDate,
+    string OrderTindakanId,
     RegReff Reg,
     LayananReff Layanan,
     KelasReff Kelas,
     TipeTarifReff TipeTarif,
     TarifReff Tarif,
-    IEnumerable<TindakanKomponenBase> ListKomponen,
+    int Qty,
+    decimal Total,
+    bool IsVoid,
     AuditTrailType AuditTrail,
-    string OrderTindakanId = "");
+    IEnumerable<TindakanGetKomponenResponse> ListKomponen,
+    string PakaiBedId = "",
+    bool IsDiskonDokter = false,
+    decimal DiskonDokter = 0
+);
+
+public record TindakanGetKomponenResponse(
+    string KomponenId,
+    string KomponenName,
+    decimal Nilai,
+    int Qty,
+    decimal SubTotal,
+    string PpaId,
+    string PpaName,
+    decimal Diskon = 0
+);
 
 public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetResponse>
 {
@@ -36,26 +52,50 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
 
     public Task<TindakanGetResponse> Handle(TindakanGetQuery request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.TindakanId);
+
         var tdk = _tdkRepo.LoadEntity(request)
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Tindakan {request.TindakanId} not found")
             );
 
+        var listKomponen = tdk.ListKomponen.Select(item =>
+        {
+            var (ppaId, ppaName) = item is TindakanKomponenWithPpaType ppaKomp
+                ? (ppaKomp.Ppa.PpaId, ppaKomp.Ppa.PpaName)
+                : (string.Empty, string.Empty);
+
+            return new TindakanGetKomponenResponse(
+                item.Komponen.KomponenId,
+                item.Komponen.KomponenName,
+                item.Nilai,
+                item.Qty,
+                item.SubTotal,
+                ppaId,
+                ppaName,
+                item.Diskon
+            );
+        }).ToList();
+
         var result = new TindakanGetResponse(
             tdk.TindakanId,
-            tdk.TindakanDate.ToString("yyyy-MM-dd HH:mm:ss"),
-            tdk.PakaiBedId,
-            tdk.Qty,
-            tdk.Total,
+            tdk.TindakanDate,
+            tdk.OrderTindakanId,
             tdk.Reg,
             tdk.Layanan,
             tdk.Kelas,
             tdk.TipeTarif,
             tdk.Tarif,
-            tdk.ListKomponen,
+            tdk.Qty,
+            tdk.Total,
+            tdk.AuditTrail.IsVoided,
             tdk.AuditTrail,
-            tdk.OrderTindakanId);
+            listKomponen,
+            tdk.PakaiBedId,
+            tdk.IsDiskonDokter,
+            tdk.DiskonDokter
+        );
 
         return Task.FromResult(result);
     }

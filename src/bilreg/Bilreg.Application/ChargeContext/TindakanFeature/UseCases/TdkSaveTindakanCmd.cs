@@ -6,6 +6,7 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -23,27 +24,62 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 public record TdkSaveTindakanCmd(string TindakanId, string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkSaveTindakanPpaCmd> ListPpa,
-    string PakaiBedId = "", int Qty = 1)
-    : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey;
+    string PakaiBedId = "", int Qty = 1,
+    bool IsDiskonDokter = false)
+    : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey
+{
+    public TdkSaveTindakanCmd(string tindakanId, string regId, string layananId, string nilaiTarifId, string userId,
+        IEnumerable<TdkSaveTindakanPpaCmd> listPpa, int qty, bool isDiskonDokter = false)
+        : this(tindakanId, regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter)
+    {
+    }
+}
 
 public record TdkSaveTindakanPpaCmd(string KomponenId, string PpaId);
+
 public record TdkSaveTindakanRespose(string TindakanId);
 
 public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSaveTindakanRespose>
 {
+    private readonly ITindakanRepo _tindakanRepo;
     private readonly IRegRepo _regRepo;
     private readonly ILayananRepo _layananRepo;
-    private readonly ITarifRepo _tarifRepo;
-    private readonly IJaminanRepo _jaminanRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly IPpaRepo _ppaRepo;
-    private readonly ITindakanRepo _tindakanRepo;
-    private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly ITarifRepo _tarifRepo;
+    private readonly IJaminanRepo _jaminanRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IBillingLockValidationService _billingLockValidator;
+
+    public TdkSaveTindakanHandler(ITindakanRepo tindakanRepo,
+        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        IAddBillAppService addBillAppService, 
+        IMapJaminanJkRepo mapJaminanJkRepo, 
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator)
+    {
+        _tindakanRepo = tindakanRepo;
+        _regRepo = regRepo;
+        _layananRepo = layananRepo;
+        _nilaiTarifRepo = nilaiTarifRepo;
+        _komponenRepo = komponenRepo;
+        _ppaRepo = ppaRepo;
+        _tarifRepo = tarifRepo;
+        _jaminanRepo = jaminanRepo;
+        _addBillAppService = addBillAppService;
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalRepo = jurnalRepo;
+        _tglJamProvider = tglJamProvider;
+        _billingLockValidator = billingLockValidator;
+    }
+
     public TdkSaveTindakanHandler(IRegRepo regRepo,
         ILayananRepo layananRepo,
         ITarifRepo tarifRepo,
@@ -52,41 +88,30 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         IKomponenRepo komponenRepo,
         IPpaRepo ppaRepo,
         ITindakanRepo tindakanRepo,
-        ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         ITglJamProvider tglJamProvider)
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService())
     {
-        _regRepo = regRepo;
-        _layananRepo = layananRepo;
-        _tarifRepo = tarifRepo;
-        _jaminanRepo = jaminanRepo;
-        _nilaiTarifRepo = nilaiTarifRepo;
-        _komponenRepo = komponenRepo;
-        _ppaRepo = ppaRepo;
-        _tindakanRepo = tindakanRepo;
-        _trsBillingRepo = trsBillingRepo;
-        _addBillAppService = addBillAppService;
-        _mapJaminanJkRepo = mapJaminanJkRepo;
-        _jurnalRepo = jurnalRepo;
-        _tglJamProvider = tglJamProvider;
     }
 
-    public Task<TdkSaveTindakanRespose> Handle(TdkSaveTindakanCmd request, CancellationToken cancellationToken)
+    public async Task<TdkSaveTindakanRespose> Handle(TdkSaveTindakanCmd request, CancellationToken cancellationToken)
     {
-        //  BUILD
         if (request.ListPpa is null)
             throw new ArgumentException("List PPA tidak boleh null");
 
-        var tindakan = _tindakanRepo.LoadEntity(request).GetValueOrDefault(TindakanModel.Default);
+        await _billingLockValidator.EnsureCanModifyBillingAsync(request.RegId, cancellationToken);
+
+        //  BUILD
+        var tindakan = LoadTindakan(request);
         var reg = LoadReg(request);
         var layanan = LoadLayanan(request);
         var nilaiTarif = LoadNilaiTaif(request);
         var tarif = LoadTarif(nilaiTarif);
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
-        
+
         var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen)).ToList();
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
@@ -116,26 +141,38 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         }
 
         var occurredAt = _tglJamProvider.Now;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, request.Qty);
+        var qty = request.Qty <= 0 ? 1 : request.Qty;
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter);
+
+        //  WRITE
+        using var trans = TransHelper.NewScope();
         var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
-        //  WRITE
-        using var trans = TransHelper.NewScope();
+
         _tindakanRepo.SaveChanges(tdk);
-        _trsBillingRepo.SaveChanges(trsBilling);
         _jurnalRepo.SaveChanges(jurnal);
         trans.Complete();
 
         //  RESPONSE
-        return Task.FromResult(new TdkSaveTindakanRespose(tdk.TindakanId));
+        return new TdkSaveTindakanRespose(tdk.TindakanId);
     }
 
     #region PRIVATE-HELPER
-    
+    private TindakanModel LoadTindakan(ITindakanKey key)
+    {
+        var result = _tindakanRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => TindakanModel.Default
+            );
+
+        return result;
+    }
+
     private RegModel LoadReg(IRegKey key)
     {
         var result = _regRepo.LoadEntity(key)
@@ -144,8 +181,8 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
                 onNone: () => throw new KeyNotFoundException($"Register {key.RegId} not found")
             );
 
-        return !result.IsAktif
-            ? throw new ArgumentException($"Register '{key.RegId}' tidak aktif")
+        return !result.IsAktif 
+            ? throw new ArgumentException($"Register '{key.RegId}' tidak aktif") 
             : result;
     }
 
@@ -156,9 +193,9 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Layanan {lynKey.LayananId} not found")
             );
-        return layanan;
+        return layanan;  
     }
-
+    
     private NilaiTarifType LoadNilaiTaif(INilaiTarifKey nilaiKey)
     {
         var nilaiTarif = _nilaiTarifRepo.LoadEntity(nilaiKey)
@@ -188,6 +225,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
             );
         return jmn;
     }
+
     private IEnumerable<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
     {
         var result = _komponenRepo
@@ -218,15 +256,15 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
         NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
-        DateTime occurredAt, string pakaiBedId, int qty)
+        DateTime occurredAt, string pakaiBedId = "", int qty = 1, bool isDiskonDokter = false)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty, isDiskonDokter);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter
         );
     }
 

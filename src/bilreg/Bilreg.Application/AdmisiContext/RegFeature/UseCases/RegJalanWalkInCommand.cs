@@ -346,12 +346,16 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 _jurnalRepo.SaveChanges(jurnalTindakan);
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            var prefix = NormalizePrefix(rawPrefix);
+
             var emrPayload = new AddAntrianEmrByRegCommand(
                 reg.RegId, "-", reg.Pasien.PasienId,
                 reg.Pasien.PasienName, reg.Layanan.LayananId,
                 reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
                 schedule.LegacyJadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
-                antEntry.NoUrut);
+                antEntry.NoUrut,
+                prefix);
             _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
 
             trans.Complete();
@@ -368,6 +372,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     }
 
     #region PRIVATE-HELPERS
+    private static string NormalizePrefix(string? rawPrefix)
+    {
+        var prefix = (rawPrefix ?? string.Empty).Trim();
+        if (prefix.Length > 2)
+            prefix = prefix.Substring(0, 2);
+        return prefix;
+    }
+
     private bool IsPasienAktifReg(IPasienKey pasien)
     {
         return _regAktifRepo.IsPasienAktif(pasien)

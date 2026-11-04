@@ -4,6 +4,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using FluentAssertions;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Nuna.Lib.ActionResultHelper;
@@ -18,74 +19,114 @@ public class NilaiTarifControllerTest
 
     public NilaiTarifControllerTest()
     {
-        _sut = new NilaiTarifController(_mediatorMock.Object);
+        _sut = new NilaiTarifController(_mediatorMock.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
     }
 
     [Fact]
-    public async Task GetNilaiTarif_DelegatesToTrfGetNilaiTarifQuery_ReturnsOk()
+    public async Task GetNilaiTarif_WhenCalled_SendsTrfGetNilaiTarifQueryAndReturnsOk()
     {
         // Arrange
-        var komponenList = new List<TrfGetNilaiTarifKompResponse>
-        {
-            new("KOMP01", "Jasa Medis", new[] { "DOKTER" }, 75000m),
-            new("KOMP02", "Jasa Sarana", new[] { "SARANA" }, 25000m)
-        };
-        var expectedResponse = new TrfGetNilaiTarifResponse(
-            "NT001",
-            "TRF001",
-            "Konsultasi Spesialis",
-            new TipeTarifReff("TT01", "Umum"),
-            new KelasReff("KL01", "Kelas 1"),
-            100000m,
-            komponenList);
+        const string tarifId = "TRF-01";
+        const string kelasId = "KLS-01";
+        const string tipeTarifId = "TT-01";
 
-        TrfGetNilaiTarifQuery? capturedQuery = null;
-        _mediatorMock
-            .Setup(x => x.Send(It.IsAny<TrfGetNilaiTarifQuery>(), It.IsAny<CancellationToken>()))
-            .Callback<IRequest<TrfGetNilaiTarifResponse>, CancellationToken>((q, _) => capturedQuery = (TrfGetNilaiTarifQuery)q)
+        var expectedResponse = new TrfGetNilaiTarifResponse(
+            "NT-01",
+            tarifId,
+            "Tarif Test",
+            new TipeTarifReff(tipeTarifId, "Umum"),
+            new KelasReff(kelasId, "Kelas 1"),
+            150000m,
+            []
+        );
+
+        _mediatorMock.Setup(x => x.Send(
+            It.Is<TrfGetNilaiTarifQuery>(q => q.TarifId == tarifId && q.KelasId == kelasId && q.TipeTarifId == tipeTarifId),
+            It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
         // Act
-        var result = await _sut.GetNilaiTarif("TRF001", "KL01", "TT01");
+        var result = await _sut.GetNilaiTarif(tarifId, kelasId, tipeTarifId);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be(expectedResponse);
-
-        capturedQuery.Should().NotBeNull();
-        capturedQuery!.TarifId.Should().Be("TRF001");
     }
 
     [Fact]
-    public async Task ListTarifBrg_DelegatesToTrfListTarifBrgQuery_ReturnsOk()
+    public async Task ListTarifRajal_WhenCalled_SendsTrfListTarifRajalQueryAndReturnsOk()
     {
         // Arrange
-        var listResponse = new List<TrfListTarifBrgResponseBase>
+        const string layananId = "LYN-01";
+        const string kelasId = "KLS-01";
+        const string tipeTarifId = "TT-01";
+        const string keyword = "konsul";
+
+        var expectedItems = new List<TrfListTarif>
         {
-            new TrfListTarif("TRF001", "Konsultasi Dokter", 100000m),
-            new TrfListBrg("BRG001", "Spuit 5cc", 50m, "PCS", "Pieces")
+            new("TRF-01", "Konsultasi Dokter", 150000m)
         };
 
-        TrfListTarifBrgQuery? capturedQuery = null;
-        _mediatorMock
-            .Setup(x => x.Send(It.IsAny<TrfListTarifBrgQuery>(), It.IsAny<CancellationToken>()))
-            .Callback<IRequest<IEnumerable<TrfListTarifBrgResponseBase>>, CancellationToken>((q, _) => capturedQuery = (TrfListTarifBrgQuery)q)
-            .ReturnsAsync(listResponse);
+        _mediatorMock.Setup(x => x.Send(
+            It.Is<TrfListTarifRajalQuery>(q =>
+                q.LayananId == layananId &&
+                q.KelasId == kelasId &&
+                q.TipeTarifId == tipeTarifId &&
+                q.Keyword == keyword),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedItems);
 
         // Act
-        var result = await _sut.ListTarifBrg("LAY01", "KL01", "TT01", "dokter");
+        var result = await _sut.ListTarifRajal(layananId, kelasId, tipeTarifId, keyword);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
-        jsend.data.Should().Be(listResponse);
+        jsend.data.Should().BeEquivalentTo(expectedItems);
+    }
 
-        capturedQuery.Should().NotBeNull();
-        capturedQuery!.LayananId.Should().Be("LAY01");
-        capturedQuery.KelasId.Should().Be("KL01");
-        capturedQuery.TipeTarifId.Should().Be("TT01");
-        capturedQuery.Keyword.Should().Be("dokter");
+    [Fact]
+    public async Task ListTarifBrg_WhenCalled_SendsTrfListTarifBrgQueryAndReturnsOkWithSatuan()
+    {
+        // Arrange
+        const string layananId = "LYN-01";
+        const string kelasId = "KLS-01";
+        const string tipeTarifId = "TT-01";
+        const string keyword = "nedle";
+
+        var expectedItems = new List<TrfListTarifBrgResponseBase>
+        {
+            new TrfListBrg("BRG-01", "NEDLE VACUNTAINER", 100m, "BH", "Buah")
+        };
+
+        _mediatorMock.Setup(x => x.Send(
+            It.Is<TrfListTarifBrgQuery>(q =>
+                q.LayananId == layananId &&
+                q.KelasId == kelasId &&
+                q.TipeTarifId == tipeTarifId &&
+                q.Keyword == keyword),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedItems);
+
+        // Act
+        var result = await _sut.ListTarifBrg(layananId, kelasId, tipeTarifId, keyword);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var list = jsend.data.Should().BeAssignableTo<IEnumerable<TrfListTarifBrgResponseBase>>().Subject.ToList();
+        list.Should().HaveCount(1);
+        var item = list[0].Should().BeOfType<TrfListBrg>().Subject;
+        item.Satuan.Should().Be("Buah");
+        item.SatuanName.Should().Be("Buah");
+        item.SatuanId.Should().Be("BH");
     }
 
     [Fact]

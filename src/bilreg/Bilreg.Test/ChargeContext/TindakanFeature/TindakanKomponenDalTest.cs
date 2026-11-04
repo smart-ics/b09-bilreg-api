@@ -9,15 +9,11 @@ namespace Bilreg.Test.ChargeContext.TindakanFeature;
 
 public class TindakanKomponenDalTest
 {
-    private readonly TindakanKomponenDal _sut = new(Options.Create(new DatabaseOptions
-    {
-        ServerName = "dev.smart-ics.com",
-        DbName = "HOSPITAL_PKL"
-    }));
+    private readonly TindakanKomponenDal _sut = new(ConnStringHelper.GetTestEnv());
     
     private static TindakanKomponenDto Faker(int qty = 2)
         => new TindakanKomponenDto("TND0000001", 1, "101", "JASA DOKTER",
-                "10002", "JOSEPH RACHMAT, DR.", qty, 75000, 75000 * qty);
+                "10002", "JOSEPH RACHMAT, DR.", qty, 75000, 0, 75000 * qty);
 
     private static ITindakanKey FakerKey()
         => TindakanModel.Key("TND0000001");
@@ -51,5 +47,15 @@ public class TindakanKomponenDalTest
         item.PpaName.Should().Be("JOSEPH RACHMAT, DR.");
         item.Qty.Should().Be(3);
         item.SubTotal.Should().Be(225000);
+    }
+
+    [Fact]
+    public void InsertAndListData_WithDiskon_ShouldPersistAndReadDiskon()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = new TindakanKomponenDto("TND0000001", 1, "101", "JASA DOKTER", "10002", "JOSEPH RACHMAT, DR.", 2, 75000, 150000, 0);
+        _sut.Insert([dto]);
+        var actual = _sut.ListData(FakerKey());
+        actual.Should().ContainEquivalentOf(dto);
     }
 }

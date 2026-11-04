@@ -53,7 +53,7 @@ public class TindakanDal : ITindakanDal
                 @FS_KD_TRS, @FS_KD_REG, @FS_KD_TARIF, @FS_KD_LAYANAN, '', '',
                 @FS_KD_KELAS, @FS_KD_TARIF_TIPE, @FD_TGL_TRS, @FS_JAM_TRS, @FS_KD_PETUGAS,
                 @FD_TGL_VOID, @FS_JAM_VOID, @FS_KD_PETUGAS_VOID,
-                @FN_SUB_TOTAL, 0, @FN_TOTAL, 0, 0, 0,
+                @FN_SUB_TOTAL, @FN_DISKON, @FN_TOTAL, 0, 0, 0,
                 '', '', '', '',
                 @FN_SISA, '', '', '', '',
                 '', '', '', '',
@@ -81,7 +81,8 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@FD_TGL_VOID", vodDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@FS_JAM_VOID", vodDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
         dp.AddParam("@FS_KD_PETUGAS_VOID", SafeTruncate(dto.VodUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FN_SUB_TOTAL", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@FN_SUB_TOTAL", dto.Total + dto.DiskonDokter, SqlDbType.Decimal);
+        dp.AddParam("@FN_DISKON", dto.DiskonDokter, SqlDbType.Decimal);
         dp.AddParam("@FN_TOTAL", dto.Total, SqlDbType.Decimal);
         dp.AddParam("@FN_SISA", dto.Total, SqlDbType.Decimal);
         dp.AddParam("@CRTTGL", crtDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
@@ -110,6 +111,7 @@ public class TindakanDal : ITindakanDal
                 FD_TGL_TRS = @FD_TGL_TRS,
                 FS_JAM_TRS = @FS_JAM_TRS,
                 FN_SUB_TOTAL = @FN_SUB_TOTAL,
+                FN_DISKON = @FN_DISKON,
                 FN_TOTAL = @FN_TOTAL,
                 FN_SISA = @FN_SISA,
                 UPDTGL = @UPDTGL,
@@ -136,7 +138,8 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@FS_KD_TARIF_TIPE", SafeTruncate(dto.TipeTarifId, 2), SqlDbType.VarChar);
         dp.AddParam("@FD_TGL_TRS", tglTrs.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@FS_JAM_TRS", tglTrs.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@FN_SUB_TOTAL", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@FN_SUB_TOTAL", dto.Total + dto.DiskonDokter, SqlDbType.Decimal);
+        dp.AddParam("@FN_DISKON", dto.DiskonDokter, SqlDbType.Decimal);
         dp.AddParam("@FN_TOTAL", dto.Total, SqlDbType.Decimal);
         dp.AddParam("@FN_SISA", dto.Total, SqlDbType.Decimal);
         dp.AddParam("@UPDTGL", updDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
@@ -194,6 +197,8 @@ public class TindakanDal : ITindakanDal
                 ISNULL(gg.FS_NM_TARIF, '') AS TarifName,
                 ISNULL((SELECT TOP 1 CAST(tk.FN_JML AS INT) FROM TA_TRS_TINDAKAN2 tk WHERE tk.FS_KD_TRS = aa.FS_KD_TRS), 1) AS Qty,
                 aa.FN_TOTAL AS Total,
+                CASE WHEN ISNULL(aa.FN_DISKON, 0) > 0 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsDiskonDokter,
+                ISNULL(aa.FN_DISKON, 0) AS DiskonDokter,
                 aa.CRTUSR AS CrtUser,
                 ISNULL(TRY_CONVERT(DATETIME, aa.CRTTGL + ' ' + aa.CRTJAM), '2000-01-01') AS CrtDate,
                 aa.UPDUSR AS UpdUser,
@@ -240,6 +245,8 @@ public class TindakanDal : ITindakanDal
                 ISNULL(gg.FS_NM_TARIF, '') AS TarifName,
                 ISNULL((SELECT TOP 1 CAST(tk.FN_JML AS INT) FROM TA_TRS_TINDAKAN2 tk WHERE tk.FS_KD_TRS = aa.FS_KD_TRS), 1) AS Qty,
                 aa.FN_TOTAL AS Total,
+                CASE WHEN ISNULL(aa.FN_DISKON, 0) > 0 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsDiskonDokter,
+                ISNULL(aa.FN_DISKON, 0) AS DiskonDokter,
                 aa.CRTUSR AS CrtUser,
                 ISNULL(TRY_CONVERT(DATETIME, aa.CRTTGL + ' ' + aa.CRTJAM), '2000-01-01') AS CrtDate,
                 aa.UPDUSR AS UpdUser,

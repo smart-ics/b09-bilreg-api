@@ -44,7 +44,8 @@ public record PasienGetResponse(
     SukuType Suku,
     PekerjaanDkType Pekerjaan,
     PendidikanDkType Pendidikan,
-    PasienSasetResponse PasienSaset
+    PasienSasetResponse PasienSaset,
+    string MrIbu = ""
 );
 
 public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetResponse>
@@ -128,7 +129,8 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
             pasien.Suku,
             pasien.PekerjaanDk,
             pasien.PendidikanDk,
-            sasetResponse
+            sasetResponse,
+            pasien.MrIbu
         );
     }
 

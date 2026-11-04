@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared;
 using Bilreg.Domain.Shared.Helpers;
 
@@ -46,6 +47,10 @@ public class ErrorHandlerMiddleware
             string status;
             switch (error)
             {
+                case DuplicateLabOrderWarningException:
+                    statusCode = (int)HttpStatusCode.Conflict;
+                    status = "DUPLICATE_LAB_ORDER_WARNING";
+                    break;
                 case AdmissionQueueConcurrencyException:
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
@@ -133,6 +138,25 @@ public class ErrorHandlerMiddleware
                 new KeyValuePair<string, object?>("status_code", statusCode),
                 new KeyValuePair<string, object?>("error_code", status));
             LogAdmissionQueueOperation(context, "Failed", status, stopwatch.ElapsedMilliseconds);
+            if (error is DuplicateLabOrderWarningException duplicateEx)
+            {
+                var payload = new
+                {
+                    status = "fail",
+                    code = "DUPLICATE_LAB_ORDER_WARNING",
+                    message = duplicateEx.Message,
+                    data = new
+                    {
+                        duplicateTestNames = duplicateEx.DuplicateTestNames,
+                        previousOrderIds = duplicateEx.PreviousOrderIds
+                    }
+                };
+                var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var customResult = JsonSerializer.Serialize(payload, jsonOptions);
+                await response.WriteAsync(customResult);
+                return;
+            }
+
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
                 ? error.Message
                 : error.Message;

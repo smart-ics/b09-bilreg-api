@@ -53,7 +53,7 @@ public class TindakanQueriesTest
         // Assert
         result.Should().NotBeNull();
         result.TindakanId.Should().Be("TDK-100");
-        result.TindakanDate.Should().Be("2026-10-20 10:00:00");
+        result.TindakanDate.Should().Be(new DateTime(2026, 10, 20, 10, 0, 0));
         result.PakaiBedId.Should().Be("BED-RANAP-05");
         result.Qty.Should().Be(4);
         result.Total.Should().Be(200000m); // 50000 * 4
