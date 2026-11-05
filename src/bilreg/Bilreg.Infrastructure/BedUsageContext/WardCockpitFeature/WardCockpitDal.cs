@@ -864,7 +864,7 @@ public class WardCockpitDal : IWardCockpitDal
             SELECT 
                 b.fs_kd_bangsal AS BangsalId,
                 b.fs_nm_bangsal AS BangsalName,
-                ISNULL(STRING_AGG(k.fs_nm_kelas, ' / ') WITHIN GROUP (ORDER BY k.fs_nm_kelas), '') AS KelasName
+                ISNULL(k.fs_nm_kelas, '') AS KelasName
             FROM ta_bangsal b
             LEFT JOIN (
                 SELECT DISTINCT fs_kd_bangsal, fs_kd_kelas
@@ -873,17 +873,26 @@ public class WardCockpitDal : IWardCockpitDal
             ) km ON b.fs_kd_bangsal = km.fs_kd_bangsal
             LEFT JOIN ta_kelas k ON km.fs_kd_kelas = k.fs_kd_kelas
             WHERE ISNULL(b.fb_aktif, 1) = 1 AND b.fs_kd_bangsal NOT IN ('ZZ', 'XX')
-            GROUP BY b.fs_kd_bangsal, b.fs_nm_bangsal
-            ORDER BY b.fs_kd_bangsal;
+            ORDER BY b.fs_kd_bangsal, k.fs_nm_kelas;
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var command = new CommandDefinition(sql, cancellationToken: cancellationToken);
         var rawResult = await conn.QueryAsync<WardCockpitBangsalListItemDto>(command);
-        return rawResult.Select(x => new WardCockpitBangsalListItemDto(
-            x.BangsalId,
-            x.BangsalName,
-            FormatBangsalKelasSummary(x.KelasName)));
+        return rawResult
+            .GroupBy(x => new { x.BangsalId, x.BangsalName })
+            .Select(g =>
+            {
+                var combinedKelas = string.Join(" / ", g
+                    .Select(x => x.KelasName)
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Distinct());
+                return new WardCockpitBangsalListItemDto(
+                    g.Key.BangsalId,
+                    g.Key.BangsalName,
+                    FormatBangsalKelasSummary(combinedKelas));
+            })
+            .ToList();
     }
 
     private static string FormatBangsalKelasSummary(string raw)
