@@ -606,6 +606,8 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedAdmission.Should().NotBeNull();
         harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedAdmission.OpnameRequestId.Should().Be("-");
+        harness.SavedAdmission.ReservationId.Should().Be("-");
         harness.SavedOrder.Should().NotBeNull();
         harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
         harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);
@@ -627,6 +629,8 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedAdmission.Should().NotBeNull();
         harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedAdmission.OpnameRequestId.Should().Be("-");
+        harness.SavedAdmission.ReservationId.Should().Be("-");
         harness.SavedOrder.Should().NotBeNull();
         harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
         harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);
@@ -645,6 +649,8 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedAdmission.Should().NotBeNull();
         harness.SavedAdmission!.InpatientOrderId.Should().Be(harness.Order.InpatientOrderId);
+        harness.SavedAdmission.OpnameRequestId.Should().Be("-");
+        harness.SavedAdmission.ReservationId.Should().Be("-");
         harness.SavedOrder.Should().NotBeNull();
         harness.SavedOrder!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Fulfilled);
         harness.SavedOrder.FulfilledRegId.Should().Be(response.RegId);

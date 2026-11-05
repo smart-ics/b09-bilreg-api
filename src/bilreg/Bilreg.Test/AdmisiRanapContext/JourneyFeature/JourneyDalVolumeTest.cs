@@ -238,17 +238,20 @@ public class JourneyDalVolumeTest
         string reservationId,
         DateTime? admissionDate = null)
     {
+        var orderId = !string.IsNullOrWhiteSpace(opnameRequestId) && opnameRequestId != "-"
+            ? opnameRequestId
+            : (!string.IsNullOrWhiteSpace(reservationId) && reservationId != "-" ? reservationId : "-");
         new AdmissionDal(_opt).Insert(new AdmissionDto(
             regId,
             (int)AdmissionStatusEnum.Admitted,
             0,
             pasienId, "", "3000-01-01", "",
-            opnameRequestId, reservationId,
             "1", "Kelas 1", "B001", "Bangsal A",
             admissionDate ?? DateTime.Now,
             "journey-vol", admissionDate ?? DateTime.Now,
             "journey-vol", admissionDate ?? DateTime.Now,
-            "", VoidSentinel));
+            "", VoidSentinel,
+            InpatientOrderId: orderId));
     }
 
     private void SeedWaitingList(string wlId, string regId, string pasienId, int status, DateTime? at = null)

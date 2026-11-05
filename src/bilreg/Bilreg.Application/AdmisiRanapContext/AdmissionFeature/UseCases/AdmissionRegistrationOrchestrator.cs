@@ -165,7 +165,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             EnsurePatientAvailable(order.Pasien);
             var prosedur = ResolveProsedurMasukInap(request.Registration);
             var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
-                order.InpatientOrderId, null, request.UserId, occurredAt, inpatientOrderId: order.InpatientOrderId);
+                opnameRequestId: null, reservationId: null, request.UserId, occurredAt, inpatientOrderId: order.InpatientOrderId);
             var reg = CreateRegistration(admission, request.Registration);
             var regInap = CreateRegInap(admission, reg, prosedur);
             var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);
@@ -253,7 +253,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                     $"Reservation '{order.InpatientOrderId}' harus Maintained untuk direalisasi (status: {order.OrderStatus}).");
 
             var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
-                null, order.InpatientOrderId, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
+                opnameRequestId: null, reservationId: null, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
             var reg = CreateRegistration(admission, request.Registration);
             var regInap = CreateRegInap(admission, reg, prosedur);
             var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);
@@ -379,7 +379,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 $"Inpatient Order '{order.InpatientOrderId}' harus Requested atau Maintained untuk diproses (status: {order.OrderStatus}).");
 
         var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
-            null, null, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
+            opnameRequestId: null, reservationId: null, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
         var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);

@@ -184,8 +184,6 @@ public class AdmissionDalTest
             "",
             "3000-01-01",
             "",
-            "-",
-            "-",
             "1",
             "Kelas 1",
             "B01",
