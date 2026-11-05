@@ -28,6 +28,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [NonAction]
     public Task<IActionResult> CreateTindakan(TdkCreateTindakanCmd cmd) => Create(cmd);
 
     [HttpPost]
@@ -57,6 +58,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [NonAction]
     public Task<IActionResult> UpdatePetugasMedis([FromBody] TindakanUpdatePetugasRequest req) => UpdatePetugas(req);
 
     [HttpGet]
@@ -68,6 +70,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [NonAction]
     public Task<IActionResult> GetTindakan(string id) => Get(id);
 
     [HttpGet]
@@ -88,6 +91,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(response));
     }
 
+    [NonAction]
     public Task<IActionResult> ListTindakanJual(string regId) => ListTdkJual(regId);
     
     [HttpPatch]
