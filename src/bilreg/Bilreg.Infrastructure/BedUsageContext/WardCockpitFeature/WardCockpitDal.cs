@@ -28,7 +28,7 @@ public class WardCockpitDal : IWardCockpitDal
             km.fs_kd_kamar AS RoomId,
             km.fs_nm_kamar AS RoomName,
             ISNULL(kls_kamar.fs_nm_kelas, '') AS KelasKamar,
-            bd.fs_kd_bed AS BedId,
+            RTRIM(LTRIM(bd.fs_kd_bed)) AS BedId,
             bd.fs_nm_bed AS BedCode,
             bd.fb_aktif AS IsBedActive,
             -- Occupancy (from active ta_trs_bed)
@@ -124,16 +124,16 @@ public class WardCockpitDal : IWardCockpitDal
 
         -- 3. Bed Operational State
         SELECT 
-            bo.BedId,
+            RTRIM(LTRIM(bo.BedId)) AS BedId,
             bo.CurrentReadiness,
             bo.IsBlocked,
             bo.CurrentRestrictionType,
             bo.CurrentBlockerReason,
             bo.UpdDate
         FROM BILRG_RnaBedOperational bo
-        INNER JOIN ta_bed bd ON bo.BedId = bd.fs_kd_bed
-        INNER JOIN ta_kamar km ON bd.fs_kd_kamar = km.fs_kd_kamar
-        WHERE km.fs_kd_bangsal = @BangsalId OR bo.BangsalId = @BangsalId;
+        LEFT JOIN ta_bed bd ON bo.BedId = bd.fs_kd_bed
+        LEFT JOIN ta_kamar km ON bd.fs_kd_kamar = km.fs_kd_kamar
+        WHERE bo.BangsalId = @BangsalId OR km.fs_kd_bangsal = @BangsalId;
 
         -- 4. Waiting List
         SELECT 
@@ -149,9 +149,12 @@ public class WardCockpitDal : IWardCockpitDal
             ISNULL(wl.KelasName, '') AS RequestedKelasName,
             ISNULL(wl.AdvisoryBedId, '') AS PlannedBedId,
             ISNULL(wl.SpecialNeeds, '') AS SpecialRequirements,
-            wl.CrtDate
+            wl.CrtDate,
+            ISNULL(r.fs_kd_jenis_inap, '1') AS KdJenisInap,
+            ISNULL(r.fs_reg_ibu, '') AS RegIbu
         FROM BILRG_BedWaitingList wl
         LEFT JOIN tc_mr pmr ON wl.PasienId = pmr.fs_mr
+        LEFT JOIN ta_registrasi r ON wl.RegId = r.fs_kd_reg
         WHERE wl.BangsalId = @BangsalId 
           AND wl.WaitingListStatus IN (0, 1)
         ORDER BY ISNULL(wl.UrgencyLevel, 0) DESC, wl.CrtDate ASC;
@@ -160,7 +163,7 @@ public class WardCockpitDal : IWardCockpitDal
     private const string BED_DETAIL_QUERY = """
         -- 1. Bed Info & Current Occupancy
         SELECT 
-            bd.fs_kd_bed AS BedId,
+            RTRIM(LTRIM(bd.fs_kd_bed)) AS BedId,
             bd.fs_nm_bed AS BedCode,
             km.fs_nm_kamar AS RoomName,
             ISNULL(kls.fs_nm_kelas, '') AS KelasKamar,
@@ -432,7 +435,10 @@ public class WardCockpitDal : IWardCockpitDal
         DateTime? currentTime = null)
     {
         var now = currentTime ?? DateTime.Now;
-        var opMap = operationalRows.ToDictionary(x => x.BedId, x => x);
+        var opMap = operationalRows
+            .Where(x => !string.IsNullOrWhiteSpace(x.BedId))
+            .GroupBy(x => x.BedId.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var bedList = new List<WardCockpitBedDto>();
         var roomGroups = roomBedRows.GroupBy(x => x.RoomId);
@@ -445,7 +451,8 @@ public class WardCockpitDal : IWardCockpitDal
 
             foreach (var b in rg)
             {
-                opMap.TryGetValue(b.BedId, out var opRow);
+                var lookupBedId = (b.BedId ?? string.Empty).Trim();
+                opMap.TryGetValue(lookupBedId, out var opRow);
                 var opState = MapOperationalState(opRow);
                 var isOccupied = !string.IsNullOrWhiteSpace(b.PakaiBedId);
                 var status = ResolveBedStatus(isOccupied, opState);
@@ -532,7 +539,9 @@ public class WardCockpitDal : IWardCockpitDal
             RequestedKelasName: wl.RequestedKelasName,
             PlannedBedId: wl.PlannedBedId,
             ElapsedWaitMinutes: Math.Max(0, (int)(now - wl.CrtDate).TotalMinutes),
-            SpecialRequirements: wl.SpecialRequirements
+            SpecialRequirements: wl.SpecialRequirements,
+            KdJenisInap: string.IsNullOrWhiteSpace(wl.KdJenisInap) ? "1" : wl.KdJenisInap,
+            RegIbu: wl.RegIbu ?? string.Empty
         )).ToList();
 
         var totalBed = bedList.Count;

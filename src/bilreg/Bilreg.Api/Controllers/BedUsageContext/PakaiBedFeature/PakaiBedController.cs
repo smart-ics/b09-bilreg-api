@@ -37,9 +37,10 @@ public class PakaiBedController : ControllerBase
     {
         var response = await _mediator.Send(cmd);
 
-        if (!string.IsNullOrWhiteSpace(response.BangsalId) && !string.IsNullOrWhiteSpace(response.BedId))
+        var targetBedId = (response.BedId ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(response.BangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
         {
-            await _eventPublisher.PublishBedStatusChangedAsync(response.BangsalId, response.BedId, "Cleaning");
+            await _eventPublisher.PublishBedStatusChangedAsync(response.BangsalId, targetBedId, "Cleaning");
         }
 
         if (response.IsBatalCheckIn)

@@ -111,6 +111,22 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             // 5. Kembalikan pasien ke Waiting List
             if (_waitingListRepo != null)
             {
+                BangsalReff? targetBangsal = null;
+                if (_bedRepo != null && _bangsalRepo != null && !string.IsNullOrWhiteSpace(saved.Bed?.BedId))
+                {
+                    var maybeBed = _bedRepo.LoadEntity(BedType.Key(saved.Bed.BedId));
+                    if (maybeBed.HasValue && !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-")
+                    {
+                        var maybeBsl = _bangsalRepo.LoadEntity(BangsalType.Key(maybeBed.Value.Bangsal.BangsalId));
+                        if (maybeBsl.HasValue)
+                        {
+                            targetBangsal = maybeBsl.Value.ToReff();
+                        }
+                    }
+                }
+                targetBangsal ??= new BangsalReff(saved.Layanan.LayananId, saved.Layanan.LayananName);
+
+                // 5a. Direct patient reversal / fallback
                 var listWl = _waitingListRepo.ListByRegId(saved.Reg.RegId)?.ToList() ?? [];
                 var matchedWl = listWl.FirstOrDefault(x => x.PlacedPakaiBedId == request.PakaiBedId)
                              ?? listWl.FirstOrDefault(x => x.WaitingListStatus == WaitingListStatusEnum.Placed);
@@ -132,21 +148,13 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                         if (maybeReg.HasValue)
                         {
                             var reg = maybeReg.Value;
-                            BangsalReff? targetBangsal = null;
-                            if (_bedRepo != null && _bangsalRepo != null)
-                            {
-                                var maybeBed = _bedRepo.LoadEntity(BedType.Key(saved.Bed.BedId));
-                                if (maybeBed.HasValue)
-                                {
-                                    var maybeBsl = _bangsalRepo.LoadEntity(BangsalType.Key(maybeBed.Value.Bangsal.BangsalId));
-                                    if (maybeBsl.HasValue)
-                                    {
-                                        targetBangsal = maybeBsl.Value.ToReff();
-                                    }
-                                }
-                            }
+                            var isBaby = saved.Tarif == 0
+                                || !string.IsNullOrWhiteSpace(reg.RegIbu)
+                                || reg.JenisInap?.JenisInapId == "3";
 
-                            targetBangsal ??= new BangsalReff(saved.Layanan.LayananId, saved.Layanan.LayananName);
+                            var note = isBaby
+                                ? "Batal Check-in Rawat Gabung"
+                                : $"Batal Check-in: {request.VoidReason}";
 
                             var newWl = WaitingListModel.Create(
                                 reg.RegId,
@@ -157,7 +165,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                                 saved.Layanan != null ? new LayananReff(saved.Layanan.LayananId, saved.Layanan.LayananName) : new LayananReff("-", "-"),
                                 reg.Dokter != null ? new DokterReff(reg.Dokter.PpaId, reg.Dokter.PpaName) : new DokterReff("-", "-"),
                                 ClinicalUrgencyEnum.Routine,
-                                $"Batal Check-in: {request.VoidReason}",
+                                note,
                                 priority: 0,
                                 auditUserId: request.UserId,
                                 createdAt: occurredAt);
@@ -166,6 +174,103 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                             if (!string.IsNullOrWhiteSpace(newWl.Bangsal?.BangsalId))
                             {
                                 affectedBangsalIds.Add(newWl.Bangsal.BangsalId.Trim());
+                            }
+                        }
+                    }
+                }
+
+                // 5b. Rooming-in baby waiting list handling & fallback
+                var babyRegIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (_pakaiBedDal != null)
+                {
+                    var dalBabies = await _pakaiBedDal.GetRoomingInBabyRegIdsAsync(request.PakaiBedId);
+                    if (dalBabies != null)
+                    {
+                        foreach (var bReg in dalBabies.Where(x => !string.IsNullOrWhiteSpace(x)))
+                        {
+                            babyRegIds.Add(bReg.Trim());
+                        }
+                    }
+                }
+                else if (_pakaiBedRepo != null)
+                {
+                    var repoBabies = await _pakaiBedRepo.GetRoomingInBabyRegIdsAsync(request.PakaiBedId);
+                    if (repoBabies != null)
+                    {
+                        foreach (var bReg in repoBabies.Where(x => !string.IsNullOrWhiteSpace(x)))
+                        {
+                            babyRegIds.Add(bReg.Trim());
+                        }
+                    }
+                }
+
+                foreach (var babyRegId in babyRegIds)
+                {
+                    if (string.Equals(babyRegId, saved.Reg.RegId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var babyWlList = _waitingListRepo.ListByRegId(babyRegId)?.ToList() ?? [];
+                    var activeBabyWl = babyWlList.FirstOrDefault(x => x.WaitingListStatus == WaitingListStatusEnum.Waiting);
+
+                    if (activeBabyWl != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(activeBabyWl.Bangsal?.BangsalId))
+                        {
+                            affectedBangsalIds.Add(activeBabyWl.Bangsal.BangsalId.Trim());
+                        }
+                    }
+                    else
+                    {
+                        var placedBabyWl = babyWlList.FirstOrDefault(x => x.WaitingListStatus == WaitingListStatusEnum.Placed);
+                        if (placedBabyWl != null)
+                        {
+                            var revertedBabyWl = placedBabyWl.RevertToWaiting(request.UserId, occurredAt);
+                            _waitingListRepo.SaveChanges(revertedBabyWl);
+                            if (!string.IsNullOrWhiteSpace(revertedBabyWl.Bangsal?.BangsalId))
+                            {
+                                affectedBangsalIds.Add(revertedBabyWl.Bangsal.BangsalId.Trim());
+                            }
+                        }
+                        else if (!babyWlList.Any(x => x.WaitingListStatus == WaitingListStatusEnum.Waiting || x.WaitingListStatus == WaitingListStatusEnum.Reserved))
+                        {
+                            if (_regRepo != null)
+                            {
+                                var maybeBabyReg = _regRepo.LoadEntity(RegModel.Key(babyRegId));
+                                if (maybeBabyReg.HasValue)
+                                {
+                                    var babyReg = maybeBabyReg.Value;
+                                    var babyKelas = babyReg.Kelas != null && babyReg.Kelas.KelasId != "-"
+                                        ? babyReg.Kelas
+                                        : (saved.Kelas != null && saved.Kelas.KelasId != "-" ? saved.Kelas : new KelasReff("-", "-"));
+                                    var babyDokter = babyReg.Dokter != null
+                                        ? new DokterReff(babyReg.Dokter.PpaId, babyReg.Dokter.PpaName)
+                                        : new DokterReff("-", "-");
+                                    var babyLayanan = saved.Layanan != null
+                                        ? new LayananReff(saved.Layanan.LayananId, saved.Layanan.LayananName)
+                                        : new LayananReff("-", "-");
+
+                                    var fallbackBabyWl = WaitingListModel.Create(
+                                        babyReg.RegId,
+                                        babyReg.Pasien,
+                                        babyKelas,
+                                        targetBangsal,
+                                        ArrivalSourceTypeEnum.Adm,
+                                        babyLayanan,
+                                        babyDokter,
+                                        ClinicalUrgencyEnum.Routine,
+                                        "Batal Check-in Rawat Gabung",
+                                        priority: 0,
+                                        auditUserId: request.UserId,
+                                        createdAt: occurredAt);
+
+                                    _waitingListRepo.Save(fallbackBabyWl);
+                                    if (!string.IsNullOrWhiteSpace(fallbackBabyWl.Bangsal?.BangsalId))
+                                    {
+                                        affectedBangsalIds.Add(fallbackBabyWl.Bangsal.BangsalId.Trim());
+                                    }
+                                }
                             }
                         }
                     }
@@ -288,9 +393,10 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                     bangsalId = saved.Layanan.LayananId;
                 }
 
-                if (!string.IsNullOrWhiteSpace(bangsalId))
+                var voidBedId = (saved.Bed?.BedId ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(bangsalId) && !string.IsNullOrWhiteSpace(voidBedId))
                 {
-                    await _eventPublisher.PublishBedStatusChangedAsync(bangsalId, saved.Bed.BedId, "Cleaning", cancellationToken: cancellationToken);
+                    await _eventPublisher.PublishBedStatusChangedAsync(bangsalId, voidBedId, "Cleaning", cancellationToken: cancellationToken);
                     await _eventPublisher.PublishWaitingListUpdatedAsync(bangsalId, cancellationToken);
                 }
 

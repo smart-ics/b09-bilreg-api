@@ -40,9 +40,6 @@ public class TindakanController : Controller
     }
 
     [HttpPost("update-petugas")]
-    [HttpPatch("update-petugas")]
-    [HttpPost("update-dokter")]
-    [HttpPatch("update-dokter")]
     public async Task<IActionResult> UpdatePetugas([FromBody] TindakanUpdatePetugasRequest req)
     {
         var resolvedTindakanId = !string.IsNullOrWhiteSpace(req.TindakanId)
@@ -94,42 +91,9 @@ public class TindakanController : Controller
     [NonAction]
     public Task<IActionResult> ListTindakanJual(string regId) => ListTdkJual(regId);
     
-    [HttpPatch]
-    [Route("batal")]
-    [HttpPatch("void")]
-    [HttpPost("batal")]
-    [HttpPost("delete")]
-    [HttpPost("void")]
-    [HttpDelete("delete")]
-    [HttpDelete("batal")]
+    [HttpPatch("batal")]
     public async Task<IActionResult> Batal([FromBody] TindakanVoidRequest req)
     {
-        return await ExecuteVoid(req);
-    }
-
-    [HttpDelete("{tindakanId}")]
-    [HttpDelete("delete/{tindakanId}")]
-    public async Task<IActionResult> DeleteById(
-        string tindakanId,
-        [FromQuery] string? userId = null,
-        [FromQuery] string? voidReason = null,
-        [FromBody] TindakanVoidRequest? body = null)
-    {
-        var resolvedTindakanId = !string.IsNullOrWhiteSpace(tindakanId)
-            ? tindakanId
-            : (!string.IsNullOrWhiteSpace(body?.TindakanId) ? body.TindakanId : (body?.TransaksiId ?? ""));
-
-        var uid = !string.IsNullOrWhiteSpace(body?.UserId)
-            ? body.UserId
-            : (!string.IsNullOrWhiteSpace(userId) ? userId : (User.Identity?.Name ?? "admin"));
-
-        var reason = !string.IsNullOrWhiteSpace(body?.VoidReason)
-            ? body.VoidReason
-            : (!string.IsNullOrWhiteSpace(body?.Alasan)
-                ? body.Alasan
-                : (!string.IsNullOrWhiteSpace(voidReason) ? voidReason : "Pembatalan tindakan"));
-
-        var req = new TindakanVoidRequest(resolvedTindakanId, uid, reason);
         return await ExecuteVoid(req);
     }
 

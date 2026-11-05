@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
@@ -6,8 +7,11 @@ using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
@@ -504,5 +508,249 @@ public class PakaiBedVoidCommandTest
         _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("04", It.IsAny<CancellationToken>()), Times.Once);
         _eventPublisherMock.Verify(x => x.PublishBedStatusChangedAsync("3RI05", It.IsAny<string>(), It.IsAny<string>(), null, It.IsAny<CancellationToken>()), Times.Never);
         _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("3RI05", It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenVoidedMotherWithRoomingInBaby_AndBabyHasNoWaitingList_CreatesFallbackWaitingListForBabyWithRawatGabungNote()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_MOTHER01", "REG_MOTHER01", "LAY01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_MOTHER01")))
+            .Returns(MayBe.From(motherBed));
+
+        _billingLockCheckerMock
+            .Setup(x => x.CheckIsBillingLocked("REG_MOTHER01"))
+            .Returns(false);
+
+        var now = new DateTime(2026, 11, 5, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        // Mother has placed waiting list
+        var motherWl = WaitingListModel.Create(
+            "REG_MOTHER01",
+            new PasienReff("MR_MOTHER01", "Ny. Mother", new DateOnly(1995, 5, 15), "P"),
+            new KelasReff("KL01", "Kelas 1"),
+            new BangsalReff("LAY01", "Ranap Mawar"),
+            0,
+            "admin",
+            now.AddHours(-3))
+            .Place("BED01", "PKB_MOTHER01", "admin", now.AddHours(-1));
+
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_MOTHER01"))
+            .Returns(new[] { motherWl });
+
+        // DAL returns rooming-in baby registration
+        _pakaiBedDalMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_MOTHER01"))
+            .ReturnsAsync(new List<string> { "REG_BABY01" });
+
+        // Baby has NO active waiting list in repository (legacy check-in without waiting list)
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_BABY01"))
+            .Returns(Enumerable.Empty<WaitingListModel>());
+
+        // RegRepo provides baby registration details
+        var regRepoMock = new Mock<IRegRepo>();
+        var babyReg = new RegModel(
+            "REG_BABY01",
+            new DateOnly(2026, 11, 4),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            new PasienReff("MR_BABY01", "By. Ny. Mother", new DateOnly(2026, 11, 4), "L"),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            new KelasReff("KL01", "Kelas 1"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            new PpaReff("DOK01", "dr. Anak"),
+            new LayananReff("LAY01", "Ranap Mawar"),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            [],
+            bangsal: new BangsalReff("LAY01", "Ranap Mawar"),
+            jenisInap: new JenisInapType("3", "Perinatal"),
+            regIbu: "REG_MOTHER01");
+
+        regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From(babyReg));
+
+        var sut = new PakaiBedDeleteCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _billingLockCheckerMock.Object,
+            _pakaiBedDalMock.Object,
+            _tindakanRepoMock.Object,
+            _waitingListRepoMock.Object,
+            regRepo: regRepoMock.Object,
+            bedOperationalRepo: _bedOperationalRepoMock.Object,
+            eventPublisher: _eventPublisherMock.Object);
+
+        var cmd = new PakaiBedVoidCommand("PKB_MOTHER01", "nurse_v", "Batal check-in ibu & bayi", "Mozilla/5.0", "127.0.0.1");
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert 1: Mother's waiting list reverted to Waiting
+        _waitingListRepoMock.Verify(x => x.SaveChanges(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_MOTHER01" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting
+        )), Times.Once);
+
+        // Assert 2: Fallback waiting list created for baby with note "Batal Check-in Rawat Gabung"
+        _waitingListRepoMock.Verify(x => x.Save(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_BABY01" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting &&
+            w.SpecialRequirements == "Batal Check-in Rawat Gabung" &&
+            w.Bangsal.BangsalId == "LAY01" &&
+            w.Pasien.PasienId == "MR_BABY01"
+        )), Times.Once);
+
+        // Assert 3: SignalR event dispatched for ward
+        _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("LAY01", It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task Handle_WhenVoidedMotherWithRoomingInBaby_AndBabyHasPlacedWaitingList_RevertsBabyWaitingListToWaiting()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_MOTHER02", "REG_MOTHER02", "LAY01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_MOTHER02")))
+            .Returns(MayBe.From(motherBed));
+
+        _billingLockCheckerMock
+            .Setup(x => x.CheckIsBillingLocked("REG_MOTHER02"))
+            .Returns(false);
+
+        var now = new DateTime(2026, 11, 5, 11, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        _pakaiBedDalMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_MOTHER02"))
+            .ReturnsAsync(new List<string> { "REG_BABY02" });
+
+        var babyWl = WaitingListModel.Create(
+            "REG_BABY02",
+            new PasienReff("MR_BABY02", "By. Ny. Mother 2", new DateOnly(2026, 11, 4), "L"),
+            new KelasReff("KL01", "Kelas 1"),
+            new BangsalReff("BSL11", "Bangsal Perinatologi"),
+            0,
+            "admin",
+            now.AddHours(-2))
+            .Place("BED01", "PKB_BABY02", "admin", now.AddHours(-1));
+
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_BABY02"))
+            .Returns(new[] { babyWl });
+
+        var cmd = new PakaiBedVoidCommand("PKB_MOTHER02", "nurse_v", "Batal check-in ibu", "Mozilla/5.0", "127.0.0.1");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert: Baby's waiting list is reverted to Waiting
+        _waitingListRepoMock.Verify(x => x.SaveChanges(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_BABY02" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting &&
+            w.PlacedBedId == string.Empty &&
+            w.PlacedPakaiBedId == string.Empty
+        )), Times.Once);
+
+        // Assert: SignalR dispatched to baby's ward BSL11
+        _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("BSL11", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenVoidedRoomingInBabyDirectly_AndBabyHasNoWaitingList_CreatesFallbackWaitingListWithRawatGabungNote()
+    {
+        // Arrange: Direct baby void (fn_tarif = 0)
+        var masuk = new AuditInfoType("usr_in", new DateTime(2026, 10, 15, 10, 0, 0));
+        var periode = new PeriodePakaiBedType(masuk, AuditInfoType.Default);
+        var reg = new RegReff("REG_BABY03", "MR_BABY03", "By. Ny. C");
+        var layanan = new LayananReff("LAY01", "Ranap Mawar");
+        var bed = new BedReff("BED01", "Bed 01", true);
+        var tipeKamar = new TipeKamarReff("TK01", "Standar", true);
+        var kelas = new KelasReff("KL01", "Kelas 1");
+        var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
+
+        var babyBed = new PakaiBedModel(
+            "PKB_BABY03",
+            periode,
+            reg,
+            layanan,
+            bed,
+            tipeKamar,
+            kelas,
+            0m, // Rooming-in baby has 0 tariff
+            auditTrail);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY03")))
+            .Returns(MayBe.From(babyBed));
+
+        _billingLockCheckerMock
+            .Setup(x => x.CheckIsBillingLocked("REG_BABY03"))
+            .Returns(false);
+
+        var now = new DateTime(2026, 11, 5, 12, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_BABY03"))
+            .Returns(Enumerable.Empty<WaitingListModel>());
+
+        var regRepoMock = new Mock<IRegRepo>();
+        var babyReg = new RegModel(
+            "REG_BABY03",
+            new DateOnly(2026, 11, 4),
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            new PasienReff("MR_BABY03", "By. Ny. C", new DateOnly(2026, 11, 4), "L"),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            new KelasReff("KL01", "Kelas 1"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            new PpaReff("DOK01", "dr. Anak"),
+            new LayananReff("LAY01", "Ranap Mawar"),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            [],
+            bangsal: new BangsalReff("LAY01", "Ranap Mawar"),
+            jenisInap: new JenisInapType("3", "Perinatal"),
+            regIbu: "REG_MOTHER03");
+
+        regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY03")))
+            .Returns(MayBe.From(babyReg));
+
+        var sut = new PakaiBedDeleteCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _billingLockCheckerMock.Object,
+            _pakaiBedDalMock.Object,
+            _tindakanRepoMock.Object,
+            _waitingListRepoMock.Object,
+            regRepo: regRepoMock.Object,
+            bedOperationalRepo: _bedOperationalRepoMock.Object,
+            eventPublisher: _eventPublisherMock.Object);
+
+        var cmd = new PakaiBedVoidCommand("PKB_BABY03", "nurse_v", "Batal gabung", "Mozilla/5.0", "127.0.0.1");
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert: Fallback waiting list created with note "Batal Check-in Rawat Gabung"
+        _waitingListRepoMock.Verify(x => x.Save(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_BABY03" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting &&
+            w.SpecialRequirements == "Batal Check-in Rawat Gabung" &&
+            w.Bangsal.BangsalId == "LAY01"
+        )), Times.Once);
     }
 }

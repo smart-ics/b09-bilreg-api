@@ -234,4 +234,78 @@ public class TdkCreateTindakanCmdTest
         response.Should().NotBeNull();
         response.TindakanId.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public void SystemTextJson_CanDeserialize_TdkCreateTindakanCmd()
+    {
+        // Arrange
+        var json = """
+        {
+          "regId": "RGA7933K5I",
+          "layananId": "3RI02",
+          "nilaiTarifId": "01KDR2AX212RQ099HWC66BSY13",
+          "qty": 1,
+          "userId": "SPR001",
+          "listPpa": [
+            {
+              "komponenId": "101",
+              "ppaId": "11065"
+            }
+          ],
+          "pakaiBedId": "BEA8K5O8VA",
+          "isDiskonDokter": false
+        }
+        """;
+        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Act
+        var cmd = System.Text.Json.JsonSerializer.Deserialize<TdkCreateTindakanCmd>(json, options);
+
+        // Assert
+        cmd.Should().NotBeNull();
+        cmd!.RegId.Should().Be("RGA7933K5I");
+        cmd.LayananId.Should().Be("3RI02");
+        cmd.NilaiTarifId.Should().Be("01KDR2AX212RQ099HWC66BSY13");
+        cmd.Qty.Should().Be(1);
+        cmd.UserId.Should().Be("SPR001");
+        cmd.PakaiBedId.Should().Be("BEA8K5O8VA");
+        cmd.IsDiskonDokter.Should().BeFalse();
+        cmd.ListPpa.Should().HaveCount(1);
+        cmd.ListPpa.First().KomponenId.Should().Be("101");
+        cmd.ListPpa.First().PpaId.Should().Be("11065");
+    }
+
+    [Fact]
+    public void SystemTextJson_CanDeserialize_TdkSaveTindakanCmd()
+    {
+        // Arrange
+        var json = """
+        {
+          "tindakanId": "TDK-001",
+          "regId": "RGA7933K5I",
+          "layananId": "3RI02",
+          "nilaiTarifId": "01KDR2AX212RQ099HWC66BSY13",
+          "qty": 1,
+          "userId": "SPR001",
+          "listPpa": [
+            {
+              "komponenId": "101",
+              "ppaId": "11065"
+            }
+          ],
+          "pakaiBedId": "BEA8K5O8VA",
+          "isDiskonDokter": false
+        }
+        """;
+        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Act
+        var cmd = System.Text.Json.JsonSerializer.Deserialize<TdkSaveTindakanCmd>(json, options);
+
+        // Assert
+        cmd.Should().NotBeNull();
+        cmd!.TindakanId.Should().Be("TDK-001");
+        cmd.RegId.Should().Be("RGA7933K5I");
+        cmd.PakaiBedId.Should().Be("BEA8K5O8VA");
+    }
 }

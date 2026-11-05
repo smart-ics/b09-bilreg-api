@@ -314,4 +314,121 @@ public class PakaiBedDalTest
             ");
         }
     }
+
+    [Fact]
+    public async Task VoidBedAndRoomChargeAsync_WhenMotherBedVoided_NormalizesRegistrations_AndRevertsBothWaitingLists()
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        try
+        {
+            conn.Execute(@"
+                IF NOT EXISTS (SELECT 1 FROM ta_kamar_tipe WHERE fs_kd_kamar_tipe = '9')
+                    INSERT INTO ta_kamar_tipe (fs_kd_kamar_tipe, fs_nm_kamar_tipe, fb_gabung, fb_aktif, fb_default_tipe)
+                    VALUES ('9', 'Tipe Gabung', 1, 1, 0);
+                ELSE
+                    UPDATE ta_kamar_tipe SET fb_gabung = 1 WHERE fs_kd_kamar_tipe = '9';
+
+                DELETE FROM BILRG_BedWaitingList WHERE WaitingListId IN ('WL_M03', 'WL_B03');
+                DELETE FROM ta_trs_bed WHERE fs_kd_trs IN ('TPKB_M03', 'TPKB_B03');
+                DELETE FROM ta_bed WHERE fs_kd_bed = 'TGAB_V03';
+                DELETE FROM ta_registrasi WHERE fs_kd_reg IN ('RGMOTH03', 'RGBABY03');
+
+                INSERT INTO ta_registrasi (fs_kd_reg, fs_kd_jenis_inap, fs_reg_ibu) VALUES ('RGMOTH03', '1', '');
+                INSERT INTO ta_registrasi (fs_kd_reg, fs_kd_jenis_inap, fs_reg_ibu) VALUES ('RGBABY03', '1', '');
+
+                INSERT INTO ta_bed (fs_kd_bed, fs_nm_bed, fs_kd_kamar, fn_status, fs_kd_reg, fb_aktif)
+                VALUES ('TGAB_V03', 'Bed Rawat Gabung V3', 'KM01', 1, 'RGMOTH03', 1);
+
+                IF OBJECT_ID('BILRG_BedWaitingList', 'U') IS NOT NULL
+                BEGIN
+                    INSERT INTO BILRG_BedWaitingList (
+                        WaitingListId, WaitingListStatus, RegId, PasienId,
+                        KelasId, KelasName, BangsalId, BangsalName,
+                        Priority, AdmittedBedId,
+                        CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                    VALUES (
+                        'WL_M03', 2, 'RGMOTH03', 'MR_M03',
+                        '3', 'Kelas 3', 'BM001', 'Bangsal Maternitas',
+                        1, 'TGAB_V03',
+                        'test', GETUTCDATE(), 'test', GETUTCDATE(), '', '3000-01-01');
+
+                    INSERT INTO BILRG_BedWaitingList (
+                        WaitingListId, WaitingListStatus, RegId, PasienId,
+                        KelasId, KelasName, BangsalId, BangsalName,
+                        Priority, AdmittedBedId,
+                        CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                    VALUES (
+                        'WL_B03', 2, 'RGBABY03', 'MR_B03',
+                        '3', 'Kelas 3', 'BB001', 'Bangsal Perinatologi',
+                        1, 'TGAB_V03',
+                        'test', GETUTCDATE(), 'test', GETUTCDATE(), '', '3000-01-01');
+                END
+            ");
+
+            var motherDto = Faker() with
+            {
+                fs_kd_trs = "TPKB_M03",
+                fs_kd_bed = "TGAB_V03",
+                fs_kd_reg = "RGMOTH03",
+                fs_kd_layanan = "BM001",
+                fn_tarif = 250000,
+                fd_tgl_out = "3000-01-01",
+                fd_tgl_void = "3000-01-01"
+            };
+
+            var babyDto = Faker() with
+            {
+                fs_kd_trs = "TPKB_B03",
+                fs_kd_bed = "TGAB_V03",
+                fs_kd_reg = "RGBABY03",
+                fs_kd_layanan = "BB001",
+                fs_kd_kamar_tipe = "9",
+                fn_tarif = 0,
+                fd_tgl_out = "3000-01-01",
+                fd_tgl_void = "3000-01-01"
+            };
+
+            _sut.Insert(motherDto);
+            _sut.Insert(babyDto);
+
+            // Void mother's rooming-in bed
+            var now = new DateTime(2026, 11, 5, 10, 0, 0);
+            var affectedBangsals = await _sut.VoidBedAndRoomChargeAsync("TPKB_M03", "nurse_v", "Batal check-in ibu & bayi", now);
+
+            // 1. Assert: Mother registration normalized to Obstetri '2'
+            var motherReg = conn.QueryFirstOrDefault("SELECT fs_kd_jenis_inap, fs_reg_ibu FROM ta_registrasi WHERE fs_kd_reg = 'RGMOTH03'");
+            Assert.NotNull((object?)motherReg);
+            ((string)motherReg!.fs_kd_jenis_inap).Should().Be("2");
+
+            // 2. Assert: Baby registration normalized to Perinatal '3' and linked to mother
+            var babyReg = conn.QueryFirstOrDefault("SELECT fs_kd_jenis_inap, fs_reg_ibu FROM ta_registrasi WHERE fs_kd_reg = 'RGBABY03'");
+            Assert.NotNull((object?)babyReg);
+            ((string)babyReg!.fs_kd_jenis_inap).Should().Be("3");
+            ((string)babyReg.fs_reg_ibu).Should().Be("RGMOTH03");
+
+            // 3. Assert: Both Waiting List records reverted to status 0 and allocation cleared
+            var motherWl = conn.QueryFirstOrDefault("SELECT WaitingListStatus, AdmittedBedId FROM BILRG_BedWaitingList WHERE WaitingListId = 'WL_M03'");
+            Assert.NotNull((object?)motherWl);
+            ((int)motherWl!.WaitingListStatus).Should().Be(0);
+            ((string)motherWl.AdmittedBedId).Should().BeEmpty();
+
+            var babyWl = conn.QueryFirstOrDefault("SELECT WaitingListStatus, AdmittedBedId FROM BILRG_BedWaitingList WHERE WaitingListId = 'WL_B03'");
+            Assert.NotNull((object?)babyWl);
+            ((int)babyWl!.WaitingListStatus).Should().Be(0);
+            ((string)babyWl.AdmittedBedId).Should().BeEmpty();
+
+            // 4. Assert: Both mother and baby bangsal IDs returned in affected list
+            affectedBangsals.Should().Contain("BM001");
+            affectedBangsals.Should().Contain("BB001");
+        }
+        finally
+        {
+            conn.Execute(@"
+                DELETE FROM BILRG_BedWaitingList WHERE WaitingListId IN ('WL_M03', 'WL_B03');
+                DELETE FROM ta_trs_bed WHERE fs_kd_trs IN ('TPKB_M03', 'TPKB_B03');
+                DELETE FROM ta_bed WHERE fs_kd_bed = 'TGAB_V03';
+                DELETE FROM ta_registrasi WHERE fs_kd_reg IN ('RGMOTH03', 'RGBABY03');
+            ");
+        }
+    }
 }
