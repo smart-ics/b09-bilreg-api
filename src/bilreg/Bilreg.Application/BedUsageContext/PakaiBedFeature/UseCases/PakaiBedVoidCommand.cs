@@ -1,7 +1,17 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
-using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -17,17 +27,45 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         private readonly IPakaiBedRepo _pakaiBedRepo;
         private readonly IAuditRepo _auditRepo;
         private readonly ITglJamProvider _tglJamProvider;
+        private readonly IPakaiBedBillingLockChecker? _billingLockChecker;
+        private readonly IPakaiBedDal? _pakaiBedDal;
+        private readonly ITindakanRepo? _tindakanRepo;
+        private readonly IWaitingListRepo? _waitingListRepo;
+        private readonly IRegRepo? _regRepo;
+        private readonly IBedRepo? _bedRepo;
+        private readonly IBangsalRepo? _bangsalRepo;
+        private readonly IBedOperationalRepo? _bedOperationalRepo;
+        private readonly IWardCockpitEventPublisher? _eventPublisher;
 
-        public PakaiBedDeleteCommandHandler(IPakaiBedRepo pakaiBedRepo, 
+        public PakaiBedDeleteCommandHandler(
+            IPakaiBedRepo pakaiBedRepo, 
             IAuditRepo auditRepo, 
-            ITglJamProvider tglJamProvider)
+            ITglJamProvider tglJamProvider,
+            IPakaiBedBillingLockChecker? billingLockChecker = null,
+            IPakaiBedDal? pakaiBedDal = null,
+            ITindakanRepo? tindakanRepo = null,
+            IWaitingListRepo? waitingListRepo = null,
+            IRegRepo? regRepo = null,
+            IBedRepo? bedRepo = null,
+            IBangsalRepo? bangsalRepo = null,
+            IBedOperationalRepo? bedOperationalRepo = null,
+            IWardCockpitEventPublisher? eventPublisher = null)
         {
             _pakaiBedRepo = pakaiBedRepo;
             _auditRepo = auditRepo;
             _tglJamProvider = tglJamProvider;
+            _billingLockChecker = billingLockChecker;
+            _pakaiBedDal = pakaiBedDal;
+            _tindakanRepo = tindakanRepo;
+            _waitingListRepo = waitingListRepo;
+            _regRepo = regRepo;
+            _bedRepo = bedRepo;
+            _bangsalRepo = bangsalRepo;
+            _bedOperationalRepo = bedOperationalRepo;
+            _eventPublisher = eventPublisher;
         }
 
-        public Task Handle(PakaiBedVoidCommand request, CancellationToken cancellationToken)
+        public async Task Handle(PakaiBedVoidCommand request, CancellationToken cancellationToken)
         {
             Guard.Against.NullOrWhiteSpace(request.PakaiBedId);
             Guard.Against.NullOrWhiteSpace(request.UserId);
@@ -36,18 +74,240 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             var saved = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(request.PakaiBedId))
                 .GetValueOrThrow($"Trs. Pakai Bed {request.PakaiBedId} not found");
 
+            // 1. Billing Lock Check
+            if (_billingLockChecker != null)
+            {
+                if (_billingLockChecker.CheckIsBillingLocked(saved.Reg.RegId))
+                {
+                    throw new BillingLockedException(saved.Reg.RegId);
+                }
+            }
+
+            // 2. Note: ITindakanRepo is intentionally NOT blocking and NOT modifying ta_trs_tindakan.
+            // Clinical procedures are strictly preserved per user requirement:
+            // "jangan hapus tindakan yang telah di input, cukup hapus room charge pada bed yang bersangkutan saat batal check-in bed bangsal rawat inap"
+
             var snapshotJson = AuditLogSnapshotJson.Serialize(saved);
-
             var occurredAt = _tglJamProvider.Now;
+            var affectedBangsalIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // 3. Update Domain Model state and persist
             saved.Void(request.UserId, occurredAt);
-
             _pakaiBedRepo.SaveChanges(saved);
 
+            // 4. Atomic Void on Bed & Room Charge in DAL
+            if (_pakaiBedDal != null)
+            {
+                var dalBangsals = await _pakaiBedDal.VoidBedAndRoomChargeAsync(request.PakaiBedId, request.UserId, request.VoidReason, occurredAt);
+                if (dalBangsals != null)
+                {
+                    foreach (var b in dalBangsals.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    {
+                        affectedBangsalIds.Add(b.Trim());
+                    }
+                }
+            }
+
+            // 5. Kembalikan pasien ke Waiting List
+            if (_waitingListRepo != null)
+            {
+                var listWl = _waitingListRepo.ListByRegId(saved.Reg.RegId)?.ToList() ?? [];
+                var matchedWl = listWl.FirstOrDefault(x => x.PlacedPakaiBedId == request.PakaiBedId)
+                             ?? listWl.FirstOrDefault(x => x.WaitingListStatus == WaitingListStatusEnum.Placed);
+
+                if (matchedWl != null)
+                {
+                    var revertedWl = matchedWl.RevertToWaiting(request.UserId, occurredAt);
+                    _waitingListRepo.SaveChanges(revertedWl);
+                    if (!string.IsNullOrWhiteSpace(revertedWl.Bangsal?.BangsalId))
+                    {
+                        affectedBangsalIds.Add(revertedWl.Bangsal.BangsalId.Trim());
+                    }
+                }
+                else if (!listWl.Any(x => x.WaitingListStatus == WaitingListStatusEnum.Waiting || x.WaitingListStatus == WaitingListStatusEnum.Reserved))
+                {
+                    if (_regRepo != null)
+                    {
+                        var maybeReg = _regRepo.LoadEntity(RegModel.Key(saved.Reg.RegId));
+                        if (maybeReg.HasValue)
+                        {
+                            var reg = maybeReg.Value;
+                            BangsalReff? targetBangsal = null;
+                            if (_bedRepo != null && _bangsalRepo != null)
+                            {
+                                var maybeBed = _bedRepo.LoadEntity(BedType.Key(saved.Bed.BedId));
+                                if (maybeBed.HasValue)
+                                {
+                                    var maybeBsl = _bangsalRepo.LoadEntity(BangsalType.Key(maybeBed.Value.Bangsal.BangsalId));
+                                    if (maybeBsl.HasValue)
+                                    {
+                                        targetBangsal = maybeBsl.Value.ToReff();
+                                    }
+                                }
+                            }
+
+                            targetBangsal ??= new BangsalReff(saved.Layanan.LayananId, saved.Layanan.LayananName);
+
+                            var newWl = WaitingListModel.Create(
+                                reg.RegId,
+                                reg.Pasien,
+                                saved.Kelas != null && saved.Kelas.KelasId != "-" ? saved.Kelas : reg.Kelas,
+                                targetBangsal,
+                                ArrivalSourceTypeEnum.Adm,
+                                saved.Layanan != null ? new LayananReff(saved.Layanan.LayananId, saved.Layanan.LayananName) : new LayananReff("-", "-"),
+                                reg.Dokter != null ? new DokterReff(reg.Dokter.PpaId, reg.Dokter.PpaName) : new DokterReff("-", "-"),
+                                ClinicalUrgencyEnum.Routine,
+                                $"Batal Check-in: {request.VoidReason}",
+                                priority: 0,
+                                auditUserId: request.UserId,
+                                createdAt: occurredAt);
+
+                            _waitingListRepo.Save(newWl);
+                            if (!string.IsNullOrWhiteSpace(newWl.Bangsal?.BangsalId))
+                            {
+                                affectedBangsalIds.Add(newWl.Bangsal.BangsalId.Trim());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 6. Transisi BedOperational ke status kotor / House Keeping (CleaningRequired)
+            if (_bedOperationalRepo != null)
+            {
+                var occurredAtUtc = occurredAt.Kind == DateTimeKind.Utc
+                    ? occurredAt
+                    : (occurredAt.Kind == DateTimeKind.Local
+                        ? occurredAt.ToUniversalTime()
+                        : DateTime.SpecifyKind(occurredAt, DateTimeKind.Utc));
+
+                var businessNow = _tglJamProvider.Now;
+                var nowUtc = businessNow.Kind == DateTimeKind.Utc
+                    ? businessNow
+                    : (businessNow.Kind == DateTimeKind.Local
+                        ? businessNow.ToUniversalTime()
+                        : DateTime.SpecifyKind(businessNow, DateTimeKind.Utc));
+                if (nowUtc < occurredAtUtc)
+                {
+                    nowUtc = occurredAtUtc;
+                }
+
+                var maybeBedOp = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(saved.Bed.BedId));
+                var bedOperational = maybeBedOp.Match(
+                    onSome: bo => bo,
+                    onNone: () =>
+                    {
+                        var bangsalId = saved.Layanan?.LayananId ?? "DEFAULT";
+                        var kamarId = "DEFAULT";
+                        if (_bedRepo != null)
+                        {
+                            var maybeBed = _bedRepo.LoadEntity(BedType.Key(saved.Bed.BedId));
+                            if (maybeBed.HasValue)
+                            {
+                                bangsalId = maybeBed.Value.Bangsal?.BangsalId ?? bangsalId;
+                                kamarId = maybeBed.Value.Kamar?.KamarId ?? kamarId;
+                            }
+                        }
+                        return BedOperationalModel.Create(
+                            saved.Bed.BedId,
+                            bangsalId,
+                            kamarId,
+                            OccupancyPolicyReff.Default);
+                    });
+
+                var latestTxOccurredAtUtc = bedOperational.ListReadinessTransaction
+                    .OrderBy(x => x.OccurredAt)
+                    .LastOrDefault()?.OccurredAt ?? DateTime.MinValue;
+
+                if (occurredAtUtc <= latestTxOccurredAtUtc)
+                {
+                    var nextOccurred = latestTxOccurredAtUtc.AddSeconds(1);
+                    occurredAtUtc = nextOccurred.Kind == DateTimeKind.Utc
+                        ? nextOccurred
+                        : DateTime.SpecifyKind(nextOccurred, DateTimeKind.Utc);
+                }
+                if (nowUtc < occurredAtUtc)
+                {
+                    nowUtc = occurredAtUtc;
+                }
+
+                var pkbPart = request.PakaiBedId.Length > 10 ? request.PakaiBedId[..10] : request.PakaiBedId;
+                var shortGuid = Guid.NewGuid().ToString("N")[..8];
+                var factId = $"FACT-VOID-{pkbPart}-{shortGuid}";
+                if (factId.Length > 50)
+                {
+                    factId = factId[..50];
+                }
+                var reqId = $"REQ-{shortGuid}";
+
+                var reason = $"Pembersihan Pasca Batal Check-In: {request.VoidReason}";
+
+                var bedOp = bedOperational.SetCleaningRequired(
+                    reason,
+                    request.UserId,
+                    occurredAtUtc,
+                    nowUtc,
+                    sourceFactId: factId,
+                    requestId: reqId);
+                _bedOperationalRepo.SaveChanges(bedOp);
+            }
+
+            // 7. Notifikasi SignalR ke Ward Cockpit
+            if (_eventPublisher != null)
+            {
+                var bangsalId = string.Empty;
+                if (_bedRepo != null && !string.IsNullOrWhiteSpace(saved.Bed.BedId))
+                {
+                    var maybeBed = _bedRepo.LoadEntity(BedType.Key(saved.Bed.BedId));
+                    if (maybeBed.HasValue && !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-")
+                    {
+                        bangsalId = maybeBed.Value.Bangsal.BangsalId;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(bangsalId) && _bangsalRepo != null && !string.IsNullOrWhiteSpace(saved.Layanan.LayananId))
+                {
+                    var maybeDirectBangsal = _bangsalRepo.LoadEntity(BangsalType.Key(saved.Layanan.LayananId));
+                    if (maybeDirectBangsal.HasValue && !string.IsNullOrWhiteSpace(maybeDirectBangsal.Value.BangsalId) && maybeDirectBangsal.Value.BangsalId != "-")
+                    {
+                        bangsalId = maybeDirectBangsal.Value.BangsalId;
+                    }
+                    else
+                    {
+                        var listBangsal = _bangsalRepo.ListData(LayananType.Key(saved.Layanan.LayananId));
+                        var firstBangsal = listBangsal?.FirstOrDefault();
+                        if (firstBangsal != null && !string.IsNullOrWhiteSpace(firstBangsal.BangsalId) && firstBangsal.BangsalId != "-")
+                        {
+                            bangsalId = firstBangsal.BangsalId;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(bangsalId))
+                {
+                    bangsalId = saved.Layanan.LayananId;
+                }
+
+                if (!string.IsNullOrWhiteSpace(bangsalId))
+                {
+                    await _eventPublisher.PublishBedStatusChangedAsync(bangsalId, saved.Bed.BedId, "Cleaning", cancellationToken: cancellationToken);
+                    await _eventPublisher.PublishWaitingListUpdatedAsync(bangsalId, cancellationToken);
+                }
+
+                foreach (var extraBangsalId in affectedBangsalIds)
+                {
+                    if (!string.IsNullOrWhiteSpace(extraBangsalId) &&
+                        !string.Equals(extraBangsalId, bangsalId?.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _eventPublisher.PublishBedStatusChangedAsync(extraBangsalId, saved.Bed.BedId, "Cleaning", cancellationToken: cancellationToken);
+                        await _eventPublisher.PublishWaitingListUpdatedAsync(extraBangsalId, cancellationToken);
+                    }
+                }
+            }
+
+            // 8. Audit Log
             var audit = CreateAudit(saved, snapshotJson, request);
             _auditRepo.SaveChanges(audit);
-
-            return Task.CompletedTask;
         }
 
         private AuditLog CreateAudit(PakaiBedModel pkb, string snapShotJson, PakaiBedVoidCommand cmd)
@@ -55,7 +315,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             var result = AuditLog.Create(
                 pkb.AuditTrail.Voided,
                 actionType: "VOID",
-                entityName: nameof(TindakanModel),
+                entityName: nameof(PakaiBedModel),
                 entityId: pkb.PakaiBedId,
                 reason: cmd.VoidReason,
                 originalDataJson: snapShotJson,

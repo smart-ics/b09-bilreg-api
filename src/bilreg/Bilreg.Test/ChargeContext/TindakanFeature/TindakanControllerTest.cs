@@ -1,9 +1,11 @@
+using System.Net;
 using Bilreg.Api.Controllers.ChargeContext;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using MediatR;
@@ -32,46 +34,43 @@ public class TindakanControllerTest
     }
 
     [Fact]
-    public async Task Batal_WhenCommandSucceeds_Returns200OkWithDoneMessage()
+    public async Task Create_DelegatesToTdkCreateTindakanCmd_ReturnsOk()
     {
         // Arrange
-        var req = new TindakanVoidRequest("TDK-01", "USER-01", "Pembatalan normal");
-        _mediatorMock.Setup(x => x.Send(It.Is<TindakanVoidCmd>(c => c.TindakanId == "TDK-01"), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var ppaList = new List<TdkCreateTindakanPpaCmd> { new("KOMP01", "PPA01") };
+        var cmd = new TdkCreateTindakanCmd("REG001", "LAY01", "NT001", "user1", ppaList, "BED001", 3);
+        var expectedResponse = new TindakanCreateRespose("TDK001");
+
+        TdkCreateTindakanCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TdkCreateTindakanCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<TindakanCreateRespose>, CancellationToken>((c, _) => capturedCmd = (TdkCreateTindakanCmd)c)
+            .ReturnsAsync(expectedResponse);
 
         // Act
-        var result = await _sut.Batal(req);
+        var result = await _sut.Create(cmd);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
-        jsend.data.Should().Be("Done");
+        jsend.data.Should().Be(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.RegId.Should().Be("REG001");
+        capturedCmd.LayananId.Should().Be("LAY01");
+        capturedCmd.NilaiTarifId.Should().Be("NT001");
+        capturedCmd.UserId.Should().Be("user1");
+        capturedCmd.PakaiBedId.Should().Be("BED001");
+        capturedCmd.Qty.Should().Be(3);
+        capturedCmd.ListPpa.Should().HaveCount(1);
     }
 
     [Fact]
-    public async Task Batal_WhenInvalidOperationExceptionThrown_Returns400BadRequestWithJSendFailed()
+    public async Task Create_WhenCalledWithIsDiskonDokter_SendsCommandToMediatorAndReturnsOk()
     {
         // Arrange
-        var req = new TindakanVoidRequest("TDK-01", "USER-01", "Pembatalan tagihan terkunci");
-        _mediatorMock.Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Operasi bill hanya diizinkan saat TataRekening berstatus OPEN."));
-
-        // Act
-        var result = await _sut.Batal(req);
-
-        // Assert
-        var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        var jsend = badRequestResult.Value.Should().BeOfType<JSendFailed>().Subject;
-        jsend.status.Should().Be("failed");
-    }
-
-    [Fact]
-    public async Task Create_WhenCalledWithQty_SendsCommandToMediatorAndReturnsOk()
-    {
-        // Arrange
-        var cmd = new TdkCreateTindakanCmd("REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 3);
-        var expectedResponse = new TindakanCreateRespose("TDK-12345");
+        var cmd = new TdkCreateTindakanCmd("REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 2, IsDiskonDokter: true);
+        var expectedResponse = new TindakanCreateRespose("TDK-12346");
         _mediatorMock.Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -85,12 +84,17 @@ public class TindakanControllerTest
     }
 
     [Fact]
-    public async Task SaveTindakan_WhenCalledWithQty_SendsCommandToMediatorAndReturnsOk()
+    public async Task SaveTindakan_DelegatesToTdkSaveTindakanCmd_ReturnsOk()
     {
         // Arrange
-        var cmd = new TdkSaveTindakanCmd("TDK-12345", "REG-01", "LYN-01", "NT-01", "USER-01", [], Qty: 2);
-        var expectedResponse = new TdkSaveTindakanRespose("TDK-12345");
-        _mediatorMock.Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+        var ppaList = new List<TdkSaveTindakanPpaCmd> { new("KOMP01", "PPA01") };
+        var cmd = new TdkSaveTindakanCmd("TDK001", "REG001", "LAY01", "NT001", "user1", ppaList, "BED001", 2);
+        var expectedResponse = new TdkSaveTindakanRespose("TDK001");
+
+        TdkSaveTindakanCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TdkSaveTindakanCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<TdkSaveTindakanRespose>, CancellationToken>((c, _) => capturedCmd = (TdkSaveTindakanCmd)c)
             .ReturnsAsync(expectedResponse);
 
         // Act
@@ -100,38 +104,192 @@ public class TindakanControllerTest
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TindakanId.Should().Be("TDK001");
+        capturedCmd.PakaiBedId.Should().Be("BED001");
+        capturedCmd.Qty.Should().Be(2);
     }
 
     [Fact]
-    public async Task Get_WhenCalledWithTindakanId_SendsQueryToMediatorAndReturnsOk()
+    public async Task UpdatePetugas_DelegatesToTdkUpdatePetugasCmd_ReturnsOk()
     {
         // Arrange
-        const string tindakanId = "TDK-001";
-        var expectedResponse = new TindakanGetResponse(
-            tindakanId,
-            new DateTime(2026, 10, 16, 8, 30, 0),
-            "ORD-01",
-            new RegReff("REG-01", "MED-01", "Pasien A"),
-            new LayananReff("LYN-01", "Poli Umum"),
-            new KelasReff("KLS-01", "Kelas 1"),
-            new TipeTarifReff("TT-01", "Umum"),
-            new TarifReff("TRF-01", "Tarif A"),
-            2,
-            150000m,
-            false,
-            AuditTrailType.Default,
-            []
-        );
+        var req = new TindakanUpdatePetugasRequest("TDK001", "DOC01", "admin");
+        var expectedResponse = new TdkUpdatePetugasResponse("TDK001", "DOC01", "dr. Budi");
 
-        _mediatorMock.Setup(x => x.Send(It.Is<TindakanGetQuery>(q => q.TindakanId == tindakanId), It.IsAny<CancellationToken>()))
+        TdkUpdatePetugasCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TdkUpdatePetugasCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<TdkUpdatePetugasResponse>, CancellationToken>((c, _) => capturedCmd = (TdkUpdatePetugasCmd)c)
             .ReturnsAsync(expectedResponse);
 
         // Act
-        var result = await _sut.Get(tindakanId);
+        var result = await _sut.UpdatePetugas(req);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TindakanId.Should().Be("TDK001");
+        capturedCmd.PpaId.Should().Be("DOC01");
+        capturedCmd.UserId.Should().Be("admin");
+    }
+
+    [Fact]
+    public async Task GetTindakan_DelegatesToTindakanGetQuery_ReturnsOk()
+    {
+        // Arrange
+        var response = new TindakanGetResponse(
+            "TDK001",
+            new DateTime(2026, 10, 20, 10, 0, 0),
+            "ORD01",
+            new RegReff("REG001", "PAS001", "Pasien A"),
+            new LayananReff("LAY01", "Layanan A"),
+            new KelasReff("KL01", "Kelas 1"),
+            new TipeTarifReff("TT01", "Umum"),
+            new TarifReff("TRF01", "Tarif Tindakan"),
+            3,
+            150000m,
+            false,
+            AuditTrailType.Default,
+            new List<TindakanGetKomponenResponse>(),
+            "BED001");
+
+        TindakanGetQuery? capturedQuery = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanGetQuery>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<TindakanGetResponse>, CancellationToken>((q, _) => capturedQuery = (TindakanGetQuery)q)
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _sut.Get("TDK001");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(response);
+
+        capturedQuery.Should().NotBeNull();
+        capturedQuery!.TindakanId.Should().Be("TDK001");
+    }
+
+    [Fact]
+    public async Task ListTdkJual_DelegatesToTdkListTindakanJualQuery_ReturnsOk()
+    {
+        // Arrange
+        var response = new List<TdkListTindakanJualResponse>
+        {
+            new(
+                "TDK001",
+                "2026-10-20 10:00:00",
+                new RegReff("REG001", "PAS001", "Pasien A"),
+                new LayananReff("LAY01", "Layanan A"),
+                new TdkListTdkJualDesc("TRF01", "Tarif Tindakan", "TARIF"),
+                150000m,
+                3,
+                "BED001")
+        };
+
+        TdkListTindakanJualQuery? capturedQuery = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TdkListTindakanJualQuery>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<IEnumerable<TdkListTindakanJualResponse>>, CancellationToken>((q, _) => capturedQuery = (TdkListTindakanJualQuery)q)
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _sut.ListTdkJual("REG001");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(response);
+
+        capturedQuery.Should().NotBeNull();
+        capturedQuery!.RegId.Should().Be("REG001");
+    }
+
+    [Fact]
+    public async Task Batal_WhenSuccessful_DelegatesToTindakanVoidCmd_ReturnsOk()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
+        httpContext.Request.Headers.UserAgent = "TestAgent/1.0";
+        _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        var req = new TindakanVoidRequest("TDK001", "user1", "Salah input pasien");
+
+        TindakanVoidCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((c, _) => capturedCmd = (TindakanVoidCmd)c)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.Batal(req);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TindakanId.Should().Be("TDK001");
+        capturedCmd.UserId.Should().Be("user1");
+        capturedCmd.VoidReason.Should().Be("Salah input pasien");
+    }
+
+    [Fact]
+    public async Task Batal_WhenBillingLockedOrClosed_CatchesInvalidOperationException_Returns422UnprocessableEntity()
+    {
+        // Arrange
+        var req = new TindakanVoidRequest("TDK001", "user1", "Salah input pasien");
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Tagihan tidak dapat dihapus. Billing sudah lunas"));
+
+        // Act
+        var result = await _sut.Batal(req);
+
+        // Assert
+        var objResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+
+        var jsend = objResult.Value.Should().BeOfType<JSend>().Subject;
+        jsend.code.Should().Be("422");
+        jsend.status.Should().Be("FAIL");
+        jsend.data.ToString().Should().Contain("Billing sudah lunas");
+    }
+
+    [Fact]
+    public async Task DeleteById_WithRouteId_SendsTindakanVoidCmd_ReturnsOk()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
+        httpContext.Request.Headers.UserAgent = "TestAgent/1.0";
+        _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        TindakanVoidCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((c, _) => capturedCmd = (TindakanVoidCmd)c)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.DeleteById("TDK999", userId: "nurse01", voidReason: "Pasien membatalkan tindakan");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TindakanId.Should().Be("TDK999");
+        capturedCmd.UserId.Should().Be("nurse01");
+        capturedCmd.VoidReason.Should().Be("Pasien membatalkan tindakan");
     }
 }

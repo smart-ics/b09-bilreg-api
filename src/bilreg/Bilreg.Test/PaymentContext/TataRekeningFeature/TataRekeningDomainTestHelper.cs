@@ -1,4 +1,5 @@
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Moq;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
@@ -18,7 +19,7 @@ internal static class TataRekeningDomainTestHelper
         new MergeBillingDomainService(ProjectionService, PermissiveRegRelationPolicy);
 
     public static readonly IFinancialVerificationDomainService VerificationService =
-        new FinancialVerificationDomainService();
+        new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>());
 
     public static readonly IFinancialAdjustmentDomainService AdjustmentService =
         new FinancialAdjustmentDomainService(ProjectionService);

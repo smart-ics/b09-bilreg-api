@@ -39,8 +39,10 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IRegBiayaRepo> _regBiayaRepo = new();
     private readonly Mock<ITrsDirectDal> _trsDirectDal = new();
     private readonly Mock<IJurnalDal> _jurnalDal = new();
+    private readonly Mock<ITataRekeningCancellationLogRepo> _cancellationLogRepo = new();
+    private readonly Mock<IDownstreamSettlementInspector> _settlementInspector = new();
     private readonly FixedCurrentUserContext _currentUser =
-        new(TataRekeningDomainTestHelper.DefaultPetugasVerif);
+        new(TataRekeningDomainTestHelper.DefaultPetugasVerif, TataRekeningSupervisorRole.VerifikatorSupervisor);
 
     public TataRekeningPhase3ApplicationTest()
     {
@@ -309,7 +311,8 @@ public class TataRekeningPhase3ApplicationTest
         SetupRegLoad(RegId, RegModel.Default);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>()));
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
@@ -334,10 +337,14 @@ public class TataRekeningPhase3ApplicationTest
         SetupRegLoad(RegId, reg);
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object,
+            _cancellationLogRepo.Object, _settlementInspector.Object,
+            _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
             _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
 
-        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
+        var result = await handler.Handle(
+            new CancelFinalizationCommand(RegId, "UserId", "SPV-01", "Koreksi alokasi pembayaran"),
+            CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();

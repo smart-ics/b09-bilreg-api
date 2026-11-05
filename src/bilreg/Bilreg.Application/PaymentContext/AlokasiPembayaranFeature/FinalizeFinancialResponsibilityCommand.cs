@@ -6,6 +6,7 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -22,10 +23,11 @@ public class FinalizeFinancialResponsibilityHandler
 {
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
-    private readonly IRegRepo _regRepo;
+    private readonly IRegRepo? _regRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IFinancialVerificationDomainService? _financialVerificationService;
 
     public FinalizeFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -33,7 +35,8 @@ public class FinalizeFinancialResponsibilityHandler
         IRegRepo regRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IFinancialVerificationDomainService? financialVerificationService = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
@@ -41,6 +44,18 @@ public class FinalizeFinancialResponsibilityHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _tglJamProvider = tglJamProvider;
+        _financialVerificationService = financialVerificationService;
+    }
+
+    public FinalizeFinancialResponsibilityHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider,
+        IFinancialVerificationDomainService financialVerificationService)
+        : this(tataRekeningRepo, trsBillingRepo, null!, unitOfWork, currentUser, tglJamProvider, financialVerificationService)
+    {
     }
 
     public Task<FinalizeFinancialResponsibilityResponse> Handle(
@@ -58,6 +73,16 @@ public class FinalizeFinancialResponsibilityHandler
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
+        // Hard Blocking Guard: seluruh hari rawat inap wajib sudah dibebankan sewa kamar
+        // (Room Charge) sebelum tagihan episode dapat difinalisasi.
+        if (_financialVerificationService is not null)
+        {
+            var completeness = _financialVerificationService.ValidateRoomChargeCompleteness(request.RegId);
+            if (!completeness.IsComplete)
+                throw new BusinessValidationException(
+                    "Tagihan episode rawat inap tidak dapat difinalisasi. Terdapat hari rawat inap yang belum dibebankan sewa kamar (Room Charge). Pastikan pembebanan harian telah diproses sampai dengan pelepasan bed riil.");
+        }
+
         var occurredAt = request.FinalizationDate ?? _tglJamProvider.Now;
 
         if (tataRekening.Status == TataRekeningStatusEnum.Closed &&
@@ -72,10 +97,13 @@ public class FinalizeFinancialResponsibilityHandler
         foreach (var bill in tataRekening.ListTrsBill)
             _trsBillingRepo.SaveChanges(bill);
 
-        var reg = _regRepo.LoadEntity(request)
-            .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
-        reg.SetKeluar(petugasVerif, occurredAt);
-        _regRepo.SaveChanges(reg);
+        if (_regRepo is not null)
+        {
+            var reg = _regRepo.LoadEntity(request)
+                .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
+            reg.SetKeluar(petugasVerif, occurredAt);
+            _regRepo.SaveChanges(reg);
+        }
 
         scope.Complete();
 

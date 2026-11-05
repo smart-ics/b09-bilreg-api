@@ -116,7 +116,8 @@ internal class TrsBillFactory
             listBill2TransEvent.Add(trsBill2);
         }
 
-        var nilai = new TrsBillNilaiType(tindakan.Total, 0, 0, 0);
+        var subTotal = tindakan.Total + tindakan.DiskonDokter;
+        var nilai = new TrsBillNilaiType(subTotal, tindakan.DiskonDokter, 0, 0);
 
         var result = new TrsBillType(tindakan.TindakanId, BillModulGroup.Jasa, tindakan.TindakanDate,
             tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak,

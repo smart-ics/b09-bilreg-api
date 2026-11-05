@@ -175,6 +175,39 @@ public class TdkSaveTindakanHandlerTest
     }
 
     [Fact]
+    public async Task GivenNewTindakanWithIsDiskonDokterTrue_WhenSave_ThenTindakanCreatedWithDiskonDokterAndDoctorWaiverApplied()
+    {
+        // Arrange: TindakanId is "-" (new entity)
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var cmd = new TdkSaveTindakanCmd(
+            "-",
+            "REG-01",
+            "LYN-01",
+            "NT-01",
+            "USER-01",
+            [new TdkSaveTindakanPpaCmd("KOMP-01", "PPA-01")],
+            Qty: 2,
+            IsDiskonDokter: true);
+
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == "-")))
+            .Returns(MayBe<TindakanModel>.None);
+
+        TindakanModel? savedTindakan = null;
+        _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
+            .Callback<TindakanModel>(t => savedTindakan = t);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        savedTindakan.Should().NotBeNull();
+        savedTindakan!.IsDiskonDokter.Should().BeTrue();
+        savedTindakan.DiskonDokter.Should().Be(100000m);
+        savedTindakan.Total.Should().Be(0m);
+    }
+
+    [Fact]
     public async Task GivenExistingTindakanWithCustomQty_WhenSave_ThenTindakanUpdatedWithMatchingQtyAndPreservesId()
     {
         // Arrange: Existing TindakanId
@@ -218,6 +251,57 @@ public class TdkSaveTindakanHandlerTest
         savedTindakan!.TindakanId.Should().Be(existingId);
         savedTindakan.Qty.Should().Be(2);
         savedTindakan.Total.Should().Be(100000m);
+        savedTindakan.AuditTrail.Modified.UserId.Should().Be("USER-02");
+    }
+
+    [Fact]
+    public async Task GivenExistingTindakanWithIsDiskonDokterTrue_WhenSave_ThenTindakanUpdatedWithDiskonDokterApplied()
+    {
+        // Arrange: Existing TindakanId
+        const string existingId = "TDK-EXISTING-02";
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var existingTindakan = new TindakanModel(
+            existingId,
+            new DateTime(2026, 10, 16, 9, 0, 0),
+            "",
+            new RegReff("REG-01", "-", "-"),
+            new LayananReff("LYN-01", "Poli Umum"),
+            KelasType.Default.ToReff(),
+            TipeTarifType.Default.ToReff(),
+            new TarifReff("TRF-01", "Pemeriksaan Dokter"),
+            [],
+            AuditTrailType.Create("USER-01", new DateTime(2026, 10, 16, 9, 0, 0)),
+            qty: 1,
+            isDiskonDokter: false);
+
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == existingId)))
+            .Returns(MayBe.From(existingTindakan));
+
+        var cmd = new TdkSaveTindakanCmd(
+            existingId,
+            "REG-01",
+            "LYN-01",
+            "NT-01",
+            "USER-02",
+            [new TdkSaveTindakanPpaCmd("KOMP-01", "PPA-01")],
+            Qty: 2,
+            IsDiskonDokter: true);
+
+        TindakanModel? savedTindakan = null;
+        _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
+            .Callback<TindakanModel>(t => savedTindakan = t);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.TindakanId.Should().Be(existingId);
+        savedTindakan.Should().NotBeNull();
+        savedTindakan!.TindakanId.Should().Be(existingId);
+        savedTindakan.Qty.Should().Be(2);
+        savedTindakan.IsDiskonDokter.Should().BeTrue();
+        savedTindakan.DiskonDokter.Should().Be(100000m);
+        savedTindakan.Total.Should().Be(0m);
         savedTindakan.AuditTrail.Modified.UserId.Should().Be("USER-02");
     }
 
@@ -293,5 +377,63 @@ public class TdkSaveTindakanHandlerTest
             It.IsAny<DateTime>()), Times.Once);
         _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
         _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSaveTindakanWithIsDiskonDokterTrue_WhenQueriedViaTindakanGetHandler_ThenPipelineMaintainsDoctorWaiverIntegrity()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var cmd = new TdkSaveTindakanCmd(
+            "-",
+            "REG-01",
+            "LYN-01",
+            "NT-01",
+            "USER-01",
+            [new TdkSaveTindakanPpaCmd("KOMP-01", "PPA-01")],
+            Qty: 3,
+            IsDiskonDokter: true);
+
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == "-")))
+            .Returns(MayBe<TindakanModel>.None);
+
+        TindakanModel? savedTindakan = null;
+        _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
+            .Callback<TindakanModel>(t => savedTindakan = t);
+
+        // Act 1: Save Tindakan with Diskon Dokter
+        var saveResult = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert 1: Verify Save output
+        saveResult.Should().NotBeNull();
+        savedTindakan.Should().NotBeNull();
+        savedTindakan!.IsDiskonDokter.Should().BeTrue();
+        savedTindakan.Qty.Should().Be(3);
+        savedTindakan.DiskonDokter.Should().Be(150000m);
+        savedTindakan.Total.Should().Be(0m);
+
+        // Act 2: Simulate Get via TindakanGetHandler pipeline
+        var getHandler = new TindakanGetHandler(_tindakanRepoMock.Object);
+        var query = new TindakanGetQuery(saveResult.TindakanId);
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == saveResult.TindakanId)))
+            .Returns(MayBe.From(savedTindakan));
+
+        var getResult = await getHandler.Handle(query, CancellationToken.None);
+
+        // Assert 2: Verify Get output integrity
+        getResult.Should().NotBeNull();
+        getResult.TindakanId.Should().Be(saveResult.TindakanId);
+        getResult.Qty.Should().Be(3);
+        getResult.IsDiskonDokter.Should().BeTrue();
+        getResult.DiskonDokter.Should().Be(150000m);
+        getResult.Total.Should().Be(0m);
+        getResult.ListKomponen.Should().HaveCount(1);
+
+        var kompResult = getResult.ListKomponen.First();
+        kompResult.KomponenId.Should().Be("KOMP-01");
+        kompResult.Nilai.Should().Be(50000m);
+        kompResult.Qty.Should().Be(3);
+        kompResult.Diskon.Should().Be(150000m);
+        kompResult.SubTotal.Should().Be(0m);
     }
 }

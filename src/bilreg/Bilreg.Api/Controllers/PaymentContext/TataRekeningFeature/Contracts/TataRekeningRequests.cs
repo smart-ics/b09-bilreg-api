@@ -1,3 +1,4 @@
+using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using System.ComponentModel.DataAnnotations;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 
@@ -7,9 +8,27 @@ public record MergeBillingRequest(
     [Required, MinLength(1)] string MergeRequestId,
     string? UserId = null);
 
-public record ReopenBillingRequest(
-    [Required, MinLength(1)] string Reason,
+public record FinancialVerificationRequest(
+    [Required] FinancialVerificationAction Action,
+    DateTime? VerifiedAt = null,
     string? UserId = null);
+
+public record FinancialAdjustmentRequest(
+    [Required] FinancialAdjustmentInputDto Adjustment,
+    DateTime? AppliedAt = null,
+    string? UserId = null);
+
+public record AllocateFinancialResponsibilityRequest(
+    [Required, MinLength(1)] IReadOnlyList<PaymentAllocationInputDto> Payments);
+
+public record FinalizeFinancialResponsibilityRequest(
+    DateTime? FinalizationDate = null,
+    string? UserId = null);
+
+public record CancelFinalizationRequest(
+    [Required, MinLength(10)] string Reason,
+    string? UserId = null,
+    [Required, MinLength(1)] string SupervisorUserId = "");
 
 public record AllocateFinalizeRequest(
     [Required, MinLength(1)] IReadOnlyList<PaymentAllocationInputDto> Payments,
@@ -17,6 +36,11 @@ public record AllocateFinalizeRequest(
     string? UserId = null);
 
 public record CancelFinalizeRequest(
+    [Required, MinLength(1)] string Reason,
+    string? UserId = null,
+    string? SupervisorUserId = null);
+
+public record ReopenBillingRequest(
     [Required, MinLength(1)] string Reason,
     string? UserId = null);
 

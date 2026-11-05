@@ -94,6 +94,71 @@ public class AdmissionCancellationApiIntegrationTest : IClassFixture<AdmissionCa
         _factory.Harness.Repo.Verify(x => x.CompleteLedger(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Cancel_WithVoidSourceTrue_SucceedsAndCallsVoidSource()
+    {
+        _factory.Harness.Reset();
+        _factory.Harness.SetupSuccess("OPN00000001", "OpnameRequestModel");
+        var response = await Post("REQ-VOID-TRUE", new
+        {
+            reason = "Batal rawat",
+            userId = "user1",
+            expectedAdmissionStatus = AdmissionStatusEnum.Admitted,
+            requestId = "REQ-VOID-TRUE",
+            voidSource = true
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        root.GetProperty("status").GetString().Should().Be("success");
+
+        var data = await Data(response);
+        data.GetProperty("regId").GetString().Should().Be("RG00000001");
+        data.GetProperty("correlationId").GetString().Should().Be("REQ-VOID-TRUE");
+
+        _factory.Harness.Repo.Verify(x => x.VoidSource(
+            It.Is<CoordinatedCancellationState>(s => s.SourceId == "OPN00000001"),
+            "Batal rawat",
+            "user1",
+            It.IsAny<DateTime>()), Times.Once);
+        _factory.Harness.Repo.Verify(x => x.RestoreSource(
+            It.IsAny<CoordinatedCancellationState>(),
+            It.IsAny<string>(),
+            It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Cancel_WithOmittedVoidSource_SucceedsAndCallsRestoreSource()
+    {
+        _factory.Harness.Reset();
+        _factory.Harness.SetupSuccess("OPN00000001", "OpnameRequestModel");
+        var response = await Post("REQ-VOID-OMITTED", new
+        {
+            reason = "Batal rawat",
+            userId = "user1",
+            expectedAdmissionStatus = AdmissionStatusEnum.Admitted,
+            requestId = "REQ-VOID-OMITTED"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        root.GetProperty("status").GetString().Should().Be("success");
+
+        var data = await Data(response);
+        data.GetProperty("regId").GetString().Should().Be("RG00000001");
+        data.GetProperty("correlationId").GetString().Should().Be("REQ-VOID-OMITTED");
+
+        _factory.Harness.Repo.Verify(x => x.RestoreSource(
+            It.Is<CoordinatedCancellationState>(s => s.SourceId == "OPN00000001"),
+            "user1",
+            It.IsAny<DateTime>()), Times.Once);
+        _factory.Harness.Repo.Verify(x => x.VoidSource(
+            It.IsAny<CoordinatedCancellationState>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<DateTime>()), Times.Never);
+    }
+
     private async Task<HttpResponseMessage> Post(string requestId, object? body = null)
     {
         var client = _factory.CreateAuthenticatedClient();
@@ -109,9 +174,9 @@ public class AdmissionCancellationApiIntegrationTest : IClassFixture<AdmissionCa
         root.GetProperty("data").GetProperty("code").GetString().Should().Be(code);
         root.GetProperty("data").GetProperty("correlationId").GetString().Should().Be(correlationId);
     }
-    private static string Fingerprint(string requestId)
+    private static string Fingerprint(string requestId, bool voidSource = false)
     {
-        var value = $"RG00000001|Administrative cancellation|user1|0|";
+        var value = $"RG00000001|Administrative cancellation|user1|0||{voidSource}";
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     }
 }

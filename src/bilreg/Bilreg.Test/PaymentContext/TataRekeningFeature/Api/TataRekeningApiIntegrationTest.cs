@@ -170,6 +170,31 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
+    public async Task API08b_GivenFinalizedBill_WhenCancelFinalization_ThenReturns200()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-CF-02", TataRekeningApiTestHarness.RegId, 50_000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
+            TataRekeningApiTestHarness.RegId, TataRekeningStatusEnum.Opened, bill);
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
+            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 50_000m, 0m)]);
+        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        var reg = RegModel.Default;
+        reg.SetKeluar("TEST-USER", TataRekeningTestDataBuilder.TestDate);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, reg);
+
+        var client = _factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalization",
+            new { reason = "Koreksi alokasi pembayaran", userId = "TEST-USER", supervisorUserId = "SPV-01" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await ParseDataJson(response);
+        json.GetProperty("summary").GetProperty("status").GetInt32()
+            .Should().Be((int)TataRekeningStatusEnum.Closed);
+    }
+
+    [Fact]
     public async Task API09_GivenClosedBill_WhenReopen_ThenReturns200()
     {
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(
@@ -226,6 +251,17 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
         var response = await client.GetAsync($"/api/tatarekening/summaryBill/{TataRekeningApiTestHarness.RegId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task API16_GivenEmptyReason_WhenCancelFinalization_ThenReturns400()
+    {
+        var client = _factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalization",
+            new { reason = "", userId = "TEST-USER", supervisorUserId = "SPV-01" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private async Task<JsonElement> ParseDataJson(HttpResponseMessage response)

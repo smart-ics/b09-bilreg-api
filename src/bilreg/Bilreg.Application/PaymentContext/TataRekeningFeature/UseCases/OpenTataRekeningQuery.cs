@@ -1,9 +1,11 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -16,6 +18,7 @@ public record OpenTataRekeningResponse(
     IReadOnlyList<TrsBillSummaryDto> Bills,
     IReadOnlyList<PaymentProjectionDto> Projection,
     IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests,
+    NetFinancialPositionDto? NetFinancialPosition = null,
     TataRekeningPatientContextDto? PatientContext = null,
     TataRekeningBillingBreakdownDto? SummaryBreakdown = null);
 
@@ -24,13 +27,13 @@ public class OpenTataRekeningHandler : IRequestHandler<OpenTataRekeningQuery, Op
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IRegRepo _regRepo;
     private readonly IMergeRequestRepo _mergeRequestRepo;
-    private readonly IDepositRepo _depositRepo;
+    private readonly IDepositRepo? _depositRepo;
 
     public OpenTataRekeningHandler(
         ITataRekeningRepo tataRekeningRepo,
         IRegRepo regRepo,
         IMergeRequestRepo mergeRequestRepo,
-        IDepositRepo depositRepo)
+        IDepositRepo? depositRepo = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _regRepo = regRepo;
@@ -50,22 +53,60 @@ public class OpenTataRekeningHandler : IRequestHandler<OpenTataRekeningQuery, Op
 
         var pendingMerges = LoadPendingMergeRequests(request, reg.Pasien.PasienId);
 
-        var saldo = _depositRepo.GetSaldo(request);
+        var saldo = _depositRepo?.GetSaldo(request);
         var patientContext = TataRekeningApplicationMapper.ToPatientContextDto(reg, saldo);
         var summaryBreakdown = TataRekeningApplicationMapper.ToBillingBreakdownDto(
             tataRekening,
             depositPayment: saldo?.SaldoAktif ?? 0m,
             advancePayment: patientContext.AdvancePayment);
 
+        // Load deposit data for this registration (if deposit repo is available)
+        IEnumerable<DepositModel> depositData = Enumerable.Empty<DepositModel>();
+        if (_depositRepo != null)
+        {
+            depositData = _depositRepo.ListData(Bilreg.Domain.AdmisiContext.RegFeature.RegModel.Key(reg.RegId))
+                .Where(d => d.Reg.RegId == reg.RegId)
+                .ToList();
+        }
+
+        // Calculate net financial position
+        decimal grossBilling = tataRekening.ListTrsBill.Sum(b => b.FinancialTotal);
+        decimal estimatedPayerCoverage = CalculateEstimatedPayerCoverage(tataRekening);
+        decimal classDifferential = CalculateClassDifferential(tataRekening);
+        decimal totalDeposit = depositData.Sum(d => d.NilaiDeposit);
+        decimal totalCashierPaid = tataRekening.ListPayment.Sum(p => p.NilaiJasa + p.NilaiObat); // simplified
+        decimal netPayableBalance = grossBilling - estimatedPayerCoverage - totalDeposit - totalCashierPaid;
+
         var response = new OpenTataRekeningResponse(
             TataRekeningApplicationMapper.ToSummaryDto(tataRekening),
             tataRekening.ListTrsBill.Select(TataRekeningApplicationMapper.ToBillSummaryDto).ToList(),
             tataRekening.ListPayment.Select(TataRekeningApplicationMapper.ToProjectionDto).ToList(),
             pendingMerges,
+            new NetFinancialPositionDto(
+                grossBilling,
+                estimatedPayerCoverage,
+                classDifferential,
+                totalDeposit,
+                totalCashierPaid,
+                netPayableBalance),
             patientContext,
             summaryBreakdown);
 
         return Task.FromResult(response);
+    }
+
+    private decimal CalculateEstimatedPayerCoverage(TataRekeningModel tataRekening)
+    {
+        if (tataRekening.IsFinancialResponsibilityAllocated)
+        {
+            return tataRekening.ListPayment.Sum(p => p.NilaiJasa + p.NilaiObat);
+        }
+        return 0m;
+    }
+
+    private decimal CalculateClassDifferential(TataRekeningModel tataRekening)
+    {
+        return 0m;
     }
 
     private IReadOnlyList<MergeRequestSummaryDto> LoadPendingMergeRequests(IRegKey regKey, string pasienId)

@@ -6,6 +6,7 @@ using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Domain.Shared;
 using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
@@ -83,6 +84,10 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.ServiceUnavailable;
                     status = "AQ_SEQUENCE_EXHAUSTED";
                     break;
+                case BusinessValidationException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "BIZ_VALIDATION_FAILED";
+                    break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
@@ -153,7 +158,7 @@ public class ErrorHandlerMiddleware
             }
 
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
-                ? "The request could not be completed."
+                ? error.Message
                 : error.Message;
             var resultObj = new JSend(statusCode, status, safeMessage);
             var result = JsonSerializer.Serialize(resultObj);

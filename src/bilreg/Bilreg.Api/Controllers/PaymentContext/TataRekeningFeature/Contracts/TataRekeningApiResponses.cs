@@ -20,6 +20,10 @@ public record MergeBillingApiResponse(
     TataRekeningSummaryDto SourceSummary,
     TataRekeningSummaryDto TargetSummary);
 
+public record AllocateFinancialResponsibilityApiResponse(
+    TataRekeningSummaryDto Summary,
+    IReadOnlyList<PaymentProjectionDto> Projection);
+
 public record AllocateFinalizeApiResponse(
     TataRekeningSummaryDto Summary,
     IReadOnlyList<PaymentProjectionDto> Projection);
@@ -47,13 +51,20 @@ public static class TataRekeningApiMapper
     public static FinancialAdjustmentApiResponse ToApiResponse(FinancialAdjustmentResponse response) =>
         new(response.Summary, response.RequiresReopen, response.AdjustmentType, response.TrsBillingId);
 
-    public static TataRekeningMutationApiResponse ToApiResponse(ReopenBillingResponse response) =>
+    public static AllocateFinancialResponsibilityApiResponse ToApiResponse(
+        AllocateFinancialResponsibilityResponse response) =>
+        new(response.Summary, response.Projection);
+
+    public static TataRekeningMutationApiResponse ToApiResponse(FinalizeFinancialResponsibilityResponse response) =>
         new(response.Summary);
 
     public static AllocateFinalizeApiResponse ToApiResponse(AllocateFinalizeResponse response) =>
         new(response.Summary, response.Projection);
 
     public static TataRekeningMutationApiResponse ToApiResponse(CancelFinalizationResponse response) =>
+        new(response.Summary);
+
+    public static TataRekeningMutationApiResponse ToApiResponse(ReopenBillingResponse response) =>
         new(response.Summary);
 
     public static TataRekeningMutationApiResponse ToApiResponse(SettlementInitiationResponse response) =>

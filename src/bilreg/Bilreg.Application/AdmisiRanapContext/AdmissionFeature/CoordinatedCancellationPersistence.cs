@@ -14,6 +14,7 @@ public interface ICoordinatedCancellationRepo
     int VoidRegistration(string regId, string userId, DateTime now);
     int DeleteRegAktif(string regId);
     int RestoreSource(CoordinatedCancellationState state, string userId, DateTime now);
+    int VoidSource(CoordinatedCancellationState state, string reason, string userId, DateTime now);
     int CancelAdmission(CoordinatedCancellationState state, DateTime? expectedUpdatedAt, string userId, DateTime now);
     int CompleteLedger(string requestId, string responseJson, DateTime now);
 }
