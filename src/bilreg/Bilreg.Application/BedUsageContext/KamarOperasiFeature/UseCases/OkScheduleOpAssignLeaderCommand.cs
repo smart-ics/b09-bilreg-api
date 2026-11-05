@@ -13,7 +13,7 @@ public record OkScheduleOpAssignLeaderCommand(
     string OrderOpId,
     string PpaId,
     string UserId,
-    string AlasanPerubahan,
+    string AlasanPerubahan = "",
     bool IsOverride = false,
     string OverrideReason = "") : IRequest, IOrderOpKey, IPpaKey;
 
@@ -43,7 +43,6 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         Guard.Against.NullOrWhiteSpace(request.OrderOpId, nameof(request.OrderOpId));
         Guard.Against.NullOrWhiteSpace(request.PpaId, nameof(request.PpaId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
-        Guard.Against.NullOrWhiteSpace(request.AlasanPerubahan, nameof(request.AlasanPerubahan));
 
         var occurredAt = _tglJamProvider.Now;
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
@@ -65,6 +64,12 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+
+        if (!scheduleOp.IsDraft)
+        {
+            Guard.Against.NullOrWhiteSpace(request.AlasanPerubahan, nameof(request.AlasanPerubahan),
+                "Alasan pergantian operator wajib diisi saat jadwal telah diterbitkan.");
+        }
 
         // Collision detection for substitute doctor across active schedules on the same date
         DateTime start = scheduleOp.TglOp;

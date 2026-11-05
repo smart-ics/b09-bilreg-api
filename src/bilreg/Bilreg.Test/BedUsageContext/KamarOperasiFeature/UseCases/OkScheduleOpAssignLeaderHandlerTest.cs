@@ -113,6 +113,40 @@ public class OkScheduleOpAssignLeaderHandlerTest
     public async Task Handle_GivenEmptyOrNullAlasanPerubahan_ThrowsArgumentException(string? invalidReason)
     {
         // ARRANGE
+        var now = new DateTime(2026, 10, 20, 9, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var newDoctor = CreateSampleDoctor("DOC-02", "dr. Pengganti Sp.B");
+        var opCase = OpCaseModel.Create(orderOp, now);
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001", "DOC-01", isDraft: false);
+        opCase.Schedule(scheduleOp, now);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOC-02")))
+            .Returns(MayBe.From(newDoctor));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            orderOp.Pasien,
+            new OrderOpReff("ORD-001", now, "Herniotomi"),
+            UrgencyLevelEnum.Elective,
+            now,
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-1", "OK 1"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            IsDraft: false);
+
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.IsAny<IPasienKey>()))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(scheduleOp));
+
         var sut = CreateSut();
         var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "DOC-02", "user-01", invalidReason!);
 
@@ -120,7 +154,65 @@ public class OkScheduleOpAssignLeaderHandlerTest
         var act = async () => await sut.Handle(cmd, CancellationToken.None);
 
         // ASSERT
-        await act.Should().ThrowAsync<ArgumentException>();
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Alasan pergantian operator wajib diisi saat jadwal telah diterbitkan.*");
+    }
+
+    [Fact]
+    public async Task Handle_GivenDraftScheduleAndEmptyAlasanPerubahan_ExecutesSuccessfully()
+    {
+        // ARRANGE
+        var now = new DateTime(2026, 10, 20, 9, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var newDoctor = CreateSampleDoctor("DOC-02", "dr. Pengganti Sp.B");
+        var opCase = OpCaseModel.Create(orderOp, now);
+        var draftSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "DOC-01", isDraft: true);
+        opCase.ScheduleDraft(draftSchedule, now);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOC-02")))
+            .Returns(MayBe.From(newDoctor));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            orderOp.Pasien,
+            new OrderOpReff("ORD-001", now, "Herniotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 8, 0, 0),
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-1", "OK 1"),
+            OpCaseStateEnum.Requested,
+            false,
+            IsDraft: true);
+
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.IsAny<IPasienKey>()))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(draftSchedule));
+
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForDoctor("DOC-02", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForPpaInTeam("DOC-02", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+
+        var cmd = new OkScheduleOpAssignLeaderCommand(
+            "ORD-001", "DOC-02", "user-01", AlasanPerubahan: "");
+        var sut = CreateSut();
+
+        // ACT
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+
+        // ASSERT
+        await act.Should().NotThrowAsync();
+        draftSchedule.TeamLead.PpaId.Should().Be("DOC-02");
+        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(draftSchedule), Times.Once);
     }
 
     [Fact]
