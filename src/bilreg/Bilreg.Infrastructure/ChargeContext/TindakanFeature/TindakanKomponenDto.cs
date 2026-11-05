@@ -10,6 +10,10 @@ public record TindakanKomponenDto(
     string PpaId, string PpaName,
     decimal Qty, decimal Nilai, decimal Diskon, decimal SubTotal)
 {
+    public TindakanKomponenDto() : this("", 0, "", "", "", "", 0, 0, 0, 0)
+    {
+    }
+
     public TindakanKomponenDto(
         string TindakanId, int NoUrut, 
         string KomponenTarifId, string KomponenTarifName,

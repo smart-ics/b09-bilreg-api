@@ -106,6 +106,17 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
+    public void UT07b_GivenOpenedTataRekening_WhenDeleteBillWithTruncatedPrefix_ThenShouldMatchAndRemove()
+    {
+        var bill = CreateBill("TDK09KZ0XHX7", BillModulGroup.Jasa, 700_000m);
+        var tataRekening = HydrateOpened(bill);
+
+        tataRekening.DeleteBill("TDK09KZ0XH");
+
+        tataRekening.ListTrsBill.Should().BeEmpty();
+    }
+
+    [Fact]
     public void UT08_GivenPartialAllocationInput_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-02", BillModulGroup.Jasa, 100_000m));
@@ -124,7 +135,7 @@ public class TataRekeningLifecycleDomainTest
     {
         var tataRekening = CreateFinalizedTataRekening();
 
-        tataRekening.CancelFinalization();
+        tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
         tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
@@ -141,7 +152,7 @@ public class TataRekeningLifecycleDomainTest
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
 
-        Action act = () => tataRekening.CancelFinalization();
+        Action act = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*sudah ada pembayaran*");
@@ -210,7 +221,7 @@ public class TataRekeningLifecycleDomainTest
         Action allocate = () => tataRekening.AllocateFinancialResponsibility([]);
         Action initiateSettlement = () => tataRekening.InitiateSettlement("kasir", DateTime.Now);
         Action pay = () => tataRekening.Pay([], "PAY", DateTime.Now);
-        Action cancel = () => tataRekening.CancelFinalization();
+        Action cancel = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
         Action delete = () => tataRekening.DeleteBill("BILL-JASA-01");
 
         close.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");

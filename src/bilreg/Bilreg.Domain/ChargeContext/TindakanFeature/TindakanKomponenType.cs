@@ -22,6 +22,14 @@ public record TindakanKomponenWithoutPpaType(
         var subTotal = (nilai * qty) - diskon;
         return new TindakanKomponenWithoutPpaType(komp.ToReff(), noUrut, nilai, qty, subTotal, diskon);
     }
+
+    public static TindakanKomponenWithoutPpaType Create(
+        KomponenReff komp, int noUrut,
+        decimal nilai, int qty, decimal diskon = 0)
+    {
+        var subTotal = (nilai * qty) - diskon;
+        return new TindakanKomponenWithoutPpaType(komp, noUrut, nilai, qty, subTotal, diskon);
+    }
 }
 
 public record TindakanKomponenWithPpaType(KomponenReff Komponen, PpaReff Ppa,
@@ -39,4 +47,3 @@ public record TindakanKomponenWithPpaType(KomponenReff Komponen, PpaReff Ppa,
                 noUrut, nilai, qty, subTotal, diskon);
     }    
 }
-

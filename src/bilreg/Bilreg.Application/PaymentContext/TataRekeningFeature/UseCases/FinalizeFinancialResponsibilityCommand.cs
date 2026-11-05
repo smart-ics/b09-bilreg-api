@@ -3,6 +3,8 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -22,19 +24,22 @@ public class FinalizeFinancialResponsibilityHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IFinancialVerificationDomainService _financialVerificationService;
 
     public FinalizeFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IFinancialVerificationDomainService financialVerificationService)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _tglJamProvider = tglJamProvider;
+        _financialVerificationService = financialVerificationService;
     }
 
     public Task<FinalizeFinancialResponsibilityResponse> Handle(
@@ -51,6 +56,13 @@ public class FinalizeFinancialResponsibilityHandler
 
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
+
+        // Hard Blocking Guard: seluruh hari rawat inap wajib sudah dibebankan sewa kamar
+        // (Room Charge) sebelum tagihan episode dapat difinalisasi.
+        var completeness = _financialVerificationService.ValidateRoomChargeCompleteness(request.RegId);
+        if (!completeness.IsComplete)
+            throw new BusinessValidationException(
+                "Tagihan episode rawat inap tidak dapat difinalisasi. Terdapat hari rawat inap yang belum dibebankan sewa kamar (Room Charge). Pastikan pembebanan harian telah diproses sampai dengan pelepasan bed riil.");
 
         var occurredAt = request.FinalizationDate ?? _tglJamProvider.Now;
         tataRekening.FinalizeFinancialResponsibility(petugasVerif, occurredAt);

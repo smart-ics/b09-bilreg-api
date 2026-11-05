@@ -3,6 +3,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -16,32 +17,45 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TindakanVoidCmd(string TindakanId, string UserId, string VoidReason,
-    string ClientIpAddress, string UserAgent) : IRequest, ITindakanKey;
+    string ClientIpAddress, string UserAgent, string RegId = "") : IRequest, ITindakanKey;
 
 public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
 {
     private readonly ITindakanRepo _tdkRepo;
+    private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly ITataRekeningRepo _tataRekeningRepo;
+    private readonly IBillingLockValidationService _billingLockValidator;
+
+    public TindakanVoidHandler(ITindakanRepo tdkRepo,
+        ITataRekeningRepo tataRekeningRepo,
+        IAuditRepo auditRepo, 
+        ITglJamProvider tglJamProvider, 
+        ITrsBillingRepo trsBillingRepo, 
+        IJurnalRepo jurnalRepo,
+        IBillingLockValidationService billingLockValidator)
+    {
+        _tdkRepo = tdkRepo;
+        _tataRekeningRepo = tataRekeningRepo;
+        _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
+        _trsBillingRepo = trsBillingRepo;
+        _jurnalRepo = jurnalRepo;
+        _billingLockValidator = billingLockValidator;
+    }
 
     public TindakanVoidHandler(ITindakanRepo tdkRepo,
         IAuditRepo auditRepo, ITglJamProvider tglJamProvider, 
         ITrsBillingRepo trsBillingRepo, 
         IJurnalRepo jurnalRepo,
         ITataRekeningRepo tataRekeningRepo)
+        : this(tdkRepo, tataRekeningRepo, auditRepo, tglJamProvider, trsBillingRepo, jurnalRepo, new NullBillingLockValidationService())
     {
-        _tdkRepo = tdkRepo;
-        _auditRepo = auditRepo;
-        _tglJamProvider = tglJamProvider;
-        _trsBillingRepo = trsBillingRepo;
-        _jurnalRepo = jurnalRepo;
-        _tataRekeningRepo = tataRekeningRepo;
     }
 
-    public Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
+    public async Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.TindakanId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
@@ -53,35 +67,57 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
                 onNone: () => throw new KeyNotFoundException($"Tindakan {request.TindakanId} not found") 
             );
 
+        var regId = !string.IsNullOrWhiteSpace(request.RegId) ? request.RegId : tdk.Reg.RegId;
+        await _billingLockValidator.EnsureCanModifyBillingAsync(regId, cancellationToken);
+
         var regKey = RegModel.Key(tdk.Reg.RegId);
         var tataRekening = _tataRekeningRepo.LoadEntity(regKey).Match(
             onSome: x => x,
             onNone: () => (TataRekeningModel?)null
         );
 
-        if (tataRekening is not null)
-        {
-            tataRekening.DeleteBill(tdk.TindakanId);
-        }
-
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
         var occurredAt = _tglJamProvider.Now;
         tdk.Void(request.UserId, occurredAt);
 
+        // Cari billing ID yang cocok di tataRekening (bisa exact match atau prefix match karena kolom legasi 10-char)
+        var matchedBill = tataRekening?.ListTrsBill
+            .FirstOrDefault(x => string.Equals(x.TrsBillingId, tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
+                              || x.TrsBillingId.StartsWith(tdk.TindakanId, StringComparison.OrdinalIgnoreCase)
+                              || tdk.TindakanId.StartsWith(x.TrsBillingId, StringComparison.OrdinalIgnoreCase));
+
+        var billIdToDelete = matchedBill?.TrsBillingId ?? tdk.TindakanId;
+
         using var trans = TransHelper.NewScope();
-        _tdkRepo.SaveChanges(tdk);
-        if (tataRekening is not null)
+        if (tataRekening != null)
         {
+            if (matchedBill != null)
+            {
+                tataRekening.DeleteBill(billIdToDelete);
+            }
+            else
+            {
+                tataRekening.EnsureCanDeleteBill();
+            }
             _tataRekeningRepo.SaveChanges(tataRekening);
         }
-        _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
-        _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
+
+        _tdkRepo.SaveChanges(tdk);
+        _trsBillingRepo.DeleteEntity(TrsBillType.Key(billIdToDelete));
+        if (!string.Equals(billIdToDelete, tdk.TindakanId, StringComparison.OrdinalIgnoreCase))
+        {
+            _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TindakanId));
+        }
+
+        _jurnalRepo.DeleteEntity(JurnalType.Key(billIdToDelete));
+        if (!string.Equals(billIdToDelete, tdk.TindakanId, StringComparison.OrdinalIgnoreCase))
+        {
+            _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
+        }
 
         var audit = CreateAudit(tdk, snapshotJson, request);
         _auditRepo.SaveChanges(audit);
         trans.Complete();
-
-        return Task.CompletedTask;
     }
     
     private static AuditLog CreateAudit(TindakanModel tdk, string snapShotJson, TindakanVoidCmd cmd)

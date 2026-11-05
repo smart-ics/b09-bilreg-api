@@ -25,6 +25,7 @@ public record TindakanGetResponse(
     bool IsVoid,
     AuditTrailType AuditTrail,
     IEnumerable<TindakanGetKomponenResponse> ListKomponen,
+    string PakaiBedId = "",
     bool IsDiskonDokter = false,
     decimal DiskonDokter = 0
 );
@@ -91,6 +92,7 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
             tdk.AuditTrail.IsVoided,
             tdk.AuditTrail,
             listKomponen,
+            tdk.PakaiBedId,
             tdk.IsDiskonDokter,
             tdk.DiskonDokter
         );
