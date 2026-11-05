@@ -96,6 +96,10 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "AQ_OPERATION_NOT_ALLOWED";
                     break;
+                case UnauthorizedAccessException when context.User?.Identity?.IsAuthenticated == true:
+                    statusCode = (int)HttpStatusCode.Forbidden;
+                    status = "AQ_FORBIDDEN";
+                    break;
                 case UnauthorizedAccessException:
                     statusCode = (int)HttpStatusCode.Unauthorized;
                     status = "AQ_UNAUTHENTICATED";
