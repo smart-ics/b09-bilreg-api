@@ -1,5 +1,7 @@
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
@@ -29,10 +31,14 @@ public sealed class TataRekeningApiTestHarness
     public Mock<IUnitOfWorkScope> UnitOfWorkScope { get; } = new();
     public Mock<ITransferReceivableService> TransferReceivableService { get; } = new();
     public Mock<IAuditRepo> AuditRepo { get; } = new();
+    public Mock<IRegBiayaRepo> RegBiayaRepo { get; } = new();
+    public Mock<ITrsDirectDal> TrsDirectDal { get; } = new();
+    public Mock<IJurnalDal> JurnalDal { get; } = new();
 
     public TataRekeningApiTestHarness()
     {
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
+        RegBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     public void Reset()
@@ -46,7 +52,11 @@ public sealed class TataRekeningApiTestHarness
         UnitOfWorkScope.Reset();
         TransferReceivableService.Reset();
         AuditRepo.Reset();
+        RegBiayaRepo.Reset();
+        TrsDirectDal.Reset();
+        JurnalDal.Reset();
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
+        RegBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -60,6 +70,9 @@ public sealed class TataRekeningApiTestHarness
         RemoveAndRegister(services, () => harness.UnitOfWork.Object);
         RemoveAndRegister(services, () => harness.TransferReceivableService.Object);
         RemoveAndRegister(services, () => harness.AuditRepo.Object);
+        RemoveAndRegister(services, () => harness.RegBiayaRepo.Object);
+        RemoveAndRegister(services, () => harness.TrsDirectDal.Object);
+        RemoveAndRegister(services, () => harness.JurnalDal.Object);
         RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(TestAuthHandler.UserId));
         RemoveAndRegister(services, () => (IRegRelationPolicy)TataRekeningDomainTestHelper.PermissiveRegRelationPolicy);
     }

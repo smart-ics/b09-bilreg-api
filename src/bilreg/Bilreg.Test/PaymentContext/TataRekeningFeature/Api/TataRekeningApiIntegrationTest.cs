@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 
@@ -119,41 +120,53 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API07_GivenClosedBill_WhenVerify_ThenReturns200()
+    public async Task API07_GivenClosedBill_WhenAllocateFinalize_ThenReturns200()
     {
-        _factory.Harness.SetupVerifyScenario();
-        var client = _factory.CreateAuthenticatedClient();
-
-        var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/verify",
-            new { action = FinancialVerificationAction.Verify });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = await ParseDataJson(response);
-        json.GetProperty("summary").GetProperty("financialVerificationStatus").GetInt32()
-            .Should().Be((int)FinancialVerificationStatusEnum.Valid);
-    }
-
-    [Fact]
-    public async Task API08_GivenRequiresAdjustment_WhenAdjustWaive_ThenReturns200()
-    {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-ADJ", TataRekeningApiTestHarness.RegId, 50_000m);
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-AF-01", TataRekeningApiTestHarness.RegId, 50_000m);
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(TataRekeningApiTestHarness.RegId, bill);
-        tataRekening.RequireFinancialAdjustment();
         _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, RegModel.Default);
 
         var client = _factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/adjust",
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/allocate-finalize",
             new
             {
-                adjustment = new FinancialAdjustmentInputDto(
-                    FinancialAdjustmentTypeEnum.Waive, 10_000m, "Waive via API", "BILL-ADJ")
+                payments = new[]
+                {
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m, "COA-01", "COA")
+                }
             });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await ParseDataJson(response);
-        json.GetProperty("requiresReopen").GetBoolean().Should().BeFalse();
+        json.GetProperty("summary").GetProperty("status").GetInt32()
+            .Should().Be((int)TataRekeningStatusEnum.Finalized);
+    }
+
+    [Fact]
+    public async Task API08_GivenFinalizedBill_WhenCancelFinalize_ThenReturns200()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-CF-01", TataRekeningApiTestHarness.RegId, 50_000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
+            TataRekeningApiTestHarness.RegId, TataRekeningStatusEnum.Opened, bill);
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
+            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 50_000m, 0m)]);
+        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        var reg = RegModel.Default;
+        reg.SetKeluar("TEST-USER", TataRekeningTestDataBuilder.TestDate);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, reg);
+
+        var client = _factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalize",
+            new { reason = "Batal finalisasi via API" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await ParseDataJson(response);
+        json.GetProperty("summary").GetProperty("status").GetInt32()
+            .Should().Be((int)TataRekeningStatusEnum.Closed);
     }
 
     [Fact]

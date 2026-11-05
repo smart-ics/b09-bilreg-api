@@ -7,6 +7,7 @@ using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 using FluentAssertions;
 using Xunit;
 
@@ -138,6 +139,119 @@ public class TrsBillTypeTest
         var act = () => bill.UpdateFinalizationTimestamp(DateTime.Now, "  ");
 
         act.Should().Throw<ArgumentException>().WithMessage("*Petugas verif should not be empty*");
+    }
+
+    [Fact]
+    public void GivenFractionalDistribution_WhenFinalizeAllocation_ThenRoundsToTwoDecimalsAndAbsorbsRemainderInLastTransaction()
+    {
+        // 3 trans components where 100 is split across 3 items (33.33, 33.33, 33.34)
+        var bill = CreateBillWithTransComponents(
+            "BILL-DECIMAL-01",
+            ("KOMP-A", 33.33m, 0),
+            ("KOMP-B", 33.33m, 1),
+            ("KOMP-C", 33.34m, 2));
+        var initialDate = new DateTime(2026, 6, 16, 8, 30, 0);
+
+        bill.FinalizeAllocation(PaymentType.ByKas, 10m, "kasir-01", "RO-001", initialDate);
+
+        bill.ListFinalization.Should().HaveCount(3);
+        var finalizations = bill.ListFinalization.ToList();
+
+        // 10 * 33.33 / 100 = 3.333 -> 3.33
+        finalizations[0].Nilai.Should().Be(3.33m);
+        finalizations[1].Nilai.Should().Be(3.33m);
+        // Last absorbs remainder: 10 - 6.66 = 3.34
+        finalizations[2].Nilai.Should().Be(3.34m);
+        finalizations.Sum(x => x.Nilai).Should().Be(10m);
+    }
+
+    [Fact]
+    public void GivenAdministrativeBillWithSentinelDate_WhenUpdateAdministrativeDate_ThenTglTrsMutatedToFinalizationDate_AndTransEventsPreserved()
+    {
+        // Arrange
+        var sentinelDate = new DateTime(3000, 1, 1, 0, 0, 0);
+        var bill = new TrsBillType(
+            "BILL-ADM-01",
+            BillModulGroup.Jasa,
+            sentinelDate,
+            new RegReff("REG-01", "-", "-"),
+            LayananType.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            AuditInfoType.Default,
+            RekapCetakType.Default.ToReff(),
+            new TrsBillNilaiType(25_000m, 0, 0, 0),
+            new TrsBillKetType("Biaya Administrasi", "", "REF-ADM", 1, ""),
+            [
+                TrsBill2TransEventType.Create(
+                    0,
+                    new TrsBill2KomponenType("KOMP-ADM", "Administrasi"),
+                    TrsBillJenisBayarType.Pdp,
+                    25_000m,
+                    PpaType.Default.ToReff(),
+                    ValidPdpCoa)
+            ],
+            [],
+            []);
+
+        var transBefore = bill.ListTransaction.ToList();
+        var finalizationDate = new DateTime(2026, 11, 4, 14, 30, 0);
+
+        // Act
+        bill.UpdateAdministrativeDate(finalizationDate);
+
+        // Assert
+        bill.TglTrs.Should().Be(finalizationDate);
+        bill.ListTransaction.Should().BeEquivalentTo(transBefore);
+
+        // Verify DTO mapping reflects new date/time
+        var dto = TrsBillingDto.FromModel(bill);
+        dto.fd_tgl_trs.Should().Be("2026-11-04");
+        dto.fs_jam_trs.Should().Be("14:30:00");
+        dto.fd_tgl_jam_trs.Should().Be("2026-11-04 14:30:00");
+    }
+
+    [Fact]
+    public void GivenAdministrativeBillWithFinalizedDate_WhenRevertAdministrativeDate_ThenTglTrsRevertsToSentinelDate_AndTransEventsPreserved()
+    {
+        // Arrange
+        var finalizedDate = new DateTime(2026, 11, 4, 14, 30, 0);
+        var bill = new TrsBillType(
+            "BILL-ADM-02",
+            BillModulGroup.Jasa,
+            finalizedDate,
+            new RegReff("REG-01", "-", "-"),
+            LayananType.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            AuditInfoType.Default,
+            RekapCetakType.Default.ToReff(),
+            new TrsBillNilaiType(25_000m, 0, 0, 0),
+            new TrsBillKetType("Biaya Administrasi", "", "REF-ADM", 1, ""),
+            [
+                TrsBill2TransEventType.Create(
+                    0,
+                    new TrsBill2KomponenType("KOMP-ADM", "Administrasi"),
+                    TrsBillJenisBayarType.Pdp,
+                    25_000m,
+                    PpaType.Default.ToReff(),
+                    ValidPdpCoa)
+            ],
+            [],
+            []);
+
+        var transBefore = bill.ListTransaction.ToList();
+
+        // Act
+        bill.RevertAdministrativeDate();
+
+        // Assert
+        bill.TglTrs.Should().Be(new DateTime(3000, 1, 1, 0, 0, 0));
+        bill.ListTransaction.Should().BeEquivalentTo(transBefore);
+
+        // Verify DTO mapping reflects reverted sentinel date/time
+        var dto = TrsBillingDto.FromModel(bill);
+        dto.fd_tgl_trs.Should().Be("3000-01-01");
+        dto.fs_jam_trs.Should().Be("00:00:00");
+        dto.fd_tgl_jam_trs.Should().Be("3000-01-01 00:00:00");
     }
 }
 

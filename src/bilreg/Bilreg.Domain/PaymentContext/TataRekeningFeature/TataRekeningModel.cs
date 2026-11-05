@@ -166,7 +166,7 @@ public record TataRekeningModel : IRegKey
     /// <summary>
     /// Locks pre-validated Financial Responsibility Allocation and transitions to FINALIZED.
     /// </summary>
-    public void FinalizeFinancialResponsibility(string petugasVerif, DateTime finalizationDate)
+    public void FinalizeFinancialResponsibility(string petugasVerif, DateTime finalizationDate, IEnumerable<string>? adminBillIds = null)
     {
         EnsureNotLunas();
         EnsureCanFinalize();
@@ -181,6 +181,17 @@ public record TataRekeningModel : IRegKey
         foreach (var bill in _listTrsBill)
         {
             bill.UpdateFinalizationTimestamp(finalizationDate, petugasVerif);
+        }
+
+        var adminIdSet = adminBillIds?.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var bill in _listTrsBill)
+        {
+            var isTargetedAdmin = adminIdSet is not null && adminIdSet.Contains(bill.TrsBillingId);
+            var isSentinelDate = bill.TglTrs.Year >= 2999;
+            if (isTargetedAdmin || isSentinelDate)
+            {
+                bill.UpdateAdministrativeDate(finalizationDate);
+            }
         }
 
         Status = TataRekeningStatusEnum.Finalized;
@@ -214,7 +225,7 @@ public record TataRekeningModel : IRegKey
         SettlementInitiated = true;
     }
 
-    public void CancelFinalization()
+    public void CancelFinalization(IEnumerable<string>? adminBillIds = null)
     {
         EnsureNotLunas();
 
@@ -228,10 +239,25 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "Tidak dapat cancel finalization karena sudah ada pembayaran pada list TrsBill.");
 
+        if (adminBillIds is not null)
+        {
+            RevertAdministrativeBillsDate(adminBillIds);
+        }
+
         ClearFinancialResponsibilityAllocation();
         FinalizationInfo = TataRekeningFinalizationType.Default;
         SettlementInitiated = false;
         Status = TataRekeningStatusEnum.Closed;
+    }
+
+    public void RevertAdministrativeBillsDate(IEnumerable<string> adminBillIds)
+    {
+        ArgumentNullException.ThrowIfNull(adminBillIds);
+        var adminIdSet = adminBillIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var bill in _listTrsBill.Where(b => adminIdSet.Contains(b.TrsBillingId)))
+        {
+            bill.RevertAdministrativeDate();
+        }
     }
 
     public void EnsureCanCreateTrsBill() => EnsureOpenForBillMutation();
@@ -432,10 +458,6 @@ public record TataRekeningModel : IRegKey
         if (FinancialVerificationStatus == FinancialVerificationStatusEnum.RequiresAdjustment)
             throw new InvalidOperationException(
                 "Financial Responsibility Allocation tidak dapat dilakukan karena memerlukan Financial Adjustment.");
-
-        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.Valid)
-            throw new InvalidOperationException(
-                "Financial Responsibility Allocation memerlukan Financial Verification yang valid.");
     }
 
     private void EnsureCanFinalize()
@@ -557,7 +579,7 @@ public record TataRekeningModel : IRegKey
             var bill = bills[i];
             var share = i == bills.Count - 1
                 ? modulAllocation - allocated
-                : modulAllocation * bill.FinancialTotal / modulTotal;
+                : Math.Round(modulAllocation * bill.FinancialTotal / modulTotal, 2, MidpointRounding.AwayFromZero);
 
             bill.FinalizeAllocation(
                 item.Payment, share, petugasVerif, trsBayarId, allocationDate);

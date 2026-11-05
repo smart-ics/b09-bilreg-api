@@ -1,4 +1,3 @@
-using Bilreg.Api.Controllers.PaymentContext.AlokasiPembayaranFeature.Contracts;
 using Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature.Contracts;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
@@ -19,7 +18,7 @@ public class TataRekeningExampleSchemaFilter : ISchemaFilter
             return;
         }
 
-        if (context.Type == typeof(CancelFinalizationRequest) || context.Type == typeof(ReopenBillingRequest))
+        if (context.Type == typeof(CancelFinalizeRequest) || context.Type == typeof(ReopenBillingRequest))
         {
             schema.Example = new OpenApiObject
             {

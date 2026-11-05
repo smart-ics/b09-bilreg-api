@@ -1,6 +1,8 @@
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
@@ -34,12 +36,16 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
     private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
+    private readonly Mock<IRegBiayaRepo> _regBiayaRepo = new();
+    private readonly Mock<ITrsDirectDal> _trsDirectDal = new();
+    private readonly Mock<IJurnalDal> _jurnalDal = new();
     private readonly FixedCurrentUserContext _currentUser =
         new(TataRekeningDomainTestHelper.DefaultPetugasVerif);
 
     public TataRekeningPhase3ApplicationTest()
     {
         _unitOfWork.Setup(u => u.Begin()).Returns(_unitOfWorkScope.Object);
+        _regBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     #region Open Tata Rekening Query
@@ -328,7 +334,8 @@ public class TataRekeningPhase3ApplicationTest
         SetupRegLoad(RegId, reg);
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
 
         var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
 

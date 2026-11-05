@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
@@ -26,6 +28,33 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IRegBiayaRepo _regBiayaRepo;
+    private readonly ITrsDirectDal _trsDirectDal;
+    private readonly IJurnalDal _jurnalDal;
+
+    public CancelFinalizationHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
+        IRegRepo regRepo,
+        IAuditRepo auditRepo,
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider,
+        IRegBiayaRepo regBiayaRepo,
+        ITrsDirectDal trsDirectDal,
+        IJurnalDal jurnalDal)
+    {
+        _tataRekeningRepo = tataRekeningRepo;
+        _trsBillingRepo = trsBillingRepo;
+        _regRepo = regRepo;
+        _auditRepo = auditRepo;
+        _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
+        _regBiayaRepo = regBiayaRepo;
+        _trsDirectDal = trsDirectDal;
+        _jurnalDal = jurnalDal;
+    }
 
     public CancelFinalizationHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -35,14 +64,9 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider)
+        : this(tataRekeningRepo, trsBillingRepo, regRepo, auditRepo, unitOfWork, currentUser, tglJamProvider,
+            null!, null!, null!)
     {
-        _tataRekeningRepo = tataRekeningRepo;
-        _trsBillingRepo = trsBillingRepo;
-        _regRepo = regRepo;
-        _auditRepo = auditRepo;
-        _unitOfWork = unitOfWork;
-        _currentUser = currentUser;
-        _tglJamProvider = tglJamProvider;
     }
 
     public Task<CancelFinalizationResponse> Handle(CancelFinalizationCommand request, CancellationToken cancellationToken)
@@ -55,11 +79,27 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
-        tataRekening.CancelFinalization();
+        var adminTrsIds = _regBiayaRepo?.ListData(request)?
+            .Where(x => !string.IsNullOrWhiteSpace(x.ReffBlId))
+            .Select(x => x.ReffBlId)
+            .Distinct()
+            .ToList() ?? [];
+
+        tataRekening.CancelFinalization(adminTrsIds);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
         foreach (var bill in tataRekening.ListTrsBill)
             _trsBillingRepo.SaveChanges(bill);
+
+        if (_trsDirectDal is not null && _jurnalDal is not null)
+        {
+            var sentinelDate = new DateTime(3000, 1, 1, 0, 0, 0);
+            foreach (var trsId in adminTrsIds)
+            {
+                _trsDirectDal.UpdateTimestamp(trsId, sentinelDate, 0m);
+                _jurnalDal.UpdateTimestamp(trsId, sentinelDate);
+            }
+        }
 
         var reg = _regRepo.LoadEntity(request)
             .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");

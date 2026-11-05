@@ -115,6 +115,49 @@ public class TataRekeningDtoTest
         dto.Keterangan.Should().Be("Konsultasi Spesialis");
         dto.RefBiaya.Should().Be("REF-KONS-01");
         dto.RekapCetakName.Should().Be("Pemeriksaan Dokter");
+        dto.Diskon.Should().Be(0m);
+        dto.PetugasMedisName.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void ToBillSummaryDto_WithDiskonAndPetugasMedis_MapsCorrectly()
+    {
+        var tglTrs = new DateTime(2026, 6, 16, 8, 30, 0);
+
+        var transWithoutDoctor = new TrsBill2TransEventType(
+            1,
+            new TrsBill2KomponenType("DT-01", "Sewa Kamar"),
+            TrsBillJenisBayarType.Pdp,
+            100_000m,
+            new PpaReff("", ""),
+            TrsBill2CoaType.Default);
+
+        var transWithDoctor = new TrsBill2TransEventType(
+            2,
+            new TrsBill2KomponenType("DT-02", "Jasa Dokter"),
+            TrsBillJenisBayarType.Pdp,
+            150_000m,
+            new PpaReff("DOK-01", "dr. Budi Santoso, Sp.PD"),
+            TrsBill2CoaType.Default);
+
+        var bill = new TrsBillType(
+            "BILL-EXP-02",
+            BillModulGroup.Jasa,
+            tglTrs,
+            new RegReff("REG-EXP-02", "RM-02", "Pasien B"),
+            new LayananReff("LAY-01", "Poli Penyakit Dalam"),
+            KelasType.Default.ToReff(),
+            AuditInfoType.Default,
+            new RekapCetakReff("RK-01", "Pemeriksaan Dokter"),
+            new TrsBillNilaiType(250_000m, 25_000m, 0, 0),
+            new TrsBillKetType("Konsultasi & Tindakan", "Ket2", "REF-KONS-02", 1, "MAIN-01"),
+            [transWithoutDoctor, transWithDoctor], [], []);
+
+        var dto = TataRekeningApplicationMapper.ToBillSummaryDto(bill);
+
+        dto.TrsBillingId.Should().Be("BILL-EXP-02");
+        dto.Diskon.Should().Be(25_000m);
+        dto.PetugasMedisName.Should().Be("dr. Budi Santoso, Sp.PD");
     }
 
     [Fact]
@@ -228,6 +271,8 @@ public class TataRekeningDtoTest
         dto.BiayaAdministrasi.Total.Should().Be(35_500m);
         dto.GrandTotalKewajiban.Should().Be(675_500m);
         dto.SisaTagihanKasir.Should().Be(675_500m);
+    }
+
     [Theory]
     [InlineData("LEX26A150001", 12)]      // NunaId.New("LEX") - 12 chars (Lab External Walk-In)
     [InlineData("LEX26A150001A", 13)]     // 13 chars

@@ -1,13 +1,17 @@
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
+using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.DepositFeature;
+using Bilreg.Domain.PaymentContext.RegOutFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -34,11 +38,15 @@ public class AlokasiPembayaranCommandTests
     private readonly Mock<IAuditRepo> _auditRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
+    private readonly Mock<IRegBiayaRepo> _regBiayaRepo = new();
+    private readonly Mock<ITrsDirectDal> _trsDirectDal = new();
+    private readonly Mock<IJurnalDal> _jurnalDal = new();
     private readonly FixedCurrentUserContext _currentUser = new(PetugasVerif);
 
     public AlokasiPembayaranCommandTests()
     {
         _unitOfWork.Setup(u => u.Begin()).Returns(_unitOfWorkScope.Object);
+        _regBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     [Fact]
@@ -275,6 +283,103 @@ public class AlokasiPembayaranCommandTests
     }
 
     [Fact]
+    public async Task GivenClosedTataRekeningWithoutExplicitVerification_WhenFinalize_ThenSucceedsAndUpdatesRegistrationDischarge()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 100_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.AllocateFinancialResponsibility(
+            [new TataRekeningPaymentType(PaymentType.ByKas, 100_000m, 0m, CoaType.Default)]);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        var handler = new FinalizeFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+
+        var result = await handler.Handle(
+            new FinalizeFinancialResponsibilityCommand(RegId, "USER-01", TestDate),
+            CancellationToken.None);
+
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        result.Summary.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.Valid);
+        _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(bill), Times.Once);
+        _regRepo.Verify(r => r.SaveChanges(reg), Times.Once);
+        reg.IsAktif.Should().BeFalse();
+        reg.RegKeluarAudit.UserId.Should().Be("USER-01");
+        reg.RegKeluarAudit.Timestamp.Should().Be(TestDate);
+    }
+
+    [Fact]
+    public async Task GivenFinalizeCommandWithNullFinalizationDate_WhenFinalize_ThenUsesTglJamProviderNow()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 100_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.AllocateFinancialResponsibility(
+            [new TataRekeningPaymentType(PaymentType.ByKas, 100_000m, 0m, CoaType.Default)]);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        var handler = new FinalizeFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+
+        var result = await handler.Handle(
+            new FinalizeFinancialResponsibilityCommand(RegId, "USER-01", null),
+            CancellationToken.None);
+
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        reg.RegKeluarAudit.Timestamp.Should().Be(TestTglJamProvider.Instance.Now);
+        reg.RegKeluarAudit.UserId.Should().Be("USER-01");
+        tataRekening.FinalizationInfo.FinalizationDate.Should().Be(TestTglJamProvider.Instance.Now);
+        bill.ListFinalization.Should().AllSatisfy(f => f.TglBayar.Should().Be(TestTglJamProvider.Instance.Now));
+    }
+
+    [Fact]
+    public async Task GivenBillsWithAdministrativeCosts_WhenFinalize_ThenAdministrativeBillsFinalizationTimestampSynchronized()
+    {
+        var bill1 = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 90_000m);
+        var billAdmin = TataRekeningTestDataBuilder.CreateBill("BILL-ADM", RegId, 10_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill1, billAdmin);
+        tataRekening.AllocateFinancialResponsibility(
+            [new TataRekeningPaymentType(PaymentType.ByKas, 100_000m, 0m, CoaType.Default)]);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        var handler = new FinalizeFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+
+        var result = await handler.Handle(
+            new FinalizeFinancialResponsibilityCommand(RegId, "USER-01", TestDate),
+            CancellationToken.None);
+
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        billAdmin.ListFinalization.Should().NotBeEmpty();
+        billAdmin.ListFinalization.Should().AllSatisfy(f =>
+        {
+            f.TglBayar.Should().Be(TestDate);
+            f.PetugasKasir.Should().Be("USER-01");
+        });
+        bill1.ListFinalization.Should().AllSatisfy(f =>
+        {
+            f.TglBayar.Should().Be(TestDate);
+            f.PetugasKasir.Should().Be("USER-01");
+        });
+        _trsBillingRepo.Verify(r => r.SaveChanges(billAdmin), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(bill1), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenFinalizedTataRekening_WhenCancelFinalization_ThenSucceedsAndCancelsRegistrationDischarge()
     {
         var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 100_000m);
@@ -292,7 +397,8 @@ public class AlokasiPembayaranCommandTests
             .Returns(MayBe.From(reg));
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
 
         var result = await handler.Handle(
             new CancelFinalizationCommand(RegId, "USER-01", "Koreksi alokasi"),
@@ -307,7 +413,6 @@ public class AlokasiPembayaranCommandTests
         reg.RegCancelOutAudit.UserId.Should().Be("USER-01");
         reg.RegCancelOutAudit.Timestamp.Should().Be(TestTglJamProvider.Instance.Now);
     }
-
     [Fact]
     public async Task GivenFinalizedTataRekening_WhenInitiateSettlement_ThenSettlementInitiatedIsTrue()
     {
@@ -329,5 +434,167 @@ public class AlokasiPembayaranCommandTests
 
         result.Summary.SettlementInitiated.Should().BeTrue();
         _auditRepo.Verify(r => r.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenClosedTataRekeningWithAdministrativeBill_WhenAllocateFinalize_ThenSynchronizesTimestampsAndDirectDalAndJurnalDal()
+    {
+        // Arrange
+        const string adminTrsId = "BL001";
+        var bill1 = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 90_000m);
+        var billAdmin = TataRekeningTestDataBuilder.CreateBill(adminTrsId, RegId, 10_000m);
+        billAdmin.RevertAdministrativeDate();
+        billAdmin.TglTrs.Year.Should().Be(3000);
+
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill1, billAdmin);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        _regBiayaRepo.Setup(r => r.ListData(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns([new RegBiayaType(RegId, "ADMIN", adminTrsId, 10_000m)]);
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+        };
+        var expectedFinalDate = new DateTime(2026, 6, 16, 15, 30, 0);
+
+        var handler = new AllocateFinalizeHandler(
+            _tataRekeningRepo.Object,
+            _trsBillingRepo.Object,
+            _depositRepo.Object,
+            _regJaminanPolicy.Object,
+            _regRepo.Object,
+            _unitOfWork.Object,
+            TestTglJamProvider.Instance,
+            _regBiayaRepo.Object,
+            _trsDirectDal.Object,
+            _jurnalDal.Object);
+
+        // Act
+        var result = await handler.Handle(
+            new AllocateFinalizeCommand(RegId, payments, "USER-01", expectedFinalDate),
+            CancellationToken.None);
+
+        // Assert
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        billAdmin.TglTrs.Should().Be(expectedFinalDate);
+        _trsDirectDal.Verify(x => x.UpdateTimestamp(adminTrsId, expectedFinalDate, 5m), Times.Once);
+        _jurnalDal.Verify(x => x.UpdateTimestamp(adminTrsId, expectedFinalDate), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(billAdmin), Times.Once);
+        _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAllocateFinalizeWithNullFinalizationDate_WhenHandle_ThenUsesTglJamProviderNowForAdminBillAndDals()
+    {
+        // Arrange
+        const string adminTrsId = "BL002";
+        var bill1 = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 90_000m);
+        var billAdmin = TataRekeningTestDataBuilder.CreateBill(adminTrsId, RegId, 10_000m);
+        billAdmin.RevertAdministrativeDate();
+
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill1, billAdmin);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        _regBiayaRepo.Setup(r => r.ListData(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns([new RegBiayaType(RegId, "ADMIN", adminTrsId, 10_000m)]);
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+        };
+        var expectedFinalDate = TestTglJamProvider.Instance.Now;
+
+        var handler = new AllocateFinalizeHandler(
+            _tataRekeningRepo.Object,
+            _trsBillingRepo.Object,
+            _depositRepo.Object,
+            _regJaminanPolicy.Object,
+            _regRepo.Object,
+            _unitOfWork.Object,
+            TestTglJamProvider.Instance,
+            _regBiayaRepo.Object,
+            _trsDirectDal.Object,
+            _jurnalDal.Object);
+
+        // Act
+        var result = await handler.Handle(
+            new AllocateFinalizeCommand(RegId, payments, "USER-01", null),
+            CancellationToken.None);
+
+        // Assert
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        billAdmin.TglTrs.Should().Be(expectedFinalDate);
+        _trsDirectDal.Verify(x => x.UpdateTimestamp(adminTrsId, expectedFinalDate, 5m), Times.Once);
+        _jurnalDal.Verify(x => x.UpdateTimestamp(adminTrsId, expectedFinalDate), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenFinalizedTataRekeningWithAdministrativeBill_WhenCancelFinalization_ThenRevertsTimestampAndDirectDalAndJurnalDalToSentinel()
+    {
+        // Arrange
+        const string adminTrsId = "BL001";
+        var bill1 = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 90_000m);
+        var billAdmin = TataRekeningTestDataBuilder.CreateBill(adminTrsId, RegId, 10_000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(RegId, TataRekeningStatusEnum.Opened, bill1, billAdmin);
+
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
+            [new TataRekeningPaymentType(PaymentType.ByKas, 100_000m, 0m, CoaType.Default)],
+            PetugasVerif);
+
+        billAdmin.TglTrs.Should().Be(TataRekeningDomainTestHelper.DefaultFinalizationDate);
+
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var reg = RegModel.Default;
+        reg.SetKeluar(PetugasVerif, TestDate);
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        _regBiayaRepo.Setup(r => r.ListData(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns([new RegBiayaType(RegId, "ADMIN", adminTrsId, 10_000m)]);
+
+        var handler = new CancelFinalizationHandler(
+            _tataRekeningRepo.Object,
+            _trsBillingRepo.Object,
+            _regRepo.Object,
+            _auditRepo.Object,
+            _unitOfWork.Object,
+            _currentUser,
+            TestTglJamProvider.Instance,
+            _regBiayaRepo.Object,
+            _trsDirectDal.Object,
+            _jurnalDal.Object);
+
+        // Act
+        var result = await handler.Handle(
+            new CancelFinalizationCommand(RegId, "USER-01", "Koreksi alokasi"),
+            CancellationToken.None);
+
+        // Assert
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
+
+        // Administrative bill TglTrs reverted to sentinel date 3000-01-01 00:00:00
+        billAdmin.TglTrs.Should().Be(new DateTime(3000, 1, 1, 0, 0, 0));
+
+        // Direct DAL and Jurnal DAL updated with sentinel year 3000 and fn_genkeu = 0
+        _trsDirectDal.Verify(x => x.UpdateTimestamp(adminTrsId, It.Is<DateTime>(d => d.Year == 3000), 0m), Times.Once);
+        _jurnalDal.Verify(x => x.UpdateTimestamp(adminTrsId, It.Is<DateTime>(d => d.Year == 3000)), Times.Once);
+
+        _trsBillingRepo.Verify(r => r.SaveChanges(billAdmin), Times.Once);
+        _regRepo.Verify(r => r.SaveChanges(reg), Times.Once);
     }
 }

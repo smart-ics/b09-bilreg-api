@@ -55,7 +55,7 @@ public record TrsBillType : ITrsBillingKey
 
     public string TrsBillingId { get; init; }
     public BillModulGroup ModulGroup { get; init; }
-    public DateTime TglTrs { get; init; }
+    public DateTime TglTrs { get; private set; }
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; init; }
     public KelasReff Kelas { get; init; }
@@ -120,7 +120,7 @@ public record TrsBillType : ITrsBillingKey
             var trans = _listTrsBill2TransEvent[i];
             var share = i == _listTrsBill2TransEvent.Count - 1
                 ? nilai - allocated
-                : totalTrans > 0 ? nilai * trans.Nilai / totalTrans : 0m;
+                : totalTrans > 0 ? Math.Round(nilai * trans.Nilai / totalTrans, 2, MidpointRounding.AwayFromZero) : 0m;
 
             var finalization = TrsBill2FinalizationEventType.Create(
                 noUrut++, trans.Komponen, jenisBayar, share,
@@ -144,6 +144,16 @@ public record TrsBillType : ITrsBillingKey
                 PetugasKasir = petugasVerif
             };
         }
+    }
+
+    internal void UpdateAdministrativeDate(DateTime finalizationDate)
+    {
+        TglTrs = finalizationDate;
+    }
+
+    internal void RevertAdministrativeDate()
+    {
+        TglTrs = new DateTime(3000, 1, 1, 0, 0, 0);
     }
 
     internal void CancelFinalization()

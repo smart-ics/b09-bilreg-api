@@ -12,4 +12,6 @@ public record TrsBillSummaryDto(
     string LayananName,
     string Keterangan,
     string RefBiaya,
-    string RekapCetakName);
+    string RekapCetakName,
+    decimal Diskon = 0m,
+    string PetugasMedisName = "");

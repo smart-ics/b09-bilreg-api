@@ -59,6 +59,13 @@ public class FinalizeFinancialResponsibilityHandler
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
         var occurredAt = request.FinalizationDate ?? _tglJamProvider.Now;
+
+        if (tataRekening.Status == TataRekeningStatusEnum.Closed &&
+            tataRekening.FinancialVerificationStatus == FinancialVerificationStatusEnum.NotVerified)
+        {
+            tataRekening.CompleteFinancialVerification(petugasVerif, occurredAt);
+        }
+
         tataRekening.FinalizeFinancialResponsibility(petugasVerif, occurredAt);
 
         _tataRekeningRepo.SaveChanges(tataRekening);

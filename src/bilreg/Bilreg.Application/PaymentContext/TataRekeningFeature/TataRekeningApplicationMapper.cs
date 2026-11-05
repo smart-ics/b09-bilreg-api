@@ -31,7 +31,9 @@ internal static class TataRekeningApplicationMapper
             bill.Layanan.LayananName,
             bill.Keterangan.Keterangan,
             bill.Keterangan.RefBiaya,
-            bill.RekapCetak.RekapCetakName);
+            bill.RekapCetak.RekapCetakName,
+            bill.Nilai.Diskon,
+            bill.ListTransaction.FirstOrDefault(x => !string.IsNullOrEmpty(x.PetugasMedis.PpaName))?.PetugasMedis.PpaName ?? string.Empty);
 
     public static PaymentProjectionDto ToProjectionDto(TataRekeningPaymentType payment) =>
         new(
