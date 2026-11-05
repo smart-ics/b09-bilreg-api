@@ -135,7 +135,16 @@ public class WardCockpitController : ControllerBase
     {
         var result = await _mediator.Send(cmd);
         var targetBangsalId = !string.IsNullOrWhiteSpace(bangsalId) ? bangsalId : result.BangsalId;
-        var targetBedId = !string.IsNullOrWhiteSpace(bedId) ? bedId : result.BedId;
+        var targetBedId = (!string.IsNullOrWhiteSpace(bedId) ? bedId : (result.BedId ?? string.Empty)).Trim();
+
+        if (string.IsNullOrWhiteSpace(targetBangsalId) && _bedRepo != null && !string.IsNullOrWhiteSpace(targetBedId))
+        {
+            var maybeBed = _bedRepo.LoadEntity(BedType.Key(targetBedId));
+            if (maybeBed.HasValue && !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-")
+            {
+                targetBangsalId = maybeBed.Value.Bangsal.BangsalId;
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(targetBangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
         {

@@ -122,26 +122,28 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
 
         string? bangsalId = pakaiBed.Layanan?.LayananId;
         string? kamarId = null;
-        var bedId = pakaiBed.Bed?.BedId;
+        var bedId = (pakaiBed.Bed?.BedId ?? string.Empty).Trim();
         if (_bedRepo != null && !string.IsNullOrWhiteSpace(bedId))
         {
             var maybeBed = _bedRepo.LoadEntity(BedType.Key(bedId));
             if (maybeBed.HasValue)
             {
-                bangsalId = maybeBed.Value.Bangsal?.BangsalId ?? bangsalId;
+                bangsalId = !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-"
+                    ? maybeBed.Value.Bangsal.BangsalId
+                    : bangsalId;
                 kamarId = maybeBed.Value.Kamar?.KamarId;
             }
         }
-        if (string.IsNullOrWhiteSpace(bangsalId) && _kamarRepo != null && !string.IsNullOrWhiteSpace(kamarId))
+        if ((string.IsNullOrWhiteSpace(bangsalId) || bangsalId == "-") && _kamarRepo != null && !string.IsNullOrWhiteSpace(kamarId))
         {
             var maybeKamar = _kamarRepo.LoadEntity(KamarType.Key(kamarId));
-            if (maybeKamar.HasValue)
+            if (maybeKamar.HasValue && !string.IsNullOrWhiteSpace(maybeKamar.Value.Bangsal?.BangsalId) && maybeKamar.Value.Bangsal.BangsalId != "-")
             {
-                bangsalId = maybeKamar.Value.Bangsal?.BangsalId;
+                bangsalId = maybeKamar.Value.Bangsal.BangsalId;
             }
         }
 
-        // 5b. Update BedOperational: always mark bed as CleaningRequired (HK Dirty) on all releases (including cancellation)
+        // 5b. Update BedOperational: always mark bed as CleaningRequired (HK Dirty) on all releases (including cancellation / 1-second stay)
         if (_bedOperationalRepo != null && !string.IsNullOrWhiteSpace(bedId))
         {
             var nowUtc = DateTime.UtcNow;
@@ -156,7 +158,7 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
                     onSome: bo => bo,
                     onNone: () => BedOperationalModel.Create(
                         bedId,
-                        !string.IsNullOrWhiteSpace(bangsalId) ? bangsalId : "DEFAULT",
+                        !string.IsNullOrWhiteSpace(bangsalId) && bangsalId != "-" ? bangsalId : "DEFAULT",
                         !string.IsNullOrWhiteSpace(kamarId) ? kamarId : "DEFAULT",
                         OccupancyPolicyReff.Default)
                 );

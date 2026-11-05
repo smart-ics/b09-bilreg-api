@@ -109,7 +109,7 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
             .GetValueOrThrow($"Bangsal '{request.TargetBangsalId}' not found");
 
         // 3. Resolve old bed and old bangsal info
-        var oldBedId = pakaiBed.Bed.BedId;
+        var oldBedId = (pakaiBed.Bed?.BedId ?? string.Empty).Trim();
         var oldBed = _bedRepo.LoadEntity(BedType.Key(oldBedId));
         var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : pakaiBed.Layanan.LayananId;
         var oldBangsalName = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalName : pakaiBed.Layanan.LayananName;

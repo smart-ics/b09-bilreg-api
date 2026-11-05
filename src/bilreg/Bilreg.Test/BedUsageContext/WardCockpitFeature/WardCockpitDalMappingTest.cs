@@ -231,6 +231,39 @@ public class WardCockpitDalMappingTest
     }
 
     [Fact]
+    public void BuildOverview_WhenBedIdHasTrailingSpacesOrCaseMismatch_MatchesOperationalStateAndResolvesCleaning()
+    {
+        var bangsal = new RawBangsalRow("BGS-01", "Bangsal Dahlia", "KLS-03", "Kelas III");
+
+        var roomBedRows = new List<RawRoomBedRow>
+        {
+            new("ROOM-104", "Kamar 104", "Kelas III", "BED-104-A  ", "104-A", true, null, null, null, null, null, null, null, null, null, null, null, null, null, 0)
+        };
+
+        var opRows = new List<RawBedOperationalRow>
+        {
+            new(
+                BedId: "bed-104-a",
+                CurrentReadiness: 2, // CleaningRequired
+                IsBlocked: false,
+                CurrentRestrictionType: 1, // Cleaning
+                CurrentBlockerReason: "Pindah kamar ke bed BED-104-B",
+                UpdDate: _now.AddMinutes(-5)
+            )
+        };
+
+        var result = WardCockpitDal.BuildOverview(bangsal, roomBedRows, opRows, [], _now);
+
+        result.Kpi.Cleaning.Should().Be(1);
+        result.Kpi.Available.Should().Be(0);
+
+        var bed = result.Rooms.Single().Beds.Single();
+        bed.Status.Should().Be("Cleaning");
+        bed.OperationalState.ReadinessStatus.Should().Be("CleaningRequired");
+        bed.OperationalState.BlockerType.Should().Be("Cleaning");
+    }
+
+    [Fact]
     public void BuildOverview_WithWaitingList_MapsCitoUrgentAndWaitTime()
     {
         var bangsal = new RawBangsalRow("BGS-01", "Bangsal Dahlia", "KLS-03", "Kelas III");
@@ -250,7 +283,9 @@ public class WardCockpitDalMappingTest
                 RequestedKelasName: "Kelas III",
                 PlannedBedId: "BED-101-B",
                 SpecialRequirements: "Perlu Oksigen Sentral",
-                CrtDate: _now.AddMinutes(-45)
+                CrtDate: _now.AddMinutes(-45),
+                KdJenisInap: "2",
+                RegIbu: ""
             ),
             new(
                 WaitingListId: "WL-002",
@@ -265,7 +300,9 @@ public class WardCockpitDalMappingTest
                 RequestedKelasName: "Kelas III",
                 PlannedBedId: "",
                 SpecialRequirements: "",
-                CrtDate: _now.AddMinutes(-120)
+                CrtDate: _now.AddMinutes(-120),
+                KdJenisInap: "3",
+                RegIbu: "REG-010"
             )
         };
 
@@ -283,12 +320,47 @@ public class WardCockpitDalMappingTest
         item1.ReferralSource.Should().Be("IGD");
         item1.ElapsedWaitMinutes.Should().Be(45);
         item1.Umur.Should().Be("52 Thn");
+        item1.KdJenisInap.Should().Be("2");
+        item1.RegIbu.Should().BeEmpty();
 
         var item2 = list[1];
         item2.WaitingListId.Should().Be("WL-002");
         item2.ClinicalUrgency.Should().Be("Urgent");
         item2.ReferralSource.Should().Be("Poliklinik");
         item2.ElapsedWaitMinutes.Should().Be(120);
+        item2.KdJenisInap.Should().Be("3");
+        item2.RegIbu.Should().Be("REG-010");
+    }
+
+    [Fact]
+    public void BuildOverview_WithWaitingList_WhenKdJenisInapEmpty_DefaultsToUmum()
+    {
+        var bangsal = new RawBangsalRow("BGS-01", "Bangsal Dahlia", "KLS-03", "Kelas III");
+        var wlRows = new List<RawWaitingListRow>
+        {
+            new(
+                WaitingListId: "WL-003",
+                RegId: "REG-012",
+                MrNo: "MR-012",
+                NamaPasien: "Pasien Umum",
+                Gender: "L",
+                TglLahir: "1990-01-01",
+                ClinicalUrgency: 0,
+                ArrivalSourceType: 0,
+                ReferringUnitName: "",
+                RequestedKelasName: "Kelas III",
+                PlannedBedId: "",
+                SpecialRequirements: "",
+                CrtDate: _now.AddMinutes(-30),
+                KdJenisInap: "",
+                RegIbu: ""
+            )
+        };
+
+        var result = WardCockpitDal.BuildOverview(bangsal, [], [], wlRows, _now);
+        var item = result.WaitingList.Single();
+        item.KdJenisInap.Should().Be("1");
+        item.RegIbu.Should().BeEmpty();
     }
 
     [Fact]

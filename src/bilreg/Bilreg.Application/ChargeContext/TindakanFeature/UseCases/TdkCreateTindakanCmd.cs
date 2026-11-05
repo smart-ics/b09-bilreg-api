@@ -21,6 +21,9 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
+using System.Text.Json.Serialization;
+
+[method: JsonConstructor]
 public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,

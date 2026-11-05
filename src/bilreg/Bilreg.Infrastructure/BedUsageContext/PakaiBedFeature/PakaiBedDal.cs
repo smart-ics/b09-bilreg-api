@@ -340,6 +340,69 @@ public class PakaiBedDal : IPakaiBedDal
         var nowTime = now.ToString("HH:mm:ss");
 
         const string sql = """
+            -- 0. Temp tracking tables
+            CREATE TABLE #RevertedBangsals (BangsalId VARCHAR(50));
+            CREATE TABLE #RoomingInPairs (
+                MotherRegId VARCHAR(50),
+                BabyRegId VARCHAR(50),
+                BabyMrNo VARCHAR(50)
+            );
+
+            -- Detect rooming-in relationship:
+            -- Case A: @pakaiBedId is mother (primary occupancy) with secondary baby (fn_tarif = 0) on same bed
+            INSERT INTO #RoomingInPairs (MotherRegId, BabyRegId, BabyMrNo)
+            SELECT DISTINCT
+                mother.fs_kd_reg,
+                baby.fs_kd_reg,
+                ISNULL(reg_baby.fs_mr, '')
+            FROM ta_trs_bed mother
+            INNER JOIN ta_trs_bed baby ON mother.fs_kd_bed = baby.fs_kd_bed
+            LEFT JOIN ta_registrasi reg_baby ON baby.fs_kd_reg = reg_baby.fs_kd_reg
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs;
+
+            -- Case B: @pakaiBedId is baby (fn_tarif = 0) on bed with mother
+            IF NOT EXISTS (SELECT 1 FROM #RoomingInPairs)
+            BEGIN
+                INSERT INTO #RoomingInPairs (MotherRegId, BabyRegId, BabyMrNo)
+                SELECT DISTINCT
+                    mother.fs_kd_reg,
+                    baby.fs_kd_reg,
+                    ISNULL(reg_baby.fs_mr, '')
+                FROM ta_trs_bed baby
+                INNER JOIN ta_trs_bed mother ON mother.fs_kd_bed = baby.fs_kd_bed
+                LEFT JOIN ta_registrasi reg_baby ON baby.fs_kd_reg = reg_baby.fs_kd_reg
+                WHERE baby.fs_kd_trs = @pakaiBedId
+                  AND baby.fn_tarif = 0
+                  AND mother.fs_kd_trs <> baby.fs_kd_trs;
+            END
+
+            -- Collect affected bangsal IDs from mother and baby transactions
+            INSERT INTO #RevertedBangsals (BangsalId)
+            SELECT DISTINCT fs_kd_layanan
+            FROM ta_trs_bed
+            WHERE fs_kd_trs = @pakaiBedId
+              AND ISNULL(fs_kd_layanan, '') <> '';
+
+            INSERT INTO #RevertedBangsals (BangsalId)
+            SELECT DISTINCT baby.fs_kd_layanan
+            FROM ta_trs_bed baby
+            INNER JOIN ta_trs_bed mother ON mother.fs_kd_bed = baby.fs_kd_bed
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND ISNULL(baby.fs_kd_layanan, '') <> '';
+
+            INSERT INTO #RevertedBangsals (BangsalId)
+            SELECT DISTINCT mother.fs_kd_layanan
+            FROM ta_trs_bed mother
+            INNER JOIN ta_trs_bed baby ON mother.fs_kd_bed = baby.fs_kd_bed
+            WHERE baby.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND mother.fs_kd_trs <> baby.fs_kd_trs
+              AND ISNULL(mother.fs_kd_layanan, '') <> '';
+
             -- 1. Void ta_trs_bed (Single atomic transaction scope)
             IF COL_LENGTH('ta_trs_bed', 'fs_kd_batal') IS NOT NULL
             BEGIN
@@ -449,64 +512,95 @@ public class PakaiBedDal : IPakaiBedDal
                   )
               );
 
-            -- 5. Reversal of Placed Waiting List for baby/rooming-in or voided patient
-            CREATE TABLE #RevertedBangsals (BangsalId VARCHAR(50));
-
-            IF OBJECT_ID('BILRG_BedWaitingList', 'U') IS NOT NULL
+            -- 5. Normalisasi ta_registrasi for rooming-in pairs (TD-01)
+            IF EXISTS (SELECT 1 FROM #RoomingInPairs)
             BEGIN
-                DECLARE @colNurse NVARCHAR(MAX) = CASE WHEN COL_LENGTH('BILRG_BedWaitingList', 'AdmittedNurseId') IS NOT NULL THEN N', AdmittedNurseId = ''''' ELSE N'' END;
-                DECLARE @colDate NVARCHAR(MAX) = CASE WHEN COL_LENGTH('BILRG_BedWaitingList', 'AdmittedDate') IS NOT NULL THEN N', AdmittedDate = ''3000-01-01''' ELSE N'' END;
-                DECLARE @colBed NVARCHAR(MAX) = CASE 
-                    WHEN COL_LENGTH('BILRG_BedWaitingList', 'AdmittedBedId') IS NOT NULL THEN N', AdmittedBedId = ''''' 
-                    WHEN COL_LENGTH('BILRG_BedWaitingList', 'PlacedBedId') IS NOT NULL THEN N', PlacedBedId = '''''
-                    ELSE N'' 
-                END;
-                DECLARE @colPakaiBed NVARCHAR(MAX) = CASE 
-                    WHEN COL_LENGTH('BILRG_BedWaitingList', 'PlacedPakaiBedId') IS NOT NULL THEN N', PlacedPakaiBedId = ''''' 
-                    ELSE N'' 
-                END;
+                IF OBJECT_ID('ta_registrasi', 'U') IS NOT NULL
+                BEGIN
+                    -- 5a. Normalisasi Registrasi Ibu: fs_kd_jenis_inap = '2' (Obstetri)
+                    IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL
+                    BEGIN
+                        UPDATE r
+                        SET r.fs_kd_jenis_inap = '2'
+                        FROM ta_registrasi r
+                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.MotherRegId
+                        WHERE (r.fs_kd_jenis_inap <> '2' OR r.fs_kd_jenis_inap IS NULL);
+                    END
 
-                -- 5a. Direct match: if the voided pakaiBed itself is associated with a placed waiting list
-                DECLARE @sqlRevertWlDirect NVARCHAR(MAX) = N'
-                    UPDATE wl
-                    SET wl.WaitingListStatus = 0' + @colBed + @colPakaiBed + @colNurse + @colDate + N',
-                        wl.UpdUser = @userId,
-                        wl.UpdDate = @now
-                    OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
-                    FROM BILRG_BedWaitingList wl
-                    INNER JOIN ta_trs_bed tb ON (wl.RegId = tb.fs_kd_reg OR wl.PasienId = (SELECT TOP 1 fs_mr FROM ta_registrasi WHERE fs_kd_reg = tb.fs_kd_reg))
-                    WHERE tb.fs_kd_trs = @pakaiBedId
-                      AND wl.WaitingListStatus = 2';
-                EXEC sp_executesql @sqlRevertWlDirect, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
-
-                -- 5b. Cascade match: if voiding mother bed, revert any active rooming-in baby on that bed
-                DECLARE @sqlRevertWlCascade NVARCHAR(MAX) = N'
-                    UPDATE wl
-                    SET wl.WaitingListStatus = 0' + @colBed + @colPakaiBed + @colNurse + @colDate + N',
-                        wl.UpdUser = @userId,
-                        wl.UpdDate = @now
-                    OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
-                    FROM BILRG_BedWaitingList wl
-                    INNER JOIN ta_trs_bed tb_baby ON (wl.RegId = tb_baby.fs_kd_reg OR wl.PasienId = (SELECT TOP 1 fs_mr FROM ta_registrasi WHERE fs_kd_reg = tb_baby.fs_kd_reg))
-                    INNER JOIN ta_trs_bed tb_mother ON tb_mother.fs_kd_bed = tb_baby.fs_kd_bed
-                    WHERE tb_mother.fs_kd_trs = @pakaiBedId
-                      AND tb_baby.fn_tarif = 0
-                      AND tb_baby.fs_kd_trs <> tb_mother.fs_kd_trs
-                      AND wl.WaitingListStatus = 2';
-                EXEC sp_executesql @sqlRevertWlCascade, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
+                    -- 5b. Normalisasi Registrasi Bayi: fs_kd_jenis_inap = '3' (Perinatal) dan fs_reg_ibu = MotherRegId
+                    IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL AND COL_LENGTH('ta_registrasi', 'fs_reg_ibu') IS NOT NULL
+                    BEGIN
+                        UPDATE r
+                        SET r.fs_kd_jenis_inap = '3',
+                            r.fs_reg_ibu = p.MotherRegId
+                        FROM ta_registrasi r
+                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
+                        WHERE (r.fs_kd_jenis_inap <> '3' OR r.fs_kd_jenis_inap IS NULL OR ISNULL(r.fs_reg_ibu, '') = '' OR r.fs_reg_ibu <> p.MotherRegId);
+                    END
+                    ELSE IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL
+                    BEGIN
+                        UPDATE r
+                        SET r.fs_kd_jenis_inap = '3'
+                        FROM ta_registrasi r
+                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
+                        WHERE (r.fs_kd_jenis_inap <> '3' OR r.fs_kd_jenis_inap IS NULL);
+                    END
+                    ELSE IF COL_LENGTH('ta_registrasi', 'fs_reg_ibu') IS NOT NULL
+                    BEGIN
+                        UPDATE r
+                        SET r.fs_reg_ibu = p.MotherRegId
+                        FROM ta_registrasi r
+                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
+                        WHERE (ISNULL(r.fs_reg_ibu, '') = '' OR r.fs_reg_ibu <> p.MotherRegId);
+                    END
+                END
             END
 
-            -- 5c. Cascade void on ta_trs_bed for rooming-in babies on the same bed
-            INSERT INTO #RevertedBangsals (BangsalId)
-            SELECT DISTINCT baby.fs_kd_layanan
-            FROM ta_trs_bed baby
-            INNER JOIN ta_trs_bed mother ON mother.fs_kd_bed = baby.fs_kd_bed
-            WHERE mother.fs_kd_trs = @pakaiBedId
-              AND baby.fn_tarif = 0
-              AND baby.fs_kd_trs <> mother.fs_kd_trs
-              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL)
-              AND ISNULL(baby.fs_kd_layanan, '') <> '';
+            -- 6. Dual Waiting List Reversal (TD-02)
+            IF OBJECT_ID('BILRG_BedWaitingList', 'U') IS NOT NULL
+            BEGIN
+                DECLARE @clearCols NVARCHAR(MAX) = N'';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'PlacedBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', PlacedBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'PlacedPakaiBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', PlacedPakaiBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedNurseId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedNurseId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedDate') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedDate = ''3000-01-01''';
 
+                DECLARE @wherePakaiBed NVARCHAR(MAX) = CASE 
+                    WHEN COL_LENGTH('BILRG_BedWaitingList', 'PlacedPakaiBedId') IS NOT NULL THEN N' OR wl.PlacedPakaiBedId = @pakaiBedId' 
+                    ELSE N'' 
+                END;
+
+                DECLARE @sqlRevertWl NVARCHAR(MAX) = N'
+                    UPDATE wl
+                    SET wl.WaitingListStatus = 0' + @clearCols + N',
+                        wl.UpdUser = @userId,
+                        wl.UpdDate = @now
+                    OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
+                    FROM BILRG_BedWaitingList wl
+                    WHERE wl.WaitingListStatus = 2
+                      AND (
+                          -- Direct match for voided pakaiBed
+                          wl.RegId = (SELECT TOP 1 fs_kd_reg FROM ta_trs_bed WHERE fs_kd_trs = @pakaiBedId)
+                          ' + @wherePakaiBed + N'
+                          OR (wl.PasienId = (SELECT TOP 1 r.fs_mr FROM ta_trs_bed tb INNER JOIN ta_registrasi r ON tb.fs_kd_reg = r.fs_kd_reg WHERE tb.fs_kd_trs = @pakaiBedId))
+                          -- Rooming-in pair match (Mother & Baby)
+                          OR EXISTS (
+                              SELECT 1 FROM #RoomingInPairs p
+                              WHERE wl.RegId = p.MotherRegId
+                                 OR wl.RegId = p.BabyRegId
+                                 OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
+                          )
+                      )';
+                EXEC sp_executesql @sqlRevertWl, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
+            END
+
+            -- 7. Cascade void on ta_trs_bed for rooming-in babies on the same bed
             UPDATE baby
             SET fd_tgl_void = @nowDate,
                 fs_jam_void = @nowTime,
@@ -518,8 +612,10 @@ public class PakaiBedDal : IPakaiBedDal
               AND baby.fs_kd_trs <> mother.fs_kd_trs
               AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
 
+            -- 8. Return affected bangsal list & cleanup
             SELECT DISTINCT BangsalId FROM #RevertedBangsals WHERE ISNULL(BangsalId, '') <> '';
             DROP TABLE #RevertedBangsals;
+            DROP TABLE #RoomingInPairs;
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -545,6 +641,40 @@ public class PakaiBedDal : IPakaiBedDal
             trans.Rollback();
             throw;
         }
+    }
+
+    public async Task<List<string>> GetRoomingInBabyRegIdsAsync(string pakaiBedId)
+    {
+        const string sql = """
+            -- Case A: @pakaiBedId is mother, find secondary rooming-in babies (fn_tarif = 0) on the same bed
+            SELECT DISTINCT baby.fs_kd_reg
+            FROM ta_trs_bed mother
+            INNER JOIN ta_trs_bed baby ON mother.fs_kd_bed = baby.fs_kd_bed
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND ISNULL(baby.fs_kd_reg, '') <> ''
+            UNION
+            -- Case B: ta_registrasi relation linked to mother
+            SELECT DISTINCT r.fs_kd_reg
+            FROM ta_registrasi r
+            INNER JOIN ta_trs_bed mother ON r.fs_reg_ibu = mother.fs_kd_reg
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND r.fs_kd_jenis_inap = '3'
+              AND ISNULL(r.fs_kd_reg, '') <> ''
+            UNION
+            -- Case C: @pakaiBedId is baby itself (fn_tarif = 0)
+            SELECT DISTINCT baby.fs_kd_reg
+            FROM ta_trs_bed baby
+            WHERE baby.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND ISNULL(baby.fs_kd_reg, '') <> '';
+        """;
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var dp = new DynamicParameters();
+        dp.AddParam("@pakaiBedId", SafeTruncate(pakaiBedId, 15), SqlDbType.VarChar);
+        var results = await conn.QueryAsync<string>(new CommandDefinition(sql, dp));
+        return results.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList();
     }
 
     private static string SafeTruncate(string? val, int maxLen)

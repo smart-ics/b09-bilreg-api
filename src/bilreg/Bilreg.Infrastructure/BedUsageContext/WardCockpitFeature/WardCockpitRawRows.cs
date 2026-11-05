@@ -56,7 +56,9 @@ internal record RawWaitingListRow(
     string RequestedKelasName,
     string PlannedBedId,
     string SpecialRequirements,
-    DateTime CrtDate
+    DateTime CrtDate,
+    string KdJenisInap = "1",
+    string RegIbu = ""
 );
 
 internal record RawBedDetailRow(

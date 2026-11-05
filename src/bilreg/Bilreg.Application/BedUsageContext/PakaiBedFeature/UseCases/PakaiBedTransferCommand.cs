@@ -14,6 +14,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using System.Text.Json.Serialization;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -233,15 +234,18 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         _pakaiBedRepo.SaveChanges(pakaiBedLama);
 
         // 5b. Otomatis mencatat bed lama menjadi berstatus kotor (CleaningRequired) via BedOperationalModel
-        var oldBed = _bedRepo.LoadEntity(BedType.Key(pakaiBedLama.Bed.BedId));
+        var oldBedId = (pakaiBedLama.Bed?.BedId ?? string.Empty).Trim();
+        var oldBed = !string.IsNullOrWhiteSpace(oldBedId)
+            ? _bedRepo.LoadEntity(BedType.Key(oldBedId))
+            : MayBe<BedType>.None;
         var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : targetBed.Bangsal.BangsalId;
         var oldKamarId = oldBed.HasValue ? oldBed.Value.Kamar.KamarId : targetKamar.KamarId;
 
-        var oldBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(pakaiBedLama.Bed.BedId))
+        var oldBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(oldBedId))
             .Match(
                 onSome: bo => bo,
                 onNone: () => BedOperationalModel.Create(
-                    pakaiBedLama.Bed.BedId,
+                    oldBedId,
                     oldBangsalId,
                     oldKamarId,
                     OccupancyPolicyReff.Default)
@@ -288,7 +292,7 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             pakaiBedLama.PakaiBedId,
             targetBed.BedId,
             transferTime,
-            SourceBedId: pakaiBedLama.Bed.BedId,
+            SourceBedId: oldBedId,
             SourceBangsalId: oldBangsalId,
             TargetBangsalId: targetBed.Bangsal.BangsalId));
     }

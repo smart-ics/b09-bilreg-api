@@ -49,4 +49,7 @@ public class PakaiBedRepo : IPakaiBedRepo
 
     public Task<List<string>> VoidBedAndRoomChargeAsync(string pakaiBedId, string userId, string alasanBatal, DateTime? voidTime = null)
         => _dal.VoidBedAndRoomChargeAsync(pakaiBedId, userId, alasanBatal, voidTime);
+
+    public Task<List<string>> GetRoomingInBabyRegIdsAsync(string pakaiBedId)
+        => _dal.GetRoomingInBabyRegIdsAsync(pakaiBedId);
 }

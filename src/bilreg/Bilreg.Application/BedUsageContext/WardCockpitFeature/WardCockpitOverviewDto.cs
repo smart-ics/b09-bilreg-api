@@ -79,5 +79,7 @@ public record WardCockpitWaitingListDto(
     string RequestedKelasName,
     string PlannedBedId,
     int ElapsedWaitMinutes,
-    string SpecialRequirements
+    string SpecialRequirements,
+    string KdJenisInap = "1",
+    string RegIbu = ""
 );
