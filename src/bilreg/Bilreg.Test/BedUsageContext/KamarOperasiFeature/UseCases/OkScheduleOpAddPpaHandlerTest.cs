@@ -81,7 +81,8 @@ public class OkScheduleOpAddPpaHandlerTest
     private static ScheduleOpModel CreateSampleScheduleOp(
         string scheduleOpId = "SCH-001",
         string orderOpId = "ORD-001",
-        string leadDoctorId = "DOC-01")
+        string leadDoctorId = "DOC-01",
+        bool isDraft = false)
     {
         var opTime = new DateTime(2026, 10, 20, 8, 0, 0);
         return new ScheduleOpModel(
@@ -102,7 +103,8 @@ public class OkScheduleOpAddPpaHandlerTest
             [new ScheduleOpPpaType(1, new PpaReff(leadDoctorId, "dr. Bedah Sp.B"), ProfesiType.Dokter, GroupSpesialisType.Default)],
             "",
             30,
-            []);
+            [],
+            isDraft: isDraft);
     }
 
     [Fact]
@@ -369,5 +371,60 @@ public class OkScheduleOpAddPpaHandlerTest
         // ASSERT
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Alasan diskresi override wajib diisi*");
+    }
+
+    [Fact]
+    public async Task Handle_AddPpa_OnDraftSchedule_PreservesRequestedState()
+    {
+        // ARRANGE
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var ppa = CreateSamplePpa("DOC-02", "dr. Anestesi Sp.An");
+        var opCase = OpCaseModel.Create(orderOp, now);
+        var draftSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "DOC-01", isDraft: true);
+        opCase.ScheduleDraft(draftSchedule, now);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOC-02")))
+            .Returns(MayBe.From(ppa));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>()))
+            .Returns(MayBe.From(opCase));
+
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            orderOp.Pasien,
+            new OrderOpReff("ORD-001", now, "Herniotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 8, 0, 0),
+            60,
+            new PpaReff("DOC-01", "dr. Bedah Sp.B"),
+            new KamarReff("KAMAR-1", "OK 1"),
+            OpCaseStateEnum.Requested,
+            false,
+            IsDraft: true);
+
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.IsAny<IPasienKey>()))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(draftSchedule));
+
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForDoctor("DOC-02", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+        _scheduleOpRepoMock.Setup(x => x.ListActiveSchedulesForPpaInTeam("DOC-02", new DateTime(2026, 10, 20)))
+            .Returns(new List<ScheduleOpView>());
+
+        var cmd = new OkScheduleOpAddPpaCommand("ORD-001", "DOC-02", "user-01");
+        var sut = CreateSut();
+
+        // ACT
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // ASSERT
+        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+        _opCaseRepoMock.Verify(x => x.SaveChanges(It.Is<OpCaseModel>(c => c.OrderOpState == OpCaseStateEnum.Requested)), Times.Once);
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(draftSchedule), Times.Once);
     }
 }

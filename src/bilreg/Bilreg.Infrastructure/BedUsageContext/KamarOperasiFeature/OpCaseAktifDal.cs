@@ -159,9 +159,14 @@ public class OpCaseAktifDal : IOpCaseAktifDal
             LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
             LEFT JOIN td_peg ff ON dd.DokterPengorderId = ff.fs_kd_peg
             LEFT JOIN td_peg hh ON dd.DokterOperatorId = hh.fs_kd_peg
+            LEFT JOIN BILRG_ScheduleOp cc2 
+                ON cc2.OrderOpId = aa.OrderOpId 
+                AND cc2.VodDate = '3000-01-01'
+                AND cc2.IsDraft = 1
             WHERE (@OpCaseState IS NULL OR aa.OpCaseState = @OpCaseState)
               AND (@TglAwal IS NULL OR dd.PreferedDate >= @TglAwal)
               AND (@TglAkhir IS NULL OR dd.PreferedDate <= @TglAkhir)
+              AND cc2.ScheduleOpId IS NULL
             ORDER BY 
               CASE WHEN dd.UrgencyLevel = 2 THEN 0 ELSE 1 END,
               aa.OrderOpDate ASC

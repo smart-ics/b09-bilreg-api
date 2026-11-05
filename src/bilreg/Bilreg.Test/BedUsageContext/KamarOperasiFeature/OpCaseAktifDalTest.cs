@@ -204,4 +204,70 @@ public class OpCaseAktifDalTest
         electiveIndex.Should().BeGreaterThanOrEqualTo(0);
         citoIndex.Should().BeLessThan(electiveIndex, "Cito (UrgencyLevel = 2) must be returned before Elective (UrgencyLevel = 1) despite later OrderOpDate");
     }
+
+    [Fact]
+    public void ListData_WhenOrderHasActiveDraftSchedule_ShouldExcludeFromList()
+    {
+        using var trans = TransHelper.NewScope();
+        var scheduleOpDal = new ScheduleOpDal(ConnStringHelper.GetTestEnv());
+
+        var orderWithDraftId = $"ORD-DRAFT-{Guid.NewGuid():N}"[..26];
+        var orderWithoutDraftId = $"ORD-NODRAFT-{Guid.NewGuid():N}"[..26];
+        var scheduleOpId = $"SCH-DRAFT-{Guid.NewGuid():N}"[..26];
+
+        var caseWithDraft = Faker() with
+        {
+            OrderOpId = orderWithDraftId,
+            OrderOpDate = new DateTime(2026, 10, 1),
+            OpCaseState = 1
+        };
+        var caseWithoutDraft = Faker() with
+        {
+            OrderOpId = orderWithoutDraftId,
+            OrderOpDate = new DateTime(2026, 10, 1),
+            OpCaseState = 1
+        };
+        _sut.Insert(caseWithDraft);
+        _sut.Insert(caseWithoutDraft);
+
+        var scheduleDraft = new ScheduleOpDto(
+            ScheduleOpId: scheduleOpId,
+            ScheduleOpDate: new DateTime(2026, 10, 1),
+            OrderOpId: orderWithDraftId,
+            PasienId: "PAS-01",
+            UrgencyLevel: 1,
+            Durasi: 60,
+            TglOp: new DateTime(2026, 10, 2),
+            KamarId: "KAMAR-1",
+            RegId: "REG-01",
+            PpaId: "DOC-01",
+            AlasanBatal: "",
+            TurnoverBuffer: 30,
+            IsDraft: true,
+            CrtUser: "test",
+            CrtDate: new DateTime(2026, 10, 1),
+            UpdUser: "test",
+            UpdDate: new DateTime(2026, 10, 1),
+            VodUser: "",
+            VodDate: new DateTime(3000, 1, 1),
+            OrderDate: new DateTime(2026, 10, 1),
+            NamaOperasi: "",
+            PasienName: "",
+            TglLahir: "",
+            Gender: "",
+            KamarName: "",
+            PpaName: "",
+            StartedDate: new DateTime(3000, 1, 1),
+            FinishedDate: new DateTime(3000, 1, 1),
+            OrderOpState: 1
+        );
+        scheduleOpDal.Insert(scheduleDraft);
+
+        var result = (_sut.ListData(new OpCaseAktifFilter(OpCaseState: 1)) ?? []).ToList();
+
+        result.Should().Contain(x => x.OrderOpId == orderWithoutDraftId,
+            "Orders without active draft schedule must be included in pool antrean");
+        result.Should().NotContain(x => x.OrderOpId == orderWithDraftId,
+            "Orders that have an active draft schedule in BILRG_ScheduleOp must be excluded from pool antrean");
+    }
 }

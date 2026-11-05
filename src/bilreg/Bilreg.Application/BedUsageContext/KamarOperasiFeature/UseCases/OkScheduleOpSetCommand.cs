@@ -239,7 +239,11 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
                 request.UserId,
                 occurredAt);
             scheduleOp = existingSchedule;
-            opCase.Schedule(scheduleOp, occurredAt);
+            // TD-39: draft-aware branching
+            if (scheduleOp.IsDraft)
+                opCase.ScheduleDraft(scheduleOp, occurredAt);
+            else
+                opCase.Schedule(scheduleOp, occurredAt);
         }
         else
         {

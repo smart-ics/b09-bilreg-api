@@ -107,7 +107,11 @@ public class OkScheduleOpAddPpaHandler : IRequestHandler<OkScheduleOpAddPpaComma
 
         scheduleOp.AddPpa(ppa, request.UserId, occurredAt);
 
-        opCase.Schedule(scheduleOp, occurredAt);
+        // TD-39: draft-aware branching
+        if (scheduleOp.IsDraft)
+            opCase.ScheduleDraft(scheduleOp, occurredAt);
+        else
+            opCase.Schedule(scheduleOp, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);

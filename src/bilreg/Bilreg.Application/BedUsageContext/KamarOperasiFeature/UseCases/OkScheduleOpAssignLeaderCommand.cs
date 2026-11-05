@@ -109,7 +109,11 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         scheduleOp.AssignLeader(ppa, request.AlasanPerubahan, request.UserId, occurredAt, request.IsOverride, request.OverrideReason);
 
-        opCase.Schedule(scheduleOp, occurredAt);
+        // TD-39: draft-aware branching
+        if (scheduleOp.IsDraft)
+            opCase.ScheduleDraft(scheduleOp, occurredAt);
+        else
+            opCase.Schedule(scheduleOp, occurredAt);
 
         orderOp.SetDokterOperator(ppa);
         orderOp.AuditTrail.Modif(request.UserId, occurredAt);
