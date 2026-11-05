@@ -80,7 +80,6 @@ public class WardCockpitController : ControllerBase
 
     [HttpPost("transfer")]
     [HttpPost("/api/ward-cockpit/transfer")]
-    [HttpPost("/api/api/v1/ward-cockpit/transfer")]
     public async Task<IActionResult> Transfer([FromBody] PakaiBedTransferCommand cmd, [FromQuery] string? bangsalId = null)
     {
         var result = await _mediator.Send(cmd);
