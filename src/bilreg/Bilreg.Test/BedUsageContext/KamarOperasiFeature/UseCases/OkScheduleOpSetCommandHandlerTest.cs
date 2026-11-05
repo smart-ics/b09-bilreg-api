@@ -1014,6 +1014,7 @@ public class OkScheduleOpSetCommandHandlerTest
         opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
         _opCaseRepoMock.Verify(x => x.SaveChanges(It.Is<OpCaseModel>(c => c.OrderOpState == OpCaseStateEnum.Requested)), Times.Once);
         _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingDraftSchedule), Times.Once);
+        _mediatorMock.Verify(x => x.Publish(It.IsAny<OkScheduleOpSetEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1058,5 +1059,6 @@ public class OkScheduleOpSetCommandHandlerTest
         opCase.OrderOpState.Should().Be(OpCaseStateEnum.Scheduled);
         _opCaseRepoMock.Verify(x => x.SaveChanges(It.Is<OpCaseModel>(c => c.OrderOpState == OpCaseStateEnum.Scheduled)), Times.Once);
         _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingConfirmedSchedule), Times.Once);
+        _mediatorMock.Verify(x => x.Publish(It.IsAny<OkScheduleOpSetEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -264,7 +264,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         }
 
         // 11. Publikasi Event
-        if (existingSchedule != null)
+        if (existingSchedule != null && !scheduleOp.IsDraft)
         {
             var domainEvent = new OkScheduleOpSetEvent(request, scheduleOp);
             _mediator.Publish(domainEvent, cancellationToken);
