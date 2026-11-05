@@ -18,7 +18,9 @@ public record OpenTataRekeningResponse(
     IReadOnlyList<TrsBillSummaryDto> Bills,
     IReadOnlyList<PaymentProjectionDto> Projection,
     IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests,
-    NetFinancialPositionDto NetFinancialPosition);
+    NetFinancialPositionDto? NetFinancialPosition = null,
+    TataRekeningPatientContextDto? PatientContext = null,
+    TataRekeningBillingBreakdownDto? SummaryBreakdown = null);
 
 public class OpenTataRekeningHandler : IRequestHandler<OpenTataRekeningQuery, OpenTataRekeningResponse>
 {
@@ -51,6 +53,13 @@ public class OpenTataRekeningHandler : IRequestHandler<OpenTataRekeningQuery, Op
 
         var pendingMerges = LoadPendingMergeRequests(request, reg.Pasien.PasienId);
 
+        var saldo = _depositRepo?.GetSaldo(request);
+        var patientContext = TataRekeningApplicationMapper.ToPatientContextDto(reg, saldo);
+        var summaryBreakdown = TataRekeningApplicationMapper.ToBillingBreakdownDto(
+            tataRekening,
+            depositPayment: saldo?.SaldoAktif ?? 0m,
+            advancePayment: patientContext.AdvancePayment);
+
         // Load deposit data for this registration (if deposit repo is available)
         IEnumerable<DepositModel> depositData = Enumerable.Empty<DepositModel>();
         if (_depositRepo != null)
@@ -79,35 +88,24 @@ public class OpenTataRekeningHandler : IRequestHandler<OpenTataRekeningQuery, Op
                 classDifferential,
                 totalDeposit,
                 totalCashierPaid,
-                netPayableBalance));
+                netPayableBalance),
+            patientContext,
+            summaryBreakdown);
 
         return Task.FromResult(response);
     }
 
     private decimal CalculateEstimatedPayerCoverage(TataRekeningModel tataRekening)
     {
-        // Derived from financial responsibility allocation - if allocated, use the allocated amounts
-        // Otherwise, estimate based on available data (0 when not yet allocated;
-        // the formula structure is mathematically verifiable with actual data later)
-        // If financial responsibility is allocated, use total payments as estimated coverage
         if (tataRekening.IsFinancialResponsibilityAllocated)
         {
             return tataRekening.ListPayment.Sum(p => p.NilaiJasa + p.NilaiObat);
         }
-        // Default: estimated payer coverage is 0 when not yet allocated;
-        // the formula structure is mathematically verifiable with actual data later
         return 0m;
     }
 
     private decimal CalculateClassDifferential(TataRekeningModel tataRekening)
     {
-        // Accumulation of DifferentialAmount from room-charge class upgrades
-        // NOTE: DifferentialAmount field is populated on TrsBillingItemDto (P3-S05/DAL projection),
-        // not yet on domain TrsBillType/ListFinalization. This calculation will be enabled
-        // once the DAL populates DifferentialAmount on the billing item DTOs and they are
-        // available through the TataRekening model.
-        // For now, return 0m to ensure formula structure is mathematically verifiable;
-        // the net financial position formula remains valid with actual DifferentialAmount values.
         return 0m;
     }
 

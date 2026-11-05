@@ -60,6 +60,8 @@ using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
+using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
+using Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
@@ -292,6 +294,13 @@ public static class InfrastructureService
         services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
 
         services.AddBrgFeature();
+        services.AddTataRekeningFeature();
+        services.AddScoped<ITrsDirectDal, TrsDirectDal>();
+        services.AddScoped<Bilreg.Application.PaymentContext.TrsBillingFeature.ITrsDirectDal, TrsDirectDal>();
+        services.AddScoped<IJurnalDal, JurnalDal>();
+        services.AddScoped<Bilreg.Application.AccountingContext.JurnalFeature.IJurnalDal, JurnalDal>();
+        services.AddScoped<Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg.IRegBiayaRepo, Bilreg.Infrastructure.PaymentContext.RegOutFeature.RegBiayaRepo>();
+        services.AddScoped<Bilreg.Infrastructure.PaymentContext.RegOutFeature.IRegBiayaDal, Bilreg.Infrastructure.PaymentContext.RegOutFeature.RegBiayaDal>();
 
         services.AddScoped<IDeliveryOrderDal, DeliveryOrderDal>();
         services.AddScoped<IDeliveryOrderItemDal, DeliveryOrderItemDal>();

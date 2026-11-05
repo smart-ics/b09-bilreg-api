@@ -127,7 +127,7 @@ public class TrsBilling2DtoTest
         positive.fn_trs_p.Should().Be(0m);
         positive.fn_trs_n.Should().Be(20_000m);
         positive.fs_kd_trs_bayar.Should().Be("PAY-001");
-        positive.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-mm-dd"));
+        positive.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-MM-dd"));
         positive.fs_jam_bayar.Should().Be("09:00:00");
         positive.fs_kd_petugas_medis.Should().Be("MED-04");
 

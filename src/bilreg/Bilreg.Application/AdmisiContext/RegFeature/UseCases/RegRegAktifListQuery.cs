@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -6,13 +6,13 @@ public record RegRegAktifListQuery : IRequest<IEnumerable<RegRegAktifListRespons
 
 public record RegRegAktifListResponse(string RegId, string RegDate, string PasienId,
     string PasienName, string JenisReg, string JenisRegString, string LayananId,
-    string LayananName, string DokterId, string DokterName);
+    string LayananName, string DokterId, string DokterName, int StatusTataRekening = 0);
 
-public class RegRegAktifListHandler : IRequestHandler<RegRegAktifListQuery, IEnumerable<RegRegAktifListResponse>>
+public class RegRegAktifHandler : IRequestHandler<RegRegAktifListQuery, IEnumerable<RegRegAktifListResponse>>
 {
     private readonly IRegAktifRepo _regAktifRepo;
 
-    public RegRegAktifListHandler(IRegAktifRepo regAktifRepo)
+    public RegRegAktifHandler(IRegAktifRepo regAktifRepo)
     {
         _regAktifRepo = regAktifRepo;
     }
@@ -25,7 +25,8 @@ public class RegRegAktifListHandler : IRequestHandler<RegRegAktifListQuery, IEnu
             x.Pasien.PasienId, x.Pasien.PasienName,
             ((int)x.JenisReg).ToString(), x.JenisReg.ToString(), 
             x.Layanan.LayananId, x.Layanan.LayananName, 
-            x.Dokter.PpaId, x.Dokter.PpaName));
+            x.Dokter.PpaId, x.Dokter.PpaName,
+            x.StatusTataRekening));
 
         return Task.FromResult(resutl);
     }

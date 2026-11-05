@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
@@ -8,7 +9,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
-namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
+namespace Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
 
 public record SettlementInitiationCommand(
     string RegId,

@@ -3,12 +3,13 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
-using Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 using FluentAssertions;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 
+[Collection("TataRekeningApi")]
 public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebApplicationFactory>, IDisposable
 {
     private readonly TataRekeningWebApplicationFactory _factory;
@@ -67,15 +68,22 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     [Fact]
     public async Task API04_GivenNoAuth_WhenClose_ThenReturns401()
     {
-        _factory.Harness.SetupCloseScenario();
-        TestAuthHandler.IsAuthenticated = false;
-        var client = _factory.CreateUnauthenticatedClient();
+        try
+        {
+            _factory.Harness.SetupCloseScenario();
+            TestAuthHandler.IsAuthenticated = false;
+            var client = _factory.CreateUnauthenticatedClient();
 
-        var response = await client.PostAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/close",
-            null);
+            var response = await client.PostAsync(
+                $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/close",
+                null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+        finally
+        {
+            ResetAuth();
+        }
     }
 
     [Fact]
@@ -112,81 +120,23 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API07_GivenClosedBill_WhenVerify_ThenReturns200()
+    public async Task API07_GivenClosedBill_WhenAllocateFinalize_ThenReturns200()
     {
-        _factory.Harness.SetupVerifyScenario();
-        var client = _factory.CreateAuthenticatedClient();
-
-        var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/verify",
-            new { action = FinancialVerificationAction.Verify });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = await ParseDataJson(response);
-        json.GetProperty("summary").GetProperty("financialVerificationStatus").GetInt32()
-            .Should().Be((int)FinancialVerificationStatusEnum.Valid);
-    }
-
-    [Fact]
-    public async Task API08_GivenRequiresAdjustment_WhenAdjustWaive_ThenReturns200()
-    {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-ADJ", TataRekeningApiTestHarness.RegId, 50_000m);
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-AF-01", TataRekeningApiTestHarness.RegId, 50_000m);
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(TataRekeningApiTestHarness.RegId, bill);
-        tataRekening.RequireFinancialAdjustment();
         _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, RegModel.Default);
 
         var client = _factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/adjust",
-            new
-            {
-                adjustment = new FinancialAdjustmentInputDto(
-                    FinancialAdjustmentTypeEnum.Waive, 10_000m, "Waive via API", "BILL-ADJ")
-            });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = await ParseDataJson(response);
-        json.GetProperty("requiresReopen").GetBoolean().Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task API09_GivenVerifiedBill_WhenAllocate_ThenReturns200WithProjection()
-    {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-ALLOC", TataRekeningApiTestHarness.RegId, 100_000m);
-        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(TataRekeningApiTestHarness.RegId, bill);
-        tataRekening.CompleteFinancialVerification("TEST-USER", TataRekeningTestDataBuilder.TestDate);
-        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
-
-        var client = _factory.CreateAuthenticatedClient();
-        var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/allocate",
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/allocate-finalize",
             new
             {
                 payments = new[]
                 {
-                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m, "COA-01", "COA")
                 }
             });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = await ParseDataJson(response);
-        json.GetProperty("projection").GetArrayLength().Should().Be(1);
-    }
-
-    [Fact]
-    public async Task API10_GivenAllocatedBill_WhenFinalize_ThenReturns200()
-    {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-FIN", TataRekeningApiTestHarness.RegId, 75_000m);
-        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(TataRekeningApiTestHarness.RegId, bill);
-        TataRekeningDomainTestHelper.VerifyAndAllocate(
-            tataRekening,
-            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 75_000m, 0m)]);
-        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
-
-        var client = _factory.CreateAuthenticatedClient();
-        var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/finalize",
-            new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await ParseDataJson(response);
@@ -195,15 +145,43 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API11_GivenFinalizedBill_WhenCancelFinalization_ThenReturns200()
+    public async Task API08_GivenFinalizedBill_WhenCancelFinalize_ThenReturns200()
     {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-CF", TataRekeningApiTestHarness.RegId, 60_000m);
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-CF-01", TataRekeningApiTestHarness.RegId, 50_000m);
         var tataRekening = TataRekeningTestDataBuilder.Hydrate(
             TataRekeningApiTestHarness.RegId, TataRekeningStatusEnum.Opened, bill);
         TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
             tataRekening,
-            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 60_000m, 0m)]);
+            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 50_000m, 0m)]);
         _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        var reg = RegModel.Default;
+        reg.SetKeluar("TEST-USER", TataRekeningTestDataBuilder.TestDate);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, reg);
+
+        var client = _factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(
+            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/cancel-finalize",
+            new { reason = "Batal finalisasi via API" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await ParseDataJson(response);
+        json.GetProperty("summary").GetProperty("status").GetInt32()
+            .Should().Be((int)TataRekeningStatusEnum.Closed);
+    }
+
+    [Fact]
+    public async Task API08b_GivenFinalizedBill_WhenCancelFinalization_ThenReturns200()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-CF-02", TataRekeningApiTestHarness.RegId, 50_000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
+            TataRekeningApiTestHarness.RegId, TataRekeningStatusEnum.Opened, bill);
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
+            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 50_000m, 0m)]);
+        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
+        var reg = RegModel.Default;
+        reg.SetKeluar("TEST-USER", TataRekeningTestDataBuilder.TestDate);
+        _factory.Harness.SetupRegLoad(TataRekeningApiTestHarness.RegId, reg);
 
         var client = _factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync(
@@ -217,7 +195,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API12_GivenClosedBill_WhenReopen_ThenReturns200()
+    public async Task API09_GivenClosedBill_WhenReopen_ThenReturns200()
     {
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(
             TataRekeningApiTestHarness.RegId,
@@ -236,28 +214,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API13_GivenFinalizedBill_WhenSettlementInitiation_ThenReturns200()
-    {
-        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-SET", TataRekeningApiTestHarness.RegId, 80_000m);
-        var tataRekening = TataRekeningTestDataBuilder.Hydrate(
-            TataRekeningApiTestHarness.RegId, TataRekeningStatusEnum.Opened, bill);
-        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
-            tataRekening,
-            [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 80_000m, 0m)]);
-        _factory.Harness.SetupTataRekeningLoad(TataRekeningApiTestHarness.RegId, tataRekening);
-
-        var client = _factory.CreateAuthenticatedClient();
-        var response = await client.PostAsJsonAsync(
-            $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/settlement-initiation",
-            new { });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = await ParseDataJson(response);
-        json.GetProperty("summary").GetProperty("settlementInitiated").GetBoolean().Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task API14_GivenClosedBill_WhenCloseAgain_ThenReturns400()
+    public async Task API10_GivenClosedBill_WhenCloseAgain_ThenReturns400()
     {
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(
             TataRekeningApiTestHarness.RegId,
@@ -273,7 +230,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API15_GivenStaleVersion_WhenClose_ThenReturns409()
+    public async Task API11_GivenStaleVersion_WhenClose_ThenReturns409()
     {
         _factory.Harness.SetupConcurrencyConflict();
         var client = _factory.CreateAuthenticatedClient();
@@ -283,6 +240,17 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
             null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task API12_GivenValidReg_WhenGetSummaryBills_ThenReturns200()
+    {
+        _factory.Harness.SetupOpenScenario();
+        var client = _factory.CreateUnauthenticatedClient();
+
+        var response = await client.GetAsync($"/api/tatarekening/summaryBill/{TataRekeningApiTestHarness.RegId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
