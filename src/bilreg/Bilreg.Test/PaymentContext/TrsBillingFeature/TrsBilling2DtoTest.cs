@@ -96,7 +96,7 @@ public class TrsBilling2DtoTest
         dto.fn_trs_p.Should().Be(0m);
         dto.fn_trs_n.Should().Be(30_000m);
         dto.fs_kd_trs_bayar.Should().Be("RO00001234");
-        dto.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-mm-dd"));
+        dto.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-MM-dd"));
         dto.fs_jam_bayar.Should().Be("15:45:00");
         dto.fs_kd_petugas_kasir.Should().Be("KSR-99");
         dto.fs_kd_petugas_medis.Should().Be("MED-03");

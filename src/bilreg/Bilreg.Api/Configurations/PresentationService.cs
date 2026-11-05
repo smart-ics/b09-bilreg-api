@@ -76,6 +76,7 @@ public static class PresentationService
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
+            options.IncludeErrorDetails = true;
             options.RequireHttpsMetadata = false;
             options.SaveToken = true;
             options.TokenValidationParameters = new TokenValidationParameters
@@ -127,6 +128,17 @@ public static class PresentationService
                         context.Error,
                         context.ErrorDescription);
                     context.HandleResponse();
+                    if (!string.IsNullOrEmpty(context.Error))
+                    {
+                        var errorDesc = !string.IsNullOrEmpty(context.ErrorDescription)
+                            ? $", error_description=\"{context.ErrorDescription}\""
+                            : "";
+                        context.Response.Headers.Append("WWW-Authenticate", $"Bearer error=\"{context.Error}\"{errorDesc}");
+                    }
+                    else
+                    {
+                        context.Response.Headers.Append("WWW-Authenticate", "Bearer");
+                    }
                     context.Response.StatusCode=StatusCodes.Status401Unauthorized;
                     context.Response.ContentType="application/json";
                     return context.Response.WriteAsync(JsonSerializer.Serialize(new JSend(

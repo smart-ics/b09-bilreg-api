@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -48,13 +48,14 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
             maxPasien   : jadwal.MaxPasien,
             listMap: []
         );
+        result.SeedingMap();
         return result;
     }
 
     public static AntrianMapModel CreateFromEffective(JadwalPraktekEffective effective, DateOnly tgl)
     {
         var newKey = NunaId.New("ANM");
-        return new AntrianMapModel(
+        var result = new AntrianMapModel(
             antrianMapId: newKey,
             jadwalId: effective.JadwalPraktekId ?? "-",
             dokter: effective.Dokter,
@@ -66,6 +67,8 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
             maxPasien: effective.MaxPasien,
             listMap: [],
             jadwalHarianId: effective.JadwalPraktekHarianId);
+        result.SeedingMap();
+        return result;
     }
 
     public static AntrianMapModel Default => new(
