@@ -55,6 +55,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
+using Bilreg.Infrastructure.LabContext;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabMasterFeature;
@@ -255,6 +256,7 @@ public static class InfrastructureService
             .Configure<SmassOptions>(configuration.GetSection(SmassOptions.SECTION_NAME))
             .Configure<IgdVisitOptions>(configuration.GetSection(IgdVisitOptions.SECTION_NAME))
             .Configure<OwareOptions>(configuration.GetSection(OwareOptions.SECTION_NAME))
+            .Configure<LabOptions>(configuration.GetSection(LabOptions.SECTION_NAME))
             .Configure<StockLedgerCoexistenceOptions>(
                 configuration.GetSection(StockLedgerCoexistenceOptions.SectionName));
 
