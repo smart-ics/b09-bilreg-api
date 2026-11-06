@@ -307,4 +307,58 @@ public class LabOrderGetHandlerTest
         result.Items.Should().HaveCount(1);
         result.Items.First().TarifPrice.Should().Be(175000m);
     }
+
+    [Fact]
+    public async Task Handle_GivenOrderWithServiceTypeAndClassification_MapsAllFieldsToResponse()
+    {
+        // Arrange
+        var snapshot = new PatientSnapshotType(
+            "REG001", "MR001", "Budi Santoso", new DateTime(1985, 5, 20), "L", 41);
+
+        var item = LabOrderItemModel.Create(
+            testDefinitionId: "LTD-BIOPSI",
+            labTestCode: "PA-01",
+            labTestName: "Biopsi Jaringan Kecil",
+            tarifId: "TR-PA",
+            tarifCode: "T-PA",
+            tarifName: "Tarif Biopsi PA",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Jaringan Kulit",
+            requiredTubeCount: 0,
+            urgency: LabOrderUrgencyEnum.Rutin,
+            serviceType: LaboratoryServiceType.AnatomicalPathology,
+            disciplineId: "DISC-PAH",
+            disciplineName: "Histopatologi",
+            testGroupId: "GRP-BIOPSI",
+            testGroupName: "Biopsi Jaringan");
+
+        var line = new LabOrderModel.ResolvedOrderLine(item, []);
+        var audit = new AuditInfoType("DOKTER01", FixedNow);
+
+        var order = LabOrderModel.CreateFromEmr(
+            emrOrderId: EmrOrderId,
+            snapshot: snapshot,
+            lines: [line],
+            orderNo: OrderNo,
+            audit: audit,
+            serviceType: LaboratoryServiceType.AnatomicalPathology);
+
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        // Act
+        var result = await _sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ServiceType.Should().Be((int)LaboratoryServiceType.AnatomicalPathology);
+
+        result.Items.Should().HaveCount(1);
+        var resItem = result.Items.Single();
+        resItem.ServiceType.Should().Be((int)LaboratoryServiceType.AnatomicalPathology);
+        resItem.DisciplineId.Should().Be("DISC-PAH");
+        resItem.DisciplineName.Should().Be("Histopatologi");
+        resItem.TestGroupId.Should().Be("GRP-BIOPSI");
+        resItem.TestGroupName.Should().Be("Biopsi Jaringan");
+    }
 }

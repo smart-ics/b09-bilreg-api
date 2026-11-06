@@ -116,6 +116,11 @@ public class LabOrderCreateExternalPatientHandlerTest
 
         result.OrderId.Should().NotBeNullOrWhiteSpace();
         result.OrderNo.Should().Be("LAB00000055");
+        result.CreatedOrders.Should().NotBeNull();
+        result.CreatedOrders.Should().HaveCount(1);
+        result.CreatedOrders![0].OrderId.Should().Be(result.OrderId);
+        result.CreatedOrders[0].OrderNo.Should().Be("LAB00000055");
+        result.CreatedOrders[0].ServiceType.Should().Be((int)LaboratoryServiceType.ClinicalPathology);
         persisted.Should().NotBeNull();
         persisted!.OrderSource.Should().Be(LabOrderSourceEnum.ExternalPatient);
         persisted.OrderNo.Should().Be("LAB00000055");
@@ -194,6 +199,11 @@ public class LabOrderCreateExternalPatientHandlerTest
 
         result.OrderId.Should().NotBeNullOrWhiteSpace();
         result.OrderNo.Should().Be("LAB00000055");
+        result.CreatedOrders.Should().NotBeNull();
+        result.CreatedOrders.Should().HaveCount(1);
+        result.CreatedOrders![0].OrderId.Should().Be(result.OrderId);
+        result.CreatedOrders[0].OrderNo.Should().Be("LAB00000055");
+        result.CreatedOrders[0].ServiceType.Should().Be((int)LaboratoryServiceType.ClinicalPathology);
         persisted.Should().NotBeNull();
         persisted!.OrderSource.Should().Be(LabOrderSourceEnum.ExternalPatient);
         persisted.Patient.RegId.Should().Be("LEX26A14B8C1D");
@@ -390,5 +400,147 @@ public class LabOrderCreateExternalPatientHandlerTest
         persisted.Patient.RegId.Length.Should().Be(12);
         persisted.Patient.PatientId.Should().Be(mr15Char);
         persisted.Patient.PatientId.Length.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task Handle_MixedCart_AutoSplitsIntoSeparateOrders_WithProperSuffixesAndServiceTypes()
+    {
+        var pkItem = LabOrderTestSupport.SampleItem(
+            testDefinitionId: "LTD0001",
+            labTestCode: "HB",
+            labTestName: "Hemoglobin",
+            tarifId: "TR1") with { ServiceType = LaboratoryServiceType.ClinicalPathology };
+
+        var paItem = LabOrderTestSupport.SampleItem(
+            testDefinitionId: "LTD0002",
+            labTestCode: "BIOPSI",
+            labTestName: "Biopsi Jaringan",
+            tarifId: "TR2",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Jaringan Biopsi",
+            requiredTubeCount: 0) with { ServiceType = LaboratoryServiceType.AnatomicalPathology };
+
+        var micItem = LabOrderTestSupport.SampleItem(
+            testDefinitionId: "LTD0003",
+            labTestCode: "KULTUR",
+            labTestName: "Kultur Urin",
+            tarifId: "TR3",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Urin Tampung",
+            requiredTubeCount: 0) with { ServiceType = LaboratoryServiceType.Microbiology };
+
+        _resolution
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Returns([
+                new ResolvedLabOrderLine(pkItem, [LabOrderTestSupport.SampleComponent()]),
+                new ResolvedLabOrderLine(paItem, []),
+                new ResolvedLabOrderLine(micItem, [])
+            ]);
+
+        var seqCounter = 200;
+        _sequencer.Setup(s => s.GetNextNoUrut("LAB")).Returns(() => ++seqCounter);
+
+        var savedOrders = new List<LabOrderModel>();
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => savedOrders.Add(m));
+
+        var cmd = ValidCmdWithRegExternalId() with
+        {
+            EmrOrderId = "EXT-EMR-001",
+            Items = [
+                new LabOrderTarifItemInput("TR1", "Tarif HB"),
+                new LabOrderTarifItemInput("TR2", "Tarif Biopsi"),
+                new LabOrderTarifItemInput("TR3", "Tarif Kultur")
+            ]
+        };
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        savedOrders.Should().HaveCount(3);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Exactly(3));
+
+        // Group 1: PK
+        var pkOrder = savedOrders.Single(o => o.ServiceType == LaboratoryServiceType.ClinicalPathology);
+        pkOrder.EmrOrderId.Should().Be("EXT-EMR-001-PK");
+        pkOrder.OrderNo.Should().Be("LAB00000201");
+        pkOrder.ClinicalNote.Should().Be("Cek rutin");
+        pkOrder.Items.Should().HaveCount(1);
+        pkOrder.Items.First().TestDefinitionId.Should().Be("LTD0001");
+
+        // Group 2: PA
+        var paOrder = savedOrders.Single(o => o.ServiceType == LaboratoryServiceType.AnatomicalPathology);
+        paOrder.EmrOrderId.Should().Be("EXT-EMR-001-PA");
+        paOrder.OrderNo.Should().Be("LAB00000202");
+        paOrder.ClinicalNote.Should().Be("Cek rutin");
+        paOrder.Items.Should().HaveCount(1);
+        paOrder.Items.First().TestDefinitionId.Should().Be("LTD0002");
+
+        // Group 3: Micro
+        var micOrder = savedOrders.Single(o => o.ServiceType == LaboratoryServiceType.Microbiology);
+        micOrder.EmrOrderId.Should().Be("EXT-EMR-001-MIC");
+        micOrder.OrderNo.Should().Be("LAB00000203");
+        micOrder.ClinicalNote.Should().Be("Cek rutin");
+        micOrder.Items.Should().HaveCount(1);
+        micOrder.Items.First().TestDefinitionId.Should().Be("LTD0003");
+
+        // Response validation
+        result.CreatedOrders.Should().HaveCount(3);
+        result.CreatedOrders!.Select(c => c.EmrOrderId).Should().BeEquivalentTo([
+            "EXT-EMR-001-PK",
+            "EXT-EMR-001-PA",
+            "EXT-EMR-001-MIC"
+        ]);
+        result.CreatedOrders!.Select(c => c.ServiceType).Should().BeEquivalentTo([1, 2, 3]);
+    }
+
+    [Fact]
+    public async Task Handle_MixedCart_TransactionalRollback_WhenErrorOccursOnSubOrder()
+    {
+        var pkItem = LabOrderTestSupport.SampleItem(tarifId: "TR1") with { ServiceType = LaboratoryServiceType.ClinicalPathology };
+        var paItem = LabOrderTestSupport.SampleItem(tarifId: "TR2") with { ServiceType = LaboratoryServiceType.AnatomicalPathology };
+
+        _resolution
+            .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
+            .Returns([
+                new ResolvedLabOrderLine(pkItem, []),
+                new ResolvedLabOrderLine(paItem, [])
+            ]);
+
+        var saveCallCount = 0;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(_ =>
+            {
+                saveCallCount++;
+                if (saveCallCount == 2)
+                    throw new InvalidOperationException("DB error saving external sub-order");
+            });
+
+        var act = async () => await _sut.Handle(ValidCmdWithRegExternalId(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("*DB error saving external sub-order*");
+        saveCallCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_EmrOrderIdProvided_WhenAlreadyExists_ReturnsExistingOrderWithoutDuplicates()
+    {
+        var existingOrder = LabOrderTestSupport.CreateEmrOrder(
+            orderNo: "LAB00000099",
+            emrOrderId: "EXT-EMR-001");
+
+        _repo.Setup(r => r.LoadByEmrOrderId("EXT-EMR-001"))
+            .Returns(MayBe.From(existingOrder));
+
+        var cmd = ValidCmdWithRegExternalId() with { EmrOrderId = "EXT-EMR-001" };
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.OrderId.Should().Be(existingOrder.OrderId);
+        result.OrderNo.Should().Be("LAB00000099");
+        result.CreatedOrders.Should().HaveCount(1);
+
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 }

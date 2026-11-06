@@ -48,7 +48,8 @@ public record LabOrderDto(
     string LayananPerujukId = "",
     string LayananPerujukName = "",
     string ClinicalNote = "",
-    int Urgency = 0)
+    int Urgency = 0,
+    int ServiceType = 1)
 {
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
@@ -98,7 +99,8 @@ public record LabOrderDto(
             LayananPerujukId: model.LayananPerujukId,
             LayananPerujukName: model.LayananPerujukName,
             ClinicalNote: model.ClinicalNote,
-            Urgency: (int)model.Urgency);
+            Urgency: (int)model.Urgency,
+            ServiceType: (int)model.ServiceType);
 
     public LabOrderModel ToModel(
         IEnumerable<LabOrderItemModel> items,
@@ -156,6 +158,7 @@ public record LabOrderDto(
             LayananPerujukId,
             LayananPerujukName,
             ClinicalNote,
-            (LabOrderUrgencyEnum)Urgency);
+            (LabOrderUrgencyEnum)Urgency,
+            (LaboratoryServiceType)ServiceType);
     }
 }
