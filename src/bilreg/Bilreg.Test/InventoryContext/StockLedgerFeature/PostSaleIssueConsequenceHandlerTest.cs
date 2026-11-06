@@ -3,6 +3,7 @@ using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
+using Bilreg.Infrastructure.InventoryContext.StokFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using MediatR;
@@ -309,6 +310,161 @@ public class PostSaleIssueConsequenceHandlerTest
         batch.QtySisa.Should().Be(10);
     }
 
+    [Fact]
+    public async Task Handle_ScopeInLegacyNotYetInV2_DiscoveredPassedToGateAndAllocatedAfterHydrate()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string doId = "DOLEG00001";
+        var stokDal = new tb_stok_dal(_db);
+        stokDal.Insert(new tb_stok_dto(
+            fs_kd_trs: "STLEG00001",
+            fs_kd_barang: BrgId,
+            fs_kd_layanan: LayananId,
+            fs_kd_po: "PO01",
+            fs_kd_do: doId,
+            fd_tgl_ed: "2028-07-15",
+            fs_no_batch: "NB-LEG",
+            fn_qty_in: 10,
+            fn_qty: 10,
+            fn_hpp: 50m,
+            fd_tgl_do: "2026-06-01",
+            fs_jam_do: "09:00:00",
+            fs_kd_mutasi: "DMLEG01",
+            fd_tgl_mutasi: "2026-06-01",
+            fs_jam_mutasi: "09:00:00",
+            fs_kd_satuan: "PCS",
+            fs_nm_barang: "BARANG",
+            fs_nm_layanan: "LAYANAN"));
+
+        // At this point, v2 has 0 candidates for BrgId, LayananId.
+        _batchRepo.ListAllocationCandidates(BrgId, LayananId).Should().BeEmpty();
+
+        List<ScopeKeyDto>? capturedScopes = null;
+        var mediatorMock = new Mock<IMediator>();
+        mediatorMock
+            .Setup(x => x.Send(It.IsAny<EnsureFreshnessForScopesCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<EnsureFreshnessForScopesResult>, CancellationToken>((cmd, _) =>
+            {
+                var ensureCmd = (EnsureFreshnessForScopesCommand)cmd;
+                capturedScopes = ensureCmd.Scopes.ToList();
+                // Simulate hydration populating v2 batch & location
+                var batch = StockBatchModel.Create(BrgId, doId, 50m, new DateTime(2026, 6, 1, 9, 0, 0), "PO01");
+                batch.IncreaseLokasi(LayananId, TglEdLate, 10, "NB-LEG");
+                _batchRepo.SaveChanges(batch, UserId);
+            })
+            .ReturnsAsync(new EnsureFreshnessForScopesResult(EnsureFreshnessOutcomeEnum.Success, "", "", ""));
+
+        var gate = new LegacyFreshnessGate(
+            mediatorMock.Object,
+            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
+
+        var uow = new StockConsequenceUnitOfWork(
+            _writer,
+            _batchRepo,
+            _mutasiRepo,
+            _bindingRepo,
+            _scopeRepo,
+            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
+
+        var sut = new PostSaleIssueConsequenceHandler(
+            gate,
+            _batchRepo,
+            _mutasiRepo,
+            _bindingRepo,
+            _scopeRepo,
+            _legacyRead,
+            uow);
+
+        var result = await sut.Handle(NewSaleCommand("TRSSALELEG", qty: 4, tglEd: TglEdLate), default);
+
+        result.Outcome.Should().Be(PostSaleIssueOutcomeEnum.Success);
+        capturedScopes.Should().NotBeNull();
+        capturedScopes.Should().Contain(s => s.BrgId == BrgId && s.BrgMasukReffId == doId);
+        result.Lines.Should().ContainSingle();
+        result.Lines[0].QtyOut.Should().Be(4);
+        result.Lines[0].BrgMasukReffId.Should().Be(doId);
+        result.Lines[0].LegacyStokId.Should().Be("STLEG00001");
+    }
+
+    [Fact]
+    public async Task Handle_MultiRowTbStokLayer_DepletesCleanlyWithOneToOneBinding_ForQty1AndQty3()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string doId = "DOMULTI001";
+        const string brgId = "BRGMULTI001";
+        var tglEd = new DateTime(2028, 5, 20);
+
+        // Seed 4 legacy tb_stok rows for the same layer: qty 2, 1, 1, 1 (total 5)
+        var stokDal = new tb_stok_dal(_db);
+        stokDal.Insert(new tb_stok_dto("STSL000001", brgId, LayananId, "", doId, "2028-05-20", "B1", 2, 2, 100m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+        stokDal.Insert(new tb_stok_dto("STSL000002", brgId, LayananId, "", doId, "2028-05-20", "B1", 1, 1, 100m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+        stokDal.Insert(new tb_stok_dto("STSL000003", brgId, LayananId, "", doId, "2028-05-20", "B1", 1, 1, 100m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+        stokDal.Insert(new tb_stok_dto("STSL000004", brgId, LayananId, "", doId, "2028-05-20", "B1", 1, 1, 100m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+
+        // Seed v2 batch with matching total qty = 5
+        var batch = StockBatchModel.Create(brgId, doId, 100m, new DateTime(2026, 6, 1, 8, 0, 0), "PO01");
+        batch.IncreaseLokasi(LayananId, tglEd, 5, "B1");
+        _batchRepo.SaveChanges(batch, UserId);
+
+        var sut = CreateSaleHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+
+        // Case 1: Deplete qty = 1
+        // Expect: takes 1 from STSL000001 (which has 2). 1 slice emitted.
+        var cmd1 = new PostSaleIssueConsequenceCommand(brgId, LayananId, 1m, "TRSSALE_M1", TglMutasi, UserId, SaleIssueKindEnum.Db, tglEd);
+        var res1 = await sut.Handle(cmd1, default);
+
+        res1.Outcome.Should().Be(PostSaleIssueOutcomeEnum.Success);
+        res1.Lines.Should().HaveCount(1);
+        res1.Lines[0].QtyOut.Should().Be(1);
+        res1.Lines[0].LegacyStokId.Should().Be("STSL000001");
+
+        var binding1 = _bindingRepo.FindByStokMutasiId(res1.Lines[0].StokMutasiId);
+        binding1.HasValue.Should().BeTrue();
+        binding1.Value.LegacyStokId.Should().Be("STSL000001");
+        binding1.Value.LegacyBukuId.Should().Be(res1.Lines[0].LegacyBukuId);
+
+        // STSL000001 now has 1 remaining in tb_stok. Total remaining across 4 rows is 4.
+        var balancesAfter1 = _legacyRead.ListBalances(brgId, doId).OrderBy(x => x.LegacyStokId, StringComparer.Ordinal).ToList();
+        balancesAfter1.First(x => x.LegacyStokId == "STSL000001").QtySisa.Should().Be(1);
+
+        // Case 2: Deplete qty = 3
+        // Remaining tb_stok rows are: STSL000001 (1), STSL000002 (1), STSL000003 (1), STSL000004 (1).
+        // Depleting 3 should slice:
+        // - slice 1: STSL000001 (qty 1)
+        // - slice 2: STSL000002 (qty 1)
+        // - slice 3: STSL000003 (qty 1)
+        var cmd2 = new PostSaleIssueConsequenceCommand(brgId, LayananId, 3m, "TRSSALE_M2", TglMutasi, UserId, SaleIssueKindEnum.Db, tglEd);
+        var res2 = await sut.Handle(cmd2, default);
+
+        res2.Outcome.Should().Be(PostSaleIssueOutcomeEnum.Success);
+        res2.Lines.Should().HaveCount(3);
+        res2.Lines.Sum(x => x.QtyOut).Should().Be(3);
+        res2.Lines[0].LegacyStokId.Should().Be("STSL000001");
+        res2.Lines[0].QtyOut.Should().Be(1);
+        res2.Lines[1].LegacyStokId.Should().Be("STSL000002");
+        res2.Lines[1].QtyOut.Should().Be(1);
+        res2.Lines[2].LegacyStokId.Should().Be("STSL000003");
+        res2.Lines[2].QtyOut.Should().Be(1);
+
+        // Verify 1:1 binding per slice
+        foreach (var line in res2.Lines)
+        {
+            var b = _bindingRepo.FindByStokMutasiId(line.StokMutasiId);
+            b.HasValue.Should().BeTrue();
+            b.Value.LegacyStokId.Should().Be(line.LegacyStokId);
+            b.Value.LegacyBukuId.Should().Be(line.LegacyBukuId);
+        }
+
+        var balancesAfter2 = _legacyRead.ListBalances(brgId, doId).OrderBy(x => x.LegacyStokId, StringComparer.Ordinal).ToList();
+        balancesAfter2.Should().ContainSingle();
+        balancesAfter2[0].LegacyStokId.Should().Be("STSL000004");
+        balancesAfter2[0].QtySisa.Should().Be(1);
+    }
+
     private async Task SeedReceipt(
         string doId,
         decimal qty,
@@ -317,6 +473,7 @@ public class PostSaleIssueConsequenceHandlerTest
         DateTime? tglEd = null,
         DateTime? tglMutasi = null)
     {
+        Thread.Sleep(20);
         var receipt = CreateReceiptHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
         var seeded = await receipt.Handle(
             new PostGoodsReceiptConsequenceCommand(

@@ -13,7 +13,13 @@ public record LabOrderItemDto(
     string TarifName,
     int TubeType,
     string SpecimenType,
-    int RequiredTubeCount)
+    int RequiredTubeCount,
+    int Urgency = 0,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string DisciplineName = "",
+    string TestGroupId = "",
+    string TestGroupName = "")
 {
     public static LabOrderItemDto FromModel(string orderId, LabOrderItemModel model)
         => new(
@@ -27,7 +33,13 @@ public record LabOrderItemDto(
             model.TarifName,
             (int)model.TubeType,
             model.SpecimenType,
-            model.RequiredTubeCount);
+            model.RequiredTubeCount,
+            (int)model.Urgency,
+            (int)model.ServiceType,
+            model.DisciplineId,
+            model.DisciplineName,
+            model.TestGroupId,
+            model.TestGroupName);
 
     public LabOrderItemModel ToModel()
         => new(
@@ -40,5 +52,11 @@ public record LabOrderItemDto(
             TarifName,
             (VacutainerTypeEnum)TubeType,
             SpecimenType,
-            RequiredTubeCount);
+            RequiredTubeCount,
+            (LabOrderUrgencyEnum)Urgency,
+            (LaboratoryServiceType)ServiceType,
+            DisciplineId,
+            DisciplineName,
+            TestGroupId,
+            TestGroupName);
 }

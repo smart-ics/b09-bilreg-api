@@ -2,6 +2,7 @@ using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
+using Xunit;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
@@ -25,6 +26,27 @@ public class TaRegistrasi3DtoTest
         dto.fs_kd_rek.Should().Be("REK-001");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("BYKAS")]
+    [InlineData("bykas")]
+    [InlineData("-")]
+    public void FromModel_WhenPaymentIsByKasAndCoaEmptyOrByKas_FallsBackTo1499901(string dummyCoaId)
+    {
+        var payment = new TataRekeningPaymentType(
+            PaymentType.ByKas,
+            50_000m,
+            20_000m,
+            new CoaType(dummyCoaId, "KAS"));
+
+        var dto = TaRegistrasi3Dto.FromModel("REG-001", payment);
+
+        dto.fs_kd_reg.Should().Be("REG-001");
+        dto.fs_kd_bayar.Should().Be("BYKAS");
+        dto.fs_kd_rek.Should().Be("1499901");
+    }
+
     [Fact]
     public void ToModel_RoundTripsCoaId()
     {
@@ -43,6 +65,30 @@ public class TaRegistrasi3DtoTest
         model.NilaiJasa.Should().Be(50_000m);
         model.NilaiObat.Should().Be(20_000m);
         model.Coa.CoaId.Should().Be("REK-001");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("BYKAS")]
+    [InlineData("bykas")]
+    [InlineData("-")]
+    public void ToModel_WhenPaymentIsByKasAndCoaEmptyOrByKas_FallsBackTo1499901(string dummyCoaId)
+    {
+        var dto = new TaRegistrasi3Dto(
+            "REG-001",
+            "BYKAS",
+            "KAS",
+            50_000m,
+            20_000m,
+            dummyCoaId,
+            false);
+
+        var model = dto.ToModel();
+
+        model.Payment.PaymentId.Should().Be("BYKAS");
+        model.Coa.CoaId.Should().Be("1499901");
+        model.Coa.CoaName.Should().Be("Rekening Piutang Kasir Perantara");
     }
 
     [Fact]

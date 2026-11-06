@@ -7,6 +7,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Domain.Shared;
 using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
@@ -63,6 +65,10 @@ public class ErrorHandlerMiddleware
             string status;
             switch (error)
             {
+                case DuplicateLabOrderWarningException:
+                    statusCode = (int)HttpStatusCode.Conflict;
+                    status = "DUPLICATE_LAB_ORDER_WARNING";
+                    break;
                 case AdmissionQueueConcurrencyException:
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
@@ -108,6 +114,10 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.ServiceUnavailable;
                     status = "AQ_SEQUENCE_EXHAUSTED";
                     break;
+                case BusinessValidationException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "BIZ_VALIDATION_FAILED";
+                    break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
@@ -115,6 +125,10 @@ public class ErrorHandlerMiddleware
                 case InvalidOperationException:
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "AQ_OPERATION_NOT_ALLOWED";
+                    break;
+                case UnauthorizedAccessException when context.User?.Identity?.IsAuthenticated == true:
+                    statusCode = (int)HttpStatusCode.Forbidden;
+                    status = "AQ_FORBIDDEN";
                     break;
                 case UnauthorizedAccessException:
                     statusCode = (int)HttpStatusCode.Unauthorized;
@@ -158,8 +172,27 @@ public class ErrorHandlerMiddleware
                 new KeyValuePair<string, object?>("status_code", statusCode),
                 new KeyValuePair<string, object?>("error_code", status));
             LogAdmissionQueueOperation(context, "Failed", status, stopwatch.ElapsedMilliseconds);
+            if (error is DuplicateLabOrderWarningException duplicateEx)
+            {
+                var payload = new
+                {
+                    status = "fail",
+                    code = "DUPLICATE_LAB_ORDER_WARNING",
+                    message = duplicateEx.Message,
+                    data = new
+                    {
+                        duplicateTestNames = duplicateEx.DuplicateTestNames,
+                        previousOrderIds = duplicateEx.PreviousOrderIds
+                    }
+                };
+                var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var customResult = JsonSerializer.Serialize(payload, jsonOptions);
+                await response.WriteAsync(customResult);
+                return;
+            }
+
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
-                ? "The request could not be completed."
+                ? error.Message
                 : error.Message;
             var resultObj = new JSend(statusCode, status, safeMessage);
             var result = JsonSerializer.Serialize(resultObj);

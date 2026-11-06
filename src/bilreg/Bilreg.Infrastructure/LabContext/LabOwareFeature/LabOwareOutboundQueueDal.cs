@@ -13,7 +13,7 @@ public interface ILabOwareOutboundQueueDal :
     IUpdate<LabOwareOutboundQueueDto>,
     IGetData<LabOwareOutboundQueueDto, ILabOwareOutboundQueueKey>
 {
-    IEnumerable<LabOwareOutboundQueueDto> ListProcessable(int batchSize);
+    IEnumerable<LabOwareOutboundQueueDto> ListProcessable(int batchSize, int maxRetryCount = 3);
 }
 
 public class LabOwareOutboundQueueDal : ILabOwareOutboundQueueDal
@@ -76,14 +76,14 @@ public class LabOwareOutboundQueueDal : ILabOwareOutboundQueueDal
         return conn.QueryFirstOrDefault<LabOwareOutboundQueueDto>(sql, dp);
     }
 
-    public IEnumerable<LabOwareOutboundQueueDto> ListProcessable(int batchSize)
+    public IEnumerable<LabOwareOutboundQueueDto> ListProcessable(int batchSize, int maxRetryCount = 3)
     {
         const string sql = """
             SELECT TOP (@BatchSize)
                 aa.QueueId, aa.OrderId, aa.MessageType, aa.PayloadJson, aa.QueueStatus,
                 aa.RetryCount, aa.LastRetryDate, aa.ProcessedDate, aa.LastError, aa.CrtDate
             FROM BILRG_LabOwareOutboundQueue aa
-            WHERE aa.QueueStatus IN (@Pending, @Failed)
+            WHERE (aa.QueueStatus = @Pending OR (aa.QueueStatus = @Failed AND aa.RetryCount < @MaxRetryCount))
             ORDER BY aa.CrtDate ASC
             """;
 
@@ -91,6 +91,7 @@ public class LabOwareOutboundQueueDal : ILabOwareOutboundQueueDal
         dp.AddParam("@BatchSize", batchSize, SqlDbType.Int);
         dp.AddParam("@Pending", (int)LabOwareQueueStatusEnum.Pending, SqlDbType.Int);
         dp.AddParam("@Failed", (int)LabOwareQueueStatusEnum.Failed, SqlDbType.Int);
+        dp.AddParam("@MaxRetryCount", maxRetryCount > 0 ? maxRetryCount : 3, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<LabOwareOutboundQueueDto>(sql, dp).ToList();

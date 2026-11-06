@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -24,10 +24,13 @@ public class TindakanRepo : ITindakanRepo
                 onNone: () => _tindakanDal.Insert(TindakanDto.FromModel(model)));
 
 
-        var listKomponenDto = model.ListKomponen
-            .Select(x => TindakanKomponenDto.FromModel(x, model.TindakanId));
-        _tindakanKompDal.Delete(model);
-        _tindakanKompDal.Insert(listKomponenDto);
+        if (!model.AuditTrail.IsVoided)
+        {
+            var listKomponenDto = model.ListKomponen
+                .Select(x => TindakanKomponenDto.FromModel(x, model.TindakanId));
+            _tindakanKompDal.Delete(model);
+            _tindakanKompDal.Insert(listKomponenDto);
+        }
     }
 
     public MayBe<TindakanModel> LoadEntity(ITindakanKey key)
@@ -60,5 +63,15 @@ public class TindakanRepo : ITindakanRepo
         var listDto = _tindakanDal.ListTdkJual(regKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToView())?.ToList() ?? [];
         return result;
+    }
+
+    public void UpdatePetugas(string tindakanId, string ppaId, string userId)
+    {
+        _tindakanKompDal.UpdatePetugas(tindakanId, ppaId, userId);
+    }
+
+    public string GetPetugasName(string ppaId)
+    {
+        return _tindakanKompDal.GetPetugasName(ppaId);
     }
 }

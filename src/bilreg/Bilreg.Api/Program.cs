@@ -33,7 +33,8 @@ app
     .UseAuthorization();
 
 app.MapControllers();
-app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath);
+app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath).RequireCors("corsapp");
+app.MapHub<WardCockpitHub>(WardCockpitContracts.HubPath).RequireCors("corsapp");
 
 app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 
@@ -49,4 +50,3 @@ app
 app.Run();
 
 public partial class Program { }
-

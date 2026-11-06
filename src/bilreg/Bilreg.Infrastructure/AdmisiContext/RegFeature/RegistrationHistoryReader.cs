@@ -47,9 +47,10 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
              WHERE reg.fd_tgl_masuk = @admissionDate
               AND reg.fd_tgl_void = '3000-01-01'
               AND reg.fs_mr IN (
-                  SELECT LTRIM(RTRIM(value))
-                  FROM STRING_SPLIT(@patientIdsCsv, ',')
-                  WHERE LTRIM(RTRIM(value)) <> ''
+                  SELECT LTRIM(RTRIM(n.value('.', 'VARCHAR(50)')))
+                  FROM (SELECT CAST('<x>' + REPLACE(@patientIdsCsv, ',', '</x><x>') + '</x>' AS XML) AS t) x
+                  CROSS APPLY x.t.nodes('/x') AS r(n)
+                  WHERE n.value('.', 'VARCHAR(50)') <> ''
               )
             """;
         var parameters = CreatePatientIdParameters(admissionDate, normalizedPatientIds);
@@ -75,9 +76,10 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
         var sql = SelectClause + """
              WHERE reg.fd_tgl_void = '3000-01-01'
               AND reg.fs_kd_reg IN (
-                  SELECT LTRIM(RTRIM(value))
-                  FROM STRING_SPLIT(@registrationIdsCsv, ',')
-                  WHERE LTRIM(RTRIM(value)) <> ''
+                  SELECT LTRIM(RTRIM(n.value('.', 'VARCHAR(50)')))
+                  FROM (SELECT CAST('<x>' + REPLACE(@registrationIdsCsv, ',', '</x><x>') + '</x>' AS XML) AS t) x
+                  CROSS APPLY x.t.nodes('/x') AS r(n)
+                  WHERE n.value('.', 'VARCHAR(50)') <> ''
               )
             """;
         var parameters = CreateRegistrationIdParameters(normalizedRegistrationIds);

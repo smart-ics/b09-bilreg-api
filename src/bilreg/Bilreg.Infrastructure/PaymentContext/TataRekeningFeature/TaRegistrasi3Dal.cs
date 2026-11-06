@@ -17,6 +17,7 @@ public interface ITaRegistrasi3Dal :
 
 public class TaRegistrasi3Dal : ITaRegistrasi3Dal
 {
+    private const string DefaultKasirCoaId = "1499901";
     private readonly DatabaseOptions _opt;
 
     public TaRegistrasi3Dal(IOptions<DatabaseOptions> opt)
@@ -84,7 +85,22 @@ public class TaRegistrasi3Dal : ITaRegistrasi3Dal
             fs_kd_bayar = item.fs_kd_bayar,
             fn_jasa = item.fn_jasa,
             fn_obat = item.fn_obat,
-            fs_kd_rek = item.fs_kd_rek
+            fs_kd_rek = NormalizeKasirCoa(item.fs_kd_bayar, item.fs_kd_rek)
         }));
+    }
+
+    private static string NormalizeKasirCoa(string paymentId, string coaId)
+    {
+        if (string.Equals(paymentId, "BYKAS", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                return DefaultKasirCoaId;
+            }
+        }
+
+        return coaId;
     }
 }

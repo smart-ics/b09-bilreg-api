@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using System.Text.RegularExpressions;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -103,8 +104,11 @@ public class AdmissionDal : IAdmissionDal
 
     public IEnumerable<AdmissionDto> ListData(AdmissionListFilter filter)
     {
+        var rawSearch = (filter.Search ?? string.Empty).Trim();
+        var cleanSearch = Regex.Replace(rawSearch, @"[^\w]", "");
+
         var sql = $"""
-            SELECT
+            SELECT TOP 50
                 {SELECT_COLUMNS}
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
@@ -112,6 +116,14 @@ public class AdmissionDal : IAdmissionDal
                 aa.VodDate = @VodDate
                 AND (@Status IS NULL OR aa.AdmissionStatus = @Status)
                 AND (@PasienId IS NULL OR @PasienId = '' OR aa.PasienId = @PasienId)
+                AND (
+                    @Search IS NULL OR @Search = ''
+                    OR aa.RegId = @Search
+                    OR aa.PasienId = @Search
+                    OR (@CleanSearch <> '' AND aa.PasienId LIKE '%' + @CleanSearch + '%')
+                    OR (@CleanSearch <> '' AND LEN(@CleanSearch) = 6 AND RIGHT(aa.PasienId, 6) = @CleanSearch)
+                    OR bb.fs_nm_pasien LIKE '%' + @Search + '%'
+                )
             ORDER BY aa.CrtDate DESC, aa.RegId DESC
             """;
 
@@ -119,6 +131,8 @@ public class AdmissionDal : IAdmissionDal
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
         dp.AddParam("@Status", filter.Status.HasValue ? (int)filter.Status.Value : null, SqlDbType.Int);
         dp.AddParam("@PasienId", filter.PasienId ?? "", SqlDbType.VarChar);
+        dp.AddParam("@Search", rawSearch, SqlDbType.VarChar);
+        dp.AddParam("@CleanSearch", cleanSearch, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AdmissionDto>(sql, dp) ?? [];

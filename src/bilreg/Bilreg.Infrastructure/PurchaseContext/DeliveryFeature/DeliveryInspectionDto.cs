@@ -18,6 +18,7 @@ public class DeliveryInspectionDto
     public string Status { get; set; } = "Draft";
     public DateTime? ConfirmedAt { get; set; }
     public string ConfirmedBy { get; set; } = string.Empty;
+    public string ConfirmedByName { get; set; } = string.Empty;
     public DateTime? VoidedAt { get; set; }
     public string VoidedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.Now;

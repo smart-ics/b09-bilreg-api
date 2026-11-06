@@ -19,7 +19,10 @@ public record LabTestDefinitionDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate)
+    DateTime VodDate,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string TestGroupId = "")
 {
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
@@ -43,7 +46,10 @@ public record LabTestDefinitionDto(
                 ? model.AuditTrail.Modified.Timestamp
                 : model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Voided.UserId,
-            model.AuditTrail.Voided.Timestamp);
+            model.AuditTrail.Voided.Timestamp,
+            (int)model.ServiceType,
+            model.DisciplineId,
+            model.TestGroupId);
 
     public LabTestDefinitionModel ToModel(IEnumerable<LabTestComponentModel> components) =>
         new(
@@ -60,5 +66,8 @@ public record LabTestDefinitionDto(
                 new AuditInfoType(CrtUser, CrtDate),
                 new AuditInfoType(UpdUser, UpdDate),
                 new AuditInfoType(VodUser, VodDate)),
-            components);
+            components,
+            (LaboratoryServiceType)ServiceType,
+            DisciplineId,
+            TestGroupId);
 }

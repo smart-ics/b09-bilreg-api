@@ -1,4 +1,8 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -16,13 +20,28 @@ public record LabOrderCreateFromEmrCmd(
     string PatientName,
     string BirthDateYmd,
     string Gender,
-    List<LabOrderTarifItemInput> Items)
+    List<LabOrderTarifItemInput> Items,
+    string DokterPerujukId = "",
+    string DokterPerujukName = "",
+    string LayananPerujukId = "",
+    string LayananPerujukName = "",
+    string ClinicalNote = "",
+    int Urgency = 0,
+    bool AllowDuplicateConfirmation = false)
     : IRequest<LabOrderCreateFromEmrResponse>;
+
+public record CreatedOrderInfo(
+    string OrderId,
+    string OrderNo,
+    int ServiceType,
+    string EmrOrderId);
 
 public record LabOrderCreateFromEmrResponse(
     string EmrOrderId,
     int LabOrderStatus,
-    string OrderNo);
+    string OrderNo,
+    string OrderId = "",
+    List<CreatedOrderInfo>? CreatedOrders = null);
 
 public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEmrCmd, LabOrderCreateFromEmrResponse>
 {
@@ -30,21 +49,31 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
     private readonly ISequencer _sequencer;
     private readonly ILabTestResolutionService _resolutionService;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IRegRepo _regRepo;
+    private readonly IPpaRepo _ppaRepo;
+    private readonly ILabOrderDal _labOrderDal;
 
     public LabOrderCreateFromEmrHandler(
         ILabOrderRepo labOrderRepo,
         ISequencer sequencer,
         ILabTestResolutionService resolutionService,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IRegRepo regRepo,
+        IPpaRepo ppaRepo,
+        ILabOrderDal labOrderDal)
     {
         _labOrderRepo = labOrderRepo;
         _sequencer = sequencer;
         _resolutionService = resolutionService;
         _tglJamProvider = tglJamProvider;
+        _regRepo = regRepo;
+        _ppaRepo = ppaRepo;
+        _labOrderDal = labOrderDal;
     }
 
     public Task<LabOrderCreateFromEmrResponse> Handle(LabOrderCreateFromEmrCmd request, CancellationToken cancellationToken)
     {
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NullOrWhiteSpace(request.EmrOrderId, nameof(request.EmrOrderId));
         Guard.Against.NullOrWhiteSpace(request.RegId, nameof(request.RegId));
@@ -52,28 +81,197 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         Guard.Against.NullOrWhiteSpace(request.PatientName, nameof(request.PatientName));
         Guard.Against.NullOrEmpty(request.Items, nameof(request.Items));
 
+        // 0. Idempotensi: jika EmrOrderId sudah pernah dibuat, kembalikan respons order eksisting
+        var existingOrder = _labOrderRepo.LoadByEmrOrderId(request.EmrOrderId)
+            .Match(
+                onSome: x => x,
+                onNone: () => null as LabOrderModel
+            );
+
+        if (existingOrder is not null)
+        {
+            var createdOrders = new List<CreatedOrderInfo>
+            {
+                new(existingOrder.OrderId, existingOrder.OrderNo, (int)existingOrder.ServiceType, existingOrder.EmrOrderId)
+            };
+            return Task.FromResult(new LabOrderCreateFromEmrResponse(
+                existingOrder.EmrOrderId,
+                (int)existingOrder.LabOrderStatus,
+                existingOrder.OrderNo,
+                existingOrder.OrderId,
+                createdOrders));
+        }
+
+        var existingSplitOrders = _labOrderRepo.ListByEmrOrderIdPrefix(request.EmrOrderId)?.ToList() ?? [];
+        if (existingSplitOrders.Count > 0)
+        {
+            var primary = existingSplitOrders.First();
+            var createdOrders = existingSplitOrders
+                .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                .ToList();
+            return Task.FromResult(new LabOrderCreateFromEmrResponse(
+                request.EmrOrderId,
+                (int)primary.LabOrderStatus,
+                primary.OrderNo,
+                primary.OrderId,
+                createdOrders));
+        }
+
+        // 1. Validasi status kunjungan aktif ke ADM-REG (EX-01)
+        var reg = _regRepo.LoadEntity(RegModel.Key(request.RegId))
+            .Match(
+                onSome: x => x,
+                onNone: () => null as RegModel
+            );
+
+        if (reg is null)
+            throw new InvalidOperationException($"EX-01: Registrasi kunjungan '{request.RegId}' tidak ditemukan.");
+
+        if (!reg.IsAktif)
+            throw new InvalidOperationException($"EX-01: Registrasi kunjungan '{request.RegId}' sudah tidak aktif atau sudah discharge.");
+
+        // 2. Validasi dokter perujuk ke ORG-PPA jika DokterPerujukId diisi
+        var dokterPerujukName = request.DokterPerujukName;
+        if (!string.IsNullOrWhiteSpace(request.DokterPerujukId))
+        {
+            var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.DokterPerujukId))
+                .Match(
+                    onSome: x => x,
+                    onNone: () => null as PpaType
+                );
+
+            if (ppa is null || ppa.PpaId == "-" || string.IsNullOrWhiteSpace(ppa.PpaId))
+                throw new InvalidOperationException($"Dokter perujuk '{request.DokterPerujukId}' tidak ditemukan atau tidak aktif.");
+
+            if (string.IsNullOrWhiteSpace(dokterPerujukName))
+                dokterPerujukName = ppa.PpaName;
+        }
+
         var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
+        var patientId = !string.IsNullOrWhiteSpace(reg?.Pasien?.PasienId) && reg.Pasien.PasienId != "-"
+            ? reg.Pasien.PasienId
+            : request.PatientId;
         var snapshot = LabOrderCreateHelper.BuildSnapshot(
             request.RegId,
-            request.PatientId,
+            patientId,
             request.PatientName,
             request.BirthDateYmd,
             request.Gender,
             audit.Timestamp);
         var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
-        var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
 
-        var order = LabOrderModel.CreateFromEmr(request.EmrOrderId, snapshot, lines, orderNo, audit);
+        // 3. Deteksi tes duplikat 24 jam (EX-05)
+        var activeTests = _labOrderDal.ListActiveTestsByPatientWithinHours(patientId, 24, _tglJamProvider.Now)?.ToList() ?? [];
+        if (activeTests.Count > 0)
+        {
+            var duplicates = activeTests
+                .Where(a => lines.Any(l =>
+                    (!string.IsNullOrWhiteSpace(a.TestDefinitionId) && a.TestDefinitionId == l.Item.TestDefinitionId) ||
+                    (!string.IsNullOrWhiteSpace(a.LabTestCode) && a.LabTestCode == l.Item.LabTestCode)))
+                .ToList();
 
+            if (duplicates.Count > 0 && !request.AllowDuplicateConfirmation)
+            {
+                var matchingLines = lines.Where(l => duplicates.Any(a =>
+                    (!string.IsNullOrWhiteSpace(a.TestDefinitionId) && a.TestDefinitionId == l.Item.TestDefinitionId) ||
+                    (!string.IsNullOrWhiteSpace(a.LabTestCode) && a.LabTestCode == l.Item.LabTestCode))).ToList();
+                var dupNames = duplicates.Select(d => d.LabTestName)
+                    .Concat(matchingLines.Select(l => l.Item.TarifName))
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Distinct()
+                    .ToList();
+                var dupOrderNos = duplicates.Select(d => string.IsNullOrWhiteSpace(d.OrderNo) ? d.OrderId : d.OrderNo).Distinct().ToList();
+                var namesJoined = string.Join(", ", dupNames);
+                var ordersJoined = string.Join(", ", dupOrderNos);
+                throw new DuplicateLabOrderWarningException(
+                    dupNames,
+                    dupOrderNos,
+                    $"EX-05: Peringatan duplikasi tes laboratorium dalam 24 jam terakhir untuk pasien ini. Pemeriksaan '{namesJoined}' telah dipesan pada order sebelumnya: {ordersJoined}. Konfirmasikan atau berikan justifikasi medis.");
+            }
+        }
+
+        var groupedLines = lines
+            .GroupBy(x => x.Item.ServiceType)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var urgency = (LabOrderUrgencyEnum)request.Urgency;
         LabOrderCreateFromEmrResponse response;
+
         using (var trans = TransHelper.NewScope())
         {
-            _labOrderRepo.SaveChanges(order);
-            trans.Complete();
-            response = new LabOrderCreateFromEmrResponse(
-                order.EmrOrderId,
-                (int)order.LabOrderStatus,
-                order.OrderNo);
+            if (groupedLines.Count == 1)
+            {
+                var singleGroup = groupedLines[0];
+                var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                var order = LabOrderModel.CreateFromEmr(
+                    request.EmrOrderId,
+                    snapshot,
+                    singleGroup.ToList(),
+                    orderNo,
+                    audit,
+                    request.DokterPerujukId,
+                    dokterPerujukName,
+                    request.LayananPerujukId,
+                    request.LayananPerujukName,
+                    request.ClinicalNote,
+                    urgency,
+                    singleGroup.Key);
+
+                _labOrderRepo.SaveChanges(order);
+                trans.Complete();
+
+                var createdOrders = new List<CreatedOrderInfo>
+                {
+                    new(order.OrderId, order.OrderNo, (int)order.ServiceType, order.EmrOrderId)
+                };
+                response = new LabOrderCreateFromEmrResponse(
+                    order.EmrOrderId,
+                    (int)order.LabOrderStatus,
+                    order.OrderNo,
+                    order.OrderId,
+                    createdOrders);
+            }
+            else
+            {
+                var createdOrders = new List<LabOrderModel>();
+                foreach (var group in groupedLines)
+                {
+                    var suffix = LabOrderCreateHelper.GetServiceTypeSuffix(group.Key);
+                    var subEmrOrderId = $"{request.EmrOrderId}-{suffix}";
+                    var subOrderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                    var subOrder = LabOrderModel.CreateFromEmr(
+                        subEmrOrderId,
+                        snapshot,
+                        group.ToList(),
+                        subOrderNo,
+                        audit,
+                        request.DokterPerujukId,
+                        dokterPerujukName,
+                        request.LayananPerujukId,
+                        request.LayananPerujukName,
+                        request.ClinicalNote,
+                        urgency,
+                        group.Key);
+
+                    _labOrderRepo.SaveChanges(subOrder);
+                    createdOrders.Add(subOrder);
+                }
+
+                trans.Complete();
+
+                var primary = createdOrders.First();
+                var createdOrderInfos = createdOrders
+                    .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                    .ToList();
+
+                response = new LabOrderCreateFromEmrResponse(
+                    request.EmrOrderId,
+                    (int)primary.LabOrderStatus,
+                    primary.OrderNo,
+                    primary.OrderId,
+                    createdOrderInfos);
+            }
         }
 
         return Task.FromResult(response);

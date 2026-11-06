@@ -12,15 +12,31 @@ public record TaRegistrasi3Dto(
     string fs_kd_rek,
     bool fb_subsidi)
 {
-    public static TaRegistrasi3Dto FromModel(string regId, TataRekeningPaymentType model) =>
-        new(
+    public const string DefaultKasirCoaId = "1499901";
+    public const string DefaultKasirCoaName = "Rekening Piutang Kasir Perantara";
+
+    public static TaRegistrasi3Dto FromModel(string regId, TataRekeningPaymentType model)
+    {
+        var coaId = model.Coa?.CoaId ?? string.Empty;
+        if (string.Equals(model.Payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                coaId = DefaultKasirCoaId;
+            }
+        }
+
+        return new(
             regId,
             model.Payment.PaymentId,
             model.Payment.PaymentName,
             model.NilaiJasa,
             model.NilaiObat,
-            model.Coa.CoaId,
+            coaId,
             model.Payment.IsTipeJaminan);
+    }
 
     public TataRekeningPaymentType ToModel()
     {
@@ -29,9 +45,27 @@ public record TaRegistrasi3Dto(
             : fs_nm_bayar;
         var isTipeJaminan = ResolveIsTipeJaminan(fs_kd_bayar);
         var payment = new PaymentType(fs_kd_bayar, paymentName, isTipeJaminan);
-        var coa = string.IsNullOrWhiteSpace(fs_kd_rek)
+
+        var coaId = fs_kd_rek;
+        var coaName = string.Empty;
+        if (string.Equals(fs_kd_bayar, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                coaId = DefaultKasirCoaId;
+                coaName = DefaultKasirCoaName;
+            }
+            else if (coaId.Trim() == DefaultKasirCoaId)
+            {
+                coaName = DefaultKasirCoaName;
+            }
+        }
+
+        var coa = string.IsNullOrWhiteSpace(coaId)
             ? CoaType.Default
-            : new CoaType(fs_kd_rek, "");
+            : new CoaType(coaId, coaName);
         return new TataRekeningPaymentType(payment, fn_jasa, fn_obat, coa);
     }
 

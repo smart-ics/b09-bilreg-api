@@ -63,7 +63,7 @@ public class IgdVisitDaftarHandlerTest
         persisted.Visitor.Gender.Should().Be(cmd.VisitorGender);
         persisted.Visitor.TglLahir.Should().Be(new DateOnly(1990, 5, 15));
         persisted.Visitor.Kontak.Should().Be(cmd.VisitorKontak);
-        persisted.DaftarDateTime.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(10));
+        persisted.DaftarDateTime.Should().Be(TestTglJamProvider.Instance.Now);
         persisted.AuditTrail.Created.UserId.Should().Be(cmd.UserId);
         persisted.ListEvent.Should().ContainSingle(e => e.EventKind == IgdEventEnum.Daftar);
     }

@@ -4,7 +4,7 @@ namespace Bilreg.Application.LabContext.LabTestDefinitionFeature;
 
 internal static class LabTestDefinitionResponseMapper
 {
-    public static LabTestDefinitionDetailResponse ToDetailResponse(LabTestDefinitionModel model) =>
+    public static LabTestDefinitionDetailResponse ToDetailResponse(LabTestDefinitionModel model, decimal tarifPrice = 0m) =>
         new(
             model.TestDefinitionId,
             model.TarifId,
@@ -20,9 +20,13 @@ internal static class LabTestDefinitionResponseMapper
                 x.ComponentId,
                 x.ReferenceRangeOverride,
                 x.RequiredFlagging,
-                x.IsMandatory)).ToList());
+                x.IsMandatory)).ToList(),
+            tarifPrice,
+            (int)model.ServiceType,
+            model.DisciplineId,
+            model.TestGroupId);
 
-    public static LabTestDefinitionListResponse ToListResponse(LabTestDefinitionModel model) =>
+    public static LabTestDefinitionListResponse ToListResponse(LabTestDefinitionModel model, decimal tarifPrice = 0m) =>
         new(
             model.TestDefinitionId,
             model.TarifId,
@@ -33,7 +37,11 @@ internal static class LabTestDefinitionResponseMapper
             model.SpecimenType,
             (int)model.VacutainerType,
             model.IsActive,
-            model.Components.Count());
+            model.Components.Count(),
+            tarifPrice,
+            (int)model.ServiceType,
+            model.DisciplineId,
+            model.TestGroupId);
 }
 
 public record LabTestDefinitionListResponse(
@@ -46,7 +54,11 @@ public record LabTestDefinitionListResponse(
     string SpecimenType,
     int VacutainerType,
     bool IsActive,
-    int ComponentCount);
+    int ComponentCount,
+    decimal TarifPrice = 0m,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string TestGroupId = "");
 
 public record LabTestDefinitionDetailResponse(
     string TestDefinitionId,
@@ -58,7 +70,42 @@ public record LabTestDefinitionDetailResponse(
     string SpecimenType,
     int VacutainerType,
     bool IsActive,
-    IReadOnlyList<LabTestComponentResponse> Components);
+    IReadOnlyList<LabTestComponentResponse> Components,
+    decimal TarifPrice = 0m,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string TestGroupId = "");
+
+public record LabTestDefinitionGetResponse(
+    string TestDefinitionId,
+    string TarifId,
+    string TarifCode,
+    string TarifName,
+    string LabTestCode,
+    string LabTestName,
+    string SpecimenType,
+    int VacutainerType,
+    bool IsActive,
+    IReadOnlyList<LabTestComponentResponse> Components,
+    decimal TarifPrice = 0m,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string TestGroupId = "")
+    : LabTestDefinitionDetailResponse(
+        TestDefinitionId,
+        TarifId,
+        TarifCode,
+        TarifName,
+        LabTestCode,
+        LabTestName,
+        SpecimenType,
+        VacutainerType,
+        IsActive,
+        Components,
+        TarifPrice,
+        ServiceType,
+        DisciplineId,
+        TestGroupId);
 
 public record LabTestComponentResponse(
     int SequenceNo,

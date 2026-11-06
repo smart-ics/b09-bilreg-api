@@ -2,11 +2,13 @@ using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
 
 namespace Bilreg.Application.PaymentContext.TrsBillingFeature;
 
@@ -36,6 +38,14 @@ public interface IAddBillAppService
         TarifType tarif,
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
+
+    TrsBillType FromPenjualanItem(
+        PenjualanModel penjualan,
+        PenjualanItemType item,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
         DateTime createdAt = default);
 }
 
@@ -108,6 +118,26 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromLabOrderItem(tataRekening, labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif,
             listReffKomp, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromPenjualanItem(
+        PenjualanModel penjualan,
+        PenjualanItemType item,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromPenjualanItem(
+            tataRekening, penjualan, item, reg, jaminan, groupRek, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

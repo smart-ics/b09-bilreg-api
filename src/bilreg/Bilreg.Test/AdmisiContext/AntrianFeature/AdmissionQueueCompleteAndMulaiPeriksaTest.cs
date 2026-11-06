@@ -227,6 +227,65 @@ public class QueMulaiPeriksaHandlerTest
             .WithMessage("*not identified*");
         _trackerRepo.Verify(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()), Times.Never);
     }
+
+    [Fact]
+    public async Task MulaiPeriksa_WhenWaiting_CallsClinicQueueDalMarkInServiceAndBroadcastsRefreshHint()
+    {
+        var createdAt = new DateTime(2025, 5, 3, 7, 0, 0);
+        var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
+        var tracker = PasienTrackerModel.Create(
+            person, DateOnly.FromDateTime(createdAt), "BOOKING", "BK1", createdAt);
+        var queue = new AntrianModel(
+            "DOC-Q1", DateOnly.FromDateTime(createdAt), new TimeOnly(8, 0), new TimeOnly(12, 0),
+            "AN2505030800_DOC$01", "Praktek", new ServicePointType("POLI-INT", "Poli Penyakit Dalam"), [], _sequencer.Object);
+        queue.AddEntry(15, tracker, "RG1", "REG", createdAt);
+
+        _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
+        _trackerRepo.Setup(x => x.LoadEntity(tracker)).Returns(MayBe.From(tracker));
+
+        var clinicDalMock = new Mock<IClinicQueueOperationDal>();
+        var publisherMock = new Mock<IClinicQueueRefreshPublisher>();
+
+        var sut = new QueMulaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance,
+            clinicDalMock.Object, publisherMock.Object);
+
+        var response = await sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+
+        response.Status.Should().Be("InService");
+        clinicDalMock.Verify(d => d.MarkInService("DOC-Q1", 15, "SYSTEM"), Times.Once);
+        publisherMock.Verify(p => p.PublishRefreshHint("POLI-INT", "DOC 01", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SelesaiPeriksa_CallsClinicQueueDalMarkDismissedByEntryAndBroadcastsRefreshHint()
+    {
+        var createdAt = new DateTime(2025, 5, 3, 7, 0, 0);
+        var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
+        var tracker = PasienTrackerModel.Create(
+            person, DateOnly.FromDateTime(createdAt), "BOOKING", "BK1", createdAt);
+        var queue = new AntrianModel(
+            "DOC-Q1", DateOnly.FromDateTime(createdAt), new TimeOnly(8, 0), new TimeOnly(12, 0),
+            "AN2505030800_DOC$01", "Praktek", new ServicePointType("POLI-INT", "Poli Penyakit Dalam"), [], _sequencer.Object);
+        var entry = queue.AddEntry(15, tracker, "RG1", "REG", createdAt);
+        entry.Serve(createdAt.AddMinutes(10));
+
+        _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
+        _trackerRepo.Setup(x => x.LoadEntity(tracker)).Returns(MayBe.From(tracker));
+
+        var clinicDalMock = new Mock<IClinicQueueOperationDal>();
+        var publisherMock = new Mock<IClinicQueueRefreshPublisher>();
+
+        var sut = new QueSelesaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance,
+            clinicDalMock.Object, publisherMock.Object);
+
+        var response = await sut.Handle(new QueSelesaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+
+        response.Status.Should().Be("Done");
+        clinicDalMock.Verify(d => d.MarkDismissedByEntry("DOC-Q1", 15, "SYSTEM"), Times.Once);
+        publisherMock.Verify(p => p.PublishRefreshHint("POLI-INT", "DOC 01", It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
 
 /// <summary>

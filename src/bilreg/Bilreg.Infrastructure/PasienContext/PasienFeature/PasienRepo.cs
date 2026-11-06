@@ -169,7 +169,8 @@ public class PasienRepo : IPasienRepo
             listContact, pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
-            dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif);
+            dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif,
+            dto.fs_mr_ibu);
 
         //  fetch saset-dto
         var sasetDto = _pasienSasetDal.GetData(key);

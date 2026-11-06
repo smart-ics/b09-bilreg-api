@@ -525,4 +525,37 @@ public class DeliveryOrderRepoTest
         itemDto.Tax.Should().Be(0m);
         itemDto.Total.Should().Be(0m);
     }
+    [Fact]
+    public void GivenDeliveryOrderWithSignerNames_WhenLoadEntity_ThenMapSignerNamesToModel()
+    {
+        // Arrange
+        var key = new DeliveryOrderKey(DoId);
+        var orderDto = BuildOrderDto(DeliveryOrderStatusEnum.Confirmed);
+        orderDto.PetugasName = "Apoteker Pengadaan";
+        orderDto.ConfirmedByName = "Kepala Bagian Farmasi";
+
+        var inspectionDtos = BuildInspectionDtos("Confirmed");
+        inspectionDtos[0].ConfirmedAt = new DateTime(2026, 10, 15, 11, 0, 0);
+        inspectionDtos[0].ConfirmedBy = "KABAG01";
+        inspectionDtos[0].ConfirmedByName = "Kepala Bagian Farmasi";
+
+        _orderDalMock
+            .Setup(x => x.GetData(key))
+            .Returns(orderDto);
+        _itemDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(BuildItemDtos());
+        _inspectionDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(inspectionDtos);
+
+        // Act
+        var result = _sut.LoadEntity(key);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        var actual = result.Value;
+        actual.CreatedUserName.Should().Be("Apoteker Pengadaan");
+        actual.ConfirmedUserName.Should().Be("Kepala Bagian Farmasi");
+    }
 }

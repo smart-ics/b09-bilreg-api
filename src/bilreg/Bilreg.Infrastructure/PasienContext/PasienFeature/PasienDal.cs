@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -48,7 +48,7 @@ public class PasienDal : IPasienDal
                 fs_kd_agama, fs_kd_suku, fs_kd_status_kawin_dk, 
                 fs_kd_pendidikan_dk, fs_kd_pekerjaan_dk,
                 --
-                fd_tgl_mr, fb_aktif) 
+                fd_tgl_mr, fb_aktif, fs_mr_ibu) 
             VALUES (
                 @fs_mr, @fs_nm_pasien, @fd_tgl_lahir, @fs_jns_kelamin,
                 @fs_nm_alias, @fs_temp_lahir, @fs_nm_ibu_kandung, @fs_gol_darah,
@@ -65,7 +65,7 @@ public class PasienDal : IPasienDal
                 @fs_kd_agama, @fs_kd_suku, @fs_kd_status_kawin_dk, 
                 @fs_kd_pendidikan_dk, @fs_kd_pekerjaan_dk,
                 --
-                @fd_tgl_mr, @fb_aktif)
+                @fd_tgl_mr, @fb_aktif, @fs_mr_ibu)
             """;
 
         var dp = new DynamicParameters();
@@ -109,6 +109,7 @@ public class PasienDal : IPasienDal
         
         dp.AddParam("@fd_tgl_mr", model.fd_tgl_mr, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
+        dp.AddParam("@fs_mr_ibu", model.fs_mr_ibu, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -155,7 +156,8 @@ public class PasienDal : IPasienDal
                 fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk,
                 --
                 fd_tgl_mr = @fd_tgl_mr,
-                fb_aktif = @fb_aktif
+                fb_aktif = @fb_aktif,
+                fs_mr_ibu = @fs_mr_ibu
             WHERE 
                 fs_mr = @fs_mr
             """;
@@ -201,6 +203,7 @@ public class PasienDal : IPasienDal
         
         dp.AddParam("@fd_tgl_mr", model.fd_tgl_mr, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
+        dp.AddParam("@fs_mr_ibu", model.fs_mr_ibu, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -240,6 +243,7 @@ public class PasienDal : IPasienDal
                 aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
                 --
                 aa.fd_tgl_mr, aa.fb_aktif,
+                ISNULL(aa.fs_mr_ibu, '') AS fs_mr_ibu,
                 --
                 ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
                 ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
@@ -295,6 +299,7 @@ public class PasienDal : IPasienDal
                 aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
                 --
                 aa.fd_tgl_mr, aa.fb_aktif,
+                ISNULL(aa.fs_mr_ibu, '') AS fs_mr_ibu,
                 --
                 ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
                 ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
@@ -363,6 +368,7 @@ public class PasienDal : IPasienDal
                 aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
                 --
                 aa.fd_tgl_mr, aa.fb_aktif,
+                ISNULL(aa.fs_mr_ibu, '') AS fs_mr_ibu,
                 --
                 ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
                 ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
@@ -411,6 +417,7 @@ public class PasienDal : IPasienDal
             aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
             aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
             aa.fd_tgl_mr, aa.fb_aktif,
+            ISNULL(aa.fs_mr_ibu, '') AS fs_mr_ibu,
             ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
             ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
             ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,

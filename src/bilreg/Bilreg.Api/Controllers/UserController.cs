@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.Shared.User;
+using Bilreg.Application.Shared.User;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -24,8 +24,9 @@ public class UserController : Controller
     }
 
 
-    [HttpPost]
-    [Route("login")]
+    [HttpPost("login")]
+    [HttpPost("/login")]
+
     public async Task<IActionResult> Login([FromBody]UserGetUserUsmanQuery cmd)
     {
         try
