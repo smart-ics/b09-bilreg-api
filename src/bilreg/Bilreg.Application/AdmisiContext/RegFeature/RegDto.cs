@@ -21,6 +21,12 @@ public record RegDto(
     string fs_nm_rujukan, string fs_nm_medis, string fs_nm_layanan, string fs_nm_karcis
     )
 {
+    private static string Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        return value.Length <= maxLength ? value : value[..maxLength];
+    }
+
     public static RegDto FromModel(RegModel model)
     {
         var jenisRegStr = model.JenisReg.ToNumberString();
@@ -34,19 +40,19 @@ public record RegDto(
             model.RegId,
             model.RegDate.ToString("yyyy-MM-dd"),
             model.RegMasukAudit.Timestamp.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            model.RegMasukAudit.UserId,
+            Truncate(model.RegMasukAudit.UserId, 10),
             //
             model.RegKeluarAudit.Timestamp.ToString("yyyy-MM-dd"),
             model.RegKeluarAudit.Timestamp.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            model.RegKeluarAudit.UserId,
+            Truncate(model.RegKeluarAudit.UserId, 10),
             //
             model.RegCancelOutAudit.Timestamp.ToString("yyyy-MM-dd"),
             model.RegCancelOutAudit.Timestamp.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            model.RegCancelOutAudit.UserId,
+            Truncate(model.RegCancelOutAudit.UserId, 10),
             //
             model.RegVoidAudit.Timestamp.ToString("yyyy-MM-dd"),
             model.RegVoidAudit.Timestamp.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            model.RegVoidAudit.UserId,
+            Truncate(model.RegVoidAudit.UserId, 10),
 
             //
             jenisRegStr,

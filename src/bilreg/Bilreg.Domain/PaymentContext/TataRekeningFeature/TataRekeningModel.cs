@@ -488,7 +488,7 @@ public record TataRekeningModel : IRegKey
 
     private void EnsureNoDownstreamSettlement(IDownstreamSettlementInspector settlementInspector)
     {
-        if (HasApprovedAllocation(settlementInspector) || HasCashierSettlement(settlementInspector))
+        if (HasCashierSettlement(settlementInspector))
             throw new InvalidOperationException(
                 "Pembatalan status Final ditolak: Alokasi Pembayaran atau Transaksi Kasir telah diproses. " +
                 "Batalkan transaksi kasir/alokasi pembayaran terlebih dahulu sebelum membuka kunci tagihan.");
