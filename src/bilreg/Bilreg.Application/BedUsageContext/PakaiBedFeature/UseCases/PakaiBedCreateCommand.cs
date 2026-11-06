@@ -121,6 +121,41 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 .FirstOrDefault()
                 ?? throw new Exception("Room Rate for Tipe Kamar not found");
 
+            var listKomponen = new List<PakaiBedKomponenType>();
+
+            if (roomRate is RoomRateDailyType dailyRate)
+            {
+                var dailyTipes = dailyRate.ListTipe
+                    .Where(x => x.TipeKamar.TipeKamarId == request.TipeKamarId)
+                    .ToList();
+                foreach (var d in dailyTipes)
+                {
+                    listKomponen.AddRange(d.ListKomponen.Select(x =>
+                        new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, d.HariKe)));
+                }
+            }
+            else if (rate is RoomRateRegulerTipeType regTipe)
+            {
+                listKomponen.AddRange(regTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, 1)));
+            }
+            else if (rate is RoomRateKelasType kelasTipe)
+            {
+                listKomponen.AddRange(kelasTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, 1)));
+            }
+            else if (rate is RoomRateDayType dayTipe)
+            {
+                listKomponen.AddRange(dayTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, dayTipe.HariKe)));
+            }
+
+            // Fallback jika tidak ada komponen tarif terdaftar namun ada total nilai
+            if (listKomponen.Count == 0 && rate.TotalNilai > 0)
+            {
+                listKomponen.Add(new PakaiBedKomponenType("AKO", "Akomodasi", rate.TotalNilai, 1));
+            }
+
             WaitingListModel? waitingList = null;
             if (!string.IsNullOrWhiteSpace(request.WaitingListId))
             {
@@ -145,7 +180,9 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 bed, 
                 tipeKamar, 
                 kelas,
-                rate.TotalNilai);
+                rate.TotalNilai,
+                listKomponen,
+                kelas.KelasId);
 
             using var trans = TransHelper.NewScope();
 
