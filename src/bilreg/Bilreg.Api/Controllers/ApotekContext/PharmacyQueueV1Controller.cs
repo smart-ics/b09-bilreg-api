@@ -177,11 +177,25 @@ public class PharmacyQueueV1Controller : ControllerBase
         if (string.IsNullOrWhiteSpace(targetDepo))
             throw new ApotekDomainException("Depo Farmasi ID wajib diisi.");
 
+        var filterIds = servicePointIds;
+        if ((filterIds == null || filterIds.Length == 0) && Request.Query.TryGetValue("servicePointIds[]", out var bracketValues))
+        {
+            filterIds = bracketValues.ToArray();
+        }
+
+        if (filterIds != null && filterIds.Length > 0)
+        {
+            filterIds = filterIds
+                .SelectMany(s => s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
         var result = await _mediator.Send(new PharmacyQueueWorklistQry(
             targetDepo,
             filterTab,
             phase,
-            servicePointIds));
+            filterIds));
         return Ok(new JSendOk(result));
     }
 
@@ -282,8 +296,22 @@ public class PharmacyQueueV1Controller : ControllerBase
         if (request == null || string.IsNullOrWhiteSpace(request.LoketKey))
             throw new ApotekDomainException("Loket Key wajib diisi.");
 
-        var rowVersion = ParseRowVersion(request.RowVersion)
-            ?? throw new ApotekDomainException("RowVersion token wajib diisi.");
+        var rowVersion = ParseRowVersion(request.RowVersion);
+        if (rowVersion == null || rowVersion.Length == 0)
+        {
+            try
+            {
+                var currentStatus = await _mediator.Send(new GetLoketStatusQry(request.LoketKey));
+                rowVersion = currentStatus?.RowVersion;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        if (rowVersion == null || rowVersion.Length == 0)
+            throw new ApotekDomainException("RowVersion token wajib diisi.");
 
         var cmd = new PharmacyQueueReleasePenerimaanCmd(
             LoketKey: request.LoketKey,
@@ -407,6 +435,19 @@ public class PharmacyQueueV1Controller : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/v1/pharmacy-queue/lokets/{loketKey}: Membaca status sesi pemanggilan terkini pada suatu loket fisik farmasi.
+    /// </summary>
+    [HttpGet("lokets/{loketKey}")]
+    public async Task<IActionResult> GetLoketStatus([FromRoute] string loketKey)
+    {
+        if (string.IsNullOrWhiteSpace(loketKey))
+            throw new ApotekDomainException("Loket Key wajib diisi.");
+
+        var result = await _mediator.Send(new GetLoketStatusQry(loketKey));
+        return Ok(new JSendOk(result));
+    }
+
+    /// <summary>
     /// GET /api/v1/pharmacy-queue/lokets/{loketKey}/service-points: Membaca daftar service point yang dilayani oleh suatu loket fisik.
     /// </summary>
     [HttpGet("lokets/{loketKey}/service-points")]
@@ -424,7 +465,7 @@ public class PharmacyQueueV1Controller : ControllerBase
     /// Dibatasi hanya untuk peran Administrator dan ApotekerSupervisor.
     /// </summary>
     [HttpPut("lokets/{loketKey}/service-points")]
-    [Authorize(Roles = "Administrator,ApotekerSupervisor")]
+    [Authorize(Roles = "Administrator,ApotekerSupervisor,Celestial")]
     public async Task<IActionResult> UpdateLoketServicePoints(
         [FromRoute] string loketKey,
         [FromBody] PharmacyQueueUpdateLoketServicePointsRequest request)
@@ -434,8 +475,22 @@ public class PharmacyQueueV1Controller : ControllerBase
         if (request == null)
             throw new ApotekDomainException("Request body wajib diisi.");
 
-        var rowVersion = ParseRowVersion(request.RowVersion)
-            ?? throw new ApotekDomainException("RowVersion token wajib diisi.");
+        var rowVersion = ParseRowVersion(request.RowVersion);
+        if (rowVersion == null || rowVersion.Length == 0)
+        {
+            try
+            {
+                var current = await _mediator.Send(new GetLoketServicePointsQry(loketKey));
+                rowVersion = current?.RowVersion;
+            }
+            catch
+            {
+                // If query fails or loket is not found, rowVersion remains null
+            }
+        }
+
+        if (rowVersion == null || rowVersion.Length == 0)
+            throw new ApotekDomainException("RowVersion token wajib diisi.");
 
         var cmd = new UpdateLoketServicePointsCmd(
             LoketKey: loketKey,

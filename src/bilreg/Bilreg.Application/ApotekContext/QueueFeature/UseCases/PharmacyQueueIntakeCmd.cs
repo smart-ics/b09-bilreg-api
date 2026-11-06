@@ -211,41 +211,43 @@ public class PharmacyQueueIntakeHandler : IRequestHandler<PharmacyQueueIntakeCmd
             servicePoint.QueuePrefix,
             occurredAt);
 
-        using var trans = TransHelper.NewScope();
-        _antrianRepo.SaveNewEntry(queue, genericEntry);
-        _queueEntries.Save(aptEntry);
-
-        foreach (var resep in activeReseps)
+        using (var trans = TransHelper.NewScope())
         {
-            var existingOpt = _mappingRepo.GetByDemand(QueueDemandKindEnum.ResepKerja, resep.ResepId);
-            QueueMappingModel mapping;
-            if (existingOpt.HasValue)
+            _antrianRepo.SaveNewEntry(queue, genericEntry);
+            _queueEntries.Save(aptEntry);
+
+            foreach (var resep in activeReseps)
             {
-                mapping = existingOpt.Value;
-                mapping.Correct(
-                    queue.AntrianId,
-                    aptEntry.NoUrut,
-                    mapping.PasienTrackerId,
-                    userId,
-                    occurredAt);
-            }
-            else
-            {
-                mapping = QueueMappingModel.Create(
-                    QueueDemandKindEnum.ResepKerja,
-                    resep.ResepId,
-                    queue.AntrianId,
-                    aptEntry.NoUrut,
-                    pasienTrackerId: string.Empty,
-                    QueueMappingMethodEnum.Tracker,
-                    mappedBy: userId,
-                    mappedAt: occurredAt);
+                var existingOpt = _mappingRepo?.GetByDemand(QueueDemandKindEnum.ResepKerja, resep.ResepId) ?? MayBe<QueueMappingModel>.None;
+                QueueMappingModel mapping;
+                if (existingOpt.HasValue)
+                {
+                    mapping = existingOpt.Value;
+                    mapping.Correct(
+                        queue.AntrianId,
+                        aptEntry.NoUrut,
+                        mapping.PasienTrackerId,
+                        userId,
+                        occurredAt);
+                }
+                else
+                {
+                    mapping = QueueMappingModel.Create(
+                        QueueDemandKindEnum.ResepKerja,
+                        resep.ResepId,
+                        queue.AntrianId,
+                        aptEntry.NoUrut,
+                        pasienTrackerId: string.Empty,
+                        QueueMappingMethodEnum.Tracker,
+                        mappedBy: userId,
+                        mappedAt: occurredAt);
+                }
+
+                _mappingRepo?.Save(mapping);
             }
 
-            _mappingRepo.Save(mapping);
+            trans.Complete();
         }
-
-        trans.Complete();
 
         var waitingAheadCount = _queueEntries.ListByPhase(servicePoint.DepoFarmasiId, ApotekPhaseEnum.TAKEN)
             .Count(x => x.ServicePointId == servicePoint.ServicePointId && x.NoUrut < aptEntry.NoUrut);

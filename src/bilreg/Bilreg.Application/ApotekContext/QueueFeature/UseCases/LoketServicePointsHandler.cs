@@ -32,6 +32,11 @@ public record UpdateLoketServicePointsCmd(
 /// </summary>
 public record GetLoketServicePointsQry(string LoketKey) : IRequest<LoketServicePointsResponse>;
 
+/// <summary>
+/// Query membaca status pemanggilan dan sesi aktif terkini pada suatu loket fisik farmasi.
+/// </summary>
+public record GetLoketStatusQry(string LoketKey) : IRequest<PharmacyLoketStatusResponse>;
+
 #endregion
 
 #region Handlers
@@ -149,6 +154,62 @@ public class GetLoketServicePointsQryHandler
             request.LoketKey,
             servicePoints,
             loket.RowVersion));
+    }
+}
+
+/// <summary>
+/// Handler untuk query pembacaan status pemanggilan dan sesi aktif terkini pada suatu loket fisik farmasi.
+/// </summary>
+public class GetLoketStatusQryHandler
+    : IRequestHandler<GetLoketStatusQry, PharmacyLoketStatusResponse>
+{
+    private readonly IPharmacyQueueOperationRepo _operations;
+    private readonly IApotekQueueEntryRepo _queueEntries;
+
+    public GetLoketStatusQryHandler(
+        IPharmacyQueueOperationRepo operations,
+        IApotekQueueEntryRepo queueEntries)
+    {
+        _operations = operations;
+        _queueEntries = queueEntries;
+    }
+
+    public Task<PharmacyLoketStatusResponse> Handle(
+        GetLoketStatusQry request,
+        CancellationToken cancellationToken)
+    {
+        Guard.Against.NullOrWhiteSpace(request.LoketKey, nameof(request.LoketKey));
+
+        var loket = _operations.GetLoket(request.LoketKey)
+            .GetValueOrThrow($"Loket '{request.LoketKey}' not found.");
+
+        var queueLabel = string.Empty;
+        if (!string.IsNullOrWhiteSpace(loket.AntrianId) && loket.NoUrut > 0)
+        {
+            var ticketOpt = _queueEntries.Get(loket.AntrianId, loket.NoUrut);
+            if (ticketOpt.HasValue)
+            {
+                queueLabel = ticketOpt.Value.QueueLabel;
+            }
+        }
+
+        var response = new PharmacyLoketStatusResponse(
+            LoketKey: loket.LoketKey,
+            DisplayName: loket.DisplayName,
+            LoketType: loket.LoketType,
+            DepoFarmasiId: loket.DepoFarmasiId,
+            AntrianId: loket.AntrianId,
+            NoUrut: loket.NoUrut,
+            QueueLabel: queueLabel,
+            ClaimState: loket.ClaimState,
+            IsActive: loket.IsActive,
+            AnnouncementVersion: loket.AnnouncementVersion,
+            CalledAt: loket.CalledAt,
+            ServiceStartedAt: loket.ServiceStartedAt,
+            ReleasedAt: loket.ReleasedAt,
+            RowVersion: loket.RowVersion);
+
+        return Task.FromResult(response);
     }
 }
 

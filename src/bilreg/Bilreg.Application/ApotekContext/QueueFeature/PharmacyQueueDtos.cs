@@ -133,6 +133,25 @@ public record PharmacyQueueSkipReq(
     string UserId = "");
 
 /// <summary>
+/// Status sesi pemanggilan terkini pada loket fisik farmasi.
+/// </summary>
+public record PharmacyLoketStatusResponse(
+    string LoketKey,
+    string DisplayName,
+    LoketTypeEnum LoketType,
+    string DepoFarmasiId,
+    string AntrianId,
+    int NoUrut,
+    string QueueLabel,
+    LoketClaimStateEnum ClaimState,
+    bool IsActive,
+    long AnnouncementVersion,
+    DateTime CalledAt,
+    DateTime ServiceStartedAt,
+    DateTime ReleasedAt,
+    byte[] RowVersion);
+
+/// <summary>
 /// Data hasil mutasi operasional pemanggilan loket (termasuk token RowVersion dan versi audio pengumuman).
 /// </summary>
 public record PharmacyQueueLoketCallResponse(

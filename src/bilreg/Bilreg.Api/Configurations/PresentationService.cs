@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Controllers.ApotekContext;
@@ -114,6 +115,23 @@ public static class PresentationService
 
                 OnTokenValidated = context =>
                 {
+                    if (context.Principal?.Identity is ClaimsIdentity identity)
+                    {
+                        var shortRoles = identity.FindAll("role").Select(c => c.Value).ToList();
+                        foreach (var r in shortRoles)
+                        {
+                            if (!identity.HasClaim(ClaimTypes.Role, r))
+                                identity.AddClaim(new Claim(ClaimTypes.Role, r));
+                        }
+
+                        var longRoles = identity.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                        foreach (var r in longRoles)
+                        {
+                            if (!identity.HasClaim("role", r))
+                                identity.AddClaim(new Claim("role", r));
+                        }
+                    }
+
                     CreateAuthLogger(context.HttpContext).LogDebug(
                         "JWT token validated for {UserName}",
                         context.Principal?.Identity?.Name ?? "(unknown)");

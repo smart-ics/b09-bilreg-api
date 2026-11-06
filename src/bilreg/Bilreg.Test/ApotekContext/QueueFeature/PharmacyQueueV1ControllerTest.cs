@@ -139,7 +139,7 @@ public class PharmacyQueueV1ControllerTest
         method.Should().NotBeNull();
         var auth = method!.GetCustomAttribute<AuthorizeAttribute>();
         auth.Should().NotBeNull();
-        auth!.Roles.Should().Be("Administrator,ApotekerSupervisor");
+        auth!.Roles.Should().Be("Administrator,ApotekerSupervisor,Celestial");
     }
 
     #endregion

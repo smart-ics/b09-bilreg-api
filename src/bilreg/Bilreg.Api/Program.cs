@@ -26,8 +26,14 @@ BusinessDateStartup.LogBusinessDateStatus(app);
 
 app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)
-    .UseMiddleware<ErrorHandlerMiddleware>()
-    .UseHttpsRedirection()
+    .UseMiddleware<ErrorHandlerMiddleware>();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app
     .UseRouting()
     .UseCors("corsapp")
     .UseAuthentication()
