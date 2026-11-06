@@ -20,13 +20,15 @@ public class PenjualanRepoTest
 
     private readonly Mock<IPenjualanDal> _penjualanDalMock;
     private readonly Mock<IPenjualanItemDal> _penjualanItemDalMock;
+    private readonly Mock<IPenjualanItemBatchDal> _penjualanItemBatchDalMock;
     private readonly PenjualanRepo _sut;
 
     public PenjualanRepoTest()
     {
         _penjualanDalMock = new Mock<IPenjualanDal>();
         _penjualanItemDalMock = new Mock<IPenjualanItemDal>();
-        _sut = new PenjualanRepo(_penjualanDalMock.Object, _penjualanItemDalMock.Object);
+        _penjualanItemBatchDalMock = new Mock<IPenjualanItemBatchDal>();
+        _sut = new PenjualanRepo(_penjualanDalMock.Object, _penjualanItemDalMock.Object, _penjualanItemBatchDalMock.Object);
     }
 
     private static PenjualanModel BuildModel(bool withRacik = false)
@@ -169,17 +171,81 @@ public class PenjualanRepoTest
     }
 
     [Fact]
-    public void GivenPenjualanKey_WhenDeleteEntity_ThenDeleteItemsThenHeader()
+    public void GivenPenjualanKey_WhenDeleteEntity_ThenDeleteBatchesThenItemsThenHeader()
     {
         var key = Key();
         var sequence = new MockSequence();
+        _penjualanItemBatchDalMock.InSequence(sequence).Setup(x => x.Delete(key));
         _penjualanItemDalMock.InSequence(sequence).Setup(x => x.Delete(key));
         _penjualanDalMock.InSequence(sequence).Setup(x => x.Delete(key));
 
         _sut.DeleteEntity(key);
 
+        _penjualanItemBatchDalMock.Verify(x => x.Delete(key), Times.Once);
         _penjualanItemDalMock.Verify(x => x.Delete(key), Times.Once);
         _penjualanDalMock.Verify(x => x.Delete(key), Times.Once);
+    }
+
+    [Fact]
+    public void GivenPenjualanWithBatches_WhenSaveChanges_ThenInsertsBatches()
+    {
+        var model = BuildModel();
+        model.ListItem.First().AddBatch("B001", new DateTime(2027, 5, 1), "PO1", "DO1", 10, 500m);
+
+        List<PenjualanItemBatchDto>? capturedBatches = null;
+        _penjualanDalMock
+            .Setup(x => x.GetData(It.IsAny<IPenjualanKey>()))
+            .Returns((PenjualanDto)null!);
+        _penjualanItemBatchDalMock
+            .Setup(x => x.Insert(It.IsAny<IEnumerable<PenjualanItemBatchDto>>()))
+            .Callback<IEnumerable<PenjualanItemBatchDto>>(rows => capturedBatches = rows.ToList());
+
+        _sut.SaveChanges(model);
+
+        _penjualanItemBatchDalMock.Verify(x => x.Delete(It.Is<IPenjualanKey>(k => k.PenjualanId == PenjualanId)), Times.Once);
+        capturedBatches.Should().NotBeNull();
+        capturedBatches!.Should().HaveCount(1);
+        capturedBatches[0].PenjualanId.Should().Be(PenjualanId);
+        capturedBatches[0].NoBatch.Should().Be("B001");
+        capturedBatches[0].Qty.Should().Be(10);
+        capturedBatches[0].Hpp.Should().Be(500m);
+    }
+
+    [Fact]
+    public void GivenHeaderAndBatchesExist_WhenLoadEntity_ThenHydratesBatchCollection()
+    {
+        var batchDto = new PenjualanItemBatchDto(
+            PenjualanId,
+            $"{PenjualanId}001",
+            $"{PenjualanId}001-01",
+            1,
+            false,
+            "BRG01",
+            10,
+            "TAB",
+            "2027-05-01",
+            "B001",
+            "PO1",
+            "DO1",
+            500m);
+
+        _penjualanDalMock.Setup(x => x.GetData(It.IsAny<IPenjualanKey>())).Returns(BuildHeaderDto());
+        _penjualanItemDalMock.Setup(x => x.ListData(It.IsAny<IPenjualanKey>())).Returns(BuildItemDtos());
+        _penjualanItemBatchDalMock.Setup(x => x.ListData(It.IsAny<IPenjualanKey>())).Returns([batchDto]);
+
+        var result = _sut.LoadEntity(Key());
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: model =>
+            {
+                var item = model.ListItem.Single();
+                item.ListBatch.Should().HaveCount(1);
+                item.ListBatch[0].PenjualanItemBatchId.Should().Be($"{PenjualanId}001-01");
+                item.ListBatch[0].NoBatch.Should().Be("B001");
+                item.ListBatch[0].Hpp.Should().Be(500m);
+            },
+            onNone: () => Assert.Fail("Expected Some but got None"));
     }
 
     [Fact]

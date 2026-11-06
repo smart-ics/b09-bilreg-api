@@ -9,11 +9,23 @@ public class PenjualanRepo : IPenjualanRepo
 {
     private readonly IPenjualanDal _penjualanDal;
     private readonly IPenjualanItemDal _penjualanItemDal;
+    private readonly IPenjualanItemBatchDal _penjualanItemBatchDal;
 
-    public PenjualanRepo(IPenjualanDal penjualanDal, IPenjualanItemDal penjualanItemDal)
+    public PenjualanRepo(
+        IPenjualanDal penjualanDal,
+        IPenjualanItemDal penjualanItemDal,
+        IPenjualanItemBatchDal penjualanItemBatchDal)
     {
         _penjualanDal = penjualanDal;
         _penjualanItemDal = penjualanItemDal;
+        _penjualanItemBatchDal = penjualanItemBatchDal;
+    }
+
+    public PenjualanRepo(
+        IPenjualanDal penjualanDal,
+        IPenjualanItemDal penjualanItemDal)
+        : this(penjualanDal, penjualanItemDal, null!)
+    {
     }
 
     public void SaveChanges(PenjualanModel model)
@@ -27,6 +39,13 @@ public class PenjualanRepo : IPenjualanRepo
         var listItemDto = PenjualanItemDto.FlattenFromModel(model);
         _penjualanItemDal.Delete(model);
         _penjualanItemDal.Insert(listItemDto);
+
+        if (_penjualanItemBatchDal is not null)
+        {
+            var listBatchDto = PenjualanItemBatchDto.FlattenFromModel(model);
+            _penjualanItemBatchDal.Delete(model);
+            _penjualanItemBatchDal.Insert(listBatchDto);
+        }
     }
 
     public MayBe<PenjualanModel> LoadEntity(IPenjualanKey key)
@@ -36,12 +55,14 @@ public class PenjualanRepo : IPenjualanRepo
             return MayBe<PenjualanModel>.None;
 
         var listItem = _penjualanItemDal.ListData(key)?.ToList() ?? [];
-        var model = dto.ToModel(listItem);
+        var listBatch = _penjualanItemBatchDal?.ListData(key)?.ToList() ?? [];
+        var model = dto.ToModel(listItem, listBatch);
         return MayBe.From(model);
     }
 
     public void DeleteEntity(IPenjualanKey key)
     {
+        _penjualanItemBatchDal?.Delete(key);
         _penjualanItemDal.Delete(key);
         _penjualanDal.Delete(key);
     }
@@ -53,8 +74,10 @@ public class PenjualanRepo : IPenjualanRepo
 
         foreach (var dto in listDto)
         {
-            var listItem = _penjualanItemDal.ListData(PenjualanModel.Key(dto.PenjualanId))?.ToList() ?? [];
-            result.Add(dto.ToModel(listItem));
+            var key = PenjualanModel.Key(dto.PenjualanId);
+            var listItem = _penjualanItemDal.ListData(key)?.ToList() ?? [];
+            var listBatch = _penjualanItemBatchDal?.ListData(key)?.ToList() ?? [];
+            result.Add(dto.ToModel(listItem, listBatch));
         }
 
         return result;

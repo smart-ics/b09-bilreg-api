@@ -1,3 +1,4 @@
+using Bilreg.Api.Helpers;
 using Bilreg.Application.SalesContext.PenjualanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -34,4 +35,32 @@ public class PenjualanController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("poli")]
+    public async Task<IActionResult> CreatePoli([FromBody] PenjualanPoliCreateCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("poli/void")]
+    public async Task<IActionResult> VoidPoli([FromBody] PenjualanPoliVoidRequest req)
+    {
+        try
+        {
+            var userAgent = HttpHelper.GetUserAgent(Request);
+            var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+            var cmd = new PenjualanPoliVoidCmd(req.TransaksiId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
+    }
 }
+
+public record PenjualanPoliVoidRequest(string TransaksiId, string UserId, string VoidReason);

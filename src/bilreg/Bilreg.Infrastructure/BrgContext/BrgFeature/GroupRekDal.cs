@@ -29,14 +29,24 @@ public class GroupRekDal : IGroupRekDal
     {
         const string sql = """
             INSERT INTO tb_grup_rek(
-                fs_kd_grup_rek, fs_nm_grup_rek, fs_kd_grup_rek_dk)
+                fs_kd_grup_rek, fs_nm_grup_rek, fs_kd_grup_rek_dk,
+                fs_kd_rekap_cetak, fs_kd_rek_jual, fs_kd_rek_jual_rj,
+                fs_kd_rek_jual_disc, fs_kd_rek_jual_tax, fs_kd_rek_persediaan)
             VALUES( 
-                @fs_kd_grup_rek, @fs_nm_grup_rek, @fs_kd_grup_rek_dk)
+                @fs_kd_grup_rek, @fs_nm_grup_rek, @fs_kd_grup_rek_dk,
+                @fs_kd_rekap_cetak, @fs_kd_rek_jual, @fs_kd_rek_jual_rj,
+                @fs_kd_rek_jual_disc, @fs_kd_rek_jual_tax, @fs_kd_rek_persediaan)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_rek", dto.fs_kd_grup_rek, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_grup_rek", dto.fs_nm_grup_rek, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_grup_rek_dk", dto.fs_kd_grup_rek_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rekap_cetak", dto.fs_kd_rekap_cetak, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual", dto.fs_kd_rek_jual, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_rj", dto.fs_kd_rek_jual_rj, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_disc", dto.fs_kd_rek_jual_disc, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_tax", dto.fs_kd_rek_jual_tax, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_persediaan", dto.fs_kd_rek_persediaan, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -48,7 +58,13 @@ public class GroupRekDal : IGroupRekDal
                tb_grup_rek
            SET
                fs_nm_grup_rek = @fs_nm_grup_rek,
-               fs_kd_grup_rek_dk = @fs_kd_grup_rek_dk
+               fs_kd_grup_rek_dk = @fs_kd_grup_rek_dk,
+               fs_kd_rekap_cetak = @fs_kd_rekap_cetak,
+               fs_kd_rek_jual = @fs_kd_rek_jual,
+               fs_kd_rek_jual_rj = @fs_kd_rek_jual_rj,
+               fs_kd_rek_jual_disc = @fs_kd_rek_jual_disc,
+               fs_kd_rek_jual_tax = @fs_kd_rek_jual_tax,
+               fs_kd_rek_persediaan = @fs_kd_rek_persediaan
            WHERE
                fs_kd_grup_rek = @fs_kd_grup_rek
            """;
@@ -56,6 +72,12 @@ public class GroupRekDal : IGroupRekDal
         dp.AddParam("@fs_kd_grup_rek", dto.fs_kd_grup_rek, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_grup_rek", dto.fs_nm_grup_rek, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_grup_rek_dk", dto.fs_kd_grup_rek_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rekap_cetak", dto.fs_kd_rekap_cetak, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual", dto.fs_kd_rek_jual, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_rj", dto.fs_kd_rek_jual_rj, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_disc", dto.fs_kd_rek_jual_disc, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_jual_tax", dto.fs_kd_rek_jual_tax, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_rek_persediaan", dto.fs_kd_rek_persediaan, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -81,7 +103,13 @@ public class GroupRekDal : IGroupRekDal
                aa.fs_kd_grup_rek,
                aa.fs_nm_grup_rek,
                aa.fs_kd_grup_rek_dk,
-               ISNULL(bb.fs_nm_grup_rek_dk, '') fs_nm_grup_rek_dk
+               ISNULL(bb.fs_nm_grup_rek_dk, '') fs_nm_grup_rek_dk,
+               ISNULL(aa.fs_kd_rekap_cetak, '') fs_kd_rekap_cetak,
+               ISNULL(aa.fs_kd_rek_jual, '') fs_kd_rek_jual,
+               ISNULL(aa.fs_kd_rek_jual_rj, '') fs_kd_rek_jual_rj,
+               ISNULL(aa.fs_kd_rek_jual_disc, '') fs_kd_rek_jual_disc,
+               ISNULL(aa.fs_kd_rek_jual_tax, '') fs_kd_rek_jual_tax,
+               ISNULL(aa.fs_kd_rek_persediaan, '') fs_kd_rek_persediaan
            FROM 
                tb_grup_rek aa
                LEFT JOIN tb_grup_rek_dk bb ON aa.fs_kd_grup_rek_dk = bb.fs_kd_grup_rek_dk
@@ -102,7 +130,13 @@ public class GroupRekDal : IGroupRekDal
                 aa.fs_kd_grup_rek,
                 aa.fs_nm_grup_rek,
                 aa.fs_kd_grup_rek_dk,
-                ISNULL(bb.fs_nm_grup_rek_dk, '') fs_nm_grup_rek_dk
+                ISNULL(bb.fs_nm_grup_rek_dk, '') fs_nm_grup_rek_dk,
+                ISNULL(aa.fs_kd_rekap_cetak, '') fs_kd_rekap_cetak,
+                ISNULL(aa.fs_kd_rek_jual, '') fs_kd_rek_jual,
+                ISNULL(aa.fs_kd_rek_jual_rj, '') fs_kd_rek_jual_rj,
+                ISNULL(aa.fs_kd_rek_jual_disc, '') fs_kd_rek_jual_disc,
+                ISNULL(aa.fs_kd_rek_jual_tax, '') fs_kd_rek_jual_tax,
+                ISNULL(aa.fs_kd_rek_persediaan, '') fs_kd_rek_persediaan
             FROM 
                 tb_grup_rek aa
                 LEFT JOIN tb_grup_rek_dk bb ON aa.fs_kd_grup_rek_dk = bb.fs_kd_grup_rek_dk
