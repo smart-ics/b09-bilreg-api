@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -31,6 +31,8 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
+    <Folder Include="AdmisiRanapContext\InpatientOrderFeature\" />
+    <Folder Include="AdmisiRanapContext\InpatientOrderFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />

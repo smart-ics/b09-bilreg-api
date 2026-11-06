@@ -45,6 +45,8 @@ using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
@@ -163,6 +165,8 @@ public static class InfrastructureService
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
             .AddScoped<IRegistrationHistoryReader, RegistrationHistoryReader>()
             .AddScoped<ICoordinatedCancellationRepo, CoordinatedCancellationRepo>()
+            .AddScoped<IInpatientOrderDal, InpatientOrderDal>()
+            .AddScoped<IInpatientOrderRepo, InpatientOrderRepo>()
             .AddScoped<IOperationalWorklistDal, OperationalWorklistDal>()
             .AddScoped<IJourneyDal, JourneyDal>()
             .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()

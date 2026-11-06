@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
@@ -16,11 +17,20 @@ public sealed record JourneyNormalizedFacts(
     ReservationJourneyFact? Reservation,
     IReadOnlyList<AdmissionJourneyFact> Admissions,
     IReadOnlyList<WaitingListJourneyFact> WaitingLists,
-    bool HasOrphanRegistration = false)
+    bool HasOrphanRegistration = false,
+    InpatientOrderJourneyFact? InpatientOrder = null)
 {
     public static JourneyNormalizedFacts Empty(JourneyOriginKind origin) =>
         new(origin, null, null, null, Array.Empty<AdmissionJourneyFact>(), Array.Empty<WaitingListJourneyFact>());
 }
+
+public sealed record InpatientOrderJourneyFact(
+    string InpatientOrderId,
+    OrderSourceEnum OrderSource,
+    InpatientOrderStatusEnum Status,
+    string FulfilledRegId,
+    DateTime? StatusAt = null,
+    DateTime? CreatedAt = null);
 
 public sealed record OpnameRequestJourneyFact(
     string OpnameRequestId,
@@ -45,7 +55,9 @@ public sealed record AdmissionJourneyFact(
     string? BangsalId = null,
     string? BangsalName = null,
     DateTime? CreatedAt = null,
-    DateTime? UpdatedAt = null);
+    DateTime? UpdatedAt = null,
+    string? InpatientOrderId = null,
+    OrderSourceEnum? OrderSource = null);
 
 public sealed record WaitingListJourneyFact(
     string WaitingListId,

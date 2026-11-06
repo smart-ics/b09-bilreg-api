@@ -13,8 +13,6 @@ public record AdmissionDto(
     string PasienName,
     string TglLahir,
     string Gender,
-    string OpnameRequestId,
-    string ReservationId,
     string KelasDkId,
     string KelasDkName,
     string BangsalId,
@@ -25,7 +23,8 @@ public record AdmissionDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate)
+    DateTime VodDate,
+    string InpatientOrderId = "-")
 {
     public static AdmissionDto FromModel(AdmissionModel model) =>
         new(
@@ -36,8 +35,6 @@ public record AdmissionDto(
             "",
             "3000-01-01",
             "",
-            model.OpnameRequestId,
-            model.ReservationId,
             model.KelasDk.KelasDkId,
             model.KelasDk.KelasDkName,
             model.Bangsal.BangsalId,
@@ -48,7 +45,8 @@ public record AdmissionDto(
             model.AuditTrail.Modified.UserId,
             model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId,
-            model.AuditTrail.Voided.Timestamp);
+            model.AuditTrail.Voided.Timestamp,
+            model.InpatientOrderId);
 
     public AdmissionModel ToModel()
     {
@@ -59,19 +57,25 @@ public record AdmissionDto(
         var pasienName = string.IsNullOrWhiteSpace(PasienName) ? "-" : PasienName;
         var gender = string.IsNullOrWhiteSpace(Gender) ? "-" : Gender;
         var tglLahirRaw = string.IsNullOrWhiteSpace(TglLahir) ? "3000-01-01" : TglLahir;
-        var pasien = new PasienReff(PasienId, pasienName, DateOnly.Parse(tglLahirRaw), gender);
+        DateOnly parsedTglLahir;
+        if (DateTime.TryParse(tglLahirRaw, out var dt))
+            parsedTglLahir = DateOnly.FromDateTime(dt);
+        else if (!DateOnly.TryParse(tglLahirRaw, out parsedTglLahir))
+            parsedTglLahir = new DateOnly(3000, 1, 1);
+        var pasien = new PasienReff(PasienId, pasienName, parsedTglLahir, gender);
         var kelasDk = new KelasDkType(KelasDkId, KelasDkName);
         var bangsal = new BangsalReff(BangsalId, BangsalName);
         return new AdmissionModel(
             RegId,
             (AdmissionStatusEnum)AdmissionStatus,
             pasien,
-            OpnameRequestId,
-            ReservationId,
+            "-",
+            "-",
             kelasDk,
             bangsal,
             AdmissionDate,
             audit,
-            (AdmissionSourceEnum)AdmissionSource);
+            (AdmissionSourceEnum)AdmissionSource,
+            InpatientOrderId);
     }
 }

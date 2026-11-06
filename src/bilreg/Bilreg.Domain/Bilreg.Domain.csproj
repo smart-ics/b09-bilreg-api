@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -31,6 +31,7 @@
     <Folder Include="BedUsageContext\BedOperationalFeature\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
+    <Folder Include="AdmisiRanapContext\InpatientOrderFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\Shared\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
