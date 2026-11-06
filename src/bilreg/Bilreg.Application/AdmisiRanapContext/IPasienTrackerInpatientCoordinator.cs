@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 
@@ -17,6 +18,10 @@ public interface IPasienTrackerInpatientCoordinator
         ReservationModel reservation,
         DateTime occurredAt = default);
 
+    PasienTrackerModel RecordReservationCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default);
+
     PasienTrackerModel RecordOpnameRequestCreated(
         string personName,
         DateOnly tglLahir,
@@ -28,12 +33,25 @@ public interface IPasienTrackerInpatientCoordinator
         OpnameRequestModel opnameRequest,
         DateTime occurredAt = default);
 
+    PasienTrackerModel RecordOpnameRequestCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default);
+
+    PasienTrackerModel RecordInpatientOrderCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default);
+
     PasienTrackerModel RecordAdmissionRegistered(
         string personName,
         DateOnly tglLahir,
         DateOnly visitDate,
         string regId,
         string? sourceRefId = null,
+        DateTime occurredAt = default);
+
+    PasienTrackerModel RecordAdmissionRegistered(
+        InpatientOrderModel order,
+        string regId,
         DateTime occurredAt = default);
 
     PasienTrackerModel RecordAdmissionRegistered(

@@ -205,7 +205,10 @@ public class AdmissionControllerTest
             new KelasDkType("KDK01", "Kelas 1"),
             new BangsalReff("B01", "Bangsal A"),
             DateTime.UtcNow,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            "8",
+            "DOK01",
+            "1");
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<AdmGetAdmissionQry>(q => q.RegId == "ADM01"), It.IsAny<CancellationToken>()))
