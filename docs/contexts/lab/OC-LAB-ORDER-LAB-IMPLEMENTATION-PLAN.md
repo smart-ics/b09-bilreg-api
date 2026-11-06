@@ -4,7 +4,7 @@ Code: OC-LAB-ORDER-LAB
 Artifact: IMPLEMENTATION-PLAN
 Version: 2.0
 LastUpdated: 2026-11-06
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -80,11 +80,11 @@ Slice dependency rules:
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 - Backend Configuration & Options | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P2 - Backend Command & Contract Extension | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P3 - Backend Real Infrastructure Integration | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| P4 - Backend API Verification | NOT-STARTED | NOT-REVIEWED | 0/1 |
-| P5 - Frontend Interactive Activation Dialog | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P1 - Backend Configuration & Options | IMPLEMENTED | GO | 1/1 |
+| P2 - Backend Command & Contract Extension | IMPLEMENTED | GO | 1/1 |
+| P3 - Backend Real Infrastructure Integration | IMPLEMENTED | GO | 2/2 |
+| P4 - Backend API Verification | IMPLEMENTED | GO | 1/1 |
+| P5 - Frontend Interactive Activation Dialog | IMPLEMENTED | GO | 1/1 |
 
 ---
 
@@ -281,8 +281,8 @@ Changed Files:
 
 ### P5-S06
 Title: Enhance LabActivateDeferredDialog with Active Visit Detection and Selection
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 Memperbarui antarmuka dialog aktivasi deferred order `LabActivateDeferredDialog.vue` di `c012_myhospital_web`:
@@ -307,6 +307,28 @@ Completion Criteria:
 
 Notes:
 - Menggunakan komponen UI standar yang telah ada di `src/shared/components/ui/`.
+
+Implementation Notes:
+- Di `lab-order.schema.ts`: Memperbarui `labOrderActivateDeferredCmdSchema` dengan field opsional `executionRegId?: string` dan mengekspor tipe `LabOrderView`.
+- Di `LabOrderService.ts`: Memperbarui mutasi `useActivateDeferredMutation` agar menerima `executionRegId?: string` dalam payload mutasi.
+- Di `useLabWorkflow.ts`: Memperbarui `executeActivateDeferred(executionRegId?: string)` untuk meneruskan `executionRegId` ke mutasi aktivasi dan mengekspos `selectedOrder: orderDetail` pada kembalian composable.
+- Di `LabWorkflowView.vue`: Menghubungkan `:selected-order="workflow.selectedOrder"` ke `<LabActivateDeferredDialog>`.
+- Di `LabActivateDeferredDialog.vue`: Mengimplementasikan alur interaktif deteksi kunjungan aktif:
+  - Mengambil data kunjungan aktif via `useRegistrasiService().useRegAktifByPasienId(patientId)`.
+  - Menampilkan selector radio button saat kunjungan aktif > 1 dan mewajibkan pemilihan sebelum tombol aktifkan diaktifkan.
+  - Menampilkan info binding otomatis saat registrasi aktif tepat 1 (`{regId} - {layananName}`).
+  - Menangani kondisi 0 kunjungan aktif: menampilkan alert peringatan edukasi pendaftaran Loket Admisi dan mendisable tombol aktivasi untuk pasien BPJS/Asuransi vs info auto-generate kunjungan lab baru untuk pasien Umum.
+- Menambahkan unit test komprehensif pada `LabActivateDeferredDialog.spec.ts` (7 tests, 100% passed).
+- Verifikasi frontend (`prettier`, `pnpm tc:app`, `pnpm test`, `eslint`, `oxlint`) lulus tanpa error.
+
+Changed Files:
+- `c012_myhospital_web/src/modules/Laboratory/types/lab-order.schema.ts`
+- `c012_myhospital_web/src/modules/Laboratory/queries/LabOrderService.ts`
+- `c012_myhospital_web/src/modules/Laboratory/composables/useLabWorkflow.ts`
+- `c012_myhospital_web/src/modules/Laboratory/views/LabWorkflowView.vue`
+- `c012_myhospital_web/src/modules/Laboratory/components/dialogs/LabActivateDeferredDialog.vue`
+- `c012_myhospital_web/src/modules/Laboratory/__tests__/LabActivateDeferredDialog.spec.ts`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-ORDER-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
