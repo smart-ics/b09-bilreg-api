@@ -164,3 +164,115 @@ Results:      Server structure → client values only
 Billing:      1 Order → 1 Tindakan → N Tarif lines
 Compat:       None (pre-release, replace in place)
 ```
+
+
+---
+
+# 7. Phase 1 (P1-S02): Audit & Sinkronisasi Master LabTestDefinition Terhadap Master Tarif Lab Aktif
+
+> **Plan Reference:** [LAB-EMR-ORDER-INTEGRATION-IMPLEMENTATION-PLAN.md](LAB-EMR-ORDER-INTEGRATION-IMPLEMENTATION-PLAN.md) (Slice `P1-S02`)  
+> **Target Date:** 2026-11-03  
+> **Status:** AUDITED & VERIFIED  
+> **Audit Script:** [`src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql)  
+> **Seed / Migration Tool:** [`src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/Data/ImportLegacyLabTestDefinition.sql`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/Data/ImportLegacyLabTestDefinition.sql)
+
+---
+
+## 7.1 Objective & Clinical Safety Rationale
+
+Pada arsitektur integrasi EMR Medical Chart (`orderLab.js` dan `chartNote.js`) ke Bilreg Laboratory Workflow Feature (`b09-bilreg-api`), EMR mengirimkan permintaan order hanya berbekal array tarif tindakan:
+```json
+"items": [
+  { "tarifId": "LAB0001", "tarifName": "Darah Lengkap" }
+]
+```
+
+Backend Bilreg ([`LabTestResolutionService.cs`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabOrderFeature/LabTestResolutionService.cs)) mengemban tanggung jawab tunggal untuk menyelesaikan (*resolve*) setiap `TarifId` menjadi definisi pemeriksaan laboratorium definitif (`BILRG_LabTestDefinition`), menentukan tabung vacutainer, jenis spesimen, dan himpunan analit hasil (`BILRG_LabTestComponent` yang merujuk ke `BILRG_LabComponentMaster`).
+
+### Bahaya Jika Data Master Tidak Selaras:
+1. **`LAB_TEST_DEFINITION_NOT_FOUND`**: Terjadi jika dokter memilih tarif pada modal pencarian EMR yang belum pernah didaftarkan pada tabel `BILRG_LabTestDefinition`.
+2. **`LAB_TEST_DEFINITION_INACTIVE`**: Terjadi jika tarif terdaftar di `BILRG_LabTestDefinition` namun berstatus `IsActive = 0` (misal komponen belum selesai dipetakan).
+3. **`LAB_TEST_DEFINITION_EMPTY_COMPONENTS`**: Terjadi jika definisi aktif tetapi tidak memiliki satu pun baris analit di `BILRG_LabTestComponent`.
+4. **`LAB_COMPONENT_NOT_FOUND` / `LAB_COMPONENT_INACTIVE`**: Terjadi jika baris komponen merujuk ke `ComponentId` yang tidak terdaftar atau non-aktif di master vendor `BILRG_LabComponentMaster`.
+
+Audit ini memastikan seluruh tarif laboratorium aktif di katalog rumah sakit (`TA_TARIF`) telah terverifikasi, terpetakan, dan memenuhi seluruh *domain invariants* sebelum fitur pemesanan EMR diaktifkan di poli dan bangsal rawat inap.
+
+---
+
+## 7.2 Spesifikasi Skrip Audit Master Tarif
+
+Telah disusun skrip audit komprehensif pada repositori database Bilreg:
+📁 **[`src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.SqlDb/LabContext/LabTestDefinitionFeature/BILRG_LabTestDefinition_AuditMasterTarif.sql)**
+
+### Fitur Utama Skrip Audit:
+1. **Read-Only & Safe Execution**: Skrip tidak mengubah data (*zero-side-effect*), aman dieksekusi berkala pada database staging maupun production.
+2. **Executive KPI Scorecard**: Menampilkan metrik kesehatan pemetaan:
+   - Total tarif laboratorium di katalog `TA_TARIF`
+   - Jumlah tarif `ALIGNED_READY` (Siap 100%)
+   - Jumlah tarif `INACTIVE_DRAFT` (Draft / perlu review)
+   - Jumlah tarif `UNMAPPED` (Berisiko fatal `LAB_TEST_DEFINITION_NOT_FOUND`)
+   - Jumlah tarif `DEFECTIVE` (Cacat struktural)
+   - Persentase kesiapan integrasi (*Readiness Percentage*)
+3. **Deteksi Runtime Exception**: Mengklasifikasikan setiap anomali data ke nama exception C# spesifik yang akan dipicu pada use case `LabOrderCreateFromEmrCmd`.
+4. **Checklist Panel Rutin Rumah Sakit**: Memeriksa ketersediaan paket pemeriksaan standar klinis.
+5. **Remediation Script Generator**: Menghasilkan template SQL siap-pakai bagi tim TI/Lab untuk meregistrasi tarif baru.
+
+---
+
+## 7.3 Hasil Audit & Status Penyelarasan Master Panel Rutin
+
+Berdasarkan audit terhadap katalog master tarif laboratorium dan data seed `ImportLegacyLabTestDefinition.sql` & `BILRG_LabComponentMaster.dataseed.sql`:
+
+| Kode Panel | Nama Panel Pemeriksaan | Target Spesimen & Vacutainer | Analit Utama (`BILRG_LabComponentMaster`) | Status Audit | Kesiapan EMR |
+|---|---|---|---|:---:|:---:|
+| **DARAH_RUTIN** | Darah Rutin / Darah Lengkap (CBC) | Darah<br>`1: EDTA (Ungu)` | Hb (`MLC0001`), Leukosit (`MLC0002`), Eritrosit (`MLC0003`), Trombosit (`MLC0004`), Hematokrit (`MLC000D`), MCV (`MLC000E`), MCH (`MLC000F`), MCHC (`MLC0010`), Diff Count (`MLC0012`–`MLC0016`), LED (`MLC001C`) | **ALIGNED** | **READY** |
+| **PROFIL_LIPID** | Profil Lipid Lengkap | Darah<br>`2: Serum (Kuning/Merah)` | Kolesterol Total (`MLC000A`), Trigliserida (`MLC004F`), HDL (`MLC004D`), LDL (`MLC004E`) | **ALIGNED** | **READY** |
+| **FUNGSI_HATI** | Uji Fungsi Hati (LFT) | Darah<br>`2: Serum (Kuning/Merah)` | SGOT/AST (`MLC0009`), SGPT/ALT (`MLC0008`), Bilirubin Total (`MLC0027`), Bilirubin Direk (`MLC0028`), Albumin (`MLC002D`), Globulin (`MLC002F`), Alkali Fosfatase (`MLC002A`) | **ALIGNED** | **READY** |
+| **FUNGSI_GINJAL** | Uji Fungsi Ginjal & Asam Urat | Darah<br>`2: Serum (Kuning/Merah)` | Ureum/BUN (`MLC0006`), Kreatinin (`MLC0007`), Asam Urat (`MLC0033`) | **ALIGNED** | **READY** |
+| **GLUKOSA** | Pemantauan Diabetes & Glukosa | Darah<br>`2: Serum (Kuning/Merah)` | Glukosa Darah Puasa/2JPP/GDS (`MLC0005`), HbA1c (`MLC0037`) | **ALIGNED** | **READY** |
+| **URINALISIS** | Urinalisis Lengkap & Sedimen | Urine<br>`0: None / Pot` | pH (`MLC000B`), Berat Jenis (`MLC0094`), Protein (`MLC008E`), Glukosa (`MLC008F`), Keton (`MLC0090`), Bilirubin (`MLC0096`), Urobilinogen (`MLC0095`), Nitrit (`MLC0092`), Leukosit (`MLC0093`), Darah (`MLC0091`), Sedimen Eritrosit/Leukosit/Silinder/Kristal (`MLC0097`–`MLC009B`) | **ALIGNED** | **READY** |
+| **ELEKTROLIT** | Elektrolit Serum | Darah<br>`2: Serum (Kuning/Merah)` | Natrium (`MLC0054`), Kalium (`MLC0055`), Klorida (`MLC0056`), Kalsium (`MLC0034`), Magnesium (`MLC0036`) | **ALIGNED** | **READY** |
+| **IMUNOSEROLOGI** | Infeksi & Penyakit Menular | Darah<br>`2: Serum (Kuning/Merah)` | HBsAg (`MLC0069`), Anti-HBs (`MLC006A`), Anti-HIV (`MLC0070`), VDRL/Syphilis (`MLC0073`), Widal S. Typhi (`MLC007A`/`MLC007B`), Dengue / Typhidot (`MLC0078`) | **ALIGNED** | **READY** |
+| **HEMOSTASIS** | Faktor Pembekuan Darah | Darah<br>`3: Citrate (Biru)` / `1: EDTA` | Bleeding Time / BT (`MLC0042`), Clotting Time / CT (`MLC0043`), PT (`MLC0040`), APTT (`MLC0041`), Fibrinogen (`MLC0044`) | **ALIGNED** | **READY** |
+
+---
+
+## 7.4 Penanganan Tarif Unmapped & Prosedur Tata Kelola (Governance Protocol)
+
+Apabila rumah sakit menerbitkan tarif laboratorium baru pada billing (`TA_TARIF`) atau jika ditemukan tarif unmapped saat klinisi memesan tes di EMR, seluruh pihak wajib mematuhi protokol penanganan berikut:
+
+```mermaid
+flowchart TD
+    A["Klinisi Memilih Tarif di EMR (orderLab.js)"] --> B{"Tersedia di BILRG_LabTestDefinition & IsActive = 1?"}
+    B -- Ya --> C["Order Berhasil Diterbitkan (OrderNo Terbit)"]
+    B -- Tidak (Unmapped / Inactive) --> D["API Mengembalikan HTTP 400 / 500 (LAB_TEST_DEFINITION_NOT_FOUND)"]
+    D --> E["UI EMR Menampilkan Alert Ramah & Nama Tarif yang Bermasalah"]
+    E --> F["Dokter Menghubungi Helpdesk TI / Laboratorium"]
+    F --> G["Admin TI Menjalankan BILRG_LabTestDefinition_AuditMasterTarif.sql"]
+    G --> H["Petakan Analit ke BILRG_LabComponentMaster (MLCxxxx)"]
+    H --> I["Insert ke BILRG_LabTestDefinition & BILRG_LabTestComponent"]
+    I --> J["Verifikasi Ulang & Tes Transmisi EMR Berhasil"]
+```
+
+### 1. Perlindungan Sisi Frontend EMR (Layer Pengguna)
+- Pada [chartNote.js](file:///D:/Project.Aktif/_emr/c001_emr2_frontend/assets/js/MedicalChart/chartNote.js) (diimplementasikan pada Slice P2-S03 & P2-S04), respons error `LAB_TEST_DEFINITION_NOT_FOUND` atau `LAB_TEST_DEFINITION_INACTIVE` ditangkap secara terstruktur.
+- UI menampilkan SweetAlert modal:
+  > *"Pemeriksaan laboratorium '[Nama Tarif]' belum terkonfigurasi di sistem laboratorium Bilreg. Silakan hubungi bagian Laboratorium / SIMRS untuk aktivasi pemetaan paket uji."*
+- Hal ini mencegah terjadinya error *silent drop* di mana rekam medis tercatat namun permintaan lab tidak pernah diterima pihak laboratorium.
+
+### 2. Standar Operasional Prosedur (SOP) Registrasi Tarif Baru di Bilreg
+Setiap penambahan tarif laboratorium baru di SIMRS wajib melalui langkah provisioning berikut sebelum tarif dibuka ke formulir EMR:
+1. **Pemeriksaan Komponen Analit**:
+   - Periksa apakah analit pemeriksaan sudah tercakup pada tabel `BILRG_LabComponentMaster` (169 komponen standar).
+   - Jika belum ada, daftarkan analit baru ke `BILRG_LabComponentMaster` dengan menerbitkan kode hex sequential berikutnya (`MLC00A9`, `MLC00AA`, dst.).
+2. **Penerbitan Definisi Uji (`BILRG_LabTestDefinition`)**:
+   - Terbitkan kode `TestDefinitionId` dengan pola `LTD` + 4 karakter hex (`LTD0001`, `LTD0002`, ...).
+   - Tentukan jenis tabung vacutainer (`1=EDTA`, `2=Serum`, `3=Citrate`, `4=Heparin`) dan jenis spesimen (`Darah`, `Urine`, `Feces`, `Sputum`, `CSF`).
+   - Masukkan relasi ke `TarifId` yang bersesuaian.
+3. **Penyusunan Komponen Uji (`BILRG_LabTestComponent`)**:
+   - Masukkan seluruh analit penyusun ke tabel `BILRG_LabTestComponent`.
+   - Pastikan nomor urut (`SequenceNo`) dimulai dari 1 berurutan tanpa duplikasi.
+   - Atur `IsMandatory = 1` dan `IsActive = 1` pada definisi uji.
+4. **Verifikasi Akhir**:
+   - Jalankan skrip `BILRG_LabTestDefinition_AuditMasterTarif.sql`.
+   - Pastikan status tarif berubah menjadi `ALIGNED_READY` dengan 0 defect.

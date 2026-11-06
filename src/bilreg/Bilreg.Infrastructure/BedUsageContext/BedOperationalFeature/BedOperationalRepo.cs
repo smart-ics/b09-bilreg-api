@@ -1,6 +1,7 @@
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
 
@@ -22,6 +23,7 @@ public sealed class BedOperationalRepo : IBedOperationalRepo
 
     public void SaveChanges(BedOperationalModel model)
     {
+        using var trans = TransHelper.NewScope();
         var storedHeader = _headerDal.GetData(model);
         var headerDto = BedOperationalDto.FromModel(model);
 
@@ -38,6 +40,7 @@ public sealed class BedOperationalRepo : IBedOperationalRepo
 
         InsertNewTransactions(model);
         InsertNewCorrections(model);
+        trans.Complete();
     }
 
     public MayBe<BedOperationalModel> LoadEntity(IBedOperationalKey key)
@@ -76,7 +79,8 @@ public sealed class BedOperationalRepo : IBedOperationalRepo
             .ToHashSet(StringComparer.Ordinal);
         var rows = model.ListReadinessTransaction
             .Where(x => !existingIds.Contains(x.TransactionId))
-            .Select(BedReadinessTransactionDto.FromModel);
+            .Select(BedReadinessTransactionDto.FromModel)
+            .ToList();
         _transactionDal.Insert(rows);
     }
 

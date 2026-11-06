@@ -45,6 +45,21 @@ public class AdmissionController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("direct")]
+    public async Task<IActionResult> ProcessFromDirect([FromBody] AdmProcessDirectAdmissionBody body)
+    {
+        var cmd = new AdmProcessDirectAdmissionCmd(
+            body.PasienId,
+            body.KelasDkId,
+            body.BangsalId,
+            body.UserId,
+            body.Registration,
+            body.KelasId,
+            body.Priority);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] AdmUpdateAdmissionBody body)
     {
@@ -71,7 +86,8 @@ public class AdmissionController : ControllerBase
                 body.ExpectedUpdatedAt,
                 body.RequestId!.Trim(),
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers.UserAgent.FirstOrDefault());
+                Request.Headers.UserAgent.FirstOrDefault(),
+                body.VoidSource ?? false);
             var result = await _mediator.Send(command);
             return Ok(new JSendOk(result));
         }
@@ -134,9 +150,10 @@ public class AdmissionController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Lookup(
         [FromQuery] AdmissionStatusEnum? status,
-        [FromQuery] string? pasienId)
+        [FromQuery] string? pasienId,
+        [FromQuery] string? search)
     {
-        var result = await _mediator.Send(new AdmLookupAdmissionQry(status, pasienId));
+        var result = await _mediator.Send(new AdmLookupAdmissionQry(status, pasienId, search));
         return Ok(new JSendOk(result));
     }
 
@@ -162,6 +179,15 @@ public record AdmProcessReservationBody(
     string UserId,
     AdmissionRegistrationData Registration);
 
+public record AdmProcessDirectAdmissionBody(
+    string PasienId,
+    string KelasDkId,
+    string BangsalId,
+    string UserId,
+    AdmissionRegistrationData Registration,
+    string? KelasId = null,
+    int Priority = 3);
+
 public record AdmUpdateAdmissionBody(
     string KelasDkId,
     string BangsalId,
@@ -172,7 +198,8 @@ public record AdmCoordinatedCancelBody(
     string? UserId,
     AdmissionStatusEnum? ExpectedAdmissionStatus,
     DateTime? ExpectedUpdatedAt,
-    string? RequestId);
+    string? RequestId,
+    bool? VoidSource = false);
 
 public record CancellationJSendFailure(string Status, CancellationErrorData Data);
 public record CancellationErrorData(string Code, string Message, string[]? Blockers, string? CorrelationId);

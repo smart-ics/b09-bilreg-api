@@ -24,6 +24,9 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        if (!Request.Headers.ContainsKey("Authorization"))
+            return Task.FromResult(AuthenticateResult.NoResult());
+
         if (!IsAuthenticated)
             return Task.FromResult(AuthenticateResult.Fail("Not authenticated"));
 

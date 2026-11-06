@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Nuna.Lib.DataAccessHelper;
 
@@ -11,5 +11,6 @@ public interface ITindakanRepo :
     IListData<TindakanView, IRegKey>
 {
     IEnumerable<TindakanJualView> ListDataTdkJual(IRegKey regKey);
+    void UpdatePetugas(string tindakanId, string ppaId, string userId);
+    string GetPetugasName(string ppaId);
 }
-

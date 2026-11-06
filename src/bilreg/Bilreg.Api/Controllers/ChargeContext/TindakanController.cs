@@ -1,9 +1,9 @@
 using Bilreg.Api.Helpers;
+using Bilreg.Application.BedUsageContext.BhpRanapFeature.UseCases;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.OpenApi.Services;
 using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.ChargeContext;
@@ -27,11 +27,55 @@ public class TindakanController : Controller
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
+
+    [NonAction]
+    public Task<IActionResult> CreateTindakan(TdkCreateTindakanCmd cmd) => Create(cmd);
+
     [HttpPost]
     [Route("save")]
     public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
     {
         var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("update-petugas")]
+    public async Task<IActionResult> UpdatePetugas([FromBody] TindakanUpdatePetugasRequest req)
+    {
+        var resolvedTindakanId = !string.IsNullOrWhiteSpace(req.TindakanId)
+            ? req.TindakanId
+            : (req.TransaksiId ?? "");
+
+        var uid = !string.IsNullOrWhiteSpace(req.UserId)
+            ? req.UserId
+            : (User.Identity?.Name ?? "admin");
+
+        var cmd = new TdkUpdatePetugasCmd(resolvedTindakanId, req.PpaId, uid);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [NonAction]
+    public Task<IActionResult> UpdatePetugasMedis([FromBody] TindakanUpdatePetugasRequest req) => UpdatePetugas(req);
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> Get(string id)
+    {
+        var query = new TindakanGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [NonAction]
+    public Task<IActionResult> GetTindakan(string id) => Get(id);
+
+    [HttpGet]
+    [Route("list/{regId}")]
+    public async Task<IActionResult> List(string regId, [FromQuery] string? pakaiBedId = null)
+    {
+        var query = new TindakanListQuery(regId, pakaiBedId ?? "");
+        var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
 
@@ -43,17 +87,74 @@ public class TindakanController : Controller
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+
+    [NonAction]
+    public Task<IActionResult> ListTindakanJual(string regId) => ListTdkJual(regId);
     
-    [HttpPatch]
-    [Route("batal")]
-    public async Task<IActionResult> Batal(TindakanVoidRequest req)
+    [HttpPatch("batal")]
+    public async Task<IActionResult> Batal([FromBody] TindakanVoidRequest req)
     {
-        var userAgent = HttpHelper.GetUserAgent(Request);
-        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
-        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        return await ExecuteVoid(req);
+    }
+
+    private async Task<IActionResult> ExecuteVoid(TindakanVoidRequest req)
+    {
+        try
+        {
+            var userAgent = HttpContext is null ? "" : HttpHelper.GetUserAgent(Request);
+            var remoteIpAddress = HttpContext is null ? "0.0.0.0" : HttpHelper.GetIpAddress(Request, HttpContext);
+
+            var resolvedTindakanId = !string.IsNullOrWhiteSpace(req.TindakanId)
+                ? req.TindakanId
+                : (req.TransaksiId ?? "");
+
+            var uid = !string.IsNullOrWhiteSpace(req.UserId)
+                ? req.UserId
+                : (User.Identity?.Name ?? "admin");
+
+            var reason = !string.IsNullOrWhiteSpace(req.VoidReason)
+                ? req.VoidReason
+                : (!string.IsNullOrWhiteSpace(req.Alasan) ? req.Alasan : "Pembatalan tindakan");
+
+            if (resolvedTindakanId.StartsWith("BHR", StringComparison.OrdinalIgnoreCase))
+            {
+                var bhCmd = new BhpRanapVoidCmd(resolvedTindakanId, uid, reason);
+                await _mediator.Send(bhCmd);
+                return Ok(new JSendOk("Done"));
+            }
+
+            var cmd = new TindakanVoidCmd(resolvedTindakanId, uid, reason, remoteIpAddress, userAgent);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return StatusCode(StatusCodes.Status404NotFound, new JSend(StatusCodes.Status404NotFound, "FAIL", ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status400BadRequest, new JSend(StatusCodes.Status400BadRequest, "FAIL", ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSend(StatusCodes.Status422UnprocessableEntity, "FAIL", ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new JSend(StatusCodes.Status500InternalServerError, "ERROR", ex.Message));
+        }
     }
 }
 
-public record TindakanVoidRequest(string TindakanId, string UserId, string VoidReason);
+public record TindakanVoidRequest(
+    string? TindakanId, 
+    string? UserId = null, 
+    string? VoidReason = null,
+    string? TransaksiId = null,
+    string? Alasan = null);
+
+public record TindakanUpdatePetugasRequest(
+    string TindakanId,
+    string PpaId,
+    string? UserId = null,
+    string? TransaksiId = null);

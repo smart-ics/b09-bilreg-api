@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -127,6 +127,8 @@ public class PolisDal : IPolisDal
             SELECT
                 aa.fs_kd_polis, aa.fs_no_polis, aa.fs_atas_nama, 
                 aa.fs_kd_tipe_jaminan, aa.fd_expired AS fd_tgl_expired,
+                ISNULL(aa.fs_kd_kelas_ri, '') AS fs_kd_kelas_ri,
+                ISNULL(ee.fs_nm_kelas, '') AS fs_nm_kelas,
                 ISNULL(bb.fs_mr, '') AS fs_mr,
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
                 ISNULL(cc.fd_tgl_lahir, '') AS fd_tgl_lahir,
@@ -137,6 +139,7 @@ public class PolisDal : IPolisDal
                 LEFT JOIN ta_polis_cover bb ON aa.fs_kd_polis = bb.fs_kd_polis
                 LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
                 LEFT JOIN ta_tipe_jaminan dd ON aa.fs_kd_tipe_jaminan = dd.fs_kd_tipe_jaminan
+                LEFT JOIN ta_kelas ee ON aa.fs_kd_kelas_ri = ee.fs_kd_kelas
             WHERE 
                 bb.fs_mr = @fs_mr
             """;

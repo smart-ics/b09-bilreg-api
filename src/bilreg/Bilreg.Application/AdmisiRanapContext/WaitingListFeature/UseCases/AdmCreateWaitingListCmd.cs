@@ -55,8 +55,11 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
             .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
 
         if (_waitingListRepo.HasActiveByRegId(request.RegId))
-            throw new InvalidOperationException(
-                $"Admission '{request.RegId}' sudah memiliki Waiting List aktif.");
+        {
+            var existing = _waitingListRepo.LoadActiveByRegId(request.RegId);
+            if (existing.HasValue)
+                return Task.FromResult(new AdmCreateWaitingListResponse(existing.Value.WaitingListId));
+        }
 
         var kelas = _wardGateway.ResolveKelas(request.KelasId);
         var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);

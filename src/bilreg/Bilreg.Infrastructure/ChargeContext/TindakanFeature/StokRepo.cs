@@ -14,7 +14,7 @@ public class StokRepo : IStokRepo
 
     public IEnumerable<StokView> ListData(ILayananKey filter1, string filter2)
     {
-        return filter2.Length >= 3 
+        return filter2.Length >= 2 
             ? _stokDal.ListData(filter1, filter2)
             : [];
     }

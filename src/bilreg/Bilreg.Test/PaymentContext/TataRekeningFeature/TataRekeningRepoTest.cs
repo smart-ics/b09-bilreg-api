@@ -7,6 +7,7 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Xunit;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
@@ -78,6 +79,20 @@ public class TataRekeningRepoTest
         _paymentDalMock.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
         _paymentDalMock.Verify(x => x.Insert(It.IsAny<IEnumerable<TaRegistrasi3Dto>>()), Times.Once);
         model.Version.Should().Be(4);
+    }
+
+    [Fact]
+    public void GivenPaymentWithDefaultOrByKasCoa_WhenSaveChanges_ThenPaymentDalReceives1499901()
+    {
+        var model = BuildModel(payments: [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, new CoaType("BYKAS", "BYKAS"))]);
+        _headerDalMock
+            .Setup(x => x.GetData(It.IsAny<IRegKey>()))
+            .Returns((BilrgTataRekeningDto)null!);
+
+        _sut.SaveChanges(model);
+
+        _paymentDalMock.Verify(x => x.Insert(It.Is<IEnumerable<TaRegistrasi3Dto>>(rows =>
+            rows.Any(r => r.fs_kd_bayar == "BYKAS" && r.fs_kd_rek == "1499901"))), Times.Once);
     }
 
     [Fact]

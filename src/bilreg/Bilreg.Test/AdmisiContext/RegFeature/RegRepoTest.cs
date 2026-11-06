@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -55,6 +56,8 @@ public class RegRepoTest
             {
                 reg.KelasDk.KelasDkId.Should().Be("1");
                 reg.Bangsal.BangsalId.Should().Be("B1");
+                reg.JenisInap.JenisInapId.Should().Be("1");
+                reg.RegIbu.Should().Be("REG-IBU");
             },
             onNone: () => Assert.Fail("Expected RegModel"));
     }
@@ -78,6 +81,78 @@ public class RegRepoTest
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*lebih dari satu Bangsal*");
+    }
+
+    [Fact]
+    public void GivenNonExistentReg_WhenLoadReff_ThenReturnsNone()
+    {
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+
+        var result = CreateSut().LoadReff(RegModel.Key("RG_NONEXISTENT"));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenVoidReg_WhenLoadReff_ThenReturnsNone()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap) with { fd_tgl_void = "2026-07-08" };
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenDischargedReg_WhenLoadReff_ThenReturnsNone()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap) with { fd_tgl_keluar = "2026-07-08" };
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenActiveRegInap_WhenLoadReff_ThenReturnsRegReffAndDoesNotCallBangsalRepo()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+
+        var result = CreateSut().LoadReff(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg =>
+            {
+                reg.RegId.Should().Be(dto.fs_kd_reg);
+                reg.PasienId.Should().Be(dto.fs_mr);
+                reg.PasienName.Should().Be(dto.fs_nm_pasien);
+            },
+            onNone: () => Assert.Fail("Expected RegReff"));
+        _bangsalRepo.Verify(x => x.ListData(It.IsAny<ILayananKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenRegInapWithAdmission_WhenMultipleBangsalForLayanan_ThenResolvesBangsalFromAdmission()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+        _kelasRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
+            .Returns(MayBe.From(new KelasType("KLS1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"))));
+        _bangsalRepo
+            .Setup(x => x.GetByRegId(dto.fs_kd_reg))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1"))));
+
+        var result = CreateSut().LoadEntity(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg => reg.Bangsal.BangsalId.Should().Be("B1"),
+            onNone: () => Assert.Fail("Expected RegModel"));
     }
 
     [Fact]
@@ -122,6 +197,30 @@ public class RegRepoTest
         _regKomponenDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGINAP0001")), Times.Once);
         _regKomponenDal.Verify(x => x.Insert(It.IsAny<IEnumerable<RegKomponenDto>>()), Times.Never);
         _regJaminanDal.Verify(x => x.Insert(It.IsAny<RegJaminanDto>()), Times.Once);
+    }
+
+    [Fact]
+    public void GivenRawatInapRegistration_WhenSaveChanges_ThenDoesNotDeleteHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegInap, "RGINAP0001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNonRawatInapRegistration_WhenSaveChanges_ThenDeletesHistoryDokter()
+    {
+        var model = CreateRegModel(JenisRegEnum.RegJalan, "RGJALAN001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+
+        CreateSut().SaveChanges(model);
+
+        _regHistoryDokterDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGJALAN001")), Times.Once);
     }
 
     [Fact]
@@ -223,6 +322,8 @@ public class RegRepoTest
             "2026-07-07 08:00:00",
             "3000-01-01 00:00:00",
             0,
+            "1",
+            "REG-IBU",
             "Pasien Test",
             "1990-01-01",
             "L",

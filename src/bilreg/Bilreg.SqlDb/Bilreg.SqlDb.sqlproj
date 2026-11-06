@@ -107,6 +107,7 @@
     <Folder Include="BedUsageContext\BedOperationalFeature\" />
     <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
+    <Folder Include="BedUsageContext\WaitingListFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
     <Folder Include="InventoryContext\StockLedgerFeature\" />
     <Folder Include="InventoryContext\" />
@@ -125,6 +126,7 @@
     <Folder Include="LabContext\LabOrderFeature\" />
     <Folder Include="LabContext\LabComponentMasterFeature\" />
     <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
+    <Folder Include="LabContext\LabExternalFeature\" />
     <Folder Include="LabContext\LabTestDefinitionFeature\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
   </ItemGroup>
@@ -135,8 +137,7 @@
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCaseStateHist.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OrderOp.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\ta_jenis_operasi.sql" />
-    <None Include="BedUsageContext\WardFeature\BILRG_RoomCat.sql" />
-    <None Include="BedUsageContext\WardFeature\BILRG_RoomCatDataSeed.sql" />
+
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest.sql" />
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\ReservationFeature\BILRG_AdmReservation.sql" />
@@ -144,8 +145,9 @@
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M2_KelasDk_Alter.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_Reservation_Opname_Index.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmCoordinatedCancellationRequest.sql" />
-    <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList.sql" />
+    <None Include="BedUsageContext\WaitingListFeature\BILRG_BedWaitingList.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
@@ -155,6 +157,9 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry_M2_QueueOperations_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmissionQueue_M3_Audit_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmLoketCurrentCall.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmDisplayLoket.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmDisplayPoli.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_ClinicQueueCall.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AdmBookingAssistance.sql" />
     <None Include="AdmisiContext\RegFeature\BILRG_RegOutcome.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
@@ -280,8 +285,7 @@
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
-    <None Include="ChargeContext\BILRG_Tindakan.sql" />
-    <None Include="ChargeContext\BILRG_TindakanKomponen.sql" />
+
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_dtl.sql" />
@@ -319,9 +323,7 @@
     <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecutionFact.sql" />
     <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecutionCorrection.sql" />
     <Build Include="BedUsageContext\PakaiBedFeature\ta_trs_bed.sql" />
-    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedAlokasi.sql" />
-    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedKoreksi.sql" />
-    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedTransisi.sql" />
+
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
@@ -342,9 +344,11 @@
     <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster.sql" />
     <Build Include="LabContext\LabComponentMasterFeature\BILRG_LabComponentMaster_M11_Alter.sql" />
     <Build Include="LabContext\LabComponentMasterFeature\Data\BILRG_LabComponentMaster.dataseed.sql" />
+    <Build Include="LabContext\LabExternalFeature\BILRG_LabExternal.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItemComponent.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_M10_Alter.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M10_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M11_Alter.sql" />
     <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_BillingReleaseTrace_Alter.sql" />
     <Build Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />
@@ -352,8 +356,11 @@
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
+    <Build Include="PaymentContext\TataRekeningFeature\ta_trs_merge.sql" />
+    <Build Include="PaymentContext\TataRekeningFeature\ta_trs_billing_log.sql" />
     <None Include="PaymentContext\TrsBillingFeature\BILRG_TataRekening.sql" />
     <None Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
+    <None Include="PaymentContext\TrsBillingFeature\BILRG_TrsBilling_M3_TraseabilityIndex_Alter.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_StartOp.sql" />
     <Build Include="PasienContext\PasienFeature\tc_mr_id.sql" />

@@ -1,4 +1,8 @@
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
+using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
@@ -6,6 +10,7 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using FluentAssertions;
@@ -24,17 +29,25 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepo = new();
     private readonly Mock<IMergeRequestRepo> _mergeRequestRepo = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepo = new();
+    private readonly Mock<IDepositRepo> _depositRepo = new();
+    private readonly Mock<IRegJaminanPolicy> _regJaminanPolicy = new();
     private readonly Mock<IRegRepo> _regRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
     private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
+    private readonly Mock<IRegBiayaRepo> _regBiayaRepo = new();
+    private readonly Mock<ITrsDirectDal> _trsDirectDal = new();
+    private readonly Mock<IJurnalDal> _jurnalDal = new();
+    private readonly Mock<ITataRekeningCancellationLogRepo> _cancellationLogRepo = new();
+    private readonly Mock<IDownstreamSettlementInspector> _settlementInspector = new();
     private readonly FixedCurrentUserContext _currentUser =
-        new(TataRekeningDomainTestHelper.DefaultPetugasVerif);
+        new(TataRekeningDomainTestHelper.DefaultPetugasVerif, TataRekeningSupervisorRole.VerifikatorSupervisor);
 
     public TataRekeningPhase3ApplicationTest()
     {
         _unitOfWork.Setup(u => u.Begin()).Returns(_unitOfWorkScope.Object);
+        _regBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     #region Open Tata Rekening Query
@@ -54,8 +67,11 @@ public class TataRekeningPhase3ApplicationTest
         _mergeRequestRepo.Setup(r => r.ListPendingByPatient(It.IsAny<string>()))
             .Returns([]);
 
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 0m, 0m, 0m));
+
         var handler = new OpenTataRekeningHandler(
-            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object);
+            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object, _depositRepo.Object);
 
         var result = await handler.Handle(new OpenTataRekeningQuery(RegId), CancellationToken.None);
 
@@ -64,6 +80,10 @@ public class TataRekeningPhase3ApplicationTest
         result.Bills[0].TrsBillingId.Should().Be("BILL-01");
         result.PendingMergeRequests.Should().HaveCount(1);
         result.PendingMergeRequests[0].MergeRequestId.Should().Be("MR-01");
+        result.PatientContext.Should().NotBeNull();
+        result.PatientContext!.PasienId.Should().Be(RegModel.Default.Pasien.PasienId);
+        result.SummaryBreakdown.Should().NotBeNull();
+        result.SummaryBreakdown!.GrandTotalKewajiban.Should().Be(50_000m);
     }
 
     [Fact]
@@ -73,7 +93,7 @@ public class TataRekeningPhase3ApplicationTest
             .Returns(MayBe<TataRekeningModel>.None);
 
         var handler = new OpenTataRekeningHandler(
-            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object);
+            _tataRekeningRepo.Object, _regRepo.Object, _mergeRequestRepo.Object, _depositRepo.Object);
 
         var act = () => handler.Handle(new OpenTataRekeningQuery(RegId), CancellationToken.None);
 
@@ -268,7 +288,7 @@ public class TataRekeningPhase3ApplicationTest
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new AllocateFinancialResponsibilityCommand(RegId, payments),
@@ -288,9 +308,11 @@ public class TataRekeningPhase3ApplicationTest
             tataRekening,
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 75_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
+        SetupRegLoad(RegId, RegModel.Default);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>()));
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
@@ -310,10 +332,19 @@ public class TataRekeningPhase3ApplicationTest
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 60_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
 
-        var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+        var reg = RegModel.Default;
+        reg.SetKeluar("UserId", TestDate);
+        SetupRegLoad(RegId, reg);
 
-        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
+        var handler = new CancelFinalizationHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object,
+            _cancellationLogRepo.Object, _settlementInspector.Object,
+            _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
+
+        var result = await handler.Handle(
+            new CancelFinalizationCommand(RegId, "UserId", "SPV-01", "Koreksi alokasi pembayaran"),
+            CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
@@ -392,13 +423,14 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new ReopenBillingHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new ReopenBillingCommand(RegId, "Koreksi charge source", PetugasVerif),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Opened);
+        _trsBillingRepo.Verify(r => r.SaveChanges(It.IsAny<TrsBillType>()), Times.Once);
     }
 
     #endregion

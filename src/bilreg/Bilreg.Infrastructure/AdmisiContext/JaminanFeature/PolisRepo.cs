@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
@@ -48,13 +48,7 @@ public class PolisRepo : IPolisRepo
     public IEnumerable<PolisView> ListData(IPasienKey filter)
     {
         var listDto = _polisDal.ListData(filter)?.ToList() ?? [];
-        var result = listDto.Select(x => new PolisView(
-            x.fs_kd_polis,
-            x.fs_no_polis,
-            x.fs_atas_nama,
-            new PasienReff(x.fs_mr, x.fs_nm_pasien, DateOnly.Parse(x.fd_tgl_lahir), x.fs_jns_kelamin),
-            new TipeJaminanReff(x.fs_kd_tipe_jaminan, x.fs_nm_tipe_jaminan),
-            DateOnly.Parse(x.fd_tgl_expired)));
+        var result = listDto.Select(x => x.ToModel());
         return result;
     }
 

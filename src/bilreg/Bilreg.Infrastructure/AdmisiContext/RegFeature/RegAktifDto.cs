@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -7,10 +7,11 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
 public record RegAktifDto(
-    string RegId, DateTime RegDate, string PasienId,string JenisReg, 
+    string RegId, DateTime RegDate, string PasienId, string JenisReg, 
     string LayananId, string DokterId, string TipeJaminanId, 
     string PasienName, string TglLahir, string Gender,
-    string LayananName, string DokterName, string TipeJaminanName)
+    string LayananName, string DokterName, string TipeJaminanName,
+    int StatusTataRekening = 0)
 {
     public static RegAktifDto Create(RegAktifModel model)
     {
@@ -27,7 +28,8 @@ public record RegAktifDto(
             model.Pasien.Gender,
             model.Layanan.LayananName,
             model.Dokter.PpaName,
-            model.TipeJaminan.TipeJaminanName);
+            model.TipeJaminan.TipeJaminanName,
+            model.StatusTataRekening);
     }
 
     public RegAktifModel ToModel()
@@ -55,6 +57,7 @@ public record RegAktifDto(
             jnsReg,
             layananReff,
             dokterReff,
-            tipeJaminanReff);
+            tipeJaminanReff,
+            StatusTataRekening);
     }
 }

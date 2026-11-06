@@ -5,7 +5,8 @@ namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
 public record AdmLookupAdmissionQry(
     AdmissionStatusEnum? Status = null,
-    string? PasienId = null) : IRequest<AdmLookupAdmissionResponse>;
+    string? PasienId = null,
+    string? Search = null) : IRequest<AdmLookupAdmissionResponse>;
 
 public record AdmLookupAdmissionResponse(IReadOnlyList<AdmAdmissionListItem> Items);
 
@@ -32,7 +33,7 @@ public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, 
         CancellationToken cancellationToken)
     {
         var items = _admissionRepo
-            .ListData(new AdmissionListFilter(request.Status, request.PasienId))
+            .ListData(new AdmissionListFilter(request.Status, request.PasienId, request.Search))
             .Select(Map)
             .ToList();
 

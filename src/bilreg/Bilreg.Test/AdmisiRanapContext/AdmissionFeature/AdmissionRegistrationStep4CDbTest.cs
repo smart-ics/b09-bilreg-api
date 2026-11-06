@@ -157,7 +157,10 @@ public class AdmissionRegistrationStep4CDbTest
         }
 
         if (!string.IsNullOrWhiteSpace(requestId))
+        {
+            await conn.ExecuteAsync("DELETE FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId }, tx);
             await conn.ExecuteAsync("IF OBJECT_ID('BILRG_AdmCoordinatedCancellationRequest', 'U') IS NOT NULL DELETE FROM BILRG_AdmCoordinatedCancellationRequest WHERE RequestId=@requestId", new { requestId }, tx);
+        }
 
         tx.Commit();
     }
@@ -204,7 +207,7 @@ public class AdmissionRegistrationStep4CDbTest
             var create = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
             {
                 pasienId, dokterId = "DR00000015", plannedDate = "2026-07-24",
-                clinicalNotes = "owned coordinated cancellation fixture", userId = "sqlverify",
+                clinicalNotes = "owned coordinated cancellation fixture", trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8], userId = "sqlverify",
             });
             var opnameId = (await ReadJSendDataAsync<CreateOpnameResponse>(create)).OpnameRequestId;
             var process = await client.PostAsJsonAsync("api/admisi-ranap/admission/from-opname-request", new
@@ -255,6 +258,7 @@ public class AdmissionRegistrationStep4CDbTest
             dokterId = "DR00000015",
             plannedDate = "2026-07-20",
             clinicalNotes = "STEP4C opname verify",
+            trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8],
             userId = "step4c",
         });
         var opname = await ReadJSendDataAsync<CreateOpnameResponse>(createOpname);
@@ -407,6 +411,7 @@ public class AdmissionRegistrationStep4CDbTest
             dokterId = "DR00000010",
             plannedDate = "2026-07-21",
             clinicalNotes = "STEP4C invalid prosedur",
+            trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8],
             userId = "step4c",
         });
         var opname = await ReadJSendDataAsync<CreateOpnameResponse>(createOpname);
@@ -467,6 +472,7 @@ public class AdmissionRegistrationStep4CDbTest
             dokterId = "DR00000015",
             plannedDate = "2026-07-22",
             clinicalNotes = "STEP4C rollback verify",
+            trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8],
             userId = "step4c",
         });
         var opname = await ReadJSendDataAsync<CreateOpnameResponse>(createOpname);
@@ -520,6 +526,7 @@ public class AdmissionRegistrationStep4CDbTest
             dokterId = "DR00000010",
             plannedDate = "2026-07-23",
             clinicalNotes = "STEP4C reprocess verify",
+            trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8],
             userId = "step4c",
         });
         var opname = await ReadJSendDataAsync<CreateOpnameResponse>(createOpname);
@@ -566,13 +573,13 @@ public class AdmissionRegistrationStep4CDbTest
         var pasienId = await CreateOwnedPatientAsync(client);
         string? opnameId = null;
         string? regId = null;
-        const string requestId = "CANSQL-OPNAME-01";
+        var requestId = "CANSQL-OPNAME-" + Guid.NewGuid().ToString("N")[..8];
         try
         {
             var create = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
             {
                 pasienId, dokterId = "DR00000015", plannedDate = "2026-07-24",
-                clinicalNotes = "owned coordinated cancellation SQL fixture", userId = "sqlverify",
+                clinicalNotes = "owned coordinated cancellation SQL fixture", trsOrderId = "ORD-" + Guid.NewGuid().ToString("N")[..8], userId = "sqlverify",
             });
             opnameId = (await ReadJSendDataAsync<CreateOpnameResponse>(create)).OpnameRequestId;
             var process = await client.PostAsJsonAsync("api/admisi-ranap/admission/from-opname-request", new
@@ -598,7 +605,7 @@ public class AdmissionRegistrationStep4CDbTest
             (await ScalarCountAsync("SELECT COUNT(*) FROM ta_reg_history_dokter WHERE fs_kd_reg=@regId", new { regId })).Should().BeGreaterThan(0);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId })).Should().Be(0);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmOpnameRequest WHERE OpnameRequestId=@opnameId AND OpnameRequestStatus=0 AND FulfilledRegId='-'", new { opnameId })).Should().Be(1);
-            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId })).Should().Be(5);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId })).Should().Be(6);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND EntityName='RegInapModel' AND OriginalDataJson LIKE '%DoctorHistory%'", new { requestId })).Should().Be(1);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND EntityName='RegAktifModel' AND OriginalDataJson LIKE '%RegId%'", new { requestId })).Should().Be(1);
         }

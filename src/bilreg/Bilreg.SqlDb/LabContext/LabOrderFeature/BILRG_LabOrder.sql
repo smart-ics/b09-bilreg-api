@@ -7,18 +7,25 @@ CREATE TABLE BILRG_LabOrder (
     LastBillingReleaseStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseStatus DEFAULT(0),
     OwareStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OwareStatus DEFAULT(0),
 
-    RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_RegId DEFAULT(''),
-    PatientId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_LabOrder_PatientId DEFAULT(''),
+    RegId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_LabOrder_RegId DEFAULT(''),
+    PatientId VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_LabOrder_PatientId DEFAULT(''),
     PatientName VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_LabOrder_PatientName DEFAULT(''),
     BirthDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_BirthDate DEFAULT('3000-01-01'),
     Gender VARCHAR(1) NOT NULL CONSTRAINT DF_BILRG_LabOrder_Gender DEFAULT(''),
     AgeAtOrder INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_AgeAtOrder DEFAULT(0),
 
-    ExecutionRegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ExecutionRegId DEFAULT(''),
+    ExecutionRegId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ExecutionRegId DEFAULT(''),
     DeferredReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DeferredReason DEFAULT(''),
     DeferredUntil DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_DeferredUntil DEFAULT('3000-01-01'),
     BillingTindakanId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingTindakanId DEFAULT(''),
     BillingLastError VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingLastError DEFAULT(''),
+
+    DokterPerujukId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DokterPerujukId DEFAULT(''),
+    DokterPerujukName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DokterPerujukName DEFAULT(''),
+    LayananPerujukId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LayananPerujukId DEFAULT(''),
+    LayananPerujukName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LayananPerujukName DEFAULT(''),
+    ClinicalNote VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ClinicalNote DEFAULT(''),
+    Urgency INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_Urgency DEFAULT(0),
 
     CollectedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedDate DEFAULT('3000-01-01'),
     CollectedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedUserId DEFAULT(''),
@@ -56,4 +63,8 @@ GO
 CREATE INDEX IX_BILRG_LabOrder_OrderNo ON BILRG_LabOrder(OrderNo);
 GO
 CREATE INDEX IX_BILRG_LabOrder_EmrOrderId ON BILRG_LabOrder(EmrOrderId) WHERE EmrOrderId <> '';
+GO
+CREATE INDEX IX_BILRG_LabOrder_Urgency ON BILRG_LabOrder(Urgency, LabOrderStatus, CrtDate);
+GO
+CREATE INDEX IX_BILRG_LabOrder_Perujuk ON BILRG_LabOrder(DokterPerujukId, LayananPerujukId) WHERE DokterPerujukId <> '';
 GO

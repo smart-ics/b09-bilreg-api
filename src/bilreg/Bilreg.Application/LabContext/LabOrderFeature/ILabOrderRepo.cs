@@ -11,4 +11,5 @@ public interface ILabOrderRepo :
     IDeleteEntity<ILabOrderKey>
 {
     MayBe<LabOrderModel> LoadByEmrOrderId(string emrOrderId);
+    IEnumerable<LabOrderModel> ListByRegId(string regId);
 }

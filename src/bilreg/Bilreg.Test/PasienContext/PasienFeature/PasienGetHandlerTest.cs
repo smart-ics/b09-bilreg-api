@@ -35,7 +35,7 @@ public class PasienGetHandlerTest
             _tglJamProviderMock.Object
         );
 
-    private static PasienModel CreateSamplePasien(string pasienId = "00100123456")
+    private static PasienModel CreateSamplePasien(string pasienId = "00100123456", string mrIbu = "")
     {
         return new PasienModel(
             pasienId: pasienId,
@@ -66,7 +66,8 @@ public class PasienGetHandlerTest
             pendidikanDk: PendidikanDkType.Default,
             pekerjaanDk: PekerjaanDkType.Default,
             tglMedRec: new DateTime(2020, 1, 1),
-            isAktif: true
+            isAktif: true,
+            mrIbu: mrIbu
         );
     }
 
@@ -96,6 +97,27 @@ public class PasienGetHandlerTest
         result.PasienSaset.IsApprovedView.Should().BeFalse();
         result.PasienSaset.TglJamApprovedView.Should().BeEmpty();
         result.PasienSaset.FileGeneralConcentView.Should().Be("-");
+        result.MrIbu.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GivenPasienWithMrIbu_WhenHandle_ThenReturnsMrIbuInResponse()
+    {
+        // Arrange
+        var pasienId = "00100123456";
+        var pasien = CreateSamplePasien(pasienId, "00100088888");
+        _pasienRepoMock.Setup(x => x.LoadEntity(It.Is<IPasienKey>(k => k.PasienId == pasienId)))
+            .Returns(MayBe.From(pasien));
+
+        var handler = CreateHandler();
+        var query = new PasienGetQuery(pasienId);
+
+        // Act
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.MrIbu.Should().Be("00100088888");
     }
 
     [Fact]

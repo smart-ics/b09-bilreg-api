@@ -12,10 +12,10 @@ public sealed partial class JourneyDal
     /// Loads fact bags for a page with a fixed number of round-trips (does not grow with page size).
     /// Adds exactly 2 round-trips when <paramref name="keys"/> is non-empty (two QueryMultiple batches).
     /// </summary>
-    private Dictionary<string, JourneyFactBag> BatchLoadFactBags(
+    private async Task<Dictionary<string, JourneyFactBag>> BatchLoadFactBagsAsync(
         IDbConnection conn,
         IReadOnlyList<JourneyPageKeyDto> keys,
-        ref int roundTrips)
+        CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, JourneyFactBag>(StringComparer.OrdinalIgnoreCase);
         if (keys.Count == 0)
@@ -47,8 +47,8 @@ public sealed partial class JourneyDal
             }
         }
 
-        var (opnames, reservations, admissions) = QuerySourcesAndAdmissions(conn, opnIds, rsvIds, regIds);
-        roundTrips++;
+        var (opnames, reservations, admissions) = await QuerySourcesAndAdmissionsAsync(
+            conn, opnIds, rsvIds, regIds, cancellationToken);
 
         foreach (var adm in admissions)
         {
@@ -71,8 +71,8 @@ public sealed partial class JourneyDal
                 regIds.Add(rsv.RealizedRegId);
         }
 
-        var expanded = QueryExpandedFacts(conn, opnIds, rsvIds, regIds);
-        roundTrips++;
+        var expanded = await QueryExpandedFactsAsync(
+            conn, opnIds, rsvIds, regIds, cancellationToken);
 
         foreach (var opn in expanded.Opnames)
             opnames[opn.OpnameRequestId] = opn;
@@ -130,14 +130,25 @@ public sealed partial class JourneyDal
         return result;
     }
 
-    private (Dictionary<string, OpnameRowDto> Opnames,
+    private Dictionary<string, JourneyFactBag> BatchLoadFactBags(
+        IDbConnection conn,
+        IReadOnlyList<JourneyPageKeyDto> keys,
+        ref int roundTrips)
+    {
+        if (keys.Count > 0)
+            roundTrips += 2;
+        return BatchLoadFactBagsAsync(conn, keys).GetAwaiter().GetResult();
+    }
+
+    private async Task<(Dictionary<string, OpnameRowDto> Opnames,
         Dictionary<string, ReservationRowDto> Reservations,
-        List<AdmissionRowDto> Admissions)
-        QuerySourcesAndAdmissions(
+        List<AdmissionRowDto> Admissions)>
+        QuerySourcesAndAdmissionsAsync(
             IDbConnection conn,
             IReadOnlyCollection<string> opnIds,
             IReadOnlyCollection<string> rsvIds,
-            IReadOnlyCollection<string> regIds)
+            IReadOnlyCollection<string> regIds,
+            CancellationToken cancellationToken = default)
     {
         var sql = $"""
             {BuildOpnameSelectSql()};
@@ -145,25 +156,27 @@ public sealed partial class JourneyDal
             {BuildAdmissionSelectSql()};
             """;
 
-        using var multi = conn.QueryMultiple(
+        using var multi = await conn.QueryMultipleAsync(
             new CommandDefinition(
                 sql,
                 BuildIdParams(opnIds, rsvIds, regIds),
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
-        var opnames = (multi.Read<OpnameRowDto>() ?? [])
+        var opnames = (await multi.ReadAsync<OpnameRowDto>() ?? [])
             .ToDictionary(o => o.OpnameRequestId, StringComparer.OrdinalIgnoreCase);
-        var reservations = (multi.Read<ReservationRowDto>() ?? [])
+        var reservations = (await multi.ReadAsync<ReservationRowDto>() ?? [])
             .ToDictionary(r => r.ReservationId, StringComparer.OrdinalIgnoreCase);
-        var admissions = (multi.Read<AdmissionRowDto>() ?? []).ToList();
+        var admissions = (await multi.ReadAsync<AdmissionRowDto>() ?? []).ToList();
         return (opnames, reservations, admissions);
     }
 
-    private ExpandedFactBatch QueryExpandedFacts(
+    private async Task<ExpandedFactBatch> QueryExpandedFactsAsync(
         IDbConnection conn,
         IReadOnlyCollection<string> opnIds,
         IReadOnlyCollection<string> rsvIds,
-        IReadOnlyCollection<string> regIds)
+        IReadOnlyCollection<string> regIds,
+        CancellationToken cancellationToken = default)
     {
         var sql = $"""
             {BuildOpnameSelectSql()};
@@ -173,18 +186,19 @@ public sealed partial class JourneyDal
             {BuildRegExtrasSelectSql()};
             """;
 
-        using var multi = conn.QueryMultiple(
+        using var multi = await conn.QueryMultipleAsync(
             new CommandDefinition(
                 sql,
                 BuildIdParams(opnIds, rsvIds, regIds),
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
         return new ExpandedFactBatch(
-            (multi.Read<OpnameRowDto>() ?? []).ToList(),
-            (multi.Read<ReservationRowDto>() ?? []).ToList(),
-            (multi.Read<AdmissionRowDto>() ?? []).ToList(),
-            (multi.Read<WaitingListRowDto>() ?? []).ToList(),
-            (multi.Read<RegExtrasBatchRowDto>() ?? []).ToList());
+            (await multi.ReadAsync<OpnameRowDto>() ?? []).ToList(),
+            (await multi.ReadAsync<ReservationRowDto>() ?? []).ToList(),
+            (await multi.ReadAsync<AdmissionRowDto>() ?? []).ToList(),
+            (await multi.ReadAsync<WaitingListRowDto>() ?? []).ToList(),
+            (await multi.ReadAsync<RegExtrasBatchRowDto>() ?? []).ToList());
     }
 
     private object BuildIdParams(
@@ -197,7 +211,6 @@ public sealed partial class JourneyDal
             OpnIds = ToInList(opnIds),
             RsvIds = ToInList(rsvIds),
             RegIds = ToInList(regIds),
-            RegIdCsv = string.Join(",", regIds.Where(HasId).Distinct(StringComparer.OrdinalIgnoreCase)),
             HasRegIds = regIds.Any(HasId) ? 1 : 0
         };
 
@@ -258,7 +271,7 @@ public sealed partial class JourneyDal
     private static string BuildRegExtrasSelectSql() =>
         """
         SELECT
-            x.RegId,
+            reg.fs_kd_reg AS RegId,
             ISNULL(reg.fs_kd_tipe_jaminan,'') AS TipeJaminanId,
             ISNULL(tj.fs_nm_tipe_jaminan,'') AS TipeJaminanName,
             ISNULL(reg.fs_kd_kelas,'') AS KelasId,
@@ -266,21 +279,21 @@ public sealed partial class JourneyDal
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
             ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
-        FROM (SELECT DISTINCT LTRIM(RTRIM(value)) AS RegId FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '') x
-        LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
+        FROM ta_registrasi reg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
         LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
-        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = x.RegId
+        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = reg.fs_kd_reg
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
             FROM ta_reg_history_dokter h
             LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
             WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-              AND h.fs_kd_reg IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '')
-        ) hd ON hd.fs_kd_reg = x.RegId AND hd.rn = 1
+              AND h.fs_kd_reg IN @RegIds
+        ) hd ON hd.fs_kd_reg = reg.fs_kd_reg AND hd.rn = 1
         LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
         WHERE @HasRegIds = 1
+          AND reg.fs_kd_reg IN @RegIds
         """;
 
     private JourneyFactBag? FoldOpnameJourney(
@@ -324,7 +337,8 @@ public sealed partial class JourneyDal
                 opn.OpnameRequestId,
                 (OpnameRequestStatusEnum)opn.OpnameRequestStatus,
                 NullDash(opn.FulfilledRegId),
-                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate),
+                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate,
+                opn.CrtDate),
             null,
             [],
             []);
@@ -387,7 +401,8 @@ public sealed partial class JourneyDal
                 rsv.ReservationId,
                 (ReservationStatusEnum)rsv.ReservationStatus,
                 NullDash(rsv.RealizedRegId),
-                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate),
+                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate,
+                rsv.CrtDate),
             [],
             []);
 

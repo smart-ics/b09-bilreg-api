@@ -1,4 +1,9 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -43,7 +48,15 @@ public record LabOrderGetResponse(
     string TerminationUserId,
     bool IsVoided,
     IEnumerable<LabOrderItemResponse> Items,
-    IEnumerable<LabOrderItemComponentResponse> ItemComponents);
+    IEnumerable<LabOrderItemComponentResponse> ItemComponents,
+    string DokterPerujukId = "",
+    string DokterPerujukName = "",
+    string LayananPerujukId = "",
+    string LayananPerujukName = "",
+    string ClinicalNote = "",
+    int Urgency = 1,
+    bool IsCito = false,
+    string CrtDate = "");
 
 public record LabOrderItemResponse(
     int ItemNo,
@@ -55,7 +68,10 @@ public record LabOrderItemResponse(
     string TarifName,
     int TubeType,
     string SpecimenType,
-    int RequiredTubeCount);
+    int RequiredTubeCount,
+    int Urgency = 1,
+    bool IsCito = false,
+    decimal TarifPrice = 0);
 
 public record LabOrderItemComponentResponse(
     int ItemNo,
@@ -72,10 +88,17 @@ public record LabOrderItemComponentResponse(
 public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetResponse>
 {
     private readonly ILabOrderRepo _repo;
+    private readonly INilaiTarifRepo? _nilaiTarifRepo;
+    private readonly IRegRepo? _regRepo;
 
-    public LabOrderGetHandler(ILabOrderRepo repo)
+    public LabOrderGetHandler(
+        ILabOrderRepo repo,
+        INilaiTarifRepo? nilaiTarifRepo = null,
+        IRegRepo? regRepo = null)
     {
         _repo = repo;
+        _nilaiTarifRepo = nilaiTarifRepo;
+        _regRepo = regRepo;
     }
 
     public Task<LabOrderGetResponse> Handle(LabOrderGetQuery request, CancellationToken cancellationToken)
@@ -94,7 +117,10 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             x.TarifName,
             (int)x.TubeType,
             x.SpecimenType,
-            x.RequiredTubeCount)).ToList();
+            x.RequiredTubeCount,
+            (int)x.Urgency,
+            x.IsCito,
+            ResolveTarifPrice(order, x))).ToList();
 
         var components = order.ItemComponents.Select(x => new LabOrderItemComponentResponse(
             x.ItemNo,
@@ -144,8 +170,70 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             TerminationUserId: order.TerminationUserId,
             IsVoided: order.AuditTrail.IsVoided,
             Items: items,
-            ItemComponents: components);
+            ItemComponents: components,
+            DokterPerujukId: order.DokterPerujukId,
+            DokterPerujukName: order.DokterPerujukName,
+            LayananPerujukId: order.LayananPerujukId,
+            LayananPerujukName: order.LayananPerujukName,
+            ClinicalNote: order.ClinicalNote,
+            Urgency: (int)order.Urgency,
+            IsCito: order.IsCito,
+            CrtDate: order.AuditTrail.Created.Timestamp == DateTime.MinValue
+                ? ""
+                : order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss"));
 
         return Task.FromResult(response);
+    }
+
+    private decimal ResolveTarifPrice(LabOrderModel order, LabOrderItemModel item)
+    {
+        if (_nilaiTarifRepo is null || string.IsNullOrWhiteSpace(item.TarifId))
+            return 0m;
+
+        try
+        {
+            var tarifKey = TarifType.Key(item.TarifId);
+
+            if (_regRepo is not null && !string.IsNullOrWhiteSpace(order.Patient.RegId))
+            {
+                var regOpt = _regRepo.LoadEntity(RegModel.Key(order.Patient.RegId));
+                if (regOpt.HasValue)
+                {
+                    var reg = regOpt.Value;
+                    var tipeTarifId = reg.JenisReg == JenisRegEnum.RegInap ? "RI" : "RJ";
+                    var tipeTarifKey = TipeTarifType.Key(tipeTarifId);
+                    var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
+                    var nilaiOpt = _nilaiTarifRepo.LoadEntity(nilaiTarifKey);
+                    if (nilaiOpt.HasValue)
+                        return nilaiOpt.Value.Nilai;
+                }
+            }
+
+            var defaultKey = NilaiTarifType.KeyComposite(
+                tarifKey,
+                TipeTarifType.Key("UMUM"),
+                KelasType.Key("III"));
+            var defaultOpt = _nilaiTarifRepo.LoadEntity(defaultKey);
+            if (defaultOpt.HasValue)
+                return defaultOpt.Value.Nilai;
+
+            var fallbackKey = NilaiTarifType.KeyComposite(
+                tarifKey,
+                TipeTarifType.Default,
+                KelasType.Default);
+            var fallbackOpt = _nilaiTarifRepo.LoadEntity(fallbackKey);
+            if (fallbackOpt.HasValue)
+                return fallbackOpt.Value.Nilai;
+
+            var firstActiveOpt = _nilaiTarifRepo.LoadFirstActiveRate(tarifKey);
+            if (firstActiveOpt.HasValue)
+                return firstActiveOpt.Value.Nilai;
+        }
+        catch
+        {
+            // Fail-safe default
+        }
+
+        return 0m;
     }
 }

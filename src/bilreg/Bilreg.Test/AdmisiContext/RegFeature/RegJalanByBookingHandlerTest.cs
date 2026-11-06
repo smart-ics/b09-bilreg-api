@@ -3,6 +3,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -20,6 +21,7 @@ using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -75,6 +77,8 @@ public class RegJalanByBookingHandlerTest
     private readonly Mock<IEmrAntrianOutboundQueueRepo> _emrQueueRepo = new();
     private readonly Mock<IAntrianMapRepo> _antrianMapRepo = new();
     private readonly Mock<IQueueNumberCompatibilityAdapter> _queueNumberAdapter = new();
+    private readonly Mock<IJadwalPraktekRepo> _jadwalRepo = new();
+    private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IAdmissionServicePointResolver> _admissionServicePointResolver = new();
     private readonly Mock<IAdmisiEventPublisher> _publisher = new();
 
@@ -114,6 +118,8 @@ public class RegJalanByBookingHandlerTest
             emrEnqueue,
             _antrianMapRepo.Object,
             _queueNumberAdapter.Object,
+            _jadwalRepo.Object,
+            _featureResolver.Object,
             TestTglJamProvider.Instance,
             _admissionServicePointResolver.Object,
             _publisher.Object);
@@ -229,6 +235,8 @@ public class RegJalanByBookingHandlerTest
             emrEnqueue,
             _antrianMapRepo.Object,
             _queueNumberAdapter.Object,
+            _jadwalRepo.Object,
+            _featureResolver.Object,
             TestTglJamProvider.Instance,
             _admissionServicePointResolver.Object,
             realPublisher);
@@ -350,7 +358,91 @@ public class RegJalanByBookingHandlerTest
         _getAppSettingSvc.Setup(x => x.Execute())
             .Returns(new AppSetting(new RemoteCetakSetting("OFF")));
 
+        var ruang = new RuangType("R01", "Ruang Dokter", "B");
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = jamPraktek,
+            Ruang = ruang
+        };
+        _jadwalRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
         _publisher.Setup(x => x.PublishRajalCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBookingRegistrationSuccess_ThenEnqueuesOutboxWithPrefixAntrian()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulBooking(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var ruang = new RuangType("R01", "Ruang Kebidanan", "OB");
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            Ruang = ruang
+        };
+        _jadwalRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        EmrAntrianOutboundQueueModel? savedQueue = null;
+        _emrQueueRepo.Setup(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()))
+            .Callback<EmrAntrianOutboundQueueModel>(q => savedQueue = q);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.RegId.Should().Be("RG00000001");
+        savedQueue.Should().NotBeNull();
+        savedQueue!.SourceId.Should().Be("RG00000001");
+        savedQueue.MessageType.Should().Be(EmrAntrianOutboundQueueModel.MessageTypeAddReg);
+
+        var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue.PayloadJson);
+        payload.PrefixAntrian.Should().Be("OB");
+        payload.NoAntrian.Should().Be(1);
+        payload.BookingId.Should().Be("BK01");
+    }
+
+    [Theory]
+    [InlineData(" A ", "A")]
+    [InlineData("POLIKLINIK", "PO")]
+    [InlineData("  ", "")]
+    [InlineData(null, "")]
+    public async Task Handle_WhenBookingRegistrationWithVariousRuangPrefixes_NormalizesDefensively(string? rawPrefix, string expectedPrefix)
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulBooking(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var ruang = new RuangType("R01", "Ruang Test", rawPrefix!);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            Ruang = ruang
+        };
+        _jadwalRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        EmrAntrianOutboundQueueModel? savedQueue = null;
+        _emrQueueRepo.Setup(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()))
+            .Callback<EmrAntrianOutboundQueueModel>(q => savedQueue = q);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.RegId.Should().Be("RG00000001");
+        savedQueue.Should().NotBeNull();
+
+        var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue!.PayloadJson);
+        payload.PrefixAntrian.Should().Be(expectedPrefix);
     }
 }

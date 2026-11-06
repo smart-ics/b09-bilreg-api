@@ -1,7 +1,7 @@
+using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
-using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature.Contracts;
 
@@ -9,7 +9,9 @@ public record OpenTataRekeningApiResponse(
     TataRekeningSummaryDto Summary,
     IReadOnlyList<TrsBillSummaryDto> Bills,
     IReadOnlyList<PaymentProjectionDto> Projection,
-    IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests);
+    IReadOnlyList<MergeRequestSummaryDto> PendingMergeRequests,
+    TataRekeningPatientContextDto? PatientContext = null,
+    TataRekeningBillingBreakdownDto? SummaryBreakdown = null);
 
 public record TataRekeningMutationApiResponse(TataRekeningSummaryDto Summary);
 
@@ -22,6 +24,10 @@ public record AllocateFinancialResponsibilityApiResponse(
     TataRekeningSummaryDto Summary,
     IReadOnlyList<PaymentProjectionDto> Projection);
 
+public record AllocateFinalizeApiResponse(
+    TataRekeningSummaryDto Summary,
+    IReadOnlyList<PaymentProjectionDto> Projection);
+
 public record FinancialAdjustmentApiResponse(
     TataRekeningSummaryDto Summary,
     bool RequiresReopen,
@@ -31,7 +37,7 @@ public record FinancialAdjustmentApiResponse(
 public static class TataRekeningApiMapper
 {
     public static OpenTataRekeningApiResponse ToApiResponse(OpenTataRekeningResponse response) =>
-        new(response.Summary, response.Bills, response.Projection, response.PendingMergeRequests);
+        new(response.Summary, response.Bills, response.Projection, response.PendingMergeRequests, response.PatientContext, response.SummaryBreakdown);
 
     public static TataRekeningMutationApiResponse ToApiResponse(CloseBillResponse response) =>
         new(response.Summary);
@@ -51,6 +57,9 @@ public static class TataRekeningApiMapper
 
     public static TataRekeningMutationApiResponse ToApiResponse(FinalizeFinancialResponsibilityResponse response) =>
         new(response.Summary);
+
+    public static AllocateFinalizeApiResponse ToApiResponse(AllocateFinalizeResponse response) =>
+        new(response.Summary, response.Projection);
 
     public static TataRekeningMutationApiResponse ToApiResponse(CancelFinalizationResponse response) =>
         new(response.Summary);

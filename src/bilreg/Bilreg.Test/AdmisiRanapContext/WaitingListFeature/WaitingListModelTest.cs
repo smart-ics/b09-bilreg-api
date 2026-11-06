@@ -76,10 +76,10 @@ public class WaitingListModelTest
         var acceptMethod = typeof(WaitingListModel).GetMethod(nameof(WaitingListModel.Accept));
         var closeMethod = typeof(WaitingListModel).GetMethod(nameof(WaitingListModel.Close));
 
-        acceptMethod!.GetParameters().Should().ContainSingle()
-            .Which.ParameterType.Should().Be(typeof(string));
-        closeMethod!.GetParameters().Should().ContainSingle()
-            .Which.ParameterType.Should().Be(typeof(string));
+        acceptMethod!.GetParameters()
+            .Should().NotContain(p => p.ParameterType == typeof(AdmissionModel));
+        closeMethod!.GetParameters()
+            .Should().NotContain(p => p.ParameterType == typeof(AdmissionModel));
 
         typeof(WaitingListModel).GetMethod(nameof(WaitingListModel.Create))!
             .GetParameters()

@@ -84,7 +84,7 @@ public class LabOwareQueueProcessorTest
         var q1 = LabOwareOutboundQueueModel.CreatePending(order.OrderId, "{\"a\":1}");
         var q2 = LabOwareOutboundQueueModel.CreatePending(order.OrderId, "{\"a\":2}");
 
-        _queueRepo.Setup(x => x.ListProcessable(It.IsAny<int>()))
+        _queueRepo.Setup(x => x.ListProcessable(It.IsAny<int>(), It.IsAny<int>()))
             .Returns([q1, q2]);
 
         var queues = new Dictionary<string, LabOwareOutboundQueueModel>
@@ -105,6 +105,19 @@ public class LabOwareQueueProcessorTest
 
         result.ProcessedCount.Should().Be(2);
         result.SucceededCount.Should().Be(2);
+        _queueRepo.Verify(x => x.ListProcessable(20, 3), Times.Once);
+    }
+
+    [Fact]
+    public void ProcessBatch_WithCustomMaxRetryCount_PassesToRepo()
+    {
+        _queueRepo.Setup(x => x.ListProcessable(10, 5))
+            .Returns([]);
+
+        var result = CreateSut().ProcessBatch(10, LabOwareQueueProcessor.WorkerUserId, maxRetryCount: 5);
+
+        result.ProcessedCount.Should().Be(0);
+        _queueRepo.Verify(x => x.ListProcessable(10, 5), Times.Once);
     }
 
     private void SetupLoad(LabOwareOutboundQueueModel queue, LabOrderModel order)

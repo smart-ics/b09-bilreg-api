@@ -1,4 +1,4 @@
-﻿CREATE TABLE BILRG_TindakanKomponen
+CREATE TABLE BILRG_TindakanKomponen
 (
     TindakanId         VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_TindakanId DEFAULT(''),
     NoUrut             INT           NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_NoUrut DEFAULT(0),
@@ -7,6 +7,7 @@
     PpaId              VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_PpaId DEFAULT(''),
     PpaName            VARCHAR(60)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_PpaName DEFAULT(''),
     Nilai              DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_Nilai DEFAULT(0),
+    Diskon             DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_Diskon DEFAULT(0),
 	Qty                DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_Qty DEFAULT(0),
     SubTotal           DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_SubTotal DEFAULT(0),
 	

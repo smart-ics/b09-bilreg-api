@@ -6,6 +6,7 @@ using Bilreg.Api.Filters;
 using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -77,6 +78,7 @@ public static class PresentationService
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
+            options.IncludeErrorDetails = true;
             options.RequireHttpsMetadata = false;
             options.SaveToken = true;
             options.TokenValidationParameters = new TokenValidationParameters
@@ -98,6 +100,7 @@ public static class PresentationService
                     var path = context.HttpContext.Request.Path;
                     if (!string.IsNullOrEmpty(accessToken) &&
                         (path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath) ||
+                         path.StartsWithSegments(WardCockpitContracts.HubPath) ||
                          path.StartsWithSegments(PharmacyQueueContracts.HubPath)))
                     {
                         context.Token = accessToken;
@@ -145,6 +148,17 @@ public static class PresentationService
                         context.Error,
                         context.ErrorDescription);
                     context.HandleResponse();
+                    if (!string.IsNullOrEmpty(context.Error))
+                    {
+                        var errorDesc = !string.IsNullOrEmpty(context.ErrorDescription)
+                            ? $", error_description=\"{context.ErrorDescription}\""
+                            : "";
+                        context.Response.Headers.Append("WWW-Authenticate", $"Bearer error=\"{context.Error}\"{errorDesc}");
+                    }
+                    else
+                    {
+                        context.Response.Headers.Append("WWW-Authenticate", "Bearer");
+                    }
                     context.Response.StatusCode=StatusCodes.Status401Unauthorized;
                     context.Response.ContentType="application/json";
                     return context.Response.WriteAsync(JsonSerializer.Serialize(new JSend(
@@ -175,6 +189,7 @@ public static class PresentationService
         });
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSignalR();
+        services.AddScoped<IWardCockpitEventPublisher, SignalRWardCockpitEventPublisher>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<ApotekExceptionFilter>();
         services.AddScoped<AdmisiRanapEnabledFilter>();

@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -87,7 +87,7 @@ public class RegAktifDal : IRegAktifDal
     {
         const string sql = """
            DELETE FROM
-               BILRG_RegAktif
+                BILRG_RegAktif
            WHERE
              RegId = @RegId
            """;
@@ -110,13 +110,15 @@ public class RegAktifDal : IRegAktifDal
                ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
                ISNULL(cc.fs_nm_layanan, '') AS LayananName,
                ISNULL(dd.fs_nm_peg, '') AS DokterName,
-               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+               ISNULL(ff.Status, 0) AS StatusTataRekening
            FROM
                BILRG_RegAktif aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+               LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
            WHERE
                aa.RegId = @RegId
            """;
@@ -139,13 +141,15 @@ public class RegAktifDal : IRegAktifDal
                ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
                ISNULL(cc.fs_nm_layanan, '') AS LayananName,
                ISNULL(dd.fs_nm_peg, '') AS DokterName,
-               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+               ISNULL(ff.Status, 0) AS StatusTataRekening
            FROM
                BILRG_RegAktif aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+               LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
            WHERE
                aa.LayananId = @LayananId
            """;
@@ -167,13 +171,15 @@ public class RegAktifDal : IRegAktifDal
                 ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
                 ISNULL(cc.fs_nm_layanan, '') AS LayananName,
                 ISNULL(dd.fs_nm_peg, '') AS DokterName,
-                ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+                ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+                ISNULL(ff.Status, 0) AS StatusTataRekening
             FROM
                 BILRG_RegAktif aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                 LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                 LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                 LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+                LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
             WHERE
                 aa.PasienID = @PasienID
             """;
@@ -195,13 +201,15 @@ public class RegAktifDal : IRegAktifDal
                ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
                ISNULL(cc.fs_nm_layanan, '') AS LayananName,
                ISNULL(dd.fs_nm_peg, '') AS DokterName,
-               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+               ISNULL(ff.Status, 0) AS StatusTataRekening
            FROM
                BILRG_RegAktif aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+               LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
            """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -232,13 +240,15 @@ public class RegAktifDal : IRegAktifDal
                 ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
                 ISNULL(cc.fs_nm_layanan, '') AS LayananName,
                 ISNULL(dd.fs_nm_peg, '') AS DokterName,
-                ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+                ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+                ISNULL(ff.Status, 0) AS StatusTataRekening
             FROM
                 BILRG_RegAktif aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                 LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                 LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                 LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+                LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
             WHERE {whereClause}
             """;
 
@@ -247,5 +257,3 @@ public class RegAktifDal : IRegAktifDal
         return results;
     }
 }
-
-
