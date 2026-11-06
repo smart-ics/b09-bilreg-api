@@ -153,10 +153,14 @@ public class PenjualanPoliVoidHandlerTest
         penjualan.AuditTrail.IsVoided.Should().BeTrue();
         tataRekening.ListTrsBill.Should().NotContain(x => x.TrsBillingId == transaksiId);
 
+        var expectedVoidTrsReffId = penjualanId.Length <= 8
+            ? $"{penjualanId}_V"
+            : $"{penjualanId[..8]}_V";
+
         _mediatorMock.Verify(x => x.Send(
             It.Is<PostSaleVoidConsequenceCommand>(c =>
                 c.OriginalSaleTrsReffId == penjualanId &&
-                c.VoidTrsReffId == $"{penjualanId}_V" &&
+                c.VoidTrsReffId == expectedVoidTrsReffId &&
                 c.UserId == userId),
             It.IsAny<CancellationToken>()), Times.Once);
 
