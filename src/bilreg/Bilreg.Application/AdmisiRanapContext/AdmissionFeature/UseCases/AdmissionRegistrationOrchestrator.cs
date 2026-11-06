@@ -566,16 +566,15 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 var mrIbu = pasien.MrIbu;
                 if (!string.IsNullOrWhiteSpace(mrIbu))
                 {
-                    var regsIbu = _regDal?.ListData(PasienModel.Key(mrIbu)) ?? [];
+                    var regsIbu = _regAktifRepo?.ListData(PasienModel.Key(mrIbu)) ?? [];
                     var activeMotherReg = regsIbu
-                        .Where(r => r.fd_tgl_void == "3000-01-01" && r.fd_tgl_keluar == "3000-01-01")
-                        .OrderByDescending(r => r.fd_tgl_masuk)
-                        .ThenByDescending(r => r.fs_jam_masuk)
+                        .Where(r => r.JenisReg == JenisRegEnum.RegInap)
+                        .OrderByDescending(r => r.RegDate)
                         .FirstOrDefault();
 
                     if (activeMotherReg is not null)
                     {
-                        regIbuId = activeMotherReg.fs_kd_reg;
+                        regIbuId = activeMotherReg.RegId;
                     }
                 }
             }
@@ -583,17 +582,13 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             if (string.IsNullOrWhiteSpace(regIbuId))
                 return (JenisInapType.Perinatal, string.Empty);
 
-            var motherReg = _regDal?.GetData(RegModel.Key(regIbuId))
-                ?? throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak ditemukan.");
+            var activeMotherOpt = _regAktifRepo.LoadEntity(RegModel.Key(regIbuId));
+            if (!activeMotherOpt.HasValue)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak aktif di rawat inap.");
 
-            if (motherReg.fd_tgl_void != "3000-01-01")
-                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah dibatalkan (void).");
-
-            if (motherReg.fd_tgl_keluar != "3000-01-01")
-                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah keluar/pulang.");
-
-            if (motherReg.fs_kd_jenis_inap != InpatientAgePolicy.JENIS_INAP_OBSTETRI)
-                throw new InvalidOperationException("JENIS INAP IBU invalid");
+            var activeMother = activeMotherOpt.Value;
+            if (activeMother.JenisReg != JenisRegEnum.RegInap)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' bukan registrasi rawat inap.");
 
             return (JenisInapType.Perinatal, regIbuId);
         }

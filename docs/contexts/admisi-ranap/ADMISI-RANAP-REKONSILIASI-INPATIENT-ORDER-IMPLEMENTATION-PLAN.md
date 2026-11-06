@@ -4,7 +4,7 @@ Code: ADMISI-RANAP-REKONSILIASI-INPATIENT-ORDER
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-11-05
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -66,14 +66,14 @@ Architecture Applicability: ARCHITECTURE-REQUIRED
 
 # 4. Progress Summary
 
-Status: NOT-STARTED  
+Status: COMPLETED  
 Execution Approval: APPROVED
 
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
-| P1 - Domain & Application Orchestration Cleanup | NOT-STARTED | GO | 0/1 |
-| P2 - DAL & Repository Total Cleansing | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| P3 - Journey Queries, Integrity Validation & Verification | NOT-STARTED | NOT-REVIEWED | 0/3 |
+| P1 - Domain & Application Orchestration Cleanup | IMPLEMENTED | GO | 1/1 |
+| P2 - DAL & Repository Total Cleansing | IMPLEMENTED | GO | 2/2 |
+| P3 - Journey Queries, Integrity Validation & Verification | IMPLEMENTED | GO | 3/3 |
 
 ---
 
@@ -81,7 +81,7 @@ Execution Approval: APPROVED
 
 ## P1 - Domain & Application Orchestration Cleanup
 
-Implementation Status: NOT-STARTED  
+Implementation Status: IMPLEMENTED  
 Review Status: GO
 
 ### P1-S01
@@ -119,8 +119,8 @@ Notes:
 
 ## P2 - DAL & Repository Total Cleansing
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 ### P2-S02
 
@@ -201,8 +201,8 @@ Notes:
 
 ## P3 - Journey Queries, Integrity Validation & Verification
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 ### P3-S04
 
@@ -247,8 +247,8 @@ Notes:
 
 Title: Penyelarasan Aturan Integritas pada `JourneyIntegrityValidator.cs`
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Memperbarui metode `ValidateAdmissionSources` pada `JourneyIntegrityValidator.cs` agar tidak menandai anomali `AdmissionHasBothSources` jika admisi berasal dari satu pesanan rawat inap terpadu, serta memvalidasi konsistensi derivasi `JourneyIdFactory.cs`.
@@ -262,6 +262,16 @@ Completion Criteria:
 2. Derivasi `JourneyIdFactory.Derive` mengembalikan ID yang konsisten dengan prefiks asalnya (`rsv:OPN...` / `opn:OPN...`) saat data admisi valid.
 3. Unit test `JourneyIntegrityValidatorTest` dan `Release1JourneyStageResolverTest` lulus.
 
+Implementation Notes:
+- Memperbarui `ValidateAdmissionSources` pada `JourneyIntegrityValidator.cs` sehingga kondisi pemicu `AdmissionHasBothSources` mensyaratkan `admission.OpnameRequestId != admission.ReservationId`. Jika `OpnameRequestId` dan `ReservationId` memiliki nilai yang identik (berasal dari satu pesanan rawat inap terpadu), kondisi integritas ini tidak memicu anomali palsu.
+- Memvalidasi bahwa derivasi canonical `JourneyIdFactory.Derive` tetap menghasilkan prefiks yang konsisten (`rsv:OPN...` untuk reservasi terpadu dan `opn:OPN...` untuk opname terpadu) tanpa mengalami fallback yang keliru ke `reg:{RegId}` saat integritas data valid.
+- Menambahkan test suite baru `JourneyIntegrityValidatorTest.cs` yang memverifikasi kasus identik vs berbeda pada sumber admisi, pencegahan false-positive `AdmissionHasBothSources`, serta konsistensi derivasi `JourneyIdFactory`.
+- Seluruh pengujian pada `JourneyIntegrityValidatorTest`, `Release1JourneyStageResolverTest`, dan `JourneyIdFactoryTest` berhasil lulus 100% (68 test lulus).
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/AdmisiRanapContext/JourneyFeature/JourneyIntegrityValidator.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyIntegrityValidatorTest.cs`
+
 Notes:
 - Mengacu pada keputusan arsitektur TD-06 dan TD-07.
 
@@ -271,8 +281,8 @@ Notes:
 
 Title: Verifikasi End-to-End Test Suite dan Validasi Perilaku Operasional
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED  
+Review Status: GO
 
 Objective:
 Mengeksekusi seluruh test suite otomatis di `Bilreg.Test` untuk memastikan seluruh komponen lulus tanpa regresi, serta memverifikasi bahwa skenario pendaftaran reservasi (seperti pasien SRI AJENG RETNO) menghasilkan tahap operasional `WardAcceptanceRequired` tanpa hang.
@@ -285,6 +295,22 @@ Completion Criteria:
 1. Solusi `b09-bilreg-api.sln` berhasil dikompilasi dengan 0 error dan 0 warning baru.
 2. Seluruh unit test di `Bilreg.Test` (termasuk `InpatientOrderFeature`, `AdmissionFeature`, dan `JourneyFeature`) lulus 100%.
 3. Terverifikasi bahwa pasien registrasi reservasi berstatus "Menunggu Diterima Bangsal", ID perjalanan bernilai `rsv:OPN...`, dan respons workspace siap dirender seketika.
+
+Implementation Notes:
+- Mengompilasi solusi `b09-bilreg-api.sln` dengan hasil bersih: 0 error dan 0 warning baru.
+- Menjalankan dan memverifikasi unit test suite otomatis pada `Bilreg.Test` di konteks rawat inap dengan kelulusan 100%:
+  - `InpatientOrderFeature`: 53/53 tests passed (100%).
+  - `AdmissionFeature`: 135/135 tests passed (100%).
+  - `JourneyFeature`: 110/110 tests passed (100%).
+  - Fitur pendukung admisi ranap (`OpnameRequestFeature`, `ReservationFeature`, `WaitingListFeature`, `OperationalWorklistFeature`, `DigitalSignFeature`, `RolloutFeature`, `AdmisiRanapWorkflowTest`): 96/96 tests passed (100%).
+- Menambahkan test suite baru `JourneyOperationalReservationScenarioTest.cs` untuk memvalidasi perilaku operasional end-to-end:
+  - Pasien pendaftaran reservasi (seperti kasus "SRI AJENG RETNO", No RM `00-00-60-63`, Order `OPN0A31CDRTQ`) bebas dari rekonsiliasi palsu `AdmissionHasBothSources`.
+  - Tahap operasional berhasil diresolusi sebagai `WardAcceptanceRequired` ("Menunggu Diterima Bangsal") dengan kondisi "Menunggu penerimaan bangsal" dan tugas bangsal `WardAcceptHandover`.
+  - ID perjalanan konsisten `rsv:OPN0A31CDRTQ` baik pada worklist maupun workspace detail, sehingga respons antarmuka siap dirender seketika tanpa mengalami *infinite skeleton loading* / hang.
+  - Memverifikasi skenario transisi/kompatibilitas kueri lama serta siklus hidup penuh dari pembuatan domain model `InpatientOrderModel.CreateBooking` dan `AdmissionModel.Admit` hingga resolusi status operasional.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyOperationalReservationScenarioTest.cs`
 
 Notes:
 - Gerbang penyelesaian untuk menetapkan status rencana ke `COMPLETED`.

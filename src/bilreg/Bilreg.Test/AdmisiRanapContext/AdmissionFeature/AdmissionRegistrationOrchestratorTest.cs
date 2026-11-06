@@ -716,14 +716,27 @@ public class AdmissionRegistrationOrchestratorTest
             "Umum", "Kelas 1", "Datang Sendiri",
             "-", "Dr. Medis", "Rawat Inap", "Karcis");
 
+    private static RegAktifModel MotherRegAktifModel(
+        string regId = "REG-IBU-01",
+        string mrIbu = "MOM01",
+        JenisRegEnum jenisReg = JenisRegEnum.RegInap) =>
+        new(
+            regId,
+            new DateOnly(2026, 10, 25),
+            new PasienReff(mrIbu, "Ibu Pasien", new DateOnly(1995, 5, 10), "P"),
+            jenisReg,
+            new LayananReff("RI1", "Rawat Inap"),
+            new PpaReff("D01", "Dr. Medis"),
+            new TipeJaminanReff("1", "Umum"));
+
     [Fact]
     public async Task GivenPerinatalPatient_WithValidExplicitMotherReg_WhenProcessed_ThenSetsPerinatalAndMotherReg()
     {
         var harness = CreateOpnameHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")))
-            .Returns(MotherRegDto("REG-IBU-01", jenisInap: "2"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")))
+            .Returns(MayBe.From(MotherRegAktifModel("REG-IBU-01")));
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -735,7 +748,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().Be("REG-IBU-01");
-        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-01")), Times.Once);
     }
 
     [Fact]
@@ -755,7 +768,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -764,11 +777,11 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateOpnameHarness();
         var baby = BabyPasien(mrIbu: "MOM-AUTO");
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        var motherReg = MotherRegDto("REG-AUTO-99", "MOM-AUTO", jenisInap: "2");
-        harness.RegDal.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")))
-            .Returns([motherReg]);
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")))
-            .Returns(motherReg);
+        var mother = MotherRegAktifModel("REG-AUTO-99", "MOM-AUTO");
+        harness.RegAktifRepo.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")))
+            .Returns([mother]);
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")))
+            .Returns(MayBe.From(mother));
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -780,8 +793,8 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().Be("REG-AUTO-99");
-        harness.RegDal.Verify(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")), Times.Once);
-        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-99")), Times.Once);
     }
 
     [Fact]
@@ -801,7 +814,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -810,8 +823,8 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateOpnameHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "NOT-FOUND")))
-            .Returns((RegDto?)null);
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "NOT-FOUND")))
+            .Returns(MayBe<RegAktifModel>.None);
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -820,7 +833,7 @@ public class AdmissionRegistrationOrchestratorTest
         var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Register Ibu 'NOT-FOUND' tidak ditemukan.");
+            .WithMessage("Register Ibu 'NOT-FOUND' tidak aktif di rawat inap.");
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
     }
 
@@ -830,8 +843,8 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateOpnameHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-VOID")))
-            .Returns(MotherRegDto("REG-VOID", tglVoid: "2026-10-26"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-VOID")))
+            .Returns(MayBe<RegAktifModel>.None);
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -840,7 +853,7 @@ public class AdmissionRegistrationOrchestratorTest
         var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Register Ibu 'REG-VOID' sudah dibatalkan (void).");
+            .WithMessage("Register Ibu 'REG-VOID' tidak aktif di rawat inap.");
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
     }
 
@@ -850,8 +863,8 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateOpnameHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-PULANG")))
-            .Returns(MotherRegDto("REG-PULANG", tglKeluar: "2026-10-26"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-PULANG")))
+            .Returns(MayBe<RegAktifModel>.None);
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -860,7 +873,7 @@ public class AdmissionRegistrationOrchestratorTest
         var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Register Ibu 'REG-PULANG' sudah keluar/pulang.");
+            .WithMessage("Register Ibu 'REG-PULANG' tidak aktif di rawat inap.");
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
     }
 
@@ -870,8 +883,8 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateOpnameHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-UMUM")))
-            .Returns(MotherRegDto("REG-UMUM", jenisInap: "1"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-UMUM")))
+            .Returns(MayBe.From(MotherRegAktifModel("REG-UMUM", jenisReg: JenisRegEnum.RegJalan)));
 
         var command = new AdmProcessOpnameRequestCmd(
             harness.Opname.OpnameRequestId, "1", "B1", "user2",
@@ -880,7 +893,7 @@ public class AdmissionRegistrationOrchestratorTest
         var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("JENIS INAP IBU invalid");
+            .WithMessage("Register Ibu 'REG-UMUM' bukan registrasi rawat inap.");
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
         harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
     }
@@ -902,7 +915,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("2");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -941,7 +954,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -950,8 +963,8 @@ public class AdmissionRegistrationOrchestratorTest
         var harness = CreateReservationHarness();
         var baby = BabyPasien();
         harness.PasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>())).Returns(MayBe.From(baby));
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")))
-            .Returns(MotherRegDto("REG-IBU-RES", jenisInap: "2"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")))
+            .Returns(MayBe.From(MotherRegAktifModel("REG-IBU-RES")));
 
         var command = new AdmProcessReservationCmd(
             harness.Reservation.ReservationId, "1", "B1", "user2",
@@ -962,7 +975,7 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedRegInap.Should().NotBeNull();
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
-        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-RES")), Times.Once);
     }
 
     [Fact]
@@ -981,7 +994,7 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedRegInap.Should().NotBeNull();
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -1000,7 +1013,7 @@ public class AdmissionRegistrationOrchestratorTest
         response.RegId.Should().NotBeNullOrWhiteSpace();
         harness.SavedRegInap.Should().NotBeNull();
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -1019,7 +1032,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("1");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -1038,7 +1051,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().BeEmpty();
-        harness.RegDal.Verify(x => x.GetData(It.IsAny<IRegKey>()), Times.Never);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
     }
 
     [Fact]
@@ -1046,8 +1059,8 @@ public class AdmissionRegistrationOrchestratorTest
     {
         var baby = BabyPasien("P-BABY-DIR-3");
         var harness = CreateDirectHarness(defaultPasien: baby);
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")))
-            .Returns(MotherRegDto("REG-IBU-DIR", jenisInap: "2"));
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")))
+            .Returns(MayBe.From(MotherRegAktifModel("REG-IBU-DIR")));
 
         var command = new AdmProcessDirectAdmissionCmd(
             "P-BABY-DIR-3", "1", "B1", "user2",
@@ -1059,7 +1072,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().Be("REG-IBU-DIR");
-        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IBU-DIR")), Times.Once);
     }
 
     #endregion
@@ -1153,11 +1166,11 @@ public class AdmissionRegistrationOrchestratorTest
     {
         var baby = BabyPasien(pasienId: "BABY01", mrIbu: "MOM-AUTO");
         var harness = CreateDirectHarness(defaultPasien: baby);
-        var motherReg = MotherRegDto("REG-AUTO-88", "MOM-AUTO", jenisInap: "2");
-        harness.RegDal.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")))
-            .Returns([motherReg]);
-        harness.RegDal.Setup(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-88")))
-            .Returns(motherReg);
+        var mother = MotherRegAktifModel("REG-AUTO-88", "MOM-AUTO");
+        harness.RegAktifRepo.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")))
+            .Returns([mother]);
+        harness.RegAktifRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-88")))
+            .Returns(MayBe.From(mother));
 
         var command = new AdmProcessDirectAdmissionCmd(
             "BABY01", "1", "B1", "user2",
@@ -1172,8 +1185,8 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedReg.Should().NotBeNull();
         harness.SavedReg!.JenisInap.JenisInapId.Should().Be("3");
         harness.SavedReg.RegIbu.Should().Be("REG-AUTO-88");
-        harness.RegDal.Verify(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")), Times.Once);
-        harness.RegDal.Verify(x => x.GetData(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-88")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "MOM-AUTO")), Times.Once);
+        harness.RegAktifRepo.Verify(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-AUTO-88")), Times.Once);
     }
 
     [Fact]
@@ -1377,7 +1390,7 @@ public class AdmissionRegistrationOrchestratorTest
 
         return new ReservationHarness(
             sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, auditRepo,
-            ward, waitingListRepo, trackerCoordinator, pasienRepo, regDal, () => savedRegInap, () => savedWaitingList);
+            ward, waitingListRepo, trackerCoordinator, pasienRepo, regAktifRepo, regDal, () => savedRegInap, () => savedWaitingList);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -1452,6 +1465,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IWaitingListRepo> waitingListRepo,
         Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
         Mock<IPasienRepo> pasienRepo,
+        Mock<IRegAktifRepo> regAktifRepo,
         Mock<IRegDal> regDal,
         Func<RegInapModel?> savedRegInap,
         Func<WaitingListModel?> savedWaitingList)
@@ -1467,6 +1481,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
         public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
+        public Mock<IRegAktifRepo> RegAktifRepo { get; } = regAktifRepo;
         public Mock<IRegDal> RegDal { get; } = regDal;
         public RegInapModel? SavedRegInap => savedRegInap();
         public WaitingListModel? SavedWaitingList => savedWaitingList();
@@ -1753,3 +1768,4 @@ public class AdmissionRegistrationOrchestratorTest
         public WaitingListModel? SavedWaitingList => savedWaitingList();
     }
 }
+

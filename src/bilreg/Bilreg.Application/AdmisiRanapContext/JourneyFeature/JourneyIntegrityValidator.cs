@@ -48,7 +48,7 @@ public static class JourneyIntegrityValidator
         {
             var hasOpn = JourneyIdFactory.HasValue(admission.OpnameRequestId);
             var hasRsv = JourneyIdFactory.HasValue(admission.ReservationId);
-            if (hasOpn && hasRsv)
+            if (hasOpn && hasRsv && admission.OpnameRequestId != admission.ReservationId)
             {
                 issues.Add(Issue(
                     JourneyReconciliationCodes.AdmissionHasBothSources,
