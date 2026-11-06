@@ -244,8 +244,8 @@ Changed Files:
 
 ### P4-S05
 Title: Web API Endpoint Contract & End-to-End Test Verification
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 Memverifikasi endpoint REST `PATCH /api/LabContext/LabOrderFeature/activateDeferred` pada `LabOrderController.cs` agar menerima DTO `LabOrderActivateDeferredCmd` (dengan properti `ExecutionRegId` opsional) dan mengembalikan respons `JSendOk(LabOrderActivateDeferredResponse)`. Menjalankan regression check dan unit/integration tests pada `b09-bilreg-api`.
@@ -260,6 +260,20 @@ Completion Criteria:
 
 Notes:
 - Jalankan `dotnet test` secara terarah pada proyek pengujian lab context.
+
+Implementation Notes:
+- Memverifikasi endpoint REST `PATCH /api/LabContext/LabOrderFeature/activateDeferred` pada `LabOrderController.cs` yang memetakan body `LabOrderActivateDeferredCmd` (dengan opsional `ExecutionRegId`) dan mengembalikan `Ok(new JSendOk(response))`.
+- Menambahkan unit test di `LabOrderControllerTest.cs`:
+  - `ActivateDeferredAction_HasExpectedHttpAttributes`: memvalidasi anotasi atribut `[HttpPatch("activateDeferred")]`.
+  - `ActivateDeferred_GivenValidCommandWithExecutionRegId_DispatchesAndReturnsOkWithJSendOk`: memverifikasi pengiriman command dengan `ExecutionRegId` eksplisit ke mediator dan pengembalian respons JSendOk sukses.
+  - `ActivateDeferred_GivenCommandWithoutExecutionRegId_DispatchesAndReturnsOkWithJSendOk`: memverifikasi pengiriman command tanpa `ExecutionRegId` (null) ke mediator dan pengembalian respons JSendOk sukses.
+- Menjalankan regression tests:
+  - `LabOrderControllerTest`: 18 tests passed (100%).
+  - `LabContext.LabOrderFeature` (excluding Dal): 249 tests passed (100%).
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderControllerTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-ORDER-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
