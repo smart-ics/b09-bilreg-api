@@ -17,16 +17,18 @@ public class TataRekeningPhase1DomainTest
     private static readonly DateTime TestDate = new(2026, 6, 16, 10, 0, 0);
 
     [Fact]
-    public void P1_01_GivenClosedWithoutVerification_WhenAllocate_ThenShouldReject()
+    public void P1_01_GivenClosedWithoutVerification_WhenAllocate_ThenShouldSucceed()
     {
-        var tataRekening = HydrateOpened(CreateBill("BILL-01", 100_000m));
+        var bill = CreateBill("BILL-01", 100_000m);
+        var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
         Action act = () => tataRekening.AllocateFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)]);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Financial Verification*");
+        act.Should().NotThrow();
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeTrue();
+        bill.ListFinalization.Should().NotBeEmpty();
     }
 
     [Fact]

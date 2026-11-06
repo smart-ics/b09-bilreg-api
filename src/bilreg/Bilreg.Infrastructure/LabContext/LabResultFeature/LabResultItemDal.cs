@@ -90,6 +90,6 @@ public class LabResultItemDal : ILabResultItemDal
         dp.AddParam("@ResultDocumentId", filter.ResultDocumentId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabResultItemDto>(sql, dp);
+        return conn.Read<LabResultItemDto>(sql, dp) ?? Enumerable.Empty<LabResultItemDto>();
     }
 }

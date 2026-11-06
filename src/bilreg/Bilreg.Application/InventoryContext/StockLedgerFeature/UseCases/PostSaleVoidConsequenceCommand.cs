@@ -189,6 +189,9 @@ public class PostSaleVoidConsequenceHandler
         var bindingInserts = new List<StockLegacyBindingModel>();
         var legacyOps = new List<LegacyStockWriteOperation>();
         var lineResults = new List<PostSaleVoidLineResult>();
+        var usedBukuIds = new HashSet<string>(StringComparer.Ordinal);
+        var usedMutasiIds = new HashSet<string>(StringComparer.Ordinal);
+        var usedBindingIds = new HashSet<string>(StringComparer.Ordinal);
         var syncedAt = DateTime.Now;
 
         foreach (var original in originals)
@@ -222,31 +225,76 @@ public class PostSaleVoidConsequenceHandler
                 original.BrgMasukReffId,
                 binding.LegacyStokId);
 
-            var voidLegacyBukuId = NunaId.NewLegacyCompact("BK");
+            if (!scopesByDo.TryGetValue(original.BrgMasukReffId, out var scopeForWatermark))
+            {
+                var scopeKey = StockLegacyScopeModel.Key(original.BrgId, original.BrgMasukReffId);
+                var scopeMaybe = _scopeRepo.LoadEntity(scopeKey);
+                if (scopeMaybe.HasValue)
+                    scopeForWatermark = scopeMaybe.Value;
+            }
 
-            var voidMutasi = StockMovementModel.CreateInbound(
-                lokasi.StokLokasiId,
-                batch.StokBatchId,
-                original.BrgId,
-                original.BrgMasukReffId,
-                original.LayananId,
-                original.TglEd,
-                request.VoidTrsReffId,
-                voidKind,
-                qtyIn: original.QtyOut,
-                hpp: hpp,
-                tglMutasi: request.TglMutasi,
-                poReffId: original.PoReffId,
-                reversesMutasiId: original.StokMutasiId);
+            var watermarkToBeat = (scopeForWatermark != null && scopeForWatermark.TglMutasiLast == request.TglMutasi)
+                ? scopeForWatermark.LastLegacyBukuId
+                : null;
+
+            string voidLegacyBukuId;
+            do
+            {
+                voidLegacyBukuId = NunaId.NewLegacyCompact("BK");
+                if (usedBukuIds.Contains(voidLegacyBukuId) ||
+                    (watermarkToBeat != null && string.Compare(voidLegacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0))
+                {
+                    Thread.Sleep(5);
+                }
+            } while (!usedBukuIds.Add(voidLegacyBukuId) ||
+                     (watermarkToBeat != null && string.Compare(voidLegacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0));
+
+            watermarkToBeat = voidLegacyBukuId;
+
+            StockMovementModel voidMutasi;
+            do
+            {
+                voidMutasi = StockMovementModel.CreateInbound(
+                    lokasi.StokLokasiId,
+                    batch.StokBatchId,
+                    original.BrgId,
+                    original.BrgMasukReffId,
+                    original.LayananId,
+                    original.TglEd,
+                    request.VoidTrsReffId,
+                    voidKind,
+                    qtyIn: original.QtyOut,
+                    hpp: hpp,
+                    tglMutasi: request.TglMutasi,
+                    poReffId: original.PoReffId,
+                    reversesMutasiId: original.StokMutasiId);
+
+                if (usedMutasiIds.Contains(voidMutasi.StokMutasiId))
+                {
+                    Thread.Sleep(5);
+                }
+            } while (!usedMutasiIds.Add(voidMutasi.StokMutasiId));
 
             mutasiInserts.Add(voidMutasi);
 
-            bindingInserts.Add(StockLegacyBindingModel.CreateMutasiBuku(
-                voidMutasi.StokMutasiId,
-                voidLegacyBukuId,
-                request.VoidTrsReffId,
-                lokasi.StokLokasiId,
-                restoreStokId));
+            StockLegacyBindingModel voidBinding;
+            do
+            {
+                Thread.Sleep(5);
+                voidBinding = StockLegacyBindingModel.CreateMutasiBuku(
+                    voidMutasi.StokMutasiId,
+                    voidLegacyBukuId,
+                    request.VoidTrsReffId,
+                    lokasi.StokLokasiId,
+                    restoreStokId);
+
+                if (usedBindingIds.Contains(voidBinding.BindingId))
+                {
+                    Thread.Sleep(5);
+                }
+            } while (!usedBindingIds.Add(voidBinding.BindingId));
+
+            bindingInserts.Add(voidBinding);
 
             legacyOps.Add(new LegacyReverseBukuWriteOperation(new LegacyReverseBukuWriteRequest(
                 original.BrgId,

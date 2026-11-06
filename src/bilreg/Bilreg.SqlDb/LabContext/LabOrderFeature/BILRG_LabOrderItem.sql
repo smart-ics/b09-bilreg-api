@@ -16,6 +16,15 @@ CREATE TABLE BILRG_LabOrderItem
     RequiredTubeCount INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_RequiredTubeCount DEFAULT(0),
     Urgency INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_Urgency DEFAULT(0),
 
+    ServiceType INT NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_ServiceType DEFAULT(1),
+    DisciplineId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_DisciplineId DEFAULT(''),
+    DisciplineName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_DisciplineName DEFAULT(''),
+    TestGroupId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_TestGroupId DEFAULT(''),
+    TestGroupName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_LabOrderItem_TestGroupName DEFAULT(''),
+
     CONSTRAINT PK_BILRG_LabOrderItem PRIMARY KEY CLUSTERED (OrderId, ItemNo)
-)
+);
+GO
+
+CREATE INDEX IX_BILRG_LabOrderItem_Grouping ON BILRG_LabOrderItem(OrderId, DisciplineName, TestGroupName);
 GO

@@ -6,8 +6,18 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PaymentContext.DepositFeature.UseCases;
 
 public record DepositListQry(string RegId) : IRequest<IEnumerable<DepositListResponse>>, IRegKey;
-public record DepositListResponse(string DepositId, string DepositDate, string UserId,
-    RegReff Reg, LayananReff Layanan, string Keterangan, decimal NilaiDeposit);
+public record DepositListResponse(
+    string DepositId,
+    string DepositDate,
+    string UserId,
+    RegReff Reg,
+    LayananReff Layanan,
+    string Keterangan,
+    decimal NilaiDeposit,
+    bool IsPaid = false,
+    decimal TotalBayar = 0,
+    string PetugasKasir = "",
+    string NoKwitansi = "");
 
 public class DepositListHandler : IRequestHandler<DepositListQry, IEnumerable<DepositListResponse>>
 {
@@ -28,7 +38,11 @@ public class DepositListHandler : IRequestHandler<DepositListQry, IEnumerable<De
             Reg: d.Reg,
             Layanan: d.Layanan,
             Keterangan: d.Keterangan,
-            NilaiDeposit: d.NilaiDeposit
+            NilaiDeposit: d.NilaiDeposit,
+            IsPaid: d.IsPaid,
+            TotalBayar: d.TotalBayar,
+            PetugasKasir: d.PetugasKasir,
+            NoKwitansi: d.NoKwitansi
         ));
 
         return Task.FromResult(result);

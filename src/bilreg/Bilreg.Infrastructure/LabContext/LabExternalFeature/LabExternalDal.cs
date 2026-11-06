@@ -117,7 +117,7 @@ public class LabExternalDal : ILabExternalDal
         dp.AddParam("@ExternalMrNo", externalMrNo, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabExternalDto>(sql, dp).FirstOrDefault();
+        return conn.QueryFirstOrDefault<LabExternalDto>(sql, dp);
     }
 
     public IEnumerable<LabExternalDto> ListData(string? searchTerm, DateTime? date1, DateTime? date2, int? status)
@@ -164,7 +164,7 @@ public class LabExternalDal : ILabExternalDal
         sql += " ORDER BY CrtDate DESC, RegExternalId DESC";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabExternalDto>(sql, dp);
+        return conn.Read<LabExternalDto>(sql, dp) ?? Enumerable.Empty<LabExternalDto>();
     }
 
     private static DynamicParameters BuildParams(LabExternalDto dto)

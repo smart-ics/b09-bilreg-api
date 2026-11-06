@@ -1,9 +1,13 @@
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -256,5 +260,146 @@ public class PenjualanModelTest
             NilaiItemType.Default);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah void*");
+    }
+
+    [Fact]
+    public void CreateDirectReg_InitializesDirectSaleWithSingleSpaceResepIdAndLegacyDUId()
+    {
+        var reg = new RegModel(
+            "RG00000001",
+            new DateOnly(2026, 8, 6),
+            new AuditInfoType("U1", new DateTime(2026, 8, 6, 10, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            PasienModel.Default.ToReff(),
+            TipeJaminan(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            new PpaReff("DR00000001", "Dr Tes"),
+            new LayananReff("LYR01", "Poli Dalam"),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            []);
+
+        var layananPoli = LayananJual();
+        var tipeBrg = TipeBrgType.Default.ToReff();
+        var occurredAt = new DateTime(2026, 8, 6, 11, 30, 0);
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, layananPoli, tipeBrg, "U1", occurredAt);
+
+        penjualan.PenjualanId.Should().StartWith("DU").And.HaveLength(10);
+        penjualan.ResepId.Should().Be(" ");
+        penjualan.Register.RegId.Should().Be("RG00000001");
+        penjualan.Dokter.DokterId.Should().Be("DR00000001");
+        penjualan.Layanan.LayananId.Should().Be(layananPoli.LayananId);
+        penjualan.LayananResep.LayananId.Should().Be(layananPoli.LayananId);
+        penjualan.TipeJaminan.TipeJaminanId.Should().Be(reg.TipeJaminan.TipeJaminanId);
+        penjualan.TipeBrg.TipeBrgId.Should().Be(tipeBrg.TipeBrgId);
+        penjualan.AuditTrail.Created.UserId.Should().Be("U1");
+        penjualan.AuditTrail.Created.Timestamp.Should().Be(occurredAt);
+        penjualan.ListItem.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddItem_OnDirectRegPenjualan_FormatsItemIdWithDashD2()
+    {
+        var reg = new RegModel(
+            "RG00000001",
+            new DateOnly(2026, 8, 6),
+            new AuditInfoType("U1", new DateTime(2026, 8, 6, 10, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            PasienModel.Default.ToReff(),
+            TipeJaminan(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            new PpaReff("DR00000001", "Dr Tes"),
+            new LayananReff("LYR01", "Poli Dalam"),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            []);
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, LayananJual(), TipeBrgType.Default.ToReff(), "U1", DateTime.Now);
+        var nilai = NilaiItemType.Create(2, 5000, 0, 100, 0, 0, 0, 0, 0);
+
+        penjualan.AddItem(Brg("BRG01", "Obat A"), Satuan(), 2, Etiket(), nilai);
+
+        var item = penjualan.ListItem.Single();
+        item.NoUrut.Should().Be(1);
+        item.PenjualanItemId.Should().Be($"{penjualan.PenjualanId}-01");
+    }
+
+    [Fact]
+    public void PenjualanItem_AddBatch_AndVoidLine_MarksBatchesVoid()
+    {
+        var item = PenjualanItemType.Create(
+            "DU1234567A-01", 1, Brg("BRG01", "Obat A"), Satuan(), 5, Etiket(), NilaiItemType.Default);
+
+        var tglEd = new DateTime(2027, 12, 31);
+        item.AddBatch("BATCH001", tglEd, "PO001", "DO001", 3, 1000m);
+        item.AddBatch("BATCH002", tglEd, "PO002", "DO002", 2, 1050m);
+
+        item.ListBatch.Should().HaveCount(2);
+        item.ListBatch[0].PenjualanItemBatchId.Should().Be("DU1234567A-01-01");
+        item.ListBatch[0].NoUrut.Should().Be(1);
+        item.ListBatch[0].NoBatch.Should().Be("BATCH001");
+        item.ListBatch[0].Qty.Should().Be(3);
+        item.ListBatch[0].Hpp.Should().Be(1000m);
+        item.ListBatch[0].IsVoided.Should().BeFalse();
+
+        item.ListBatch[1].PenjualanItemBatchId.Should().Be("DU1234567A-01-02");
+        item.ListBatch[1].NoUrut.Should().Be(2);
+        item.ListBatch[1].IsVoided.Should().BeFalse();
+
+        item.VoidLine();
+
+        item.IsVoided.Should().BeTrue();
+        item.ListBatch.Should().AllSatisfy(b => b.IsVoided.Should().BeTrue());
+    }
+
+    [Fact]
+    public void VoidWithTimestampOverload_SetsVoidTimestampAndVoidsBatches()
+    {
+        var reg = new RegModel(
+            "RG00000001",
+            new DateOnly(2026, 8, 6),
+            new AuditInfoType("U1", new DateTime(2026, 8, 6, 10, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            PasienModel.Default.ToReff(),
+            TipeJaminan(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            new PpaReff("DR00000001", "Dr Tes"),
+            new LayananReff("LYR01", "Poli Dalam"),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            []);
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, LayananJual(), TipeBrgType.Default.ToReff(), "U1", DateTime.Now);
+        penjualan.AddItem(Brg("BRG01", "Obat A"), Satuan(), 2, Etiket(), NilaiItemType.Create(2, 5000, 0, 0, 0, 0, 0, 0, 0));
+        penjualan.ListItem.Single().AddBatch("B01", new DateTime(2027, 1, 1), "P01", "D01", 2, 2000m);
+
+        var voidedAt = new DateTime(2026, 8, 6, 14, 0, 0);
+        penjualan.Void("U_VOID", voidedAt);
+
+        penjualan.AuditTrail.IsVoided.Should().BeTrue();
+        penjualan.AuditTrail.Voided.UserId.Should().Be("U_VOID");
+        penjualan.AuditTrail.Voided.Timestamp.Should().Be(voidedAt);
+        penjualan.ListItem.Single().IsVoided.Should().BeTrue();
+        penjualan.ListItem.Single().ListBatch.Single().IsVoided.Should().BeTrue();
+        penjualan.Nilai.GrandTotal.Should().Be(0);
     }
 }

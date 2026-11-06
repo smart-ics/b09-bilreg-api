@@ -22,7 +22,7 @@ public class IgdVisitDischargeHandlerTest
 
     public IgdVisitDischargeHandlerTest()
     {
-        _sut = new IgdVisitDischargeHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object, TestTglJamProvider.Instance);
+        _sut = new IgdVisitDischargeHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object, new TestTglJamProvider(new DateTime(2026, 1, 1, 12, 0, 0)));
     }
 
     private static IgdVisitModel BuildVisit(

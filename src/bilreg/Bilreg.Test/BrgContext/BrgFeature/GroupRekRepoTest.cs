@@ -71,6 +71,36 @@ public class GroupRekRepoTests
             onSome: model => model.Should().NotBeNull(),
             onNone: () => Assert.Fail("Expected Some but got None"));
     }
+
+    [Fact]
+    public void UT3b_GivenDtoWithCoaAndRekapCetak_WhenLoadEntity_ThenPropertiesMappedCorrectly()
+    {
+        // Arrange
+        var dto = new GroupRekDto("GR01", "Obat Bebas", "OBT", "Obat", "01", "111.01", "111.02", "111.03", "111.04", "111.05");
+        var key = GroupRekType.Key("GR01");
+        _groupRekDalMock
+            .Setup(x => x.GetData(key))
+            .Returns(dto);
+
+        // Act
+        var result = _repository.LoadEntity(key);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: model =>
+            {
+                model.GroupRekId.Should().Be("GR01");
+                model.GroupRekName.Should().Be("Obat Bebas");
+                model.RekapCetakId.Should().Be("01");
+                model.RekJual.CoaId.Should().Be("111.01");
+                model.RekJualRajal.CoaId.Should().Be("111.02");
+                model.RekDisc.CoaId.Should().Be("111.03");
+                model.RekTax.CoaId.Should().Be("111.04");
+                model.RekPersediaan.CoaId.Should().Be("111.05");
+            },
+            onNone: () => Assert.Fail("Expected Some but got None"));
+    }
     
     [Fact]
     public void UT4_GivenNonExistingEntity_WhenLoadEntity_ThenNoneIsReturned()

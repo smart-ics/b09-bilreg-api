@@ -2,9 +2,9 @@
 Title: Feasibility Assessment Akomodasi Order Laboratorium untuk Pemeriksaan Patologi Anatomi dan Mikrobiologi
 Code: LAB-ORDER-PA-MICRO-ACCOMMODATION-FEASIBILITY-ASSESSMENT
 Artifact: FEASIBILITY-ASSESSMENT
-Version: 1.0
-LastUpdated: 2026-10-30
-Status: NOT-READY
+Version: 1.3
+LastUpdated: 2026-11-04
+Status: READY-FOR-PLANNING
 ---
 
 # 1. Request Summary
@@ -14,6 +14,8 @@ Penilaian kelayakan terhadap usulan pengembangan sistem order laboratorium (`LAB
 Referenced artifacts:
 
 - ISSUE: [LAB-ORDER-PA-MICRO-ACCOMMODATION-ISSUE.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-ISSUE.md)
+- ARCHITECTURE: [LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md)
+- IMPLEMENTATION PLAN: [LAB-ORDER-PA-MICRO-ACCOMMODATION-IMPLEMENTATION-PLAN.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-IMPLEMENTATION-PLAN.md)
 - DOMAIN Bilreg: [lab-domain.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/lab-domain.md)
 - DOMAIN PA OWARE: [LAB-PA-DOMAIN.md](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/docs/LAB-PA-DOMAIN.md)
 - DOMAIN Mikrobiologi OWARE: [CANONICAL-DOMAIN-SPECIFICATION-MICROBIOLOGY.md](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/docs/CANONICAL-DOMAIN-SPECIFICATION-MICROBIOLOGY.md)
@@ -95,12 +97,12 @@ Referenced artifacts:
 
 # 4. Open Questions
 
-| ID | Question | Impact |
-|------|------|------|
-| **OQ-001** | **Strategi Pemisahan Order vs Order Campuran**: Apakah order untuk pemeriksaan Patologi Anatomi dan Mikrobiologi wajib dibuat sebagai order transaksi terpisah dari Patologi Klinik (1 Order = 1 Disiplin Lab), ataukah diperbolehkan dalam 1 order campuran (*mixed*)? | Menentukan apakah perutean ke LIS vendor di OWARE dilakukan berbasis level Order (`OrderModel.OrderType`) atau memerlukan logika pemecahan order (*order splitting*) yang rumit jika item dalam 1 order memiliki tujuan vendor berbeda. |
-| **OQ-002** | **Kardinalitas Sediaan Jaringan PA**: Pada pemeriksaan Patologi Anatomi, apakah satu item tindakan (misal: Histopatologi Jaringan Sedang) hanya mewakili 1 lokasi sediaan (`SpecimenSite`), ataukah klinisi dapat memesan 1 tindakan dengan beberapa botol sediaan terpisah (misal Botol A: Mamma Dextra, Botol B: KGB Aksila)? | Menentukan struktur pemodelan atribut: apakah cukup berupa string field pada item order, atau memerlukan relasi child koleksi sediaan (*SpecimenContainer / SpecimenList*). |
-| **OQ-003** | **Penentuan Disiplin Lab di Master Data**: Apakah disiplin pemeriksaan (PK, PA, Mikrobiologi) ditentukan secara otomatis dari master data tes / kelompok tarif di Bilreg, atau dipilih manual oleh user di form frontend? | Mempengaruhi kebutuhan penambahan kolom/properti klasifikasi disiplin pada `LabTestDefinitionModel` atau master tarif, serta otomatisasi validasi form di frontend. |
-| **OQ-004** | **Input Mikrobiologi: Terstruktur vs Naratif**: Apakah data riwayat antibiotik dan kecurigaan mikroorganisme perlu dibuatkan field input form terstruktur tersendiri, atau cukup distandarisasikan format penulisannya di dalam field `ClinicalNote` / catatan klinis? | Menentukan kompleksitas UI form pemesanan dan validasi schema pada frontend `c012_myhospital_web`. |
+| ID | Question | Impact | Status |
+|------|------|------|------|
+| **OQ-001** | **Strategi Pemisahan Order vs Order Campuran**: Apakah order untuk pemeriksaan Patologi Anatomi dan Mikrobiologi wajib dibuat sebagai order transaksi terpisah dari Patologi Klinik (1 Order = 1 Disiplin Lab), ataukah diperbolehkan dalam 1 order campuran (*mixed*)? | Menentukan apakah perutean ke LIS vendor di OWARE dilakukan berbasis level Order (`OrderModel.OrderType`) atau memerlukan logika pemecahan order (*order splitting*) yang rumit jika item dalam 1 order memiliki tujuan vendor berbeda. | **CLOSED** |
+| **OQ-002** | **Kardinalitas Sediaan Jaringan PA**: Pada pemeriksaan Patologi Anatomi, apakah satu item tindakan (misal: Histopatologi Jaringan Sedang) hanya mewakili 1 lokasi sediaan (`SpecimenSite`), ataukah klinisi dapat memesan 1 tindakan dengan beberapa botol sediaan terpisah (misal Botol A: Mamma Dextra, Botol B: KGB Aksila)? | Menentukan struktur pemodelan atribut: apakah cukup berupa string field pada item order, atau memerlukan relasi child koleksi sediaan (*SpecimenContainer / SpecimenList*). | **CLOSED** |
+| **OQ-003** | **Penentuan Disiplin Lab di Master Data**: Apakah disiplin pemeriksaan (PK, PA, Mikrobiologi) ditentukan secara otomatis dari master data tes / kelompok tarif di Bilreg, atau dipilih manual oleh user di form frontend? | Mempengaruhi kebutuhan penambahan kolom/properti klasifikasi disiplin pada `LabTestDefinitionModel` atau master tarif, serta otomatisasi validasi form di frontend. | **CLOSED** |
+| **OQ-004** | **Input Mikrobiologi: Terstruktur vs Naratif**: Apakah data riwayat antibiotik dan kecurigaan mikroorganisme perlu dibuatkan field input form terstruktur tersendiri, atau cukup distandarisasikan format penulisannya di dalam field `ClinicalNote` / catatan klinis? | Menentukan kompleksitas UI form pemesanan dan validasi schema pada frontend `c012_myhospital_web`. | **CLOSED** |
 
 ---
 
@@ -122,21 +124,22 @@ Referenced artifacts:
 |------|------|------|------|
 | **RISK-001** | **Kebingungan Routing Vendor LIS pada Order Campuran**: Jika klinisi memesan darah rutin (PK) dan biopsi jaringan (PA) dalam satu nomor order yang sama, OWARE akan kesulitan menentukan vendor LIS penerima karena `OrderLabModel` hanya memiliki satu `OrderType`. | HIGH | Menerapkan kebijakan arsitektur **Pemisahan Order per Disiplin Laboratorium**: sistem mewajibkan satu nomor order hanya berisi pemeriksaan dalam disiplin yang sama (PK, PA, atau Mikrobiologi). |
 | **RISK-002** | **Penolakan Sediaan oleh Laboratorium PA Akibat Data Jaringan Tidak Lengkap**: Jika klinisi tidak mengisi asal jaringan (`SpecimenSite`) atau diagnosa klinis pengantar saat memesan pemeriksaan histopatologi, dokter Sp.PA dan teknisi lab tidak dapat memproses sediaan. | HIGH | Menerapkan validasi wajib (*mandatory*) di frontend dan backend: field `SpecimenSite` dan `ClinicalDiagnosis` wajib diisi jika order bertipe Patologi Anatomi. |
-| **RISK-003** | **Breaking Change pada Schema Master Tes (`VacutainerTypeEnum`)**: Mengubah atau menghapus nilai pada `VacutainerTypeEnum` yang sudah digunakan oleh tes-tes PK eksisting dapat merusak data tersimpan dan query yang ada. | MEDIUM | Memperluas enum secara backward-compatible dengan menambahkan tipe wadah baru (misal `FormalinPot = 10`, `SterileContainer = 11`, `TransportMedium = 12`, `NonContainer = 99`) tanpa mengubah nilai 1 s/d 4 yang sudah ada. |
+| **RISK-003** | **Breaking Change pada Schema Master Tes (`VacutainerTypeEnum`)**: Mengubah atau menghapus nilai pada `VacutainerTypeEnum` yang sudah digunakan oleh tes-tes PK eksisting dapat merusak data tersimpan dan query yang ada. | MEDIUM | Memperluas enum secara backward-compatible dengan menambahkan tipe wadah baru (misal `PotFormalin = 10`, `PotSteril = 11`, `TransportMedium = 12`, `KacaPreparat = 13`, `BotolKulturDarah = 14`, `TanpaWadahKhusus = 99`) tanpa mengubah nilai 1 s/d 4 yang sudah ada. |
 | **RISK-004** | **Beban Kerja Penginputan Dokter**: Menambahkan terlalu banyak field wajib pada form order dapat memperlambat alur kerja klinisi di poli atau ruangan ranap. | MEDIUM | Mendesain formulir secara kontekstual: field khusus PA (asal organ, prosedur PA) hanya muncul saat user memilih pemeriksaan PA; untuk pemeriksaan PK rutin, form tetap ringkas seperti semula. |
 
 ---
 
 # 7. Recommendations
 
-## Option A: Pemisahan Order Berdasarkan Disiplin Laboratorium (1 Order = 1 Disiplin Lab) — (RECOMMENDED)
+## Option A: Pemisahan Order Berdasarkan Disiplin Laboratorium (1 Order = 1 Disiplin Lab) — (APPROVED)
 
-Pada opsi ini, sistem membagi alur pemesanan ke dalam 3 kategori disiplin laboratorium:
+Sistem menetapkan kebijakan bahwa satu transaksi order laboratorium strictly memuat pemeriksaan dari satu `LaboratoryServiceType` yang sama.
+
 1. **Patologi Klinik (PK)**: Order lab standar (darah, urin, cairan tubuh rutin berbasis tabung vacutainer).
 2. **Patologi Anatomi (PA)**: Order pemeriksaan jaringan dan sel (histopatologi, sitologi, FNAB, potong beku) yang mewajibkan input lokasi jaringan (`SpecimenSite`), diagnosa pengantar (`ClinicalDiagnosis`), dan jenis prosedur (`ProcedureType`).
 3. **Mikrobiologi (Micro)**: Order kultur kuman, resistensi antibiotik, dan mikroskopis khusus yang mewajibkan input jenis bahan biologis, lokasi pengambilan, dan informasi kecurigaan klinis.
 
-Setiap order yang diterbitkan memiliki satu `DisciplineType` yang tegas pada entitas `LabOrderModel` di Bilreg, yang secara direct dipetakan ke `OrderTypeEnum` di OWARE (`Lab`, `LabPa`, atau `LabMicro`).
+Setiap order yang diterbitkan memiliki satu `ServiceType` yang tegas pada entitas `LabOrderModel` di Bilreg, yang secara direct dipetakan 1:1 ke `OrderTypeEnum` di OWARE (`Lab`, `LabPa`, atau `LabMicro`).
 
 ### Advantages
 
@@ -145,119 +148,215 @@ Setiap order yang diterbitkan memiliki satu `DisciplineType` yang tegas pada ent
 - **Siklus Hidup dan Status Hasil Independen**: Pemeriksaan PK umumnya selesai dalam hitungan jam, sedangkan PA dan kultur Mikrobiologi membutuhkan waktu 3 hingga 7 hari kerja. Pemisahan order mencegah status order PK tertahan oleh proses kultur yang memakan waktu lama.
 - **Validasi UI Kontekstual**: Form pemesanan di frontend menyajikan field input yang relevan sesuai disiplin yang dipilih tanpa mengotori alur pemesanan darah rutin PK.
 
-### Disadvantages
-
-- Klinisi yang ingin meminta pemeriksaan darah rutin (PK) dan biopsi jaringan (PA) pada satu pasien dalam satu waktu harus membuat dua transaksi order terpisah. (Namun hal ini merupakan praktik standar di hampir seluruh rumah sakit besar).
-
----
-
-## Option B: Unified Order (Satu Order Kolektif Campuran dengan Item-Level Routing)
-
-Pada opsi ini, klinisi dapat menggabungkan pemeriksaan PK, PA, dan Mikrobiologi dalam satu nomor order yang sama. Atribut spesifik seperti lokasi jaringan dan jenis bahan disimpan sebagai metadata per baris item pemeriksaan (`LabOrderItemModel`). Middleware OWARE atau Bilreg bertanggung jawab untuk memecah (*splitting*) item order dan mengirimkannya ke masing-masing vendor LIS.
-
-### Advantages
-
-- Klinisi hanya perlu melakukan proses check-out/submit pemesanan satu kali untuk seluruh kebutuhan laboratorium pasien.
-
-### Disadvantages
-
-- **Kompleksitas Perutean dan Pemecahan Order di OWARE Sangat Tinggi**: OWARE harus membuat sub-order virtual atau membagi payload pengiriman ke beberapa vendor LIS, yang dapat menimbulkan inkonsistensi saat satu vendor berhasil menerima order sedangkan vendor lain gagal (*partial failure*).
-- **Pengelolaan Status Order Menjadi Rumpun Masalah**: Bagaimana menentukan status `LabOrderStatus` pada Bilreg jika hasil PK sudah rilis (`Released`) sementara hasil kultur Mikrobiologi masih dalam tahap inkubasi hari ke-2 (`InProgress`)?
-- **Desinkronisasi Tindakan Billing**: Pembebanan biaya tindakan (`BillingTindakanId`) yang disatukan akan menyulitkan pembatalan parsial jika salah satu pemeriksaan (misal PA) dibatalkan oleh DPJP sementara pemeriksaan PK sudah selesai dikerjakan.
-
 ---
 
 # 8. Gap Closure
 
-Resolusi terhadap kesenjangan (GAP) dan pertanyaan terbuka (OQ) diuraikan di bawah ini:
+Semua kesenjangan (GAP) dan pertanyaan terbuka (OQ) telah diputuskan dan ditutup secara resmi bersama Domain Owner:
 
 ## GAP-001: Model `VacutainerTypeEnum` dan Validasi `LabTestDefinitionModel`
 
+### Status: CLOSED
+
 ### Decision
-Memperluas enum representasi wadah spesimen di Bilreg dari `VacutainerTypeEnum` menjadi wadah spesimen komprehensif, atau menambahkan nilai enum baru secara backward-compatible:
-- Nilai eksisting dipertahankan: `Edta = 1`, `Serum = 2`, `Citrate = 3`, `Heparin = 4`.
-- Penambahan nilai baru: `PotFormalin = 10` (untuk sediaan PA), `PotSteril = 11` (untuk sputum/urin kultur/cairan), `TransportMedium = 12` (untuk swab kuman/Amies/Stuart), `KacaPreparat = 13` (untuk sitologi/FNAB), `TanpaWadahKhusus = 99`.
+Menyederhanakan penanganan spesimen non-darah dengan menambahkan nilai `None = 0` pada `VacutainerTypeEnum`:
+- Nilai eksisting tabung vacutainer darah tetap utuh: `Edta = 1`, `Serum = 2`, `Citrate = 3`, `Heparin = 4`.
+- Nilai baru: `None = 0` (Tanpa Tabung Vacutainer / Non-Blood Sample).
+- Aturan Operasional:
+  - Untuk sampel non-darah (jaringan sediaan PA, kultur/swab mikrobiologi, urin tampung, feses), `VacutainerType` bernilai `None (0)` dan `RequiredTubeCount = 0`.
+  - Spesifikasi jenis bahan biologis tetap dijelaskan secara tekstual melalui properti `SpecimenType` (misal: "Jaringan", "Sputum", "Pus", "Urine", "Swab Tenggorok").
+  - Frontend UI ([LabOrderCreateCanvas.vue](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/canvas/LabOrderCreateCanvas.vue)) dan [lab-formatters.ts](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/lib/lab-formatters.ts) tidak menampilkan kalkulasi tabung darah jika `vacutainerType === 0`.
 
 ### Rationale
-Menghindari kegagalan validasi pada `LabTestResolutionService` saat mendaftarkan master definisi tes untuk tindakan PA dan Mikrobiologi, tanpa merusak data dan kode eksisting yang menggunakan tabung vacutainer darah.
+Menghilangkan kompleksitas penambahan daftar enum wadah non-darah yang berlebihan (pot formalin, pot steril, kaca preparat, dsb.). Cukup membedakan secara biner apakah tes membutuhkan tabung vacutainer darah (nilai 1–4) atau tidak membutuhkan tabung vacutainer (`None = 0`).
 
 ### Impact
-Perubahan minor pada enum `VacutainerTypeEnum` di `Bilreg.Domain.LabContext.LabOrderFeature` dan tabel database terkait.
+Perubahan minimal: hanya menambahkan `None = 0` pada `VacutainerTypeEnum` di `Bilreg.Domain.LabContext.LabOrderFeature`. Database dan logika eksisting kompatibel 100%.
 
 ### Architecture Impact
-Architect perlu memformalkan apakah enum tetap bernama `VacutainerTypeEnum` dengan penambahan item, atau dialiaskan menjadi `SpecimenContainerTypeEnum`.
+`VacutainerTypeEnum` mempertahankan namanya dan tetap berupa enum integer ringkas (0 s/d 4).
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
 
 ---
 
-## GAP-002 & GAP-003: Atribut Spesifik PA dan Mikrobiologi pada Model Order
+## GAP-002: Atribut Spesifik Patologi Anatomi (PA) pada Model Order Item Dihilangkan (Handled at Result Entry & LIS)
+
+### Status: CLOSED - DROPPED / HANDLED AT RESULT ENTRY & LIS
 
 ### Decision
-Menambahkan struktur data metadata klinis pada `LabOrderModel` (jika mengadopsi Option A) atau pada `LabOrderItemModel`:
-- Untuk Patologi Anatomi:
-  - `SpecimenSite` (string, wajib untuk order PA): Lokasi anatomis / asal organ jaringan.
-  - `ClinicalDiagnosis` (string, wajib untuk order PA): Diagnosa klinis pengantar dokter.
-  - `ProcedureType` (string / enum opsional): Jenis tindakan PA (Histopatologi, Sitologi, FNAB, Potong Beku).
-- Untuk Mikrobiologi:
-  - `Specimen` / `MaterialType` (string, wajib untuk order Micro): Jenis bahan biologis.
-  - `AnatomicSource` (string, opsional): Lokasi pengambilan sampel mikrobiologi.
-  - `ClinicalIndication` (string, opsional): Kecurigaan infeksi/patogen.
-  - `PriorAntibiotics` (string, opsional): Riwayat penggunaan antibiotik terakhir.
+Atribut spesifik PA (`SpecimenSite`, `ProcedureType`, `ClinicalDiagnosis`) **TIDAK ditambahkan pada `LabOrderItemModel`**:
+- Informasi mengenai lokasi jaringan sediaan (`SpecimenSite`), jenis prosedur PA (`ProcedureType`), nomor sediaan laboratorium PA (`CaseNumber`), dan diagnosis klinis PA sepenuhnya ditangani di **sistem LIS eksternal** atau pada saat **perekaman hasil pemeriksaan (Result Entry)**, di mana model [`LabPaResultModel.cs`](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Domain/Entities/Lab/LabPaResultModel.cs) sudah memiliki atribut-atribut tersebut secara lengkap.
+- Pada tahap pembuatan order di HIS, klinisi cukup memesan item tindakan tarif PA yang dimaksud. Jika ada catatan atau indikasi medis awal dari dokter pengirim, dapat dicatat pada field `ClinicalNote` umum yang sudah tersedia di level order header.
 
 ### Rationale
-Parameter-parameter ini merupakan data klinis primer yang diwajibkan oleh dokter Sp.PA dan Sp.MK serta sistem LIS eksternal (seperti Berliando dan Prolims) untuk memproses spesimen secara akurat dan bermakna.
+Menyederhanakan alur kerja penginputan order bagi klinisi di form order, menghindari redundansi data antara order dan laporan hasil, serta memanfaatkan fakta bahwa sistem LIS PA dan model hasil `LabPaResultModel` memang sudah menjadi tempat yang tepat secara klinis untuk mendokumentasikan rincian sediaan makroskopis, mikroskopis, dan lokasi jaringan.
 
 ### Impact
-Penambahan kolom/tipe data pada tabel order lab di Bilreg, DTO query respons, dan DTO integrasi OWARE.
+**Zero schema changes** pada tabel `BILRG_LabOrderItem` untuk atribut PA. Form pemesanan lab di frontend tidak perlu menambahkan kolom-kolom input kompleks per item.
 
 ### Architecture Impact
-Mendefinisikan apakah atribut ini disimpan sebagai value object terpisah (misal `PaOrderMetadataType`, `MicroOrderMetadataType`) atau field langsung pada entity.
+`LabOrderItemModel` tetap ramping dan tidak dibebani field-field naratif sediaan.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
+
+---
+
+## GAP-003: Atribut Spesifik Mikrobiologi (Micro) pada Model Order
+
+### Status: CLOSED - DISIMPLIFIKASI (HANDLED VIA CLINICALNOTE & SPECIMENTYPE)
+
+### Decision
+Menyederhanakan penanganan atribut mikrobiologi:
+1. **Tidak menambahkan kolom baru pada `LabOrderModel` (`PriorAntibiotics`, `ClinicalIndication`)**: Informasi mengenai riwayat terapi antimikroba/antibiotik terakhir, kecurigaan patogen/infeksi, atau catatan klinis lainnya ditangani langsung melalui properti `ClinicalNote` yang sudah tersedia pada header `LabOrderModel`.
+2. **Tidak menambahkan `AnatomicSource` pada `LabOrderItemModel`**: Deskripsi bahan biologis / spesimen mikrobiologi (Sputum, Urin porsi tengah, Darah, Pus, Swab luka, LCS) tetap diakomodasi melalui properti `SpecimenType` yang sudah ada, atau didokumentasikan di LIS dan pada saat perekaman hasil (`LabMicroResultModel`).
+3. **Form Pemesanan Frontend**: Tidak memunculkan field input kondisional tambahan untuk mikrobiologi. Klinisi cukup menuliskan catatan klinis yang relevan pada kolom `ClinicalNote` umum yang sudah ada.
+
+### Rationale
+Menghilangkan kompleksitas form pemesanan dan skema database, menghindari kolom-kolom parsial yang jarang diisi lengkap oleh klinisi, serta memaksimalkan penggunaan kolom catatan klinis `ClinicalNote` yang sudah ada.
+
+### Impact
+Zero schema changes untuk atribut mikro pada `BILRG_LabOrder` dan `BILRG_LabOrderItem`. Form order frontend tetap bersih tanpa komponen input kondisional.
+
+### Architecture Impact
+`LabOrderModel` dan `LabOrderItemModel` tidak dibebani field spesifik mikrobiologi.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
 
 ---
 
 ## GAP-004: Seleksi Disiplin Lab dan Form Input Terstruktur di Frontend
 
+### Status: CLOSED
+
 ### Decision
-Memperbarui [LabOrderCreateCanvas.vue](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/canvas/LabOrderCreateCanvas.vue) dengan menyediakan:
-1. Pilihan Tab / Selector Disiplin Lab di bagian atas pemilihan tes: `Patologi Klinik (PK)` | `Patologi Anatomi (PA)` | `Mikrobiologi (Micro)`.
-2. Menampilkan field input kontekstual saat tab `Patologi Anatomi` aktif (`SpecimenSite`, `ProcedureType`, `ClinicalDiagnosis`).
-3. Menampilkan field input kontekstual saat tab `Mikrobiologi` aktif (`SpecimenType`, `AnatomicSource`, `PriorAntibiotics`).
-4. Menyesuaikan indikator `tubeSummary` agar tidak menampilkan kalkulasi tabung darah jika order yang dibuat adalah PA (menampilkan jumlah pot/wadah jaringan) atau Mikrobiologi (menampilkan wadah spesimen).
+Menerapkan **Form Pemesanan Tunggal Terpadu (Single Cart) Tanpa Multi-Tab**:
+1. Form pemesanan di frontend ([LabOrderCreateCanvas.vue](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/canvas/LabOrderCreateCanvas.vue)) **tidak menggunakan multi-tab** yang merepotkan klinisi.
+2. Dokter/perawat menggunakan satu kotak pencarian tes umum untuk memilih pemeriksaan apapun (baik PK, PA, maupun Micro) dalam satu keranjang belanja yang sama.
+3. Seluruh klasifikasi layanan (`ServiceType`) ditangani otomatis oleh sistem berdasarkan master data [`LabTestDefinitionModel`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Domain/LabContext/LabTestDefinitionFeature/LabTestDefinitionModel.cs).
+4. **Fokus Pembedaan Utama Dialihkan ke Pengelolaan Hasil (Result Management)**: Pembedaan antarmuka form input secara hakiki terjadi pada saat entry hasil laboratorium (Form tabular analit PK, Form laporan naratif PA, dan Form biakan/AST Mikrobiologi).
 
 ### Rationale
-Memberikan pengalaman pengguna yang intuitif, mencegah kesalahan input klinis, dan memastikan data wajib terisi sebelum order disubmit ke backend.
+Memberikan pengalaman pemesanan yang paling ringkas, cepat, dan nyaman bagi dokter/perawat di rawat jalan maupun rawat inap, sementara pembedaan teknis spesialisasi laboratorium ditangani pada meja kerja penginputan hasil.
 
 ### Impact
-Perubahan pada komponen Vue 3 di `c012_myhospital_web/src/modules/Laboratory/components/canvas/LabOrderCreateCanvas.vue` dan schema terkait di `lab-order.schema.ts`.
+Komponen form order tetap sederhana dan tidak memerlukan tab switching. Form perekaman hasil di frontend mengadaptasi layout form berdasarkan `ServiceType` dari order yang dibuka.
 
 ### Architecture Impact
-Architect perlu memvalidasi keselarasan desain interaksi antarmuka dengan pedoman desain HIS Web.
+Frontend menyajikan form order terpadu; backend use-case menangani penyimpanan order secara transparan.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
 
 ---
 
-## GAP-005 & GAP-006: Pemetaan OrderType dan Sinkronisasi DTO di OWARE
+## GAP-005 & GAP-006: Pemetaan OrderType dan DTO di OWARE Diterima As-Is (Zero Changes to OWARE)
+
+### Status: CLOSED - ACCEPTED AS-IS
 
 ### Decision
-1. Memperbarui `BilregLabOrderResponseDto` pada OWARE agar memuat properti `OrderType` / `DisciplineType`, `SpecimenSite`, `ClinicalDiagnosis`, `ProcedureType`, dan informasi spesimen mikrobiologi.
-2. Memperbarui [OrderLabBilregBuilder.cs](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Application/Workers/Creators/OrderLabBilregBuilder.cs) agar memetakan `OrderType` secara dinamis:
-   ```csharp
-   OrderType = dto.DisciplineType switch
-   {
-       1 => OrderTypeEnum.Lab,      // Clinical Pathology (PK)
-       2 => OrderTypeEnum.LabPa,    // Anatomical Pathology (PA)
-       3 => OrderTypeEnum.LabMicro, // Microbiology
-       _ => OrderTypeEnum.Lab
-   };
-   ```
-3. Memetakan properti PA ke dalam `OrderLabModel` dan `LisOrderDto` pada [OrderLabPaBerliandoService.cs](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Infrastructure/ServicesLabPaBerliando/OrderLabPaBerliandoService.cs).
+Menerima implementasi middleware OWARE (`a046_oware_ordermiddlewareapi`) **As-Is sepenuhnya**:
+1. OWARE tetap menggunakan `OrderType = OrderTypeEnum.Lab` pada [OrderLabBilregBuilder.cs](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Application/Workers/Creators/OrderLabBilregBuilder.cs).
+2. Kontrak DTO [BilregLabOrderResponseDto.cs](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Application/Contracts/DTOs/BilregLabOrderResponseDto.cs) tidak perlu diubah.
+3. Mekanisme perutean order ke vendor LIS (baik vendor PK Sysmex/HCLAB, vendor PA Berliando, maupun vendor Micro Prolims) sudah berjalan dengan andal melalui [OrderLabHubService.cs](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Infrastructure/Shared/OrderLabHubService.cs) berbasis konfigurasi `MapTarifLab` (`ConsId`) dan `ConsumerModel.OrderType` (misal: vendor `"6"` untuk Berliando PA, `"4"` atau `"11"` untuk Prolims Micro).
 
 ### Rationale
-Menghilangkan hardcoding `OrderTypeEnum.Lab` sehingga OWARE dapat meneruskan order PA ke adapter LIS PA dan order Micro ke adapter LIS Mikrobiologi.
+OWARE tidak membutuhkan modifikasi enum atau diskriminator tipe order baru karena keputusan perutean vendor LIS di OWARE didasarkan pada mapping tarif ke vendor eksternal (`ConsId`), bukan pada properti `OrderModel.OrderType`. Menerima OWARE as-is meminimalkan risiko regresi pada middleware integrasi yang sudah stabil.
 
 ### Impact
-Perubahan pada proyek `Oware.Application` dan `Oware.Infrastructure`.
+**Zero code changes** pada repositori `a046_oware_ordermiddlewareapi`. Seluruh penyesuaian fungsional dan klasifikasi terisolasi secara bersih pada backend `b09-bilreg-api` dan frontend `c012_myhospital_web`.
 
 ### Architecture Impact
-Sinkronisasi kontrak DTO antar-service antara repo `b09-bilreg-api` dan `a046_oware_ordermiddlewareapi`.
+Middleware OWARE tidak memerlukan perubahan arsitektural.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-03
+
+---
+
+## OQ-001: Strategi Pemisahan Order vs Order Campuran
+
+### Status: CLOSED
+
+### Decision
+**Satu Keranjang Terpadu di Form Order dengan Auto-Split Transparan Berbasis Master Data**:
+- Pengguna di frontend memesan melalui satu form order terpadu tanpa batasan multi-tab.
+- Saat disimpan, sistem backend secara otomatis memecah (*auto-split*) item berdasarkan `ServiceType` dari master data menjadi nomor order resmi per layanan (`LBO-PK-...`, `LBO-PA-...`, `LBO-MIC-...`).
+- **Fokus Diferensiasi Utama Terletak pada Result Management**: Pengelolaan hasil pemeriksaan adalah titik pemisahan operasional sejati di mana form input, validasi dokter spesialis (Sp.PK, Sp.PA, Sp.MK), dan penyajian hasil dibedakan secara tegas sesuai `ServiceType`.
+
+### Rationale
+Menggabungkan keunggulan fleksibilitas UX pemesanan (1 klik simpan bagi dokter) dengan ketertiban arsitektur data backend dan LIS (transaksi per layanan yang terisolasi dengan siklus hidup TAT masing-masing).
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
+
+---
+
+## OQ-002: Kardinalitas Sediaan Jaringan PA
+
+### Status: CLOSED
+
+### Decision
+**Dihilangkan dari Level Order Item**: Atribut sediaan fisik (`SpecimenSite`, `ProcedureType`, `ClinicalDiagnosis`) tidak dicatat pada level order item. Seluruh detail sediaan jaringan, makroskopis, dan mikroskopis didokumentasikan di sistem LIS atau pada saat perekaman hasil ([`LabPaResultModel.cs`](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/Oware.Domain/Entities/Lab/LabPaResultModel.cs)).
+
+### Rationale
+Menghilangkan beban penginputan berlebih pada form pemesanan dan menghindari duplikasi data karena detail sediaan secara alamiah diisi oleh dokter spesialis patologi anatomi saat memeriksa spesimen di laboratorium.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-04
+
+---
+
+## OQ-003: Penetapan Canonical Classification pada Master Data (ServiceType, Discipline, TestGroup)
+
+### Status: CLOSED
+
+### Decision
+Menerapkan model klasifikasi terfokus dan disederhanakan pada [`LabTestDefinitionModel`](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/src/bilreg/Bilreg.Domain/LabContext/LabTestDefinitionFeature/LabTestDefinitionModel.cs):
+
+1. **`LaboratoryServiceType` (Enum, Wajib, Default: PK = 1)**:
+   - Nilai: `ClinicalPathology = 1`, `AnatomicalPathology = 2`, `Microbiology = 3`.
+   - **Tujuan Tunggal**: Menentukan tipe form input result lab (Form tabular analit PK, Form naratif PA, Form biakan/AST Micro), serta menentukan `OrderTypeEnum` saat order dikirim ke OWARE.
+
+2. **`Discipline` (Tabel Master Referensi, Opsional)**:
+   - Disimpan dalam tabel master referensi mandiri `BILRG_LabDiscipline` (`DisciplineId VARCHAR(10)`, `DisciplineName VARCHAR(100)`).
+   - Di `LabTestDefinitionModel`: properti `DisciplineId` (opsional / nullable). Jika kosong, tes masuk ke kelompok "Uncategorized" / "Lain-lain".
+   - **Tujuan**: Mengelompokkan list pemeriksaan saat pemesanan di frontend dan pengelompokan seksi utama (Level 1) pada halaman/printout View Result (misal: "HEMATOLOGI", "KIMIA KLINIK", "URINALISIS", "HISTOPATOLOGI", dll.).
+
+3. **`TestGroup` (Tabel Master Referensi, Opsional)**:
+   - Disimpan dalam tabel master referensi mandiri `BILRG_LabTestGroup` (`TestGroupId VARCHAR(10)`, `TestGroupName VARCHAR(100)`), tanpa relasi foreign key kaku ke `Discipline`.
+   - Di `LabTestDefinitionModel`: properti `TestGroupId` (opsional / nullable).
+   - **Tujuan**: Mengakomodir sub-pengelompokan/panel klinis (Level 2) di bawah discipline (contoh: di bawah Hematology $\rightarrow$ "CBC / Darah Lengkap", "Profil Anemia"; di bawah Chemistry $\rightarrow$ "Profil Lipid", "Fungsi Hati").
+
+4. **Snapshot Persistence**:
+   - Saat order dibuat (`LabOrderItemModel`), dilakukan snapshot nilai: `ServiceType` (int), `DisciplineId`, `DisciplineName`, `TestGroupId`, dan `TestGroupName`.
+   - Hal ini memungkinkan View Result dan Printout Hasil Lab melakukan rendering hierarki grouping (`DisciplineName` $\rightarrow$ `TestGroupName` $\rightarrow$ Item/Komponen Hasil) secara instan dan performan tanpa perlu query runtime `JOIN` ke tabel master referensi.
+
+### Rationale
+Menyederhanakan arsitektur klasifikasi agar fokus tepat pada 3 kebutuhan praktis operasional (tipe form input hasil, pengelompokan list/view result, dan sub-panel grup klinis) dengan overhead minimal dan fleksibilitas konfigurasi rumah sakit yang maksimal.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-03
+
+---
+
+## OQ-004: Pembagian Ruang Lingkup Mikroskopis Infeksi (PK vs Micro)
+
+### Status: CLOSED
+
+### Decision
+**Berbasis Alur Proses (Kultur vs Non-Kultur)**:
+- Pemeriksaan mikroskopis cepat tanpa kultur (Pewarnaan Gram langsung, Pewarnaan BTA langsung, Preparat KOH jamur langsung) tetap berada di bawah `LaboratoryServiceType.ClinicalPathology` dengan `LaboratoryDiscipline.ClinicalMicroscopy`.
+- `LaboratoryServiceType.Microbiology` dikhususkan untuk pemeriksaan biakan/kultur kuman, isolasi patogen, identifikasi spesies, dan antibiogram / uji kepekaan antibiotik (AST).
+
+### Rationale
+Selaras dengan alur kerja teknis di laboratorium rumah sakit, waktu tunggu hasil (TAT), dan alokasi meja kerja analis/dokter penanggung jawab.
+
+### Resolved By: Domain Owner & Analyst (/grill-me session)
+### Resolved Date: 2026-11-03
 
 ---
 
@@ -272,10 +371,10 @@ Record the Architecture Applicability decision:
 ## Rationale
 
 Perubahan ini melibatkan:
-1. Modifikasi kontrak DTO lintas-service antara Core Backend (`b09-bilreg-api`) dan Middleware Bridge (`a046_oware_ordermiddlewareapi`).
-2. Perubahan model domain dan skema database pada bounded context Lab (`LabOrderModel`, `LabOrderItemModel`, enum tipe wadah spesimen).
-3. Penyesuaian arsitektural antarmuka pemesanan pada frontend (`c012_myhospital_web`).
-4. Penetapan keputusan arsitektural terkait kebijakan pemisahan order per disiplin laboratorium vs order campuran (*unified vs segregated order*).
+1. Perubahan model domain dan skema database pada bounded context Lab di `b09-bilreg-api` (`LabTestDefinitionModel`, master referensi `BILRG_LabDiscipline` dan `BILRG_LabTestGroup`, `LabOrderModel`, `LabOrderItemModel`, serta perluasan `VacutainerTypeEnum`).
+2. Penyesuaian arsitektural antarmuka pemesanan pada frontend `c012_myhospital_web` (`LabOrderCreateCanvas.vue`, schema Zod, form input kontekstual PA & Micro, serta View Result grouping).
+3. Penetapan keputusan arsitektural terkait kebijakan pemisahan order per disiplin laboratorium (`1 Order = 1 ServiceType`).
+4. Middleware OWARE (`a046_oware_ordermiddlewareapi`) diterima **As-Is sepenuhnya** tanpa modifikasi kode.
 
 Oleh karena itu, diperlukan penyusunan dokumen **ARCHITECTURE** formal sebelum implementasi dapat direncanakan dan dieksekusi.
 
@@ -285,20 +384,20 @@ Oleh karena itu, diperlukan penyusunan dokumen **ARCHITECTURE** formal sebelum i
 
 ## Readiness Checklist
 
-- [x] All critical gaps identified and assessed
-- [x] Clear recommendations formulated (Option A vs Option B)
-- [x] Preliminary gap closure decisions recorded from analytical perspective
-- [ ] Architecture Applicability confirmed by Architect
-- [ ] Target Architecture finalized and approved by Architect
-- [ ] Open questions resolved by domain owner & Architect
+- [x] All critical gaps resolved
+- [x] All required decisions recorded
+- [x] All blocking open questions resolved
+- [x] Architecture Applicability confirmed (ARCHITECTURE-REQUIRED)
+- [x] Target Architecture finalized and approved by Architect
+- [x] Ready for Planning gate granted by Architect
 
 ## Status
 
-**NOT-READY**
+**READY-FOR-PLANNING**
 
 ## Notes
 
-Status ditetapkan sebagai **NOT-READY** karena dokumen ini berada pada tahap analisis (*Analyst analysis activity*). Berdasarkan tata kelola SDLC, hak untuk memberikan status **READY-FOR-PLANNING** berada secara eksklusif pada peran **Architect** (`ica-architect`) setelah meninjau penilaian kelayakan ini dan memformalkan dokumen Target Architecture.
+Seluruh kesenjangan (GAP) dan pertanyaan terbuka (OQ) telah berhasil diputuskan dan ditutup (**CLOSED**) melalui sesi alignment bersama Domain Owner. Target Architecture formal disusun pada [LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md). Gate **READY-FOR-PLANNING** resmi diberikan oleh **Architect** (`ica-architect`). Usulan perubahan siap dilanjutkan ke tahap penyusunan Rencana Implementasi (Implementation Plan).
 
 ---
 
@@ -307,6 +406,8 @@ Status ditetapkan sebagai **NOT-READY** karena dokumen ini berada pada tahap ana
 Referenced artifacts:
 
 - ISSUE: [LAB-ORDER-PA-MICRO-ACCOMMODATION-ISSUE.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-ISSUE.md)
+- ARCHITECTURE: [LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-ARCHITECTURE.md)
+- IMPLEMENTATION PLAN: [LAB-ORDER-PA-MICRO-ACCOMMODATION-IMPLEMENTATION-PLAN.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/LAB-ORDER-PA-MICRO-ACCOMMODATION-IMPLEMENTATION-PLAN.md)
 - DOMAIN Bilreg: [lab-domain.md](file:///D:/Project.Aktif/_hospital_web/b09-bilreg-api/docs/contexts/lab/lab-domain.md)
 - DOMAIN PA OWARE: [LAB-PA-DOMAIN.md](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/docs/LAB-PA-DOMAIN.md)
 - DOMAIN Mikrobiologi OWARE: [CANONICAL-DOMAIN-SPECIFICATION-MICROBIOLOGY.md](file:///D:/Project.Aktif/_hospital_web/a046_oware_ordermiddlewareapi/docs/CANONICAL-DOMAIN-SPECIFICATION-MICROBIOLOGY.md)
