@@ -160,8 +160,8 @@ Changed Files:
 
 ### P3-S03
 Title: Implement Real Operational Hybrid Flow in LabRegIntegration
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 Menggantikan dummy sequencer `REG-FAKE-0001` pada `LabRegIntegration.cs` dengan alur operasional riil Hybrid Model:
@@ -188,12 +188,25 @@ Completion Criteria:
 Notes:
 - Menggunakan `TransHelper.NewScope()` saat pembuatan registrasi penunjang baru agar penyimpanan `_regRepo` dan `_regAktifRepo` atomik.
 
+Implementation Notes:
+- Mengimplementasikan alur operasional Hybrid pada `LabRegIntegration.cs` dengan dependency injection lengkap (`ILabOrderRepo`, `IRegAktifRepo`, `IRegRepo`, `ILayananRepo`, `ISequencerManual`, `IOptions<LabOptions>`, `ITglJamProvider`).
+- Menambahkan validasi `request.ExecutionRegId` eksplisit terhadap status aktif dan tanggal hari ini.
+- Menangani auto-resolution untuk pasien EMR: auto-bind jika tepat 1 aktif, throw `ValidationException` jika > 1 aktif, dan deteksi tipe jaminan saat 0 aktif (edukasi pendaftaran Admisi untuk BPJS/asuransi vs auto-generate penunjang Umum secara atomik dengan `TransHelper`).
+- Mendaftarkan dependensi `ISequencerManual`, `ILabOrderRepo`, `IRegAktifRepo`, dan `ILayananRepo` di `InfrastructureService.cs` serta penanganan `ValidationException` di `ErrorHandlerMiddleware.cs`.
+- Menambahkan 7 unit tests di `LabRegIntegrationTest.cs` mencakup semua skenario operasional hibrida; seluruh pengujian lolos 100%.
+
+Changed Files:
+- b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/Integration/LabRegIntegration.cs
+- b09-bilreg-api/src/bilreg/Bilreg.Api/Configurations/InfrastructureService.cs
+- b09-bilreg-api/src/bilreg/Bilreg.Api/Configurations/ErrorHandlerMiddleware.cs
+- b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabRegIntegrationTest.cs
+
 ---
 
 ### P3-S04
 Title: Align Billing Resolution to Effective Registration in LabBillingIntegration and LabOrderCancelCmd
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 Menyelaraskan alur penagihan dan pembatalan penagihan pada `LabBillingIntegration.cs` dan `LabOrderCancelCmd.cs` agar merujuk ke nomor registrasi efektif (`effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId) ? order.ExecutionRegId : order.Patient.RegId`):
@@ -211,6 +224,19 @@ Completion Criteria:
 
 Notes:
 - Menjaga garansi konsistensi finansial pada kasir aktif hari ini.
+
+Implementation Notes:
+- Di `LabBillingIntegration.cs`: Memperbarui `ChargeAdmisiPatient` untuk mengevaluasi `effectiveRegId` (`!string.IsNullOrWhiteSpace(order.ExecutionRegId) ? order.ExecutionRegId : order.Patient.RegId`), memuat `RegModel` dengan `effectiveRegId`, dan membebankan tagihan laboratorium ke registrasi efektif tersebut.
+- Di `LabOrderCancelCmd.cs`: Memperbarui `LabOrderCancelHandler` agar menyelesaikan `effectiveRegId` dari order, memvalidasi billing lock dengan `EnsureCanModifyBillingAsync(effectiveRegId)`, dan membatalkan tagihan kasir via `_labBillingIntegration.CancelCharge(order.OrderId, effectiveRegId, request.UserId, request.Reason, occurredAt)`.
+- Di `LabBillingIntegrationTest.cs`: Menambahkan test `ChargeOrder_AdmissionPatient_WithExecutionRegId_ChargesAgainstExecutionRegistration` untuk memverifikasi pembebanan item billing ke registrasi eksekusi saat order memiliki `ExecutionRegId`.
+- Di `LabOrderCancelHandlerTest.cs`: Menginjeksikan mock `IBillingLockValidationService` dan menambahkan test `Handle_GivenChargedOrderWithExecutionRegId_CallsBillingIntegrationCancelChargeWithExecutionRegId` yang memverifikasi pembatalan tagihan kasir dan pemeriksaan billing lock ditujukan ke `executionRegId`.
+
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/Integration/LabBillingIntegration.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderCancelCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabBillingIntegrationTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderCancelHandlerTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-ORDER-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
