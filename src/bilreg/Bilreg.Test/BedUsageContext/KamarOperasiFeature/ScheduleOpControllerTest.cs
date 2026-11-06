@@ -314,6 +314,7 @@ public class ScheduleOpControllerTest
             ListPpa: new List<OkScheduleOpPpaDto>(),
             AlasanBatal: "",
             TurnoverBuffer: 30,
+            IsDraft: false,
             History: history);
 
         _mediatorMock
@@ -330,6 +331,102 @@ public class ScheduleOpControllerTest
         var actualResponse = jsend.data.Should().BeOfType<ScheduleOpGetResponse>().Subject;
         actualResponse.History.Should().HaveCount(1);
         actualResponse.TurnoverBuffer.Should().Be(30);
+
+        _mediatorMock.Verify(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSchedule_GivenScheduledOrderOp_WhenSuccess_ReturnsResponseWithIsDraftFalse()
+    {
+        // ARRANGE
+        const string orderOpId = "ORD-001";
+        var response = new ScheduleOpGetResponse(
+            OrderOpId: orderOpId,
+            ScheduleOpId: "SCH-001",
+            NamaOperasi: "Laparotomi",
+            Urgency: "Elektif",
+            Durasi: 90,
+            PasienId: "PAS-01",
+            PasienName: "Budi",
+            RegId: "REG-01",
+            TglOp: "2026-10-20",
+            JamOp: "10:00",
+            TglStartOp: "2026-10-20",
+            JamStartOp: "10:00",
+            TglFinishOp: "2026-10-20",
+            JamFinishOp: "11:30",
+            KamarId: "KMR-02",
+            KamarName: "OK 2",
+            DokterId: "DOC-02",
+            DokterName: "dr. Operator 2",
+            StatusOp: "Scheduled",
+            ListPpa: new List<OkScheduleOpPpaDto>(),
+            AlasanBatal: "",
+            TurnoverBuffer: 30,
+            IsDraft: false,
+            History: new List<OkScheduleOpHistDto>());
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        // ACT
+        var result = await _sut.GetSchedule(orderOpId);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var actualResponse = jsend.data.Should().BeOfType<ScheduleOpGetResponse>().Subject;
+        actualResponse.IsDraft.Should().BeFalse("Published/scheduled order must have IsDraft false");
+        actualResponse.StatusOp.Should().Be("Scheduled");
+
+        _mediatorMock.Verify(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSchedule_GivenDraftOrderOp_WhenSuccess_ReturnsResponseWithIsDraftTrue()
+    {
+        // ARRANGE
+        const string orderOpId = "ORD-002";
+        var response = new ScheduleOpGetResponse(
+            OrderOpId: orderOpId,
+            ScheduleOpId: "SCH-002",
+            NamaOperasi: "Apendektomi",
+            Urgency: "Elektif",
+            Durasi: 60,
+            PasienId: "PAS-02",
+            PasienName: "Siti",
+            RegId: "REG-02",
+            TglOp: "2026-10-21",
+            JamOp: "08:00",
+            TglStartOp: "2026-10-21",
+            JamStartOp: "08:00",
+            TglFinishOp: "2026-10-21",
+            JamFinishOp: "09:00",
+            KamarId: "KMR-01",
+            KamarName: "OK 1",
+            DokterId: "DOC-01",
+            DokterName: "dr. Operator 1",
+            StatusOp: "Draft",
+            ListPpa: new List<OkScheduleOpPpaDto>(),
+            AlasanBatal: "",
+            TurnoverBuffer: 30,
+            IsDraft: true,
+            History: new List<OkScheduleOpHistDto>());
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        // ACT
+        var result = await _sut.GetSchedule(orderOpId);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var actualResponse = jsend.data.Should().BeOfType<ScheduleOpGetResponse>().Subject;
+        actualResponse.IsDraft.Should().BeTrue("Draft order must have IsDraft true");
+        actualResponse.StatusOp.Should().Be("Draft");
 
         _mediatorMock.Verify(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -732,5 +829,165 @@ public class ScheduleOpControllerTest
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be("Done");
+    }
+    [Fact]
+    public async Task SaveWorkbench_GivenValidCommand_WhenSuccess_Returns200OkWithJSendOk()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KMR-01",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-01",
+            ListPpaIds: ["DOC-01", "PPA-02"],
+            TurnoverBuffer: 30,
+            AlasanReschedule: "Alasan pindah jam",
+            AlasanAssignLeader: "Alasan ganti dokter",
+            IsOverride: false,
+            OverrideReason: "",
+            Publish: false);
+
+        var expectedResponse = new OkScheduleOpSaveWorkbenchResponse(
+            ScheduleOpId: "SCH-001",
+            IsDraft: false,
+            Rescheduled: true,
+            LeaderChanged: true,
+            PpaChanged: true,
+            Published: false);
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var result = await _sut.SaveWorkbench(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveWorkbench_WhenUserClaimExists_OverridesUserIdWithClaim()
+    {
+        // ARRANGE
+        const string claimUserId = "claim-workbench-user";
+        var user = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("UserId", claimUserId)
+        ], "TestAuth"));
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = user }
+        };
+
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KMR-01",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "original-user");
+
+        OkScheduleOpSaveWorkbenchCommand? capturedCmd = null;
+        var expectedResponse = new OkScheduleOpSaveWorkbenchResponse(
+            ScheduleOpId: "SCH-001",
+            IsDraft: true,
+            Rescheduled: false,
+            LeaderChanged: false,
+            PpaChanged: false,
+            Published: false);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpSaveWorkbenchCommand>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<OkScheduleOpSaveWorkbenchResponse>, CancellationToken>((req, _) => capturedCmd = req as OkScheduleOpSaveWorkbenchCommand)
+            .ReturnsAsync(expectedResponse);
+
+        // ACT
+        var result = await _sut.SaveWorkbench(cmd);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.UserId.Should().Be(claimUserId, "UserId must be forwarded from ClaimsPrincipal");
+    }
+
+    [Fact]
+    public async Task SaveWorkbench_WhenScheduleCollisionException_Returns409ConflictWithJSendFail()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KMR-01",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01");
+
+        const string collisionMessage = "Bentrok jadwal kamar operasi: Kamar KMR-01 telah terisi.";
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpSaveWorkbenchCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ScheduleCollisionException(collisionMessage));
+
+        // ACT
+        var result = await _sut.SaveWorkbench(cmd);
+
+        // ASSERT
+        var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
+        conflict.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        var jsend = conflict.Value.Should().BeOfType<JSendFail>().Subject;
+        jsend.Status.Should().Be("fail");
+        jsend.Data.Should().Be(collisionMessage);
+    }
+
+    [Fact]
+    public async Task SaveWorkbench_WhenScheduleWarningException_Returns422UnprocessableEntityWithJSendFail()
+    {
+        // ARRANGE
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KMR-01",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01");
+
+        var warnings = new List<string>
+        {
+            "Dokter/PPA telah terjadwal pada operasi lain"
+        };
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<OkScheduleOpSaveWorkbenchCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ScheduleWarningException(warnings));
+
+        // ACT
+        var result = await _sut.SaveWorkbench(cmd);
+
+        // ASSERT
+        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
+        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
+        jsend.Status.Should().Be("fail");
+        jsend.Data.Should().NotBeNull();
+
+        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
+        dataProp.Should().NotBeNull();
+        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
+        actualWarnings.Should().BeEquivalentTo(warnings);
+
+        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
+        reqOverrideProp.Should().NotBeNull();
+        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
     }
 }

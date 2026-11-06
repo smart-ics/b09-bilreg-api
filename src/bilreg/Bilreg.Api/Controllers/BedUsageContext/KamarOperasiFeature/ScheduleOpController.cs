@@ -53,6 +53,29 @@ public class ScheduleOpController : ControllerBase
         }
     }
 
+    [HttpPost("SaveWorkbench")]
+    public async Task<IActionResult> SaveWorkbench(OkScheduleOpSaveWorkbenchCommand cmd)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                cmd = cmd with { UserId = userId };
+            }
+            var response = await _mediator.Send(cmd);
+            return Ok(new JSendOk(response));
+        }
+        catch (ScheduleCollisionException ex)
+        {
+            return Conflict(new JSendFail(ex.Message));
+        }
+        catch (ScheduleWarningException ex)
+        {
+            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
+        }
+    }
+
     [HttpPatch]
     [Route("AddPpa")]
     public async Task<IActionResult> AddPpa(OkScheduleOpAddPpaCommand cmd)

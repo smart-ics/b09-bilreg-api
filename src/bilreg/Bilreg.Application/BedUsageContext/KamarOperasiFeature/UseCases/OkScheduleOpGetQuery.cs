@@ -1,4 +1,3 @@
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
@@ -31,6 +30,7 @@ public record ScheduleOpGetResponse(
     IEnumerable<OkScheduleOpPpaDto> ListPpa,
     string AlasanBatal,
     int TurnoverBuffer,
+    bool IsDraft,
     IEnumerable<OkScheduleOpHistDto> History);
 
 public record OkScheduleOpPpaDto(
@@ -146,6 +146,7 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             ppaList,
             scheduleOp.AlasanBatal,
             scheduleOp.TurnoverBuffer,
+            scheduleOp.IsDraft,
             historyList);
 
         return Task.FromResult(response);
