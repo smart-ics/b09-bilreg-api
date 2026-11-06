@@ -92,7 +92,8 @@ public class PakaiBedDal : IPakaiBedDal
                 fs_kd_reg, fs_kd_layanan, fs_kd_layanan_dk,
                 fs_kd_kamar_tipe, fs_kd_bed, fn_tarif,
                 fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                fd_tgl_entry, fs_jam_entry, fs_kd_kelas)
+                fd_tgl_entry, fs_jam_entry, fs_kd_kelas,
+                fs_kd_kelas_tindakan, fd_tgl_jam_in)
             VALUES(
                 @fs_kd_trs,
                 @fd_tgl_in, @fs_jam_in, @fs_kd_petugas,
@@ -100,7 +101,8 @@ public class PakaiBedDal : IPakaiBedDal
                 @fs_kd_reg, @fs_kd_layanan, @fs_kd_layanan_dk,
                 @fs_kd_kamar_tipe, @fs_kd_bed, @fn_tarif,
                 @fd_tgl_void, @fs_jam_void, @fs_kd_petugas_void,
-                @fd_tgl_entry, @fs_jam_entry, @fs_kd_kelas);
+                @fd_tgl_entry, @fs_jam_entry, @fs_kd_kelas,
+                @fs_kd_kelas_tindakan, @fd_tgl_jam_in);
 
             -- 4. Synchronize legacy bed status in ta_bed (ONLY if NOT rooming-in)
             IF @isRoomingIn = 0
@@ -121,6 +123,23 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+
+        conn.Execute("DELETE FROM ta_trs_bed2 WHERE fs_kd_trs = @fs_kd_trs", new { fs_kd_trs = SafeTruncate(dto.fs_kd_trs, 10) });
+        if (dto.list_komponen != null && dto.list_komponen.Count > 0)
+        {
+            const string sqlInsertBed2 = """
+                INSERT INTO ta_trs_bed2(fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike)
+                VALUES (@fs_kd_trs, @fs_kd_detil_tarif, @fn_tarif, @fn_harike);
+                """;
+            var komponenParams = dto.list_komponen.Select(k => new
+            {
+                fs_kd_trs = SafeTruncate(k.fs_kd_trs, 10),
+                fs_kd_detil_tarif = SafeTruncate(k.fs_kd_detil_tarif, 3),
+                fn_tarif = k.fn_tarif,
+                fn_harike = k.fn_harike
+            });
+            conn.Execute(sqlInsertBed2, komponenParams);
+        }
     }
 
     public void Update(PakaiBedDto dto)
@@ -146,7 +165,9 @@ public class PakaiBedDal : IPakaiBedDal
                 fs_kd_petugas_void = @fs_kd_petugas_void,
                 fd_tgl_entry = @fd_tgl_entry,
                 fs_jam_entry = @fs_jam_entry,
-                fs_kd_kelas = @fs_kd_kelas
+                fs_kd_kelas = @fs_kd_kelas,
+                fs_kd_kelas_tindakan = @fs_kd_kelas_tindakan,
+                fd_tgl_jam_in = @fd_tgl_jam_in
             WHERE
                 fs_kd_trs = @fs_kd_trs
             """;
@@ -154,6 +175,23 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+
+        if (dto.list_komponen != null && dto.list_komponen.Count > 0)
+        {
+            conn.Execute("DELETE FROM ta_trs_bed2 WHERE fs_kd_trs = @fs_kd_trs", new { fs_kd_trs = SafeTruncate(dto.fs_kd_trs, 10) });
+            const string sqlInsertBed2 = """
+                INSERT INTO ta_trs_bed2(fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike)
+                VALUES (@fs_kd_trs, @fs_kd_detil_tarif, @fn_tarif, @fn_harike);
+                """;
+            var komponenParams = dto.list_komponen.Select(k => new
+            {
+                fs_kd_trs = SafeTruncate(k.fs_kd_trs, 10),
+                fs_kd_detil_tarif = SafeTruncate(k.fs_kd_detil_tarif, 3),
+                fn_tarif = k.fn_tarif,
+                fn_harike = k.fn_harike
+            });
+            conn.Execute(sqlInsertBed2, komponenParams);
+        }
 
         // Synchronize legacy bed status in ta_bed
         var isReleasedOrVoid =
@@ -258,13 +296,18 @@ public class PakaiBedDal : IPakaiBedDal
         var existing = GetData(key);
         const string sql = """
             DELETE FROM
+                ta_trs_bed2
+            WHERE
+                fs_kd_trs = @fs_kd_trs;
+
+            DELETE FROM
                 ta_trs_bed
             WHERE
-                fs_kd_trs = @fs_kd_trs
+                fs_kd_trs = @fs_kd_trs;
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -298,10 +341,27 @@ public class PakaiBedDal : IPakaiBedDal
     {
         var sql = $"{SELECT_FROM}\nWHERE aa.fs_kd_trs = @fs_kd_trs";
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+        var dto = conn.ReadSingle<PakaiBedDto>(sql, dp);
+        if (dto != null)
+        {
+            const string sqlKomponen = """
+                SELECT fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike
+                FROM ta_trs_bed2
+                WHERE fs_kd_trs = @fs_kd_trs
+                ORDER BY fn_harike, fs_kd_detil_tarif
+                """;
+            var dpKomponen = new DynamicParameters();
+            dpKomponen.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 10), SqlDbType.VarChar);
+            var komponenList = conn.Read<PakaiBedKomponenDto>(sqlKomponen, dpKomponen)?.ToList();
+            if (komponenList != null && komponenList.Count > 0)
+            {
+                dto = dto with { list_komponen = komponenList };
+            }
+        }
+        return dto;
     }
 
     public IEnumerable<PakaiBedDto> ListData(IRegKey filter)
@@ -584,19 +644,19 @@ public class PakaiBedDal : IPakaiBedDal
                     OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
                     FROM BILRG_BedWaitingList wl
                     WHERE wl.WaitingListStatus = 2
-                      AND (
-                          -- Direct match for voided pakaiBed
-                          wl.RegId = (SELECT TOP 1 fs_kd_reg FROM ta_trs_bed WHERE fs_kd_trs = @pakaiBedId)
-                          ' + @wherePakaiBed + N'
-                          OR (wl.PasienId = (SELECT TOP 1 r.fs_mr FROM ta_trs_bed tb INNER JOIN ta_registrasi r ON tb.fs_kd_reg = r.fs_kd_reg WHERE tb.fs_kd_trs = @pakaiBedId))
-                          -- Rooming-in pair match (Mother & Baby)
-                          OR EXISTS (
-                              SELECT 1 FROM #RoomingInPairs p
-                              WHERE wl.RegId = p.MotherRegId
-                                 OR wl.RegId = p.BabyRegId
-                                 OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
-                          )
-                      )';
+                    AND (
+                        -- Direct match for voided pakaiBed
+                        wl.RegId = (SELECT TOP 1 fs_kd_reg FROM ta_trs_bed WHERE fs_kd_trs = @pakaiBedId)
+                        ' + @wherePakaiBed + N'
+                        OR (wl.PasienId = (SELECT TOP 1 r.fs_mr FROM ta_trs_bed tb INNER JOIN ta_registrasi r ON tb.fs_kd_reg = r.fs_kd_reg WHERE tb.fs_kd_trs = @pakaiBedId))
+                        -- Rooming-in pair match (Mother & Baby)
+                        OR EXISTS (
+                            SELECT 1 FROM #RoomingInPairs p
+                            WHERE wl.RegId = p.MotherRegId
+                                OR wl.RegId = p.BabyRegId
+                                OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
+                        )
+                    )';
                 EXEC sp_executesql @sqlRevertWl, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
             END
 
@@ -705,6 +765,14 @@ public class PakaiBedDal : IPakaiBedDal
         dp.AddParam("@fd_tgl_entry", dto.fd_tgl_entry, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_entry", dto.fs_jam_entry, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_kelas", dto.fs_kd_kelas, SqlDbType.VarChar);
+
+        var kdKelasTindakan = dto.fs_kd_kelas_tindakan;
+        var tglJamIn = !string.IsNullOrWhiteSpace(dto.fd_tgl_jam_in)
+            ? dto.fd_tgl_jam_in
+            : (!string.IsNullOrWhiteSpace(dto.fd_tgl_in) ? $"{dto.fd_tgl_in} {dto.fs_jam_in}".Trim() : "");
+
+        dp.AddParam("@fs_kd_kelas_tindakan", SafeTruncate(kdKelasTindakan, 10), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jam_in", SafeTruncate(tglJamIn, 20), SqlDbType.VarChar);
         return dp;
     }
 }

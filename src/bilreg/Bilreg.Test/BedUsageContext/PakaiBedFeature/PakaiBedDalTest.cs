@@ -102,6 +102,36 @@ public class PakaiBedDalTest
     }
 
     [Fact]
+    public void Insert_WithKomponenTarif_ShouldPersistToBed2()
+    {
+        using var trans = TransHelper.NewScope();
+        var key = "TPKB000001";
+        var komponenList = new List<PakaiBedKomponenDto>
+        {
+            new(key, "01", 100000, 1),
+            new(key, "02", 50000, 1)
+        };
+        var dto = Faker() with
+        {
+            fs_kd_trs = key,
+            fs_kd_kelas_tindakan = "T01",
+            fd_tgl_jam_in = "2026-07-17 09:00:00",
+            list_komponen = komponenList
+        };
+
+        _sut.Insert(dto);
+
+        var actual = _sut.GetData(PakaiBedModel.Key(key));
+        actual.Should().NotBeNull();
+        actual.list_komponen.Should().NotBeNull();
+        actual.list_komponen.Should().HaveCount(2);
+        actual.list_komponen![0].fs_kd_detil_tarif.Should().Be("01");
+        actual.list_komponen![0].fn_tarif.Should().Be(100000);
+        actual.list_komponen![1].fs_kd_detil_tarif.Should().Be("02");
+        actual.list_komponen![1].fn_tarif.Should().Be(50000);
+    }
+
+    [Fact]
     public void Insert_WhenRoomingIn_ShouldNotUpdateBedRegistration()
     {
         using var trans = TransHelper.NewScope();
