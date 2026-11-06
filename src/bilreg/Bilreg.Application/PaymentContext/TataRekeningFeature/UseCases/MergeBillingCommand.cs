@@ -11,6 +11,10 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
+/// <summary>
+/// SOP-TR-03 — Command for merging billing items from a source registration into a target registration.
+/// Enforces valid admission relationship via IRegRelationPolicy and records the relation permanently on BILRG_MergeRequest.
+/// </summary>
 public record MergeBillingCommand(string MergeRequestId, string UserId) : IRequest<MergeBillingResponse>, IMergeRequestKey;
 
 public record MergeBillingResponse(
@@ -18,6 +22,11 @@ public record MergeBillingResponse(
     TataRekeningSummaryDto SourceSummary,
     TataRekeningSummaryDto TargetSummary);
 
+/// <summary>
+/// Handler for SOP-TR-03 Merge Billing.
+/// Coordinates validation via IMergeBillingDomainService (enforcing IRegRelationPolicy),
+/// transfers bills and receivables, records permanent merge relation in MergeRequestModel, and writes audit trail.
+/// </summary>
 public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBillingResponse>
 {
     private readonly ITataRekeningRepo _tataRekeningRepo;

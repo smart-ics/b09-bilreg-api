@@ -135,10 +135,10 @@ public record TaTrsBilling2Dto(
     private TrsBill2TransEventType ToTransEventModel(int modul)
     {
         var komponen = modul == 0 ? 
-            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
-            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+            new TrsBill2KomponenType(fs_kd_detil_tarif, fs_nm_detil_tarif ?? "") : 
+            new TrsBill2KomponenType(fs_kd_grup_rek, fs_nm_grup_rek ?? "");
         var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
-        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var ppa = new PpaReff(fs_kd_petugas_medis, fs_nm_peg_medis ?? "");
         var coa = new TrsBill2CoaType(
             new CoaType(fs_kd_rek_ppdp, ""),
             new CoaType(fs_kd_rek_pdpt, ""),
@@ -154,10 +154,10 @@ public record TaTrsBilling2Dto(
     private TrsBill2FinalizationEventType ToFinalizationEventModel(int modul)
     {
         var komponen = modul == 0 ?
-            new TrsBill2KomponenType(fs_kd_detil_tarif, "") :
-            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+            new TrsBill2KomponenType(fs_kd_detil_tarif, fs_nm_detil_tarif ?? "") :
+            new TrsBill2KomponenType(fs_kd_grup_rek, fs_nm_grup_rek ?? "");
         var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
-        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var ppa = new PpaReff(fs_kd_petugas_medis, fs_nm_peg_medis ?? "");
         var tglBayar = DateTime.ParseExact(fd_tgl_bayar, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var result = new TrsBill2FinalizationEventType(
             (int)fn_no_urut, komponen, jenisBayar, fn_trs_n, ppa, fs_kd_petugas_kasir,
@@ -171,10 +171,10 @@ public record TaTrsBilling2Dto(
             throw new ArgumentException("JenisBayar must be KAS", nameof(fs_kd_jenis_bayar));
 
         var komponen = modul == 0 ? 
-            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
-            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+            new TrsBill2KomponenType(fs_kd_detil_tarif, fs_nm_detil_tarif ?? "") : 
+            new TrsBill2KomponenType(fs_kd_grup_rek, fs_nm_grup_rek ?? "");
         var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
-        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var ppa = new PpaReff(fs_kd_petugas_medis, fs_nm_peg_medis ?? "");
         var tglBayar = DateTime.ParseExact(fd_tgl_bayar, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var payment = new PaymentType(fs_kd_trs_bayar, "", true);
         var result = new TrsBill2PaymentEventType(

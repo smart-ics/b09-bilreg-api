@@ -167,5 +167,30 @@ public class NilaiTarifControllerTest
         var item = list[0].Should().BeOfType<TrfListBrg>().Subject;
         item.Harga.Should().Be(12000m);
     }
-}
 
+    [Fact]
+    public async Task Import_DelegatesToTrfImportNilaiTarifCmd_ReturnsOk()
+    {
+        // Arrange
+        var expectedResponse = new TrfImportNilaiTarifResponse("Import successful", new List<string>());
+        var body = new TrfImportNilaiTarifBody("user1", true);
+
+        TrfImportNilaiTarifCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TrfImportNilaiTarifCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<TrfImportNilaiTarifResponse>, CancellationToken>((c, _) => capturedCmd = (TrfImportNilaiTarifCmd)c)
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Import(body);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.ImportedBy.Should().Be("user1");
+        capturedCmd.IsEmergency.Should().BeTrue();
+    }
+}

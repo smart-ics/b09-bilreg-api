@@ -35,4 +35,10 @@ public class DepositRepo : IDepositRepo
         var listDto = _depositDal.ListData(key)?.ToList() ?? [];
         return listDto.Select(x => x.ToModel());
     }
+
+    public DepositSaldoModel GetSaldo(IRegKey key)
+    {
+        var dto = _depositDal.GetSaldo(key);
+        return dto?.ToModel() ?? new DepositSaldoModel(key.RegId, 0, 0, 0);
+    }
 }

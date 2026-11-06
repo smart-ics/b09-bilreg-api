@@ -181,7 +181,9 @@ public class TataRekeningOpenApiExportTest : IClassFixture<TataRekeningWebApplic
               "regId": { "type": "string" },
               "modulGroup": { "$ref": "#/components/schemas/BillModulGroup" },
               "nilaiTotal": { "type": "number", "format": "double" },
-              "financialTotal": { "type": "number", "format": "double" }
+              "financialTotal": { "type": "number", "format": "double" },
+              "diskon": { "type": "number", "format": "double" },
+              "petugasMedisName": { "type": "string" }
             }
           },
           "PaymentProjectionDto": {

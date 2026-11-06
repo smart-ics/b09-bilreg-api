@@ -6,6 +6,7 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -20,12 +21,22 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
+using System.Text.Json.Serialization;
+
+[method: JsonConstructor]
 public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,
-    int Qty = 1,
+    string PakaiBedId = "", int Qty = 1,
     bool IsDiskonDokter = false) 
-    : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey;
+    : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey
+{
+    public TdkCreateTindakanCmd(string regId, string layananId, string nilaiTarifId, string userId,
+        IEnumerable<TdkCreateTindakanPpaCmd> listPpa, int qty, bool isDiskonDokter = false)
+        : this(regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter)
+    {
+    }
+}
 
 public record TdkCreateTindakanPpaCmd(string KomponenId, string PpaId);
 
@@ -41,18 +52,22 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IPpaRepo _ppaRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly IJaminanRepo _jaminanRepo;
+    private readonly ITrsBillingRepo? _trsBillingRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IBillingLockValidationService _billingLockValidator;
     public TindakanCreateHandler(ITindakanRepo tindakanRepo,
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
         ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        ITrsBillingRepo? trsBillingRepo,
         IAddBillAppService addBillAppService, 
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -62,16 +77,34 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _ppaRepo = ppaRepo;
         _tarifRepo = tarifRepo;
         _jaminanRepo = jaminanRepo;
+        _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
         _tglJamProvider = tglJamProvider;
+        _billingLockValidator = billingLockValidator;
     }
 
-    public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
+    public TindakanCreateHandler(ITindakanRepo tindakanRepo,
+        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        IAddBillAppService addBillAppService, 
+        IMapJaminanJkRepo mapJaminanJkRepo, 
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider tglJamProvider)
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, null, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService())
+    {
+    }
+
+
+
+    public async Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
     {
         if (request.ListPpa is null)
             throw new ArgumentException("List PPA tidak boleh null");
+
+        await _billingLockValidator.EnsureCanModifyBillingAsync(request.RegId, cancellationToken);
 
         //  BUILD
         var reg = LoadReg(request);
@@ -81,18 +114,37 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
         
-        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
+        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen)).ToList();
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
         {
-            var komp = listKomp.First(x => x.KomponenId == item.KomponenId);
+            if (string.IsNullOrWhiteSpace(item.PpaId))
+                continue;
+
+            // Cari komponen yang cocok berdasarkan KomponenId
+            var komp = listKomp.FirstOrDefault(x => x.KomponenId == item.KomponenId);
+
+            // Fallback: Jika KomponenId tidak cocok persis (misal dikirim ID generik 'KOMP01' dari FE)
+            // Prioritaskan komponen yang memiliki SatTugas (memerlukan PPA)
+            if (komp is null)
+            {
+                komp = listKomp.FirstOrDefault(x => x.ListSatTugas.Any()) 
+                    ?? (listKomp.Count == 1 ? listKomp[0] : null);
+            }
+
+            if (komp is null || !komp.ListSatTugas.Any())
+                continue;
+
             var ppa = LoadPpa(PpaType.Key(item.PpaId));
+            if (!komp.IsValidPpa(ppa))
+                continue;
+
             listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, qty, request.IsDiskonDokter);
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
@@ -104,11 +156,15 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
                 layanan, mapJaminanJk);
 
         _tindakanRepo.SaveChanges(tindakan);
+        if (_trsBillingRepo != null)
+        {
+            _trsBillingRepo.SaveChanges(trsBilling);
+        }
         _jurnalRepo.SaveChanges(jurnal);
         trans.Complete();
 
         //  RESPONSE
-        return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
+        return new TindakanCreateRespose(tindakan.TindakanId);
     }
 
     #region PRIVATE-HELPER

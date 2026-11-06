@@ -1,14 +1,16 @@
-﻿using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Data;
 using System.Data.SqlClient;
 
 namespace Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 
 public interface IJurnalDal :
+    Bilreg.Application.AccountingContext.JurnalFeature.IJurnalDal,
     IInsert<JurnalDto>,
     IUpdate<JurnalDto>,
     IDelete<IJurnalKey>,
@@ -22,6 +24,25 @@ public class JurnalDal : IJurnalDal
     public JurnalDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
+    }
+
+    public void UpdateTimestamp(string jurnalId, DateTime tglJurnal)
+    {
+        const string sql = """
+            UPDATE t_jurnal_hdr
+            SET
+                fd_tgl_jurnal = @tgl,
+                fs_jam_jurnal = @jam
+            WHERE
+                fs_kd_jurnal = @jurnalId
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@jurnalId", jurnalId, SqlDbType.VarChar);
+        dp.AddParam("@tgl", tglJurnal.ToString(DateFormatEnum.YMD), SqlDbType.VarChar);
+        dp.AddParam("@jam", tglJurnal.ToString(DateFormatEnum.HMS), SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 
     public void Insert(JurnalDto dto)
