@@ -17,9 +17,9 @@ using Nuna.Lib.PatternHelper;
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
 /// <summary>
-/// P2-S04 — Pembatalan finalisasi Tata Rekening hanya boleh dilakukan oleh supervisor
-/// dengan alasan pembatalan, serta diblokir bila alokasi pembayaran atau transaksi kasir
-/// hilir sudah diproses.
+/// Pembatalan finalisasi Tata Rekening hanya boleh dilakukan oleh supervisor
+/// dengan alasan pembatalan, serta diblokir bila transaksi kasir hilir sudah diproses.
+/// Keberadaan alokasi penjamin internal tidak memblokir pembatalan finalisasi.
 /// </summary>
 public class CancelFinalizationSupervisorGovernedTest
 {
@@ -75,26 +75,43 @@ public class CancelFinalizationSupervisorGovernedTest
     }
 
     [Fact]
-    public async Task S04_02_GivenApprovedAllocation_WhenCancelFinalization_ThenThrowsDownstreamBarrier()
+    public async Task S04_02_GivenApprovedAllocation_WhenCancelFinalization_ThenSucceedsAndSetsStatusClosed()
     {
         var tataRekening = CreateFinalizedTataRekening();
         SetupTataRekeningLoad(tataRekening);
         _settlementInspector
             .Setup(s => s.HasApprovedAllocation(It.IsAny<string>()))
             .Returns(true);
+        _settlementInspector
+            .Setup(s => s.HasCashierSettlement(It.IsAny<string>()))
+            .Returns(false);
 
         var handler = CreateHandler(new FixedCurrentUserContext("verif-01", TataRekeningSupervisorRole.TataRekeningSupervisor));
 
-        var act = () => handler.Handle(
+        var result = await handler.Handle(
             new CancelFinalizationCommand(RegId, "verif-01", SupervisorUserId, Reason),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Alokasi Pembayaran atau Transaksi Kasir telah diproses*");
+        result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
 
-        _cancellationLogRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningCancellationLog>()), Times.Never);
-        _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
-        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        _cancellationLogRepo.Verify(
+            r => r.SaveChanges(It.Is<TataRekeningCancellationLog>(x =>
+                x.RegId == RegId
+                && x.SupervisorUserId == SupervisorUserId
+                && x.UserId == "verif-01"
+                && x.Reason == Reason
+                && x.StatusBefore == nameof(TataRekeningStatusEnum.Finalized)
+                && x.StatusAfter == nameof(TataRekeningStatusEnum.Closed))),
+            Times.Once);
+
+        _auditRepo.Verify(
+            r => r.SaveChanges(It.Is<AuditLog>(x =>
+                x.ActionType == "TATA_REKENING_CANCEL_FINALIZATION" && x.EntityId == RegId)),
+            Times.Once);
+
+        _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
     }
 
     [Fact]
@@ -174,16 +191,28 @@ public class CancelFinalizationSupervisorGovernedTest
     }
 
     [Fact]
-    public void S04_07_GivenDownstreamProcessed_WhenAggregateCancelFinalization_ThenThrowsAndKeepsFinalized()
+    public void S04_07_GivenCashierSettlement_WhenAggregateCancelFinalization_ThenThrowsAndKeepsFinalized()
     {
         var tataRekening = CreateFinalizedTataRekening();
 
-        var act = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector(hasApprovedAllocation: true));
+        var act = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector(hasCashierSettlement: true));
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Batalkan transaksi kasir/alokasi pembayaran terlebih dahulu sebelum membuka kunci tagihan*");
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+    }
+
+    [Fact]
+    public void S04_08_GivenApprovedAllocationWithoutCashierSettlement_WhenAggregateCancelFinalization_ThenSucceedsAndSetsClosed()
+    {
+        var tataRekening = CreateFinalizedTataRekening();
+
+        tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector(hasApprovedAllocation: true, hasCashierSettlement: false));
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
     }
 
     private static TataRekeningModel CreateFinalizedTataRekening()

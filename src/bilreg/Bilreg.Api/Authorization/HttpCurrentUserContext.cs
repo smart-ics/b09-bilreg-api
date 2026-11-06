@@ -5,6 +5,8 @@ namespace Bilreg.Api.Authorization;
 
 public sealed class HttpCurrentUserContext(IHttpContextAccessor httpContextAccessor) : ICurrentUserContext
 {
+    private const string DefaultSystemTokenSubject = "BilregApiAccessToken";
+
     public string GetActorUserId()
     {
         var userId = TryGetUserId();
@@ -47,9 +49,24 @@ public sealed class HttpCurrentUserContext(IHttpContextAccessor httpContextAcces
         if (user?.Identity?.IsAuthenticated != true)
             return null;
 
-        return user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub")
-            ?? user.FindFirstValue(ClaimTypes.Name)
-            ?? user.Identity?.Name;
+        var candidates = new[]
+        {
+            user.FindFirstValue("pegId"),
+            user.FindFirstValue(ClaimTypes.NameIdentifier),
+            user.FindFirstValue(ClaimTypes.Name),
+            user.FindFirstValue("sub"),
+            user.Identity?.Name
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) &&
+                !string.Equals(candidate.Trim(), DefaultSystemTokenSubject, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate.Trim();
+            }
+        }
+
+        return null;
     }
 }
