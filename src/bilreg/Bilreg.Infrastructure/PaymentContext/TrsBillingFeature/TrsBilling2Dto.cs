@@ -27,6 +27,15 @@ public record TaTrsBilling2Dto(
         var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
         var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
         var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
+
+        var rekPpdp = model.Coa.Ppdp.CoaId == "-" ? string.Empty : model.Coa.Ppdp.CoaId;
+        var rekPdpt = model.Coa.Pdpt.CoaId == "-" ? string.Empty : model.Coa.Pdpt.CoaId;
+        var rekDisc = !string.IsNullOrWhiteSpace(model.Coa.Disc.CoaId) && model.Coa.Disc.CoaId != "-"
+            ? model.Coa.Disc.CoaId
+            : rekPdpt;
+        var rekPdptLain = model.Coa.PdptLain.CoaId == "-" ? string.Empty : model.Coa.PdptLain.CoaId;
+        var rekPersediaan = model.Coa.Persediaan.CoaId == "-" ? string.Empty : model.Coa.Persediaan.CoaId;
+        var rekTax = model.Coa.Tax.CoaId == "-" ? string.Empty : model.Coa.Tax.CoaId;
         
         var result = new TaTrsBilling2Dto(
             billingId, model.NoUrut,
@@ -40,10 +49,10 @@ public record TaTrsBilling2Dto(
             //  obat-only props
             groupRekId, 
             //  rekening
-            model.Coa.Ppdp.CoaId, model.Coa.Pdpt.CoaId, model.Coa.Pdpt.CoaId,
-            "", "", "", "", 
+            rekPpdp, rekPdpt, rekDisc,
+            rekPdptLain, rekPersediaan, rekTax, string.Empty, 
             //  support      
-            komponenTarifName, groupRekName, "", model.PetugasMedis.PpaName);
+            komponenTarifName, groupRekName, string.Empty, model.PetugasMedis.PpaName);
         return result;
     }
     
@@ -84,7 +93,7 @@ public record TaTrsBilling2Dto(
         var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
         var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
         var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
-        var tglBayar = model.TglBayar.ToString("yyyy-mm-dd");
+        var tglBayar = model.TglBayar.ToString("yyyy-MM-dd");
         var jamBayar = model.TglBayar.ToString("HH:mm:ss");
         
         var resultP = new TaTrsBilling2Dto(

@@ -1,7 +1,9 @@
+using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 
@@ -118,5 +120,73 @@ public class TindakanDalTest
         actual.IsDiskonDokter.Should().BeTrue();
         actual.DiskonDokter.Should().Be(75000m);
         actual.Total.Should().Be(75000m);
+    }
+
+    [Fact]
+    public void ListTdkJual_WhenCalled_ReturnsUnionOfTindakanAndBarangOrdered()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = Faker();
+        _sut.Insert(dto);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Execute("""
+            IF NOT EXISTS (SELECT 1 FROM ta_registrasi WHERE fs_kd_reg = @RegId)
+                INSERT INTO ta_registrasi (fs_kd_reg, fs_mr) VALUES (@RegId, 'MR001');
+            IF NOT EXISTS (SELECT 1 FROM ta_layanan WHERE fs_kd_layanan = 'LAY01')
+                INSERT INTO ta_layanan (fs_kd_layanan, fs_nm_layanan) VALUES ('LAY01', 'Poli Penyakit Dalam');
+
+            INSERT INTO tb_trs_dobill_umum (
+                fs_kd_trs, fd_tgl_trs, fs_jam_trs, fs_kd_petugas, fs_kd_resep,
+                fs_kd_layanan, fs_kd_reg, fs_nm_pasien, fd_tgl_void, fs_jam_void, fs_kd_petugas_void
+            ) VALUES (
+                'DU001', '2025-12-31', '10:30:00', 'USR001', ' ',
+                'LAY01', @RegId, 'Pasien A', '3000-01-01', '00:00:00', ''
+            );
+
+            INSERT INTO tb_trs_dobill_umum2 (
+                fs_kd_trs, fs_kd_trs2, fn_no_urut, fb_void, fb_komponen,
+                fs_kd_barang, fs_nm_barang, fn_qty_barang, fn_total
+            ) VALUES (
+                'DU001', 'DU001-01', 1, 0, 0,
+                'BRG001', 'Paracetamol 500mg', 2, 50000
+            );
+
+            -- Voided item in tb_trs_dobill_umum2 should be excluded
+            INSERT INTO tb_trs_dobill_umum2 (
+                fs_kd_trs, fs_kd_trs2, fn_no_urut, fb_void, fb_komponen,
+                fs_kd_barang, fs_nm_barang, fn_qty_barang, fn_total
+            ) VALUES (
+                'DU001', 'DU001-02', 2, 1, 0,
+                'BRG002', 'Amoxicillin', 1, 20000
+            );
+
+            -- Komponen item in tb_trs_dobill_umum2 should be excluded
+            INSERT INTO tb_trs_dobill_umum2 (
+                fs_kd_trs, fs_kd_trs2, fn_no_urut, fb_void, fb_komponen,
+                fs_kd_barang, fs_nm_barang, fn_qty_barang, fn_total
+            ) VALUES (
+                'DU001', 'DU001-03', 3, 0, 1,
+                'BRG003', 'Komponen Fee', 1, 10000
+            );
+        """, new { RegId = dto.RegId });
+
+        var actual = _sut.ListTdkJual(FakerRegKey()).ToList();
+
+        actual.Should().HaveCount(2);
+        // DU001-01 is 2025-12-31 10:30:00, Tindakan TND001 is 2025-12-30
+        actual[0].TransaksiId.Should().Be("DU001-01");
+        actual[0].Tipe.Should().Be("BARANG");
+        actual[0].DiskripsiId.Should().Be("BRG001");
+        actual[0].DiskripsiName.Should().Be("Paracetamol 500mg");
+        actual[0].Qty.Should().Be(2);
+        actual[0].Total.Should().Be(50000m);
+        actual[0].OrderTransaksiId.Should().Be("");
+        actual[0].PasienId.Should().Be("MR001");
+        actual[0].LayananName.Should().Be("Poli Penyakit Dalam");
+
+        actual[1].TransaksiId.Should().Be("TND001");
+        actual[1].Tipe.Should().Be("TINDAKAN");
+        actual[1].DiskripsiId.Should().Be("TRF001");
     }
 }

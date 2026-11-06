@@ -93,7 +93,47 @@ public class NilaiTarifControllerTest
     }
 
     [Fact]
-    public async Task ListTarifBrg_WhenCalled_SendsTrfListTarifBrgQueryAndReturnsOkWithSatuan()
+    public async Task ListTarifBrg_WhenCalledWithTipeJaminanId_SendsTrfListTarifBrgQueryAndReturnsOkWithSatuanAndHarga()
+    {
+        // Arrange
+        const string layananId = "LYN-01";
+        const string kelasId = "KLS-01";
+        const string tipeTarifId = "TT-01";
+        const string keyword = "nedle";
+        const string tipeJaminanId = "TJ-01";
+
+        var expectedItems = new List<TrfListTarifBrgResponseBase>
+        {
+            new TrfListBrg("BRG-01", "NEDLE VACUNTAINER", 100m, "BH", "Buah", 15000m)
+        };
+
+        _mediatorMock.Setup(x => x.Send(
+            It.Is<TrfListTarifBrgQuery>(q =>
+                q.LayananId == layananId &&
+                q.KelasId == kelasId &&
+                q.TipeTarifId == tipeTarifId &&
+                q.Keyword == keyword &&
+                q.TipeJaminanId == tipeJaminanId),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedItems);
+
+        // Act
+        var result = await _sut.ListTarifBrg(layananId, kelasId, tipeTarifId, keyword, tipeJaminanId);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var list = jsend.data.Should().BeAssignableTo<IEnumerable<TrfListTarifBrgResponseBase>>().Subject.ToList();
+        list.Should().HaveCount(1);
+        var item = list[0].Should().BeOfType<TrfListBrg>().Subject;
+        item.Satuan.Should().Be("Buah");
+        item.SatuanName.Should().Be("Buah");
+        item.SatuanId.Should().Be("BH");
+        item.Harga.Should().Be(15000m);
+    }
+
+    [Fact]
+    public async Task ListTarifBrg_WhenCalledWithoutTipeJaminanId_ForwardsEmptyStringTipeJaminanId()
     {
         // Arrange
         const string layananId = "LYN-01";
@@ -103,7 +143,7 @@ public class NilaiTarifControllerTest
 
         var expectedItems = new List<TrfListTarifBrgResponseBase>
         {
-            new TrfListBrg("BRG-01", "NEDLE VACUNTAINER", 100m, "BH", "Buah")
+            new TrfListBrg("BRG-01", "NEDLE VACUNTAINER", 100m, "BH", "Buah", 12000m)
         };
 
         _mediatorMock.Setup(x => x.Send(
@@ -111,7 +151,8 @@ public class NilaiTarifControllerTest
                 q.LayananId == layananId &&
                 q.KelasId == kelasId &&
                 q.TipeTarifId == tipeTarifId &&
-                q.Keyword == keyword),
+                q.Keyword == keyword &&
+                q.TipeJaminanId == ""),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedItems);
 
@@ -124,9 +165,7 @@ public class NilaiTarifControllerTest
         var list = jsend.data.Should().BeAssignableTo<IEnumerable<TrfListTarifBrgResponseBase>>().Subject.ToList();
         list.Should().HaveCount(1);
         var item = list[0].Should().BeOfType<TrfListBrg>().Subject;
-        item.Satuan.Should().Be("Buah");
-        item.SatuanName.Should().Be("Buah");
-        item.SatuanId.Should().Be("BH");
+        item.Harga.Should().Be(12000m);
     }
 }
 

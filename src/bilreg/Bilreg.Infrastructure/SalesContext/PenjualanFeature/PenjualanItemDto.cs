@@ -109,7 +109,7 @@ public record PenjualanItemDto(
         return list;
     }
 
-    public PenjualanItemType ToItemModel()
+    public PenjualanItemType ToItemModel(IEnumerable<PenjualanItemBatchType>? listBatch = null)
     {
         var brg = new BrgReff(BrgId, BrgName.Trim());
         var satuan = SatuanType.Create(
@@ -117,6 +117,6 @@ public record PenjualanItemDto(
             string.IsNullOrWhiteSpace(SatuanName) ? AppConst.DASH : SatuanName);
         var etiket = EtiketType.Load(AppConst.DASH, Etiket, Frequency, UnitDose, Note);
         var nilai = new NilaiItemType(Harga, Diskon, Embalase, SubTotal, TaxProsen, Tax, Fee, Bulat, NilaiKlaim, Total);
-        return new PenjualanItemType(PenjualanItemId, NoUrut, brg, satuan, Qty, etiket, nilai, IsVoided, []);
+        return new PenjualanItemType(PenjualanItemId, NoUrut, brg, satuan, Qty, etiket, nilai, IsVoided, [], listBatch);
     }
 }

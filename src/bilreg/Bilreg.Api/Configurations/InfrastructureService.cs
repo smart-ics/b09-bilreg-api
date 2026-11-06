@@ -7,6 +7,7 @@ using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
@@ -62,11 +63,13 @@ using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
+using Bilreg.Infrastructure.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature.UseCases;
 using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using Bilreg.Infrastructure.SalesContext.ResepFeature;
+using Bilreg.Infrastructure.SalesContext.PenjualanFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
@@ -265,7 +268,11 @@ public static class InfrastructureService
         services.AddScoped<IPakaiBrgItemDal, PakaiBrgItemDal>();
         services.AddScoped<IPakaiBrgRepo, PakaiBrgRepo>();
 
+        // PenjualanFeature (tb_trs_dobill_umum3)
+        services.AddScoped<IPenjualanItemBatchDal, PenjualanItemBatchDal>();
+
         services.AddBrgFeature();
+        services.AddScoped<IBrgHargaJualDal, BrgHargaJualDal>();
 
         services.AddScoped<IDeliveryOrderDal, DeliveryOrderDal>();
         services.AddScoped<IDeliveryOrderItemDal, DeliveryOrderItemDal>();
