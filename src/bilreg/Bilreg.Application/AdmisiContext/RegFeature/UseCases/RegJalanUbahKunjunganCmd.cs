@@ -131,11 +131,38 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         var tglBerobat = reg.RegDate;
         var schedule = BookingScheduleResolver.ResolveWalkIn(
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
-        var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
-        var reserved = _queueNumberAdapter.ReserveForRegistration(
-            schedule.LegacyJadwal, tglBerobat, reg).Value;
         var queOldContext = LoadAntrianOldContext(regOld);
         var tracker = ResolveTrackerForVisitChange(queOldContext.TrackerKey, reg, occurredAt);
+
+        bool isSameSchedule =
+            regOld.Dokter.PpaId == dokter.PpaId &&
+            regOld.Layanan.LayananId == layanan.LayananId &&
+            queOldContext.Que.StartTime == schedule.LegacyJadwal.JamMulai;
+
+        int noAntrian;
+        AntrianModel? antrian = null;
+        ReservedQueueNumber? reserved = null;
+
+        if (isSameSchedule)
+        {
+            noAntrian = queOldContext.NoUrut;
+        }
+        else
+        {
+            // Release legacy slot and old queue entry first (Release-Before-Reserve)
+            var antrianMapOld = LoadAntrianMap(regOld, queOldContext.Que);
+            if (antrianMapOld.AntrianMapId != "-")
+            {
+                _queueNumberAdapter.Release(antrianMapOld, queOldContext.NoUrut);
+                _antrianMapRepo.SaveChanges(antrianMapOld);
+            }
+            VoidAntrian(queOldContext.Que, queOldContext.NoUrut);
+
+            reserved = _queueNumberAdapter.ReserveForRegistration(
+                schedule.LegacyJadwal, tglBerobat, reg).Value;
+            antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+            noAntrian = reserved.NoUrut;
+        }
 
         //  registrasi
         reg.ChangeDataKunjungan(layanan, karcis, dokter);
@@ -171,7 +198,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         using var trans = TransHelper.NewScope();
 
         SaveRegister(reg, regAktif);
-        SaveAntrian(antrian, reserved, tracker, reg, regOld, queOldContext, occurredAt);
+        SaveAntrian(isSameSchedule, antrian, reserved, tracker, reg, regOld, queOldContext, occurredAt);
         SaveBillKarcis(billKarcis);
         SaveTindakan(tindakan, reg, karcisOld);
         SaveBillTdk(billTdk);
@@ -181,7 +208,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         trans.Complete();
         #endregion
 
-        var result = new RegJalanUbahKunjunganResponse(reg.RegId, reserved.NoUrut);
+        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian);
         return Task.FromResult(result);
     }
 
@@ -321,26 +348,34 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     }
 
     //  Save
-    private void SaveAntrian(AntrianModel antrian, ReservedQueueNumber reserved,
+    private void SaveAntrian(bool isSameSchedule, AntrianModel? antrian, ReservedQueueNumber? reserved,
         PasienTrackerModel tracker, RegModel regNew, RegModel regOld,
         (AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) queOldContext,
         DateTime occurredAt)
     {
-        // Release legacy slot and old queue entry; retain Tracker evidence (BR-TRK-009c).
-        var antrianMapVoid = LoadAntrianMap(regOld, queOldContext.Que);
-        if (antrianMapVoid.AntrianMapId != "-")
+        if (isSameSchedule)
         {
-            _queueNumberAdapter.Release(antrianMapVoid, queOldContext.NoUrut);
-            _antrianMapRepo.SaveChanges(antrianMapVoid);
+            var antrianMapOld = LoadAntrianMap(regOld, queOldContext.Que);
+            if (antrianMapOld.AntrianMapId != "-")
+            {
+                if (_queueNumberAdapter.ProjectSourceReffForRegistration(antrianMapOld, queOldContext.NoUrut, regNew))
+                {
+                    _antrianMapRepo.SaveChanges(antrianMapOld);
+                }
+            }
+            _trackerRepo.SaveChanges(tracker);
+            return;
         }
-        VoidAntrian(queOldContext.Que, queOldContext.NoUrut);
 
-        _queueNumberAdapter.ProjectIntoQueueSession(
-            antrian, reserved, tracker, regNew.RegId, "REG", occurredAt);
-        // Physician entry stays Waiting until MulaiPeriksa (F-07); do not Serve at visit change.
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
-        _antrianMapRepo.SaveChanges(reserved.Map);
+        if (antrian is not null && reserved is not null)
+        {
+            _queueNumberAdapter.ProjectIntoQueueSession(
+                antrian, reserved, tracker, regNew.RegId, "REG", occurredAt);
+            // Physician entry stays Waiting until MulaiPeriksa (F-07); do not Serve at visit change.
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
+            _antrianMapRepo.SaveChanges(reserved.Map);
+        }
     }
     private void SaveRegister(RegModel reg, RegAktifModel regAktif)
     {
@@ -404,4 +439,3 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     }
     #endregion
 }
-
