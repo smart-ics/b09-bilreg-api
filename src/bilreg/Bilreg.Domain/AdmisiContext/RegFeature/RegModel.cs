@@ -211,6 +211,31 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, timestamp);
     }
 
+    public void SetKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (!RegVoidAudit.IsEmpty)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (!RegKeluarAudit.IsEmpty)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah tercatat keluar.");
+
+        RegKeluarAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    public void CancelKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (!RegVoidAudit.IsEmpty)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit.IsEmpty)
+            throw new InvalidOperationException($"Registrasi {RegId} belum berstatus keluar.");
+
+        RegCancelOutAudit = new AuditInfoType(userId, timestamp);
+        RegKeluarAudit = AuditInfoType.Default;
+    }
+
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
@@ -235,7 +260,7 @@ public record RegKomponenType(
 public record RegReff(
     string RegId,
     string PasienId,
-    string PasienName);
+    string PasienName) : IRegKey;
 public record RegEligibilityType(
     string SjpId,
     string SjpNo,
@@ -244,4 +269,3 @@ public record RegEligibilityType(
     public static RegEligibilityType Default
         => new RegEligibilityType("-", "-", "-");
 }
-    

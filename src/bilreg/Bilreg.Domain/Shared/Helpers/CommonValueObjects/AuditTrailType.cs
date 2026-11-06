@@ -56,24 +56,35 @@ public record AuditInfoType(string UserId, DateTime Timestamp)
 
     public AuditInfoType(string userId, string tgl, string jam) :
         this(
-            string.IsNullOrWhiteSpace(userId) ? string.Empty : userId,
-            ParseTimestampOrSentinel(userId, tgl, jam))
+            string.IsNullOrWhiteSpace(userId) ? string.Empty : userId.Trim(),
+            ParseDateTime(userId, tgl, jam))
     {
     }
 
-    private static DateTime ParseTimestampOrSentinel(string userId, string tgl, string jam)
+    private static DateTime ParseDateTime(string? userId, string? tgl, string? jam)
     {
         if (string.IsNullOrWhiteSpace(userId))
             return new DateTime(3000, 1, 1);
 
-        var combined = $"{tgl?.Trim()} {jam?.Trim()}".Trim();
-        if (DateTime.TryParseExact(combined, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtExact))
-            return dtExact;
+        if (string.IsNullOrWhiteSpace(tgl) || tgl.Trim().StartsWith("3000-01-01") || tgl.Trim().StartsWith("3000/01/01"))
+            return new DateTime(3000, 1, 1);
 
-        if (DateTime.TryParse(combined, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtParsed))
-            return dtParsed;
+        var datePart = tgl.Trim();
+        var timePart = string.IsNullOrWhiteSpace(jam) ? "00:00:00" : jam.Trim();
 
-        return DateTime.ParseExact($"{tgl} {jam}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        if (timePart.Length == 5)
+            timePart += ":00";
+
+        if (DateTime.TryParseExact($"{datePart} {timePart}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            return dt;
+
+        if (DateTime.TryParse($"{datePart} {timePart}", CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
+            return dt;
+
+        if (DateTime.TryParse(datePart, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
+            return dt;
+
+        throw new FormatException($"String '{tgl} {jam}' was not recognized as a valid DateTime.");
     }
 
     public bool IsEmpty => string.IsNullOrWhiteSpace(UserId) || Timestamp.Date >= new DateTime(3000, 1, 1);

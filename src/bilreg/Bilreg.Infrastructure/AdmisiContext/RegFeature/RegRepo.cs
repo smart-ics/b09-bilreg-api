@@ -115,6 +115,19 @@ public class RegRepo : IRegRepo
         return MayBe.From(result);
     }
 
+    public MayBe<RegReff> LoadReff(IRegKey key)
+    {
+        var regDto = _regDal.GetData(key);
+        if (regDto is null)
+            return MayBe<RegReff>.None;
+
+        if (regDto.fd_tgl_void != "3000-01-01" || regDto.fd_tgl_keluar != "3000-01-01")
+            return MayBe<RegReff>.None;
+
+        var result = new RegReff(regDto.fs_kd_reg, regDto.fs_mr, regDto.fs_nm_pasien);
+        return MayBe.From(result);
+    }
+
     public void Delete(IRegKey key)
     {
         _regDal.Delete(key);
@@ -156,10 +169,25 @@ public class RegRepo : IRegRepo
         if (jenisReg != JenisRegEnum.RegInap)
             return new BangsalReff("-", "-");
 
+        var maybeBangsalByReg = _bangsalRepo.GetByRegId(regId);
+        if (maybeBangsalByReg.HasValue)
+            return maybeBangsalByReg.Value.ToReff();
+
         var listBangsal = _bangsalRepo.ListData(layanan).ToList();
+        if (listBangsal.Count == 1)
+            return listBangsal[0].ToReff();
+
+        if (listBangsal.Count > 1)
+        {
+            var activeWithRoomCat = listBangsal
+                .Where(b => !string.IsNullOrWhiteSpace(b.RoomCat.RoomCatId) && b.BangsalId != "ZZ" && b.BangsalId != "XX")
+                .ToList();
+            if (activeWithRoomCat.Count == 1)
+                return activeWithRoomCat[0].ToReff();
+        }
+
         return listBangsal.Count switch
         {
-            1 => listBangsal[0].ToReff(),
             0 => throw new InvalidOperationException(
                 $"Bangsal untuk Layanan '{layanan.LayananId}' pada RegInap '{regId}' tidak ditemukan."),
             _ => throw new InvalidOperationException(

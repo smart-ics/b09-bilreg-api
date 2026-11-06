@@ -9,6 +9,7 @@ public record CoaType : ICoaKey
         CoaName = coaName;
     }
     public static CoaType Default => new("-", "-");
+    public static CoaType KasirPerantara => new("1499901", "Rekening Piutang Kasir Perantara");
     public static ICoaKey Key(string id) => Default with { CoaId = id };
     #endregion
 

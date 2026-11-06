@@ -45,8 +45,8 @@ public class DepositCreateHandler : IRequestHandler<DepositCreateCmd, DepositCre
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NegativeOrZero(request.NilaiDeposit, nameof(request.NilaiDeposit));
 
-        var reg = _regRepo.LoadEntity(RegModel.Key(request.RegId))
-            .GetValueOrThrow($"Registrasi {request.RegId} tidak ditemukan.");
+        var reg = _regRepo.LoadReff(RegModel.Key(request.RegId))
+            .GetValueOrThrow($"Registrasi {request.RegId} tidak ditemukan atau sudah tidak aktif.");
         var layanan = _layananRepo.LoadEntity(LayananType.Key(request.LayananId))
             .GetValueOrThrow($"Layanan {request.LayananId} tidak ditemukan.");
 

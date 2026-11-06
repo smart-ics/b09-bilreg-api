@@ -133,6 +133,37 @@ public class TdkCreateTindakanHandlerTest
     }
 
     [Fact]
+    public async Task GivenValidRequestWithIsDiskonDokterTrue_WhenCreate_ThenTindakanCreatedWithDiskonDokterAndDoctorWaiverApplied()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01",
+            "LYN-01",
+            "NT-01",
+            "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")],
+            Qty: 3,
+            IsDiskonDokter: true);
+
+        TindakanModel? savedTindakan = null;
+        _tindakanRepoMock.Setup(x => x.SaveChanges(It.IsAny<TindakanModel>()))
+            .Callback<TindakanModel>(t => savedTindakan = t);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        savedTindakan.Should().NotBeNull();
+        savedTindakan!.IsDiskonDokter.Should().BeTrue();
+        savedTindakan.DiskonDokter.Should().Be(150000m);
+        savedTindakan.Total.Should().Be(0m);
+        savedTindakan.ListKomponen.First().Diskon.Should().Be(150000m);
+        savedTindakan.ListKomponen.First().SubTotal.Should().Be(0m);
+    }
+
+    [Fact]
     public async Task GivenValidRequestWithCustomQty_WhenCreate_ThenTindakanCreatedWithMatchingQtyAndProportionalTotal()
     {
         // Arrange

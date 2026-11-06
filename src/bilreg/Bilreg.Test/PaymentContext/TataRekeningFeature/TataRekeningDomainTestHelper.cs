@@ -1,4 +1,5 @@
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Moq;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
@@ -11,11 +12,14 @@ internal static class TataRekeningDomainTestHelper
     public static readonly IProjectionRegenerationDomainService ProjectionService =
         new ProjectionRegenerationDomainService();
 
+    public static readonly IRegRelationPolicy PermissiveRegRelationPolicy =
+        new PermissiveTestRegRelationPolicy();
+
     public static readonly IMergeBillingDomainService MergeBillingService =
-        new MergeBillingDomainService(ProjectionService);
+        new MergeBillingDomainService(ProjectionService, PermissiveRegRelationPolicy);
 
     public static readonly IFinancialVerificationDomainService VerificationService =
-        new FinancialVerificationDomainService();
+        new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>());
 
     public static readonly IFinancialAdjustmentDomainService AdjustmentService =
         new FinancialAdjustmentDomainService(ProjectionService);
@@ -42,4 +46,9 @@ internal static class TataRekeningDomainTestHelper
         tataRekening.CompleteFinancialVerification(petugasVerif, verificationDate ?? DefaultVerificationDate);
         tataRekening.AllocateFinancialResponsibility(listPayment);
     }
+}
+
+internal sealed class PermissiveTestRegRelationPolicy : IRegRelationPolicy
+{
+    public bool IsRelated(string sourceRegId, string targetRegId) => true;
 }

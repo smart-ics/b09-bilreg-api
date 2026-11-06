@@ -3,9 +3,11 @@ using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
@@ -49,6 +51,8 @@ public static class ApplicationService
                 return new NullClinicQueueRefreshPublisher();
             return ActivatorUtilities.CreateInstance<SignalRClinicQueueRefreshPublisher>(sp);
         });
+
+        services.TryAddScoped<IWardCockpitEventPublisher, NullWardCockpitEventPublisher>();
         
         services
             .Scan(selector => selector

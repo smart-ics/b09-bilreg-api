@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
 
@@ -7,9 +7,9 @@ namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 public record RegAktifByJenisRegListQuery(int JenisReg) : IRequest<IEnumerable<RegAktifByJenisRegListResponse>>;
 public record RegAktifByJenisRegListResponse(string RegId, string RegDate, string PasienId,
     string PasienName, string JenisReg, string JenisRegString, string LayananId,
-    string LayananName, string DokterId, string DokterName);
+    string LayananName, string DokterId, string DokterName, int StatusTataRekening = 0);
 
-public class RegAktifByJenisRegListHandler : IRequestHandler<RegAktifByJenisRegListQuery,IEnumerable<RegAktifByJenisRegListResponse>>
+public class RegAktifByJenisRegListHandler : IRequestHandler<RegAktifByJenisRegListQuery, IEnumerable<RegAktifByJenisRegListResponse>>
 {
     private readonly IRegAktifRepo _regAktifRepo;
 
@@ -36,7 +36,8 @@ public class RegAktifByJenisRegListHandler : IRequestHandler<RegAktifByJenisRegL
                 x.Layanan.LayananId,
                 x.Layanan.LayananName,
                 x.Dokter.PpaId,
-                x.Dokter.PpaName
+                x.Dokter.PpaName,
+                x.StatusTataRekening
             ));
 
         return Task.FromResult(result);

@@ -24,7 +24,7 @@ public class OrderTdkModelTests
         var tarif = CreateTestTarifType();
 
         // Act
-        var result = OrderTdkModel.Create(pasien, dokter, layanan, tarif, TestUserId);
+        var result = OrderTdkModel.Create(pasien, dokter, layanan, tarif, TestUserId, DateTime.Now);
 
         // Assert
         result.Should().NotBeNull();

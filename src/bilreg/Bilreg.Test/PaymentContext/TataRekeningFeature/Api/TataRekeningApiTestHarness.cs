@@ -1,9 +1,13 @@
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.PaymentContext.DepositFeature;
+using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,14 +26,21 @@ public sealed class TataRekeningApiTestHarness
     public Mock<IMergeRequestRepo> MergeRequestRepo { get; } = new();
     public Mock<ITrsBillingRepo> TrsBillingRepo { get; } = new();
     public Mock<IRegRepo> RegRepo { get; } = new();
+    public Mock<IDepositRepo> DepositRepo { get; } = new();
     public Mock<IUnitOfWork> UnitOfWork { get; } = new();
     public Mock<IUnitOfWorkScope> UnitOfWorkScope { get; } = new();
     public Mock<ITransferReceivableService> TransferReceivableService { get; } = new();
     public Mock<IAuditRepo> AuditRepo { get; } = new();
+    public Mock<IRegBiayaRepo> RegBiayaRepo { get; } = new();
+    public Mock<ITrsDirectDal> TrsDirectDal { get; } = new();
+    public Mock<IJurnalDal> JurnalDal { get; } = new();
+    public Mock<ITataRekeningCancellationLogRepo> CancellationLogRepo { get; } = new();
+    public Mock<IDownstreamSettlementInspector> SettlementInspector { get; } = new();
 
     public TataRekeningApiTestHarness()
     {
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
+        RegBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     public void Reset()
@@ -38,11 +49,18 @@ public sealed class TataRekeningApiTestHarness
         MergeRequestRepo.Reset();
         TrsBillingRepo.Reset();
         RegRepo.Reset();
+        DepositRepo.Reset();
         UnitOfWork.Reset();
         UnitOfWorkScope.Reset();
         TransferReceivableService.Reset();
         AuditRepo.Reset();
+        RegBiayaRepo.Reset();
+        TrsDirectDal.Reset();
+        JurnalDal.Reset();
+        CancellationLogRepo.Reset();
+        SettlementInspector.Reset();
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
+        RegBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -52,10 +70,18 @@ public sealed class TataRekeningApiTestHarness
         RemoveAndRegister(services, () => harness.MergeRequestRepo.Object);
         RemoveAndRegister(services, () => harness.TrsBillingRepo.Object);
         RemoveAndRegister(services, () => harness.RegRepo.Object);
+        RemoveAndRegister(services, () => harness.DepositRepo.Object);
         RemoveAndRegister(services, () => harness.UnitOfWork.Object);
         RemoveAndRegister(services, () => harness.TransferReceivableService.Object);
         RemoveAndRegister(services, () => harness.AuditRepo.Object);
-        RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(TestAuthHandler.UserId));
+        RemoveAndRegister(services, () => harness.RegBiayaRepo.Object);
+        RemoveAndRegister(services, () => harness.TrsDirectDal.Object);
+        RemoveAndRegister(services, () => harness.JurnalDal.Object);
+        RemoveAndRegister(services, () => harness.CancellationLogRepo.Object);
+        RemoveAndRegister(services, () => harness.SettlementInspector.Object);
+        RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(
+            TestAuthHandler.UserId, TataRekeningSupervisorRole.VerifikatorSupervisor));
+        RemoveAndRegister(services, () => (IRegRelationPolicy)TataRekeningDomainTestHelper.PermissiveRegRelationPolicy);
     }
 
     public void SetupOpenScenario()
@@ -66,6 +92,7 @@ public sealed class TataRekeningApiTestHarness
         SetupRegLoad(RegId, RegModel.Default);
         MergeRequestRepo.Setup(r => r.ListPendingByReg(It.IsAny<IRegKey>())).Returns([]);
         MergeRequestRepo.Setup(r => r.ListPendingByPatient(It.IsAny<string>())).Returns([]);
+        DepositRepo.Setup(r => r.GetSaldo(It.IsAny<IRegKey>())).Returns(new DepositSaldoModel(RegId, 0m, 0m, 0m));
     }
 
     public void SetupCloseScenario()
@@ -117,7 +144,7 @@ public sealed class TataRekeningApiTestHarness
         TataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
             .Returns(MayBe.From(model));
 
-    private void SetupRegLoad(string regId, RegModel model) =>
+    public void SetupRegLoad(string regId, RegModel model) =>
         RegRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
             .Returns(MayBe.From(model));
 

@@ -18,6 +18,7 @@ public record ReopenBillingResponse(TataRekeningSummaryDto Summary);
 public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, ReopenBillingResponse>
 {
     private readonly ITataRekeningRepo _tataRekeningRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
@@ -25,12 +26,14 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
 
     public ReopenBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
+        _trsBillingRepo = trsBillingRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
@@ -51,6 +54,8 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         tataRekening.ReOpen();
 
         _tataRekeningRepo.SaveChanges(tataRekening);
+        foreach (var bill in tataRekening.ListTrsBill)
+            _trsBillingRepo.SaveChanges(bill);
 
         var audit = AuditLog.Create(
             userId: request.UserId,
