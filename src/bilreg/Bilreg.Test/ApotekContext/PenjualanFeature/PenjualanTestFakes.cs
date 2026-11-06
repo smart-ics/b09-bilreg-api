@@ -1,4 +1,5 @@
 using Bilreg.Application.ApotekContext.PenjualanFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.PenjualanFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -197,4 +198,9 @@ public class FakeRegRepo : Bilreg.Application.AdmisiContext.RegFeature.IRegRepo
         => Enumerable.Empty<Bilreg.Application.AdmisiContext.RegFeature.RegView>();
 
     public bool IsPasienAktifReg(Bilreg.Domain.PasienContext.PasienFeature.IPasienKey pasien) => true;
+
+    public MayBe<RegReff> LoadReff(IRegKey key)
+    {
+        throw new NotImplementedException();
+    }
 }
