@@ -57,6 +57,12 @@ public class LabOrderRepo : ILabOrderRepo
         return MayBe.From(BuildModel(dto));
     }
 
+    public IEnumerable<LabOrderModel> ListByEmrOrderIdPrefix(string emrOrderId)
+    {
+        var dtoList = _orderDal.ListByEmrOrderIdPrefix(emrOrderId);
+        return dtoList?.Select(BuildModel).ToList() ?? [];
+    }
+
     public void DeleteEntity(ILabOrderKey key)
     {
         _itemComponentDal.Delete(key);

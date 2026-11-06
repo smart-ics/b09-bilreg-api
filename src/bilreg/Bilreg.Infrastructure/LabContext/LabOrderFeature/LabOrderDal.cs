@@ -17,6 +17,7 @@ public interface ILabOrderTableDal :
     IGetData<LabOrderDto, ILabOrderKey>
 {
     LabOrderDto? GetByEmrOrderId(string emrOrderId);
+    IEnumerable<LabOrderDto> ListByEmrOrderIdPrefix(string emrOrderId);
     IEnumerable<LabOrderDto> ListByRegId(string regId);
 }
 
@@ -35,7 +36,7 @@ public class LabOrderDal : ILabOrderTableDal
         aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
         aa.DokterPerujukId, aa.DokterPerujukName, aa.LayananPerujukId, aa.LayananPerujukName,
-        aa.ClinicalNote, aa.Urgency
+        aa.ClinicalNote, aa.Urgency, aa.ServiceType
         """;
 
     private readonly DatabaseOptions _opt;
@@ -60,7 +61,7 @@ public class LabOrderDal : ILabOrderTableDal
                 TerminationReason, TerminationDate, TerminationUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
                 DokterPerujukId, DokterPerujukName, LayananPerujukId, LayananPerujukName,
-                ClinicalNote, Urgency)
+                ClinicalNote, Urgency, ServiceType)
             VALUES (
                 @OrderId, @EmrOrderId, @OrderNo, @OrderSource, @LabOrderStatus, @LastBillingReleaseStatus, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
@@ -73,7 +74,7 @@ public class LabOrderDal : ILabOrderTableDal
                 @TerminationReason, @TerminationDate, @TerminationUserId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
                 @DokterPerujukId, @DokterPerujukName, @LayananPerujukId, @LayananPerujukName,
-                @ClinicalNote, @Urgency)
+                @ClinicalNote, @Urgency, @ServiceType)
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -124,7 +125,8 @@ public class LabOrderDal : ILabOrderTableDal
                 LayananPerujukId = @LayananPerujukId,
                 LayananPerujukName = @LayananPerujukName,
                 ClinicalNote = @ClinicalNote,
-                Urgency = @Urgency
+                Urgency = @Urgency,
+                ServiceType = @ServiceType
             WHERE OrderId = @OrderId
             """;
 
@@ -171,7 +173,27 @@ public class LabOrderDal : ILabOrderTableDal
         dp.AddParam("@EmrOrderId", emrOrderId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderDto>(sql, dp).FirstOrDefault();
+        return conn.QueryFirstOrDefault<LabOrderDto>(sql, dp);
+    }
+
+    public IEnumerable<LabOrderDto> ListByEmrOrderIdPrefix(string emrOrderId)
+    {
+        if (string.IsNullOrWhiteSpace(emrOrderId))
+            return Enumerable.Empty<LabOrderDto>();
+
+        var sql = $"""
+            SELECT {SelectColumns}
+            FROM BILRG_LabOrder aa
+            WHERE aa.EmrOrderId = @EmrOrderId OR aa.EmrOrderId LIKE @EmrOrderIdPrefix
+            ORDER BY aa.CrtDate
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@EmrOrderId", emrOrderId, SqlDbType.VarChar);
+        dp.AddParam("@EmrOrderIdPrefix", $"{emrOrderId}-%", SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<LabOrderDto>(sql, dp) ?? Enumerable.Empty<LabOrderDto>();
     }
 
     public IEnumerable<LabOrderDto> ListByRegId(string regId)
@@ -187,7 +209,7 @@ public class LabOrderDal : ILabOrderTableDal
         dp.AddParam("@RegId", regId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderDto>(sql, dp);
+        return conn.Read<LabOrderDto>(sql, dp) ?? Enumerable.Empty<LabOrderDto>();
     }
 
     public IEnumerable<LabOrderActiveTestDto> ListActiveTestsByPatientWithinHours(string patientId, int hours, DateTime asOf)
@@ -221,7 +243,7 @@ public class LabOrderDal : ILabOrderTableDal
         dp.AddParam("@VodSentinel", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderActiveTestDto>(sql, dp);
+        return conn.Read<LabOrderActiveTestDto>(sql, dp) ?? Enumerable.Empty<LabOrderActiveTestDto>();
     }
 
     private static DynamicParameters BuildParams(LabOrderDto dto)
@@ -272,6 +294,7 @@ public class LabOrderDal : ILabOrderTableDal
         dp.AddParam("@LayananPerujukName", dto.LayananPerujukName, SqlDbType.VarChar);
         dp.AddParam("@ClinicalNote", dto.ClinicalNote, SqlDbType.VarChar);
         dp.AddParam("@Urgency", dto.Urgency, SqlDbType.Int);
+        dp.AddParam("@ServiceType", dto.ServiceType, SqlDbType.Int);
         return dp;
     }
 }

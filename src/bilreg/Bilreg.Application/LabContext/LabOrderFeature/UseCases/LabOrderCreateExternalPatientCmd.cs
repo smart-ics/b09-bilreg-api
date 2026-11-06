@@ -34,7 +34,10 @@ public record LabOrderCreateExternalPatientCmd(
     public string EffectivePatientId => !string.IsNullOrWhiteSpace(ExternalMrNo) ? ExternalMrNo : (PatientId ?? string.Empty);
 }
 
-public record LabOrderCreateResponse(string OrderId, string OrderNo);
+public record LabOrderCreateResponse(
+    string OrderId,
+    string OrderNo,
+    List<CreatedOrderInfo>? CreatedOrders = null);
 
 public class LabOrderCreateExternalPatientHandler
     : IRequestHandler<LabOrderCreateExternalPatientCmd, LabOrderCreateResponse>
@@ -73,6 +76,41 @@ public class LabOrderCreateExternalPatientHandler
 
         var regId = request.EffectiveRegId;
         Guard.Against.NullOrWhiteSpace(regId, nameof(request.RegExternalId));
+
+        // 0. Idempotensi jika EmrOrderId diisi
+        if (!string.IsNullOrWhiteSpace(request.EmrOrderId))
+        {
+            var existingOrder = _labOrderRepo.LoadByEmrOrderId(request.EmrOrderId)
+                .Match(
+                    onSome: x => x,
+                    onNone: () => null as LabOrderModel
+                );
+
+            if (existingOrder is not null)
+            {
+                var createdOrders = new List<CreatedOrderInfo>
+                {
+                    new(existingOrder.OrderId, existingOrder.OrderNo, (int)existingOrder.ServiceType, existingOrder.EmrOrderId)
+                };
+                return Task.FromResult(new LabOrderCreateResponse(
+                    existingOrder.OrderId,
+                    existingOrder.OrderNo,
+                    createdOrders));
+            }
+
+            var existingSplitOrders = _labOrderRepo.ListByEmrOrderIdPrefix(request.EmrOrderId)?.ToList() ?? [];
+            if (existingSplitOrders.Count > 0)
+            {
+                var primary = existingSplitOrders.First();
+                var createdOrders = existingSplitOrders
+                    .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                    .ToList();
+                return Task.FromResult(new LabOrderCreateResponse(
+                    primary.OrderId,
+                    primary.OrderNo,
+                    createdOrders));
+            }
+        }
 
         // 1. Validasi keaktifan RegExternalId ke LAB-EXTERNAL
         var externalReg = _labExternalRepo.LoadEntity(LabExternalModel.Key(regId))
@@ -150,28 +188,79 @@ public class LabOrderCreateExternalPatientHandler
             }
         }
 
-        var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+        var groupedLines = lines
+            .GroupBy(x => x.Item.ServiceType)
+            .OrderBy(g => g.Key)
+            .ToList();
+
         var urgency = (LabOrderUrgencyEnum)request.Urgency;
-
-        var order = LabOrderModel.CreateExternal(
-            request.EmrOrderId,
-            snapshot,
-            lines,
-            orderNo,
-            audit,
-            request.DokterPerujukId,
-            dokterPerujukName,
-            request.LayananPerujukId,
-            layananPerujukName,
-            clinicalNote,
-            urgency);
-
         LabOrderCreateResponse response;
+
         using (var trans = TransHelper.NewScope())
         {
-            _labOrderRepo.SaveChanges(order);
-            trans.Complete();
-            response = new LabOrderCreateResponse(order.OrderId, order.OrderNo);
+            if (groupedLines.Count == 1)
+            {
+                var singleGroup = groupedLines[0];
+                var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                var order = LabOrderModel.CreateExternal(
+                    request.EmrOrderId,
+                    snapshot,
+                    singleGroup.ToList(),
+                    orderNo,
+                    audit,
+                    request.DokterPerujukId,
+                    dokterPerujukName,
+                    request.LayananPerujukId,
+                    layananPerujukName,
+                    clinicalNote,
+                    urgency,
+                    singleGroup.Key);
+
+                _labOrderRepo.SaveChanges(order);
+                trans.Complete();
+
+                var createdOrders = new List<CreatedOrderInfo>
+                {
+                    new(order.OrderId, order.OrderNo, (int)order.ServiceType, order.EmrOrderId)
+                };
+                response = new LabOrderCreateResponse(order.OrderId, order.OrderNo, createdOrders);
+            }
+            else
+            {
+                var createdOrders = new List<LabOrderModel>();
+                foreach (var group in groupedLines)
+                {
+                    var suffix = LabOrderCreateHelper.GetServiceTypeSuffix(group.Key);
+                    var subEmrOrderId = string.IsNullOrWhiteSpace(request.EmrOrderId)
+                        ? string.Empty
+                        : $"{request.EmrOrderId}-{suffix}";
+                    var subOrderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                    var subOrder = LabOrderModel.CreateExternal(
+                        subEmrOrderId,
+                        snapshot,
+                        group.ToList(),
+                        subOrderNo,
+                        audit,
+                        request.DokterPerujukId,
+                        dokterPerujukName,
+                        request.LayananPerujukId,
+                        layananPerujukName,
+                        clinicalNote,
+                        urgency,
+                        group.Key);
+
+                    _labOrderRepo.SaveChanges(subOrder);
+                    createdOrders.Add(subOrder);
+                }
+
+                trans.Complete();
+
+                var primary = createdOrders.First();
+                var createdOrderInfos = createdOrders
+                    .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                    .ToList();
+                response = new LabOrderCreateResponse(primary.OrderId, primary.OrderNo, createdOrderInfos);
+            }
         }
 
         return Task.FromResult(response);

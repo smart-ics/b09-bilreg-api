@@ -9,6 +9,7 @@ using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.LabContext.LabExternalFeature;
+using Bilreg.Application.LabContext.LabMasterFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
@@ -53,6 +54,7 @@ using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabExternalFeature;
+using Bilreg.Infrastructure.LabContext.LabMasterFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
@@ -257,6 +259,10 @@ public static class InfrastructureService
         services.AddScoped<LegacyFreshnessGate>();
         services.AddScoped<ILabExternalDal, LabExternalDal>();
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
+        services.AddScoped<ILabDisciplineDal, LabDisciplineDal>();
+        services.AddScoped<ILabDisciplineRepo, LabDisciplineRepo>();
+        services.AddScoped<ILabTestGroupDal, LabTestGroupDal>();
+        services.AddScoped<ILabTestGroupRepo, LabTestGroupRepo>();
 
         // PakaiBrgFeature (tb_trs_pakai, tb_trs_pakai2)
         services.AddScoped<IPakaiBrgDal, PakaiBrgDal>();

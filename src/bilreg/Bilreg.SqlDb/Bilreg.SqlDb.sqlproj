@@ -127,6 +127,8 @@
     <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
     <Folder Include="LabContext\LabExternalFeature\" />
     <Folder Include="LabContext\LabTestDefinitionFeature\" />
+    <Folder Include="LabContext\LabMasterFeature\" />
+    <Folder Include="LabContext\LabMasterFeature\Data\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
   </ItemGroup>
   <ItemGroup>
@@ -353,6 +355,13 @@
     <Build Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition.sql" />
+    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition_Classification_Alter.sql" />
+    <Build Include="LabContext\LabMasterFeature\BILRG_LabDiscipline.sql" />
+    <Build Include="LabContext\LabMasterFeature\BILRG_LabTestGroup.sql" />
+    <Build Include="LabContext\LabMasterFeature\Data\BILRG_LabDiscipline_Seed.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M12_ExternalSupport_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_ServiceType_Alter.sql" />
+    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_ClassificationSnapshot_Alter.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />

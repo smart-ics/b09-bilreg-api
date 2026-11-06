@@ -1,4 +1,5 @@
 using Bilreg.Application.LabContext.LabTestDefinitionFeature;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -65,7 +66,10 @@ public class LabTestDefinitionController : ControllerBase
             body.VacutainerType,
             body.IsActive,
             body.UserId,
-            body.Components);
+            body.Components,
+            body.ServiceType,
+            body.DisciplineId,
+            body.TestGroupId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -96,9 +100,12 @@ public record LabTestDefinitionUpdateBody(
     string LabTestCode,
     string LabTestName,
     string SpecimenType,
-    Domain.LabContext.LabOrderFeature.VacutainerTypeEnum VacutainerType,
+    VacutainerTypeEnum VacutainerType,
     bool IsActive,
     string UserId,
-    IReadOnlyList<LabTestComponentInput> Components);
+    IReadOnlyList<LabTestComponentInput> Components,
+    LaboratoryServiceType ServiceType = LaboratoryServiceType.ClinicalPathology,
+    string DisciplineId = "",
+    string TestGroupId = "");
 
 public record LabTestDefinitionStatusCmd(string UserId);
