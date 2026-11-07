@@ -69,6 +69,8 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 using Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Application.BedUsageContext.Integration;
+using Bilreg.Infrastructure.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
@@ -204,6 +206,7 @@ public static class InfrastructureService
             .AddScoped<ISmassTokenService, SmassTokenService>()
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
+            .AddScoped<IEmr20AntrianRanapGateway, Emr20AntrianRanapGateway>()
             .AddScoped<IPasienSasetDal, PasienSasetDal>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeRepo, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeRepo>()
             .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeDal>()
