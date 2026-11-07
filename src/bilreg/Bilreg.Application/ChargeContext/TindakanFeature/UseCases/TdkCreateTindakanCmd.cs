@@ -28,17 +28,19 @@ public record TdkCreateTindakanCmd(string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkCreateTindakanPpaCmd> ListPpa,
     string PakaiBedId = "", int Qty = 1,
-    bool IsDiskonDokter = false) 
+    bool IsDiskonDokter = false,
+    IEnumerable<TdkCreateTindakanKomponenDiskonCmd>? ListKomponenDiskon = null) 
     : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, INilaiTarifKey
 {
     public TdkCreateTindakanCmd(string regId, string layananId, string nilaiTarifId, string userId,
         IEnumerable<TdkCreateTindakanPpaCmd> listPpa, int qty, bool isDiskonDokter = false)
-        : this(regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter)
+        : this(regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter, null)
     {
     }
 }
 
 public record TdkCreateTindakanPpaCmd(string KomponenId, string PpaId);
+public record TdkCreateTindakanKomponenDiskonCmd(string KomponenId, decimal Diskon);
 
 public record TindakanCreateRespose(string TindakanId);
 
@@ -144,7 +146,8 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter);
+        var diskonMap = request.ListKomponenDiskon?.ToDictionary(x => x.KomponenId, x => x.Diskon);
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter, diskonMap);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
