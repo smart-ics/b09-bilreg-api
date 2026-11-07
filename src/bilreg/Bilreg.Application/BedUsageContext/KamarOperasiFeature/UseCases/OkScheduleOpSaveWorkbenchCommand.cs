@@ -324,7 +324,7 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
                 occurredAt);
         }
 
-        // 11.2 Ganti Leader jika dokter operator berubah
+        // 11.2 Ganti Leader jika dokter operator berubah (TD-12)
         if (isLeaderChanged)
         {
             scheduleOp.AssignLeader(
@@ -336,7 +336,15 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
                 request.OverrideReason);
         }
 
-        // 11.3 Penyelarasan Tim PPA Pendukung jika ListPpaIds diberikan
+        // 11.3 Penyelarasan Tim PPA Pendukung jika ListPpaIds diberikan (TD-51)
+        // Kontrak Rekonsiliasi Tim Bedah PPA Berbasis Staging Otoritatif & Nullable Fallback:
+        // 1. Jika request.ListPpaIds == null: Backend melewatkan rekonsiliasi tim pendukung sepenuhnya,
+        //    mempertahankan seluruh anggota tim apa adanya termasuk dokter lama yang baru saja didemosikan ke NoUrut = 2 oleh Langkah 11.2.
+        // 2. Jika request.ListPpaIds != null: Backend merekonsiliasi keanggotaan PPA pendukung terhadap targetSupportingPpaIds:
+        //    - Saat klien menyertakan dokter demosi (kondisi standar pasca-koreksi frontend), dokter demosi dipertahankan pada NoUrut = 2.
+        //    - Saat klien sengaja tidak menyertakan dokter demosi (karena tombol [Hapus] diklik pengguna di UI), RemovePpa mengeksekusi penghapusan dokter secara sah.
+        // 3. Menghindari jebakan false-positive Delta Guard, sehingga intensi pengguna dihormati secara presisi.
+        // 4. scheduleOp.RemovePpa() tidak pernah dipanggil pada dokter/PPA yang ada di dalam targetSupportingPpaIds atau TeamLead aktif.
         if (targetSupportingPpaIds != null)
         {
             var membersToRemove = scheduleOp.ListPpa
@@ -345,11 +353,9 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
 
             foreach (var m in membersToRemove)
             {
-                var ppaToRemove = _ppaRepo.LoadEntity(PpaType.Key(m.Ppa.PpaId)).GetValueOrDefault();
-                if (ppaToRemove != null)
-                {
-                    scheduleOp.RemovePpa(ppaToRemove, request.UserId, occurredAt);
-                }
+                var ppaToRemove = _ppaRepo.LoadEntity(PpaType.Key(m.Ppa.PpaId)).GetValueOrDefault()
+                    ?? (PpaType.Default with { PpaId = m.Ppa.PpaId, PpaName = m.Ppa.PpaName });
+                scheduleOp.RemovePpa(ppaToRemove, request.UserId, occurredAt);
             }
 
             foreach (var ppaId in targetSupportingPpaIds)

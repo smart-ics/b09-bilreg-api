@@ -1125,4 +1125,210 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
     }
 
     #endregion
+
+    #region TD-50 & TD-51 Demoted Leader PPA Retention & Reconciliation Tests
+
+    [Fact]
+    public async Task Handle_LeaderChange_WhenListPpaIdsIncludesDemotedLeader_RetainsDemotedLeaderAtNoUrut2()
+    {
+        // Skenario 1: Retensi Dokter Demosi (TD-50, TD-51)
+        // Request pergantian operator utama di mana ListPpaIds menyertakan dokter lama;
+        // handler memverifikasi bahwa dokter baru menempati NoUrut = 1 dan dokter lama tetap bertahan pada NoUrut = 2 di dalam scheduleOp.ListPpa.
+        var sut = CreateSut();
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var oldDoctor = CreateSampleDoctor("DOC-01", "dr. Lama Sp.B");
+        var newDoctor = CreateSampleDoctor("DOC-02", "dr. Baru Sp.B");
+        var nurse = CreateSampleNurse("NURSE-01", "Ns. Perawat");
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.Scheduled);
+
+        var initialPpaList = new List<ScheduleOpPpaType>
+        {
+            new(1, oldDoctor.ToReff(), ProfesiType.Dokter, GroupSpesialisType.Default),
+            new(2, nurse.ToReff(), ProfesiType.Perawat, GroupSpesialisType.Default)
+        };
+        var existingSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "KAMAR-1", tglOp: new DateTime(2026, 10, 20, 8, 0, 0), teamLeadId: "DOC-01", teamLeadName: "dr. Lama Sp.B", isDraft: false, listPpa: initialPpaList);
+        opCase.Schedule(existingSchedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<ScheduleOpModel>())).Returns(MayBe.From(existingSchedule));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-01"))).Returns(MayBe.From(oldDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-02"))).Returns(MayBe.From(newDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "NURSE-01"))).Returns(MayBe.From(nurse));
+
+        // ListPpaIds menyertakan dokter lama DOC-01 dan perawat NURSE-01 (kondisi standar pasca-koreksi frontend)
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KAMAR-1",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-02",
+            ListPpaIds: ["DOC-01", "NURSE-01"],
+            AlasanAssignLeader: "Pergantian dokter operator utama elektif");
+
+        // ACT
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.LeaderChanged.Should().BeTrue();
+
+        existingSchedule.TeamLead.PpaId.Should().Be("DOC-02");
+        existingSchedule.ListPpa.Should().HaveCount(3);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "DOC-02" && p.NoUrut == 1);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "DOC-01" && p.NoUrut == 2);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "NURSE-01" && p.NoUrut == 3);
+
+        // Verify two-way synchronization to OrderOp
+        orderOp.DokterOperator.PpaId.Should().Be("DOC-02");
+
+        // Verify atomic SaveChanges
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingSchedule), Times.Once);
+        _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_LeaderChange_WhenListPpaIdsExplicitlyExcludesDemotedLeader_RemovesDemotedLeaderViaRemovePpa()
+    {
+        // Skenario 2: Penghapusan Eksplisit Dokter Demosi (TD-50, TD-51)
+        // Request pergantian operator utama di mana ListPpaIds secara eksplisit tidak menyertakan dokter lama (simulasi klik [Hapus]);
+        // handler memverifikasi bahwa dokter baru menempati NoUrut = 1 dan dokter lama telah dikeluarkan via RemovePpa.
+        var sut = CreateSut();
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var oldDoctor = CreateSampleDoctor("DOC-01", "dr. Lama Sp.B");
+        var newDoctor = CreateSampleDoctor("DOC-02", "dr. Baru Sp.B");
+        var nurse = CreateSampleNurse("NURSE-01", "Ns. Perawat");
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.Scheduled);
+
+        var initialPpaList = new List<ScheduleOpPpaType>
+        {
+            new(1, oldDoctor.ToReff(), ProfesiType.Dokter, GroupSpesialisType.Default),
+            new(2, nurse.ToReff(), ProfesiType.Perawat, GroupSpesialisType.Default)
+        };
+        var existingSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "KAMAR-1", tglOp: new DateTime(2026, 10, 20, 8, 0, 0), teamLeadId: "DOC-01", teamLeadName: "dr. Lama Sp.B", isDraft: false, listPpa: initialPpaList);
+        opCase.Schedule(existingSchedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<ScheduleOpModel>())).Returns(MayBe.From(existingSchedule));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-01"))).Returns(MayBe.From(oldDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-02"))).Returns(MayBe.From(newDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "NURSE-01"))).Returns(MayBe.From(nurse));
+
+        // ListPpaIds HANYA menyertakan NURSE-01, secara sadar/eksplisit mengecualikan DOC-01 (simulasi klik [Hapus] di UI Bagian 3C)
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KAMAR-1",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-02",
+            ListPpaIds: ["NURSE-01"],
+            AlasanAssignLeader: "Dokter operator utama diganti dan tidak ikut tim pendukung");
+
+        // ACT
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.LeaderChanged.Should().BeTrue();
+
+        existingSchedule.TeamLead.PpaId.Should().Be("DOC-02");
+        existingSchedule.ListPpa.Should().HaveCount(2);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "DOC-02" && p.NoUrut == 1);
+        existingSchedule.ListPpa.Should().NotContain(p => p.Ppa.PpaId == "DOC-01");
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "NURSE-01" && p.NoUrut == 2);
+
+        // Verify two-way synchronization to OrderOp
+        orderOp.DokterOperator.PpaId.Should().Be("DOC-02");
+
+        // Verify atomic SaveChanges
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingSchedule), Times.Once);
+        _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_LeaderChange_WhenListPpaIdsIsNull_RetainsDemotedLeaderAtNoUrut2ViaFallback()
+    {
+        // Skenario 3: PPA Nullable Fallback (TD-51)
+        // Request pergantian operator utama dengan ListPpaIds = null;
+        // handler memverifikasi bahwa dokter lama tetap dipertahankan pada NoUrut = 2.
+        var sut = CreateSut();
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var oldDoctor = CreateSampleDoctor("DOC-01", "dr. Lama Sp.B");
+        var newDoctor = CreateSampleDoctor("DOC-02", "dr. Baru Sp.B");
+        var nurse = CreateSampleNurse("NURSE-01", "Ns. Perawat");
+
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.Scheduled);
+
+        var initialPpaList = new List<ScheduleOpPpaType>
+        {
+            new(1, oldDoctor.ToReff(), ProfesiType.Dokter, GroupSpesialisType.Default),
+            new(2, nurse.ToReff(), ProfesiType.Perawat, GroupSpesialisType.Default)
+        };
+        var existingSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "KAMAR-1", tglOp: new DateTime(2026, 10, 20, 8, 0, 0), teamLeadId: "DOC-01", teamLeadName: "dr. Lama Sp.B", isDraft: false, listPpa: initialPpaList);
+        opCase.Schedule(existingSchedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<ScheduleOpModel>())).Returns(MayBe.From(existingSchedule));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-01"))).Returns(MayBe.From(oldDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "DOC-02"))).Returns(MayBe.From(newDoctor));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<PpaType>(p => p.PpaId == "NURSE-01"))).Returns(MayBe.From(nurse));
+
+        // ListPpaIds is null (Nullable fallback)
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KAMAR-1",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-02",
+            ListPpaIds: null,
+            AlasanAssignLeader: "Dokter utama diganti tanpa modifikasi anggota PPA pendukung");
+
+        // ACT
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.LeaderChanged.Should().BeTrue();
+        response.PpaChanged.Should().BeFalse();
+
+        existingSchedule.TeamLead.PpaId.Should().Be("DOC-02");
+        existingSchedule.ListPpa.Should().HaveCount(3);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "DOC-02" && p.NoUrut == 1);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "DOC-01" && p.NoUrut == 2);
+        existingSchedule.ListPpa.Should().ContainSingle(p => p.Ppa.PpaId == "NURSE-01" && p.NoUrut == 3);
+
+        // Verify two-way synchronization to OrderOp
+        orderOp.DokterOperator.PpaId.Should().Be("DOC-02");
+
+        // Verify atomic SaveChanges
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingSchedule), Times.Once);
+        _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
+    }
+
+    #endregion
 }
