@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using MediatR;
@@ -12,7 +13,8 @@ namespace Bilreg.Application.LabContext.LabResultFeature.UseCases;
 public record LabResultVerifyCmd(
     string OrderId,
     string VerifiedUserId,
-    DateTime VerifiedDate)
+    DateTime VerifiedDate,
+    string ExpertiseNote = "")
     : IRequest;
 
 public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
@@ -21,11 +23,23 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
 
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
+    private readonly ICurrentUserContext _currentUser;
 
-    public LabResultVerifyHandler(ILabOrderRepo labOrderRepo, ILabResultDocumentRepo labResultDocumentRepo)
+    public LabResultVerifyHandler(
+        ILabOrderRepo labOrderRepo,
+        ILabResultDocumentRepo labResultDocumentRepo,
+        ICurrentUserContext currentUser)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
+        _currentUser = currentUser;
+    }
+
+    public LabResultVerifyHandler(
+        ILabOrderRepo labOrderRepo,
+        ILabResultDocumentRepo labResultDocumentRepo)
+        : this(labOrderRepo, labResultDocumentRepo, null!)
+    {
     }
 
     public Task Handle(LabResultVerifyCmd request, CancellationToken cancellationToken)
@@ -35,6 +49,8 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
 
         if (request.VerifiedDate == default || request.VerifiedDate.Date == EmptyDateSentinel.Date)
             throw new ArgumentException("VerifiedDate wajib diisi dengan tanggal valid.", nameof(request.VerifiedDate));
+
+        EnsureVerifierAuthorization();
 
         var order = _labOrderRepo.LoadEntity(new OrderIdKey(request.OrderId))
             .GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
@@ -50,7 +66,7 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
             throw new InvalidOperationException(
                 $"Hasil untuk order '{request.OrderId}' sudah diverifikasi.");
 
-        result.Verify(request.VerifiedUserId, request.VerifiedDate);
+        result.Verify(request.VerifiedUserId, request.VerifiedDate, request.ExpertiseNote);
         order.MarkVerified(request.VerifiedUserId, request.VerifiedDate);
 
         using var trans = TransHelper.NewScope();
@@ -59,6 +75,29 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
         trans.Complete();
 
         return Task.CompletedTask;
+    }
+
+    private void EnsureVerifierAuthorization()
+    {
+        var roles = _currentUser?.GetRoles();
+        if (roles is null || !roles.Any(IsAuthorizedRoleOrPermission))
+        {
+            throw new UnauthorizedAccessException(
+                "Verifikasi hasil laboratorium hanya dapat dilakukan oleh Dokter Spesialis Patologi Klinik (doktersppk) atau pemilik izin 'lab.result.verify'.");
+        }
+    }
+
+    private static bool IsAuthorizedRoleOrPermission(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role))
+            return false;
+
+        var normalized = role.Trim();
+        return normalized.Equals("doktersppk", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("dokter_sppk", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("sp.pk", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("sppk", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("lab.result.verify", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record OrderIdKey(string OrderId) : ILabOrderKey;

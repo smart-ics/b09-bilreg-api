@@ -212,7 +212,7 @@ Changed Files:
 
 Title: Verification & Release Use Case Enhancements  
 Implementation Status: IMPLEMENTED  
-Review Status: NOT-REVIEWED  
+Review Status: GO  
 Objective: Memperbarui `LabResultVerifyCmd` untuk mendukung catatan ekspertise patolog dan penegakan otorisasi Sp.PK, serta menyelaraskan `LabOrderReleaseCmd` untuk memperbarui status dokumen hasil menjadi `Released`.  
 Depends On: P1-S02, P2-S03  
 Repository: `b09-bilreg-api`  
