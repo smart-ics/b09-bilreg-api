@@ -344,6 +344,7 @@
     <Content Include="LabContext\LabOwareFeature\BILRG_LabOwareOutboundQueue.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M12_Alter.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceOutstanding.sql" />
