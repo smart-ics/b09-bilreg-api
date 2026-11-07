@@ -74,7 +74,12 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
 
         var order = _labOrderRepo.LoadEntity(request)
             .GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
-        await _billingLockValidator.EnsureCanModifyBillingAsync(order.ExecutionRegId, cancellationToken);
+
+        var effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId)
+            ? order.ExecutionRegId
+            : order.Patient.RegId;
+
+        await _billingLockValidator.EnsureCanModifyBillingAsync(effectiveRegId, cancellationToken);
 
         var occurredAt = _tglJamProvider.Now;
 
@@ -91,7 +96,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         // Financial Coordination with TRK-BILLING
         if (order.LabOrderStatus == LabOrderStatusEnum.Charged)
         {
-            _labBillingIntegration.CancelCharge(order.OrderId, order.Patient.RegId, request.UserId, request.Reason, occurredAt);
+            _labBillingIntegration.CancelCharge(order.OrderId, effectiveRegId, request.UserId, request.Reason, occurredAt);
         }
 
         var wasOwareSent = order.OwareStatus == OwareStatusEnum.Sent;
