@@ -169,7 +169,7 @@ Review Status: NOT-REVIEWED
 ### P3-S04
 
 Title: Ingestion Use Case for External LIS Results (Oware to Bilreg)  
-Implementation Status: NOT-STARTED  
+Implementation Status: IMPLEMENTED  
 Review Status: NOT-REVIEWED  
 Objective: Mengembangkan use case `LabResultIngestFromLisCmd` untuk menerima data analitik yang sudah terpetakan dari Oware, melakukan pencocokan 1:1 ke perancah order berdasarkan ComponentCode (PemeriksaanId), mengadopsi flag LIS dengan fallback domain service, dan menyimpan dokumen berstatus `Verified`.  
 Depends On: P1-S02, P2-S03  
@@ -184,14 +184,34 @@ Completion Criteria:
   - Memperbarui status `LabOrderModel` menjadi `Verified`.
   - Menyimpan transaksi order dan dokumen hasil secara atomik (`TransHelper.NewScope()`).
 - Pengujian unit `LabResultIngestFromLisHandlerTest.cs` pada `Bilreg.Test` menguji skenario direct matching 1:1, adopsi flag LIS + fallback flagging, dan verifikasi status.  
-Notes: Mendukung pembaruan hasil bertahap (*partial result ingestion*).
+Notes: Mendukung pembaruan hasil bertahap (*partial result ingestion*).  
+Implementation Notes:
+- Menambahkan nilai `Critical = 4` ke enumerasi `LabResultFlagEnum` dan menyelaraskan mapping pada `LabResultPdfQuery`.
+- Membuat DTO `LabResultIngestItemDto` dan record command `LabResultIngestFromLisCmd` memuat `OrderId`, `OrderNo`, `LisRefNo`, `ValidatorName`, `ValidatedDate`, `Items`, dan `CriticalNote`.
+- Mengembangkan `LabResultIngestFromLisHandler` yang mengorkestrasikan:
+  - Validasi status order (`Charged`, `Collected`, `Recorded`, `Verified`).
+  - Resolusi scaffold komponen order via `ILabResultScaffoldService.BuildFromOrder`.
+  - Pencocokan deterministik 1:1 antara `ComponentCode` LIS dan perancah order.
+  - Adopsi flag klinis LIS (`Low`, `High`, `Critical`, `Normal`) dengan fallback evaluasi via `LabResultFlagging.Compute`.
+  - Dukungan partial result ingestion: komponen yang tidak dikirim dipertahankan sebagai item perancah bernilai default/pending atau mempertahankan nilai ingest sebelumnya.
+  - Pembentukan agregat hasil berstatus `Verified` via `LabResultDocumentModel.CreateFromLisIngestion`.
+  - Pembaruan status agregat order menjadi `Verified` via `order.MarkRecorded` -> `order.MarkVerified`.
+  - Penggantian dokumen lama (jika ada) dan penyimpanan atomik order serta dokumen hasil dalam satu transaksi `TransHelper.NewScope()`.
+- Menulis pengujian unit menyeluruh di `LabResultIngestFromLisHandlerTest.cs` mencakup 9 skenario: direct matching 1:1, adopsi flag LIS, fallback auto-flagging rentang rujukan, partial ingestion, transisi status order ke `Verified`, preservasi nilai saat subsequent partial ingest, validasi order not found, dan penolakan status order tidak valid.
+- Seluruh 9 test `LabResultIngestFromLis` dan 67 test pada `LabResultFeature` lulus verifikasi 100%.
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Domain/LabContext/LabResultFeature/LabResultFlagEnum.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultPdfQuery.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultIngestFromLisCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultIngestFromLisHandlerTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-HASIL-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
 ### P3-S05
 
 Title: Verification & Release Use Case Enhancements  
-Implementation Status: NOT-STARTED  
+Implementation Status: IN-PROGRESS  
 Review Status: NOT-REVIEWED  
 Objective: Memperbarui `LabResultVerifyCmd` untuk mendukung catatan ekspertise patolog dan penegakan otorisasi Sp.PK, serta menyelaraskan `LabOrderReleaseCmd` untuk memperbarui status dokumen hasil menjadi `Released`.  
 Depends On: P1-S02, P2-S03  
@@ -208,8 +228,8 @@ Notes: Menjaga pemisahan tegas antara otorisasi medis internal dan rilis adminis
 ### P3-S06
 
 Title: Manual Recording & Amendment Use Case Enhancements  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memutakhirkan use case `LabResultRecordCmd` dan `LabResultAmendCmd` agar mendukung input `CriticalNote` dan pemeliharaan catatan kritis pada siklus amandemen dokumen versi baru.  
 Depends On: P1-S02, P2-S03  
 Repository: `b09-bilreg-api`  
@@ -217,7 +237,17 @@ Completion Criteria:
 - `LabResultRecordCmd` dan `LabResultRecordHandler` diperbarui menerima parameter `CriticalNote` opsional dan menerapkannya pada dokumen hasil yang dibentuk/dimutakhirkan.
 - `LabResultAmendCmd` dan `LabResultAmendHandler` mempertahankan salinan snapshot nilai ekspertise dan catatan kritis ke dokumen versi baru berstatus `Recorded`.
 - Pengujian unit `LabResultRecordHandlerTest.cs` dan `LabResultAmendHandlerTest.cs` pada `Bilreg.Test` lulus pengujian.  
-Notes: Menjamin kelengkapan siklus amandemen dokumen hasil analitik.
+Notes: Menjamin kelengkapan siklus amandemen dokumen hasil analitik.  
+Implementation Notes:
+- Menambahkan parameter opsional `string CriticalNote = ""` pada record command `LabResultRecordCmd` dan memanggil `result.SetCriticalNote(request.CriticalNote)` pada `LabResultRecordHandler` sebelum dokumen ditandai `MarkRecorded`.
+- Memperbarui `LabResultAmendHandler` agar validasi status dokumen mengizinkan amandemen dari status `Verified` maupun `Released`, serta memastikan amandemen dokumen mempensiunkan versi lama dengan status `LabResultStatusEnum.Amended` dan meneruskan snapshot catatan ekspertise (`ExpertiseNote`) dan catatan nilai kritis (`CriticalNote`) ke dokumen versi baru berstatus `Recorded`.
+- Memperluas unit test pada `LabResultRecordHandlerTest.cs` untuk memverifikasi penyimpanan catatan nilai kritis saat entri hasil awal dan pembaruan hasil, serta pada `LabResultAmendHandlerTest.cs` untuk memverifikasi penerusan snapshot `CriticalNote` dan `ExpertiseNote` ke versi baru dan status `Amended` pada versi lama baik untuk dokumen berstatus `Verified` maupun `Released`.
+- Menjalankan pengujian `dotnet test b09-bilreg-api/src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabResultRecord|FullyQualifiedName~LabResultAmend"`: 8 passed (100% lolos).
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultRecordCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultAmendCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultRecordHandlerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultAmendHandlerTest.cs`
 
 ---
 

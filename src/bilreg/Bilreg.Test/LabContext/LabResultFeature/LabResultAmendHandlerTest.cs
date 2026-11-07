@@ -41,12 +41,13 @@ public class LabResultAmendHandlerTest
         return order;
     }
 
-    private static LabResultDocumentModel VerifiedResult(string orderId)
+    private static LabResultDocumentModel VerifiedResult(string orderId, string criticalNote = "Catatan Kritis 1", string expertiseNote = "Ekspertise Patologi 1")
     {
         var doc = LabResultDocumentModel.CreateInitial(orderId, new AuditInfoType("U1", DateTime.Now));
         doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
+        doc.SetCriticalNote(criticalNote);
         doc.MarkRecorded("U3");
-        doc.Verify("PATH", new DateTime(2026, 5, 18, 14, 0, 0));
+        doc.Verify("PATH", new DateTime(2026, 5, 18, 14, 0, 0), expertiseNote);
         return doc;
     }
 
@@ -54,7 +55,7 @@ public class LabResultAmendHandlerTest
     public async Task Handle_ValidRequest_SavesOrderRetiredAndNewVersion()
     {
         var order = VerifiedOrder();
-        var result = VerifiedResult(order.OrderId);
+        var result = VerifiedResult(order.OrderId, "Catatan Kritis 1", "Ekspertise Patologi 1");
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(result));
 
@@ -63,11 +64,48 @@ public class LabResultAmendHandlerTest
         _orderRepo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o =>
             o.LabOrderStatus == LabOrderStatusEnum.Recorded)), Times.Once);
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
-            d.IsCurrentVersion == false)), Times.Once);
+            d.IsCurrentVersion == false
+            && d.ResultStatus == LabResultStatusEnum.Amended
+            && d.CriticalNote == "Catatan Kritis 1"
+            && d.ExpertiseNote == "Ekspertise Patologi 1")), Times.Once);
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
             d.IsCurrentVersion
             && d.ResultStatus == LabResultStatusEnum.Recorded
             && d.VersionNo == 2
+            && d.PreviousVersionId == result.ResultDocumentId
+            && d.CriticalNote == "Catatan Kritis 1"
+            && d.ExpertiseNote == "Ekspertise Patologi 1"
+            && d.Items.Single().ComponentId == "MLC0001"
+            && d.Items.Single().NumericValue == 0)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenResultReleased_AllowsAmendmentAndRetiresOldVersion()
+    {
+        var order = VerifiedOrder();
+        order.Release("UREL", "Sudah bayar kasir");
+        var result = VerifiedResult(order.OrderId, "Catatan Kritis Rilis", "Ekspertise Rilis");
+        result.MarkReleased("UREL");
+
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(result));
+
+        await _sut.Handle(new LabResultAmendCmd(order.OrderId, "Koreksi setelah rilis", "UAMEND"), CancellationToken.None);
+
+        _orderRepo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o =>
+            o.LabOrderStatus == LabOrderStatusEnum.Recorded)), Times.Once);
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
+            d.IsCurrentVersion == false
+            && d.ResultStatus == LabResultStatusEnum.Amended
+            && d.CriticalNote == "Catatan Kritis Rilis"
+            && d.ExpertiseNote == "Ekspertise Rilis")), Times.Once);
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
+            d.IsCurrentVersion
+            && d.ResultStatus == LabResultStatusEnum.Recorded
+            && d.VersionNo == 2
+            && d.PreviousVersionId == result.ResultDocumentId
+            && d.CriticalNote == "Catatan Kritis Rilis"
+            && d.ExpertiseNote == "Ekspertise Rilis"
             && d.Items.Single().ComponentId == "MLC0001"
             && d.Items.Single().NumericValue == 0)), Times.Once);
     }

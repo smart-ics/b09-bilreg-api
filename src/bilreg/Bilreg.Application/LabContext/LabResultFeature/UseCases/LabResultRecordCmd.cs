@@ -15,7 +15,8 @@ public record LabResultRecordCmd(
     string OrderId,
     string UserId,
     int ResultSource,
-    IEnumerable<LabResultRecordValueDto> Values)
+    IEnumerable<LabResultRecordValueDto> Values,
+    string CriticalNote = "")
     : IRequest;
 
 public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
@@ -68,6 +69,7 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
                     new AuditInfoType(request.UserId, occurredAt)));
 
         result.RecordResult(source, captures, request.UserId, occurredAt);
+        result.SetCriticalNote(request.CriticalNote);
         result.MarkRecorded(request.UserId, occurredAt);
         order.MarkRecorded(request.UserId, occurredAt);
 
