@@ -1,4 +1,5 @@
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
@@ -28,6 +29,7 @@ public class PakaiBedReleaseCommandTest
     private readonly Mock<IPakaiBedRepo> _pakaiBedRepoMock = new();
     private readonly Mock<IMediator> _mediatorMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
+    private readonly Mock<IEmr20AntrianRanapGateway> _emr20GatewayMock = new();
     private readonly PakaiBedReleaseCommandHandler _sut;
 
     public PakaiBedReleaseCommandTest()
@@ -35,7 +37,8 @@ public class PakaiBedReleaseCommandTest
         _sut = new PakaiBedReleaseCommandHandler(
             _pakaiBedRepoMock.Object,
             _mediatorMock.Object,
-            _tglJamProviderMock.Object);
+            _tglJamProviderMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
     }
 
     private static PakaiBedModel CreateTestBed(string pakaiBedId = "PKB001")
@@ -100,6 +103,9 @@ public class PakaiBedReleaseCommandTest
         capturedReconcileCmd!.PakaiBedId.Should().Be("PKB001");
         capturedReconcileCmd.CheckOutTime.Should().Be(checkoutTime);
         capturedReconcileCmd.UserId.Should().Be("nurse_user");
+
+        // Verify Emr20AntrianRanapGateway was notified with isGabung=false
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG001", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -497,6 +503,31 @@ public class PakaiBedReleaseCommandTest
                 t.ResponsibleActorId == "nurse_sarah" &&
                 t.SourceFactId == "BATAL-PKB005")
         )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedReleased_CallsEmr20GatewayDischargeRegRanapAsyncWithIsGabungFalse()
+    {
+        // Arrange
+        var bed = CreateTestBed("PKB-DISCHARGE-01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-DISCHARGE-01")))
+            .Returns(MayBe.From(bed));
+
+        var checkoutTime = new DateTime(2026, 10, 19, 14, 0, 0);
+        var cmd = new PakaiBedReleaseCommand("PKB-DISCHARGE-01", checkoutTime, "nurse_user", "Discharged");
+
+        var reconcileResponse = new RoomChargeReconcileResponse("RC001", 1.0m, 300000m);
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<RoomChargeReconcileCheckoutCmd>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reconcileResponse);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG001", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -1,10 +1,12 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
@@ -38,6 +40,15 @@ public interface ICreateBillDomService
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
         DateTime createdAt = default);
+
+    TrsBillType FromPenjualanItem(
+        TataRekeningModel tataRekening,
+        PenjualanModel penjualan,
+        PenjualanItemType item,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -66,6 +77,19 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromLabOrderItem(labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp, createdAt);
+    }
+
+    public TrsBillType FromPenjualanItem(
+        TataRekeningModel tataRekening,
+        PenjualanModel penjualan,
+        PenjualanItemType item,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromPenjualanItem(penjualan, item, reg, jaminan, groupRek, createdAt);
     }
 
     private static void ValidateReg(TataRekeningModel tataRekening, string regId)

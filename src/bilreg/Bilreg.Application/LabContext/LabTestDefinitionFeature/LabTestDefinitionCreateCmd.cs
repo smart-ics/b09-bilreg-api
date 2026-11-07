@@ -17,7 +17,10 @@ public record LabTestDefinitionCreateCmd(
     VacutainerTypeEnum VacutainerType,
     bool IsActive,
     string UserId,
-    IReadOnlyList<LabTestComponentInput> Components)
+    IReadOnlyList<LabTestComponentInput> Components,
+    LaboratoryServiceType ServiceType = LaboratoryServiceType.ClinicalPathology,
+    string DisciplineId = "",
+    string TestGroupId = "")
     : IRequest<LabTestDefinitionCreateResponse>;
 
 public record LabTestDefinitionCreateResponse(string TestDefinitionId);
@@ -70,7 +73,10 @@ public class LabTestDefinitionCreateHandler
             request.UserId,
             _tglJamProvider.Now,
             components,
-            catalog);
+            catalog,
+            request.ServiceType,
+            request.DisciplineId,
+            request.TestGroupId);
 
         _definitionRepo.SaveChanges(model);
         return Task.FromResult(new LabTestDefinitionCreateResponse(testDefinitionId));

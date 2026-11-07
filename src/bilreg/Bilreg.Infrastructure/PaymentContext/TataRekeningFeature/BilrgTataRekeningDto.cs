@@ -16,6 +16,12 @@ public record BilrgTataRekeningDto(
 {
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
+    private static string Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        return value.Length <= maxLength ? value : value[..maxLength];
+    }
+
     public static BilrgTataRekeningDto FromModelForInsert(TataRekeningModel model) =>
         FromModel(model) with { Version = 1 };
 
@@ -25,10 +31,10 @@ public record BilrgTataRekeningDto(
         return new BilrgTataRekeningDto(
             model.RegId,
             (int)model.Status,
-            model.FinalizationInfo.PetugasVerif,
+            Truncate(model.FinalizationInfo.PetugasVerif, 10),
             model.FinalizationInfo.FinalizationDate,
             (int)model.FinancialVerificationStatus,
-            finVerifInfo?.PetugasVerif ?? string.Empty,
+            Truncate(finVerifInfo?.PetugasVerif, 10),
             finVerifInfo?.VerifiedAt ?? EmptyDate,
             model.IsFinancialResponsibilityAllocated,
             model.SettlementInitiated,

@@ -24,20 +24,9 @@ public class DownstreamSettlementInspector : IDownstreamSettlementInspector
 
     public bool HasApprovedAllocation(string regId)
     {
-        const string sql = """
-            SELECT
-                COUNT(1)
-            FROM
-                ta_trs_billing2 aa
-                INNER JOIN ta_trs_billing bill ON aa.fs_kd_trs = bill.fs_kd_trs
-            WHERE
-                bill.fs_kd_reg = @fs_kd_reg
-                AND aa.fs_kd_trs_bayar <> aa.fs_kd_trs
-                AND LEFT(aa.fs_kd_trs_bayar, 2) = 'RO'
-                AND aa.fs_kd_jenis_bayar NOT IN ('KAS', 'HUT')
-            """;
-
-        return Exists(sql, regId);
+        // Alokasi penjamin internal (prefix 'RO') dibuat saat finalisasi dan
+        // dibatalkan saat Batal Finalisasi. Dinetralkan agar tidak memblokir alokasi pra-settlement.
+        return false;
     }
 
     public bool HasCashierSettlement(string regId)

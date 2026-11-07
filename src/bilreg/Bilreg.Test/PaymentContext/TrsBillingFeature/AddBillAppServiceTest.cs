@@ -6,15 +6,21 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using TipeBrgType = Bilreg.Domain.BrgContext.PricingPolicyFeature.TipeBrgType;
 
 namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
 
@@ -239,5 +245,103 @@ public class AddBillAppServiceTest
             TarifType.Default.ToReff(),
             listKomponen,
             AuditTrailType.Default);
+    }
+
+    [Fact]
+    public void GivenExistingTataRekening_WhenFromPenjualanItem_ThenPersistsBillOnly()
+    {
+        var reg = CreateRegForTindakan("REG-PJ-01");
+        var existingTataRekening = TataRekeningModel.Create(reg.RegId);
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(existingTataRekening));
+
+        var layanan = new LayananType("LY01", "Poli", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, layanan, TipeBrgType.Default.ToReff(), "U1", DateTime.Now);
+        penjualan.AddItem(BrgObatType.Default with { BrgId = "B01" }, SatuanType.Create("TAB", "Tab"), 2, EtiketType.Default, NilaiItemType.Default);
+        var item = penjualan.ListItem.Single();
+
+        var jaminan = CreateJaminanForReg(reg);
+        var groupRek = new GroupRekType("G1", "Obat", GroupRekDkType.Default);
+
+        var result = _sut.FromPenjualanItem(penjualan, item, reg, jaminan, groupRek);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be(item.PenjualanItemId);
+        result.ModulGroup.Should().Be(BillModulGroup.Obat);
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == item.PenjualanItemId)), Times.Once);
+    }
+
+    [Fact]
+    public void GivenMissingTataRekening_WhenFromPenjualanItem_ThenCreatesTataRekeningAndBill()
+    {
+        var reg = CreateRegForTindakan("REG-PJ-02");
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe<TataRekeningModel>.None);
+
+        var layanan = new LayananType("LY01", "Poli", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, layanan, TipeBrgType.Default.ToReff(), "U1", DateTime.Now);
+        penjualan.AddItem(BrgObatType.Default with { BrgId = "B01" }, SatuanType.Create("TAB", "Tab"), 2, EtiketType.Default, NilaiItemType.Default);
+        var item = penjualan.ListItem.Single();
+
+        var jaminan = CreateJaminanForReg(reg);
+        var groupRek = new GroupRekType("G1", "Obat", GroupRekDkType.Default);
+
+        var result = _sut.FromPenjualanItem(penjualan, item, reg, jaminan, groupRek);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be(item.PenjualanItemId);
+
+        _tataRekeningRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TataRekeningModel>(t =>
+                t.RegId == reg.RegId && t.Status == TataRekeningStatusEnum.Opened)),
+            Times.Once);
+        _trsBillingRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == item.PenjualanItemId)),
+            Times.Once);
+    }
+
+    [Fact]
+    public void GivenClosedTataRekening_WhenFromPenjualanItem_ThenThrowsInvalidOperationExceptionAndDoesNotPersist()
+    {
+        var reg = CreateRegForTindakan("REG-PJ-03");
+        var closedTataRekening = TataRekeningModel.Create(reg.RegId);
+        closedTataRekening.Close();
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(closedTataRekening));
+
+        var layanan = new LayananType("LY01", "Poli", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var penjualan = PenjualanModel.CreateDirectReg(reg, layanan, TipeBrgType.Default.ToReff(), "U1", DateTime.Now);
+        penjualan.AddItem(BrgObatType.Default with { BrgId = "B01" }, SatuanType.Create("TAB", "Tab"), 2, EtiketType.Default, NilaiItemType.Default);
+        var item = penjualan.ListItem.Single();
+
+        var jaminan = CreateJaminanForReg(reg);
+        var groupRek = new GroupRekType("G1", "Obat", GroupRekDkType.Default);
+
+        Action act = () => _sut.FromPenjualanItem(penjualan, item, reg, jaminan, groupRek);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*OPEN*");
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
     }
 }

@@ -79,6 +79,6 @@ public class LabTestComponentDal : ILabTestComponentDal
         dp.AddParam("@TestDefinitionId", filter.TestDefinitionId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabTestComponentDto>(sql, dp);
+        return conn.Read<LabTestComponentDto>(sql, dp) ?? Enumerable.Empty<LabTestComponentDto>();
     }
 }

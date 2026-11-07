@@ -84,7 +84,7 @@ public class PenjualanDto
         };
     }
 
-    public PenjualanModel ToModel(IEnumerable<PenjualanItemDto> listItem)
+    public PenjualanModel ToModel(IEnumerable<PenjualanItemDto> listItem, IEnumerable<PenjualanItemBatchDto>? listBatch = null)
     {
         var created = new AuditInfoType(UserId, TglJam);
         var voided = string.IsNullOrWhiteSpace(UserVoidId) || UserVoidId == AppConst.DASH
@@ -106,6 +106,8 @@ public class PenjualanDto
             SumSubTotal, SumBiaya, SumTax, SubTotal, DiskonLain, BiayaLain, Pembulatan, Bulat, GrandTotal);
 
         var listItems = new List<PenjualanItemType>();
+        var batchList = listBatch?.ToList() ?? [];
+
         foreach (var item in (listItem ?? []).OrderBy(x => x.NoUrut))
         {
             if (item.IsKomponen)
@@ -126,13 +128,17 @@ public class PenjualanDto
             }
             else
             {
-                listItems.Add(item.ToItemModel());
+                var batches = batchList
+                    .Where(b => b.PenjualanItemId == item.PenjualanItemId)
+                    .Select(b => b.ToBatchModel())
+                    .ToList();
+                listItems.Add(item.ToItemModel(batches));
             }
         }
 
         return new PenjualanModel(
             PenjualanId,
-            string.IsNullOrWhiteSpace(ResepId) ? AppConst.DASH : ResepId,
+            string.IsNullOrWhiteSpace(ResepId) ? " " : ResepId,
             reg,
             dokter,
             layanan,

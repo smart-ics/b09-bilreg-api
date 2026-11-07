@@ -1,12 +1,12 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
-using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
-using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
@@ -16,7 +16,7 @@ namespace Bilreg.Test.AdmisiRanapContext.OpnameRequestFeature;
 
 public class AdmCreateOpnameRequestCmdTest
 {
-    private readonly Mock<IOpnameRequestRepo> _opnameRequestRepoMock = new();
+    private readonly Mock<IInpatientOrderRepo> _orderRepoMock = new();
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IDoctorServiceGateway> _doctorGatewayMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
@@ -37,13 +37,13 @@ public class AdmCreateOpnameRequestCmdTest
     public async Task Handle_GivenValidRequest_InvokesCoordinatorWithCreatedOpnameRequest()
     {
         // Arrange
-        OpnameRequestModel? savedOpnameRequest = null;
-        _opnameRequestRepoMock
-            .Setup(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()))
-            .Callback<OpnameRequestModel>(r => savedOpnameRequest = r);
+        InpatientOrderModel? savedOrder = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(r => savedOrder = r);
 
         var handler = new AdmCreateOpnameRequestHandler(
-            _opnameRequestRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _doctorGatewayMock.Object,
             _auditRepoMock.Object,
@@ -65,20 +65,62 @@ public class AdmCreateOpnameRequestCmdTest
         response.Should().NotBeNull();
         response.OpnameRequestId.Should().StartWith("OPN");
         response.TrsOrderId.Should().Be("ORD-001");
-        savedOpnameRequest.Should().NotBeNull();
-        savedOpnameRequest!.OpnameRequestId.Should().Be(response.OpnameRequestId);
+        response.ExternalReferenceId.Should().Be("ORD-001");
+        savedOrder.Should().NotBeNull();
+        savedOrder!.InpatientOrderId.Should().Be(response.OpnameRequestId);
+        savedOrder.OrderSource.Should().Be(OrderSourceEnum.EmrRawatJalan);
+        savedOrder.ExternalReferenceId.Should().Be("ORD-001");
+        savedOrder.ExternalSystemSource.Should().Be("EMR_RJ");
 
         _trackerCoordinatorMock.Verify(x => x.RecordOpnameRequestCreated(
-            It.Is<OpnameRequestModel>(r => r.OpnameRequestId == response.OpnameRequestId && r.Pasien.PasienName == "Budi Santoso"),
+            It.Is<InpatientOrderModel>(r => r.InpatientOrderId == response.OpnameRequestId && r.Pasien.PasienName == "Budi Santoso"),
             It.IsAny<DateTime>()), Times.Once);
 
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     [Fact]
+    public async Task Handle_GivenIgdRequest_EstablishesEmrIgdSource()
+    {
+        // Arrange
+        InpatientOrderModel? savedOrder = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(r => savedOrder = r);
+
+        var handler = new AdmCreateOpnameRequestHandler(
+            _orderRepoMock.Object,
+            _patientGatewayMock.Object,
+            _doctorGatewayMock.Object,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance,
+            _trackerCoordinatorMock.Object);
+
+        var cmd = new AdmCreateOpnameRequestCmd(
+            "P001",
+            "D001",
+            "2026-09-01",
+            "Pasien IGD",
+            "IGD-REF-99",
+            "user1",
+            "EMR_IGD",
+            OrderSourceEnum.EmrIgd);
+
+        // Act
+        var response = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        savedOrder.Should().NotBeNull();
+        savedOrder!.OrderSource.Should().Be(OrderSourceEnum.EmrIgd);
+        savedOrder.ExternalReferenceId.Should().Be("IGD-REF-99");
+        savedOrder.ExternalSystemSource.Should().Be("EMR_IGD");
+    }
+
+    [Fact]
     public async Task Handle_GivenValidRequest_WithRealCoordinator_CreatesPasienTrackerWithEventOpnameRequestAndOpnameRequestId()
     {
-        // Arrange: Wire real coordinator with mock tracker repo to verify end-to-end event recording contract
+        // Arrange
         var trackerRepoMock = new Mock<IPasienTrackerRepo>();
         PasienTrackerModel? savedTracker = null;
         trackerRepoMock
@@ -90,7 +132,7 @@ public class AdmCreateOpnameRequestCmdTest
             TestTglJamProvider.Instance);
 
         var handler = new AdmCreateOpnameRequestHandler(
-            _opnameRequestRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _doctorGatewayMock.Object,
             _auditRepoMock.Object,
@@ -133,7 +175,7 @@ public class AdmCreateOpnameRequestCmdTest
     {
         // Arrange
         var handler = new AdmCreateOpnameRequestHandler(
-            _opnameRequestRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _doctorGatewayMock.Object,
             _auditRepoMock.Object,

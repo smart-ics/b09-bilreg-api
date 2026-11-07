@@ -35,9 +35,10 @@ public class NilaiTarifController : Controller
         [FromQuery] string layananId,
         [FromQuery] string kelasId,
         [FromQuery] string tipeTarifId,
-        [FromQuery] string keyword)
+        [FromQuery] string keyword,
+        [FromQuery] string? tipeJaminanId = null)
     {
-        var query = new TrfListTarifBrgQuery(layananId, kelasId, tipeTarifId, keyword);
+        var query = new TrfListTarifBrgQuery(layananId, kelasId, tipeTarifId, keyword, tipeJaminanId ?? "");
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

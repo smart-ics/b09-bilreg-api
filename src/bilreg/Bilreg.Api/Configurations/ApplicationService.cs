@@ -3,6 +3,7 @@ using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
+using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -35,7 +36,8 @@ public static class ApplicationService
             .AddScoped<IPasienTrackerInpatientCoordinator, PasienTrackerInpatientCoordinator>()
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
-            .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
+            .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>()
+            .AddScoped<IBrgPricingService, BrgPricingService>();
         
         services.AddScoped<IAdmissionQueueRefreshPublisher>(sp =>
         {

@@ -614,17 +614,20 @@ public class JourneyDalIntegrationTest
         var updated = updDate ?? (isMutated ? now : admDate);
 
         var dal = new AdmissionDal(_opt);
+        var orderId = !string.IsNullOrWhiteSpace(opnameRequestId) && opnameRequestId != "-"
+            ? opnameRequestId
+            : (!string.IsNullOrWhiteSpace(reservationId) && reservationId != "-" ? reservationId : "-");
         dal.Insert(new AdmissionDto(
             regId,
             status,
             0,
             pasienId, "", "3000-01-01", "",
-            opnameRequestId, reservationId,
             "1", "Kelas 1", "B001", "Bangsal A",
             admDate,
             "journey-it", created,
             "journey-it", updated,
-            "", VoidSentinel));
+            "", VoidSentinel,
+            InpatientOrderId: orderId));
     }
 
     private void SeedWaitingList(

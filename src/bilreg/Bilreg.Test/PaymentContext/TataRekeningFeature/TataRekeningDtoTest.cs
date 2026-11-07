@@ -298,4 +298,70 @@ public class TataRekeningDtoTest
         insertDto.RegId.Length.Should().Be(expectedLength);
         insertDto.Version.Should().Be(1);
     }
+
+    [Fact]
+    public void FromModel_WhenPetugasVerifAndFinVerifPetugasExceed10Characters_TruncatesTo10CharactersWithoutException()
+    {
+        // TD-07: Defensive truncation in DTO layer (VARCHAR(10))
+        var model = new TataRekeningModel(
+            "REG-001",
+            TataRekeningStatusEnum.Finalized,
+            new TataRekeningFinalizationType("BilregApiAccessToken", FinalizationDate), // 20 chars
+            [],
+            [],
+            FinancialVerificationStatusEnum.Valid,
+            new FinancialVerificationInfo("SUPERVISOR_OCTOPUS", FinalizationDate), // 18 chars
+            isFinancialResponsibilityAllocated: true,
+            settlementInitiated: true,
+            version: 1);
+
+        var dto = BilrgTataRekeningDto.FromModel(model);
+
+        dto.PetugasVerif.Should().Be("BilregApiA");
+        dto.PetugasVerif.Length.Should().Be(10);
+        dto.FinVerifPetugas.Should().Be("SUPERVISOR");
+        dto.FinVerifPetugas.Length.Should().Be(10);
+    }
+
+    [Fact]
+    public void FromModel_WhenPetugasVerifAndFinVerifPetugasAre10CharactersOrLess_PreservesOriginalValue()
+    {
+        var model = new TataRekeningModel(
+            "REG-001",
+            TataRekeningStatusEnum.Finalized,
+            new TataRekeningFinalizationType("PEG-001", FinalizationDate), // 7 chars
+            [],
+            [],
+            FinancialVerificationStatusEnum.Valid,
+            new FinancialVerificationInfo("KSR-01", FinalizationDate), // 6 chars
+            isFinancialResponsibilityAllocated: true,
+            settlementInitiated: true,
+            version: 1);
+
+        var dto = BilrgTataRekeningDto.FromModel(model);
+
+        dto.PetugasVerif.Should().Be("PEG-001");
+        dto.FinVerifPetugas.Should().Be("KSR-01");
+    }
+
+    [Fact]
+    public void FromModel_WhenPetugasVerifIsNullOrWhitespace_ReturnsEmptyString()
+    {
+        var model = new TataRekeningModel(
+            "REG-001",
+            TataRekeningStatusEnum.Opened,
+            new TataRekeningFinalizationType("   ", FinalizationDate),
+            [],
+            [],
+            FinancialVerificationStatusEnum.NotVerified,
+            null,
+            isFinancialResponsibilityAllocated: false,
+            settlementInitiated: false,
+            version: 1);
+
+        var dto = BilrgTataRekeningDto.FromModel(model);
+
+        dto.PetugasVerif.Should().BeEmpty();
+        dto.FinVerifPetugas.Should().BeEmpty();
+    }
 }

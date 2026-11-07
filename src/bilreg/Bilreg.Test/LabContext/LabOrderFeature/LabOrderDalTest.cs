@@ -189,6 +189,58 @@ public class LabOrderDalTest
     }
 
     [Fact]
+    public void InsertAndGetData_RoundTripsServiceType()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = FakerHeader("LBO000000095") with
+        {
+            ServiceType = (int)LaboratoryServiceType.AnatomicalPathology
+        };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(LabOrderModel.Key("LBO000000095"));
+        actual.ServiceType.Should().Be((int)LaboratoryServiceType.AnatomicalPathology);
+    }
+
+    [Fact]
+    public void ItemDal_InsertAndListData_RoundTripsClassificationSnapshot()
+    {
+        using var trans = TransHelper.NewScope();
+        const string orderId = "LBO000000096";
+        _sut.Insert(FakerHeader(orderId) with
+        {
+            ServiceType = (int)LaboratoryServiceType.Microbiology
+        });
+
+        var item = new LabOrderItemDto(
+            OrderId: orderId,
+            ItemNo: 1,
+            TestDefinitionId: "LTD0002",
+            LabTestCode: "MIC-01",
+            LabTestName: "Kultur Urin",
+            TarifId: "TR-MIC",
+            TarifCode: "T-MIC",
+            TarifName: "Tarif Kultur Urin",
+            TubeType: 0,
+            SpecimenType: "Urin",
+            RequiredTubeCount: 0,
+            Urgency: 1,
+            ServiceType: (int)LaboratoryServiceType.Microbiology,
+            DisciplineId: "DISC-MIK",
+            DisciplineName: "Mikrobiologi Klinik",
+            TestGroupId: "GRP-KULTUR",
+            TestGroupName: "Kultur dan Sensitivitas");
+
+        _itemDal.Insert([item]);
+        var items = _itemDal.ListData(LabOrderModel.Key(orderId)).ToList();
+        items.Should().HaveCount(1);
+        items[0].ServiceType.Should().Be((int)LaboratoryServiceType.Microbiology);
+        items[0].DisciplineId.Should().Be("DISC-MIK");
+        items[0].DisciplineName.Should().Be("Mikrobiologi Klinik");
+        items[0].TestGroupId.Should().Be("GRP-KULTUR");
+        items[0].TestGroupName.Should().Be("Kultur dan Sensitivitas");
+    }
+
+    [Fact]
     public void Delete_RemovesHeader()
     {
         using var trans = TransHelper.NewScope();
@@ -234,5 +286,26 @@ public class LabOrderDalTest
         activeTests.Should().ContainSingle();
         activeTests[0].OrderId.Should().Be(order1Id);
         activeTests[0].LabTestName.Should().Be("Hemoglobin");
+    }
+[Fact]
+    public void GetByEmrOrderId_WhenNotExists_ReturnsNullWithoutThrowing()
+    {
+        var actual = _sut.GetByEmrOrderId($"NON_EXISTENT_{Guid.NewGuid():N}");
+        actual.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetByEmrOrderId_WhenExists_ReturnsMatchingOrder()
+    {
+        using var trans = TransHelper.NewScope();
+        var emrOrderId = $"EMR-ORD-{Guid.NewGuid():N}";
+        const string orderId = "LBO000000097";
+        var dto = FakerHeader(orderId) with { EmrOrderId = emrOrderId };
+        _sut.Insert(dto);
+
+        var actual = _sut.GetByEmrOrderId(emrOrderId);
+        actual.Should().NotBeNull();
+        actual!.OrderId.Should().Be(orderId);
+        actual.EmrOrderId.Should().Be(emrOrderId);
     }
 }

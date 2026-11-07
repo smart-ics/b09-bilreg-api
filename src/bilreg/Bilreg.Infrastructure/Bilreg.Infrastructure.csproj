@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
     <EmbeddedResource Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
-    <None Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
+    <None Remove="ChargeContext\TindakanFeature\TipeTarifAgg\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="AdmisiRanapContext\InpatientOrderFeature\" />
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />

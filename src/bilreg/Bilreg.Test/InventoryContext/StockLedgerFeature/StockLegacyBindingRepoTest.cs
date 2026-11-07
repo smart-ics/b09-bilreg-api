@@ -7,6 +7,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
+[Collection(StockLedgerSqlCollection.Name)]
 public class StockLegacyBindingRepoTest
 {
     private readonly StockLegacyBindingRepo _sut = new(

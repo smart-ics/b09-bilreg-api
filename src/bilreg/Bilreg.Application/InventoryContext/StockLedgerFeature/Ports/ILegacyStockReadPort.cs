@@ -9,6 +9,8 @@ public interface ILegacyStockReadPort
     IReadOnlyList<LegacyStockJournalReadModel> ListJournals(string brgId, string brgMasukReffId);
 
     IReadOnlyList<LegacyStockBalanceReadModel> ListBalances(string brgId, string brgMasukReffId);
+
+    IReadOnlyList<string> ListActiveDoIdsAtLocation(string brgId, string layananId);
 }
 
 /// <summary>

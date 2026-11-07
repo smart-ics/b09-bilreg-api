@@ -47,8 +47,12 @@ public class LabOrderModel : ILabOrderKey
         string layananPerujukId = "",
         string layananPerujukName = "",
         string clinicalNote = "",
-        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology)
     {
+        if (!Enum.IsDefined(typeof(LaboratoryServiceType), serviceType))
+            throw new ArgumentException("ServiceType is not valid.", nameof(serviceType));
+
         OrderId = orderId;
         EmrOrderId = emrOrderId ?? string.Empty;
         OrderNo = orderNo;
@@ -81,6 +85,7 @@ public class LabOrderModel : ILabOrderKey
         LayananPerujukName = layananPerujukName ?? string.Empty;
         ClinicalNote = clinicalNote ?? string.Empty;
         Urgency = urgency;
+        ServiceType = serviceType;
         _items = items.ToList();
         _itemComponents = itemComponents.ToList();
     }
@@ -119,7 +124,8 @@ public class LabOrderModel : ILabOrderKey
         layananPerujukId: "",
         layananPerujukName: "",
         clinicalNote: "",
-        urgency: LabOrderUrgencyEnum.Rutin);
+        urgency: LabOrderUrgencyEnum.Rutin,
+        serviceType: LaboratoryServiceType.ClinicalPathology);
 
     public static ILabOrderKey Key(string orderId) => new LabOrderModel(
         orderId,
@@ -155,7 +161,8 @@ public class LabOrderModel : ILabOrderKey
         "",
         "",
         "",
-        LabOrderUrgencyEnum.Rutin);
+        LabOrderUrgencyEnum.Rutin,
+        LaboratoryServiceType.ClinicalPathology);
 
     public static LabOrderModel Load(
         string orderId,
@@ -191,7 +198,8 @@ public class LabOrderModel : ILabOrderKey
         string layananPerujukId = "",
         string layananPerujukName = "",
         string clinicalNote = "",
-        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology)
         => new(
             orderId,
             emrOrderId,
@@ -226,7 +234,8 @@ public class LabOrderModel : ILabOrderKey
             layananPerujukId,
             layananPerujukName,
             clinicalNote,
-            urgency);
+            urgency,
+            serviceType);
 
     public static LabOrderModel CreateFromEmr(
         string emrOrderId,
@@ -239,7 +248,8 @@ public class LabOrderModel : ILabOrderKey
         string layananPerujukId = "",
         string layananPerujukName = "",
         string clinicalNote = "",
-        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology)
     {
         Guard.Against.NullOrWhiteSpace(emrOrderId, nameof(emrOrderId));
         Guard.Against.Null(snapshot);
@@ -262,7 +272,8 @@ public class LabOrderModel : ILabOrderKey
             layananPerujukId,
             layananPerujukName,
             clinicalNote,
-            urgency);
+            urgency,
+            serviceType);
     }
 
     public static LabOrderModel CreateExternal(
@@ -276,7 +287,8 @@ public class LabOrderModel : ILabOrderKey
         string layananPerujukId = "",
         string layananPerujukName = "",
         string clinicalNote = "",
-        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin)
+        LabOrderUrgencyEnum urgency = LabOrderUrgencyEnum.Rutin,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology)
     {
         Guard.Against.Null(snapshot);
         Guard.Against.NullOrWhiteSpace(orderNo, nameof(orderNo));
@@ -295,7 +307,8 @@ public class LabOrderModel : ILabOrderKey
             layananPerujukId,
             layananPerujukName,
             clinicalNote,
-            urgency);
+            urgency,
+            serviceType);
     }
 
     private static LabOrderModel CreateInternal(
@@ -310,7 +323,8 @@ public class LabOrderModel : ILabOrderKey
         string layananPerujukId,
         string layananPerujukName,
         string clinicalNote,
-        LabOrderUrgencyEnum urgency)
+        LabOrderUrgencyEnum urgency,
+        LaboratoryServiceType serviceType)
     {
         var (itemList, componentList) = AssignLineNumbers(lines);
 
@@ -362,7 +376,8 @@ public class LabOrderModel : ILabOrderKey
             layananPerujukId,
             layananPerujukName,
             clinicalNote,
-            effectiveUrgency);
+            effectiveUrgency,
+            serviceType);
     }
 
     private static (List<LabOrderItemModel> Items, List<LabOrderItemComponentModel> Components) AssignLineNumbers(
@@ -758,6 +773,7 @@ public class LabOrderModel : ILabOrderKey
     public string EmrOrderId { get; init; }
     public string OrderNo { get; init; }
     public LabOrderSourceEnum OrderSource { get; init; }
+    public LaboratoryServiceType ServiceType { get; init; }
     public LabOrderStatusEnum LabOrderStatus { get; set; }
     public BillingReleaseValidationStatusEnum LastBillingReleaseStatus { get; set; }
     public OwareStatusEnum OwareStatus { get; set; }

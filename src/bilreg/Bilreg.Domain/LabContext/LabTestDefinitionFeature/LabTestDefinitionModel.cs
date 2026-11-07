@@ -22,7 +22,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         VacutainerTypeEnum vacutainerType,
         bool isActive,
         AuditTrailType auditTrail,
-        IEnumerable<LabTestComponentModel> components)
+        IEnumerable<LabTestComponentModel> components,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology,
+        string disciplineId = "",
+        string testGroupId = "")
     {
         Guard.Against.NullOrWhiteSpace(testDefinitionId, nameof(testDefinitionId));
         Guard.Against.NullOrWhiteSpace(tarifId, nameof(tarifId));
@@ -30,13 +33,16 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         Guard.Against.NullOrWhiteSpace(labTestName, nameof(labTestName));
         Guard.Against.Null(auditTrail);
 
-        if (!LabMasterIdFormat.IsValidLtd(testDefinitionId))
+        if (testDefinitionId != "-" && !LabMasterIdFormat.IsValidLtd(testDefinitionId))
             throw new ArgumentException(
                 "LAB_INVALID_LTD_FORMAT: TestDefinitionId must be LTD + 4 uppercase hex.",
                 nameof(testDefinitionId));
 
         if (!Enum.IsDefined(typeof(VacutainerTypeEnum), vacutainerType))
             throw new ArgumentException("VacutainerType is not valid.", nameof(vacutainerType));
+
+        if (!Enum.IsDefined(typeof(LaboratoryServiceType), serviceType))
+            throw new ArgumentException("ServiceType is not valid.", nameof(serviceType));
 
         TestDefinitionId = testDefinitionId;
         TarifId = tarifId;
@@ -49,15 +55,49 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         IsActive = isActive;
         AuditTrail = auditTrail;
         _components = components?.ToList() ?? [];
+        ServiceType = serviceType;
+        DisciplineId = disciplineId ?? string.Empty;
+        TestGroupId = testGroupId ?? string.Empty;
     }
 
     public static LabTestDefinitionModel Default =>
         new("-", "-", "-", "-", "-", "-", "-", VacutainerTypeEnum.Edta, false,
-            AuditTrailType.Default, []);
+            AuditTrailType.Default, [], LaboratoryServiceType.ClinicalPathology, string.Empty, string.Empty);
 
     public static ILabTestDefinitionKey Key(string testDefinitionId) =>
         new LabTestDefinitionModel(testDefinitionId, "-", "-", "-", "-", "-", "-", VacutainerTypeEnum.Edta, false,
-            AuditTrailType.Default, []);
+            AuditTrailType.Default, [], LaboratoryServiceType.ClinicalPathology, string.Empty, string.Empty);
+
+    public static LabTestDefinitionModel Load(
+        string testDefinitionId,
+        string tarifId,
+        string tarifCode,
+        string tarifName,
+        string labTestCode,
+        string labTestName,
+        string specimenType,
+        VacutainerTypeEnum vacutainerType,
+        bool isActive,
+        AuditTrailType auditTrail,
+        IEnumerable<LabTestComponentModel> components,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology,
+        string disciplineId = "",
+        string testGroupId = "")
+        => new(
+            testDefinitionId,
+            tarifId,
+            tarifCode,
+            tarifName,
+            labTestCode,
+            labTestName,
+            specimenType,
+            vacutainerType,
+            isActive,
+            auditTrail,
+            components,
+            serviceType,
+            disciplineId,
+            testGroupId);
 
     public static LabTestDefinitionModel CreateNew(
         string testDefinitionId,
@@ -72,7 +112,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         string userId,
         DateTime createdAt,
         IEnumerable<LabTestComponentModel> components,
-        IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
+        IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology,
+        string disciplineId = "",
+        string testGroupId = "")
     {
         var model = new LabTestDefinitionModel(
             testDefinitionId,
@@ -85,7 +128,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             vacutainerType,
             isActive,
             AuditTrailType.Create(userId, createdAt),
-            components);
+            components,
+            serviceType,
+            disciplineId,
+            testGroupId);
 
         model.ValidateComponentStructure(componentCatalog);
         if (isActive)
@@ -106,6 +152,9 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
     public VacutainerTypeEnum VacutainerType { get; init; }
     public bool IsActive { get; init; }
     public AuditTrailType AuditTrail { get; init; }
+    public LaboratoryServiceType ServiceType { get; init; }
+    public string DisciplineId { get; init; }
+    public string TestGroupId { get; init; }
 
     public IEnumerable<LabTestComponentModel> Components => _components;
 
@@ -121,7 +170,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         IEnumerable<LabTestComponentModel> components,
         string userId,
         DateTime updatedAt,
-        IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
+        IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog,
+        LaboratoryServiceType serviceType = LaboratoryServiceType.ClinicalPathology,
+        string disciplineId = "",
+        string testGroupId = "")
     {
         var model = new LabTestDefinitionModel(
             TestDefinitionId,
@@ -134,7 +186,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             vacutainerType,
             isActive,
             ModifiedAudit(AuditTrail, userId, updatedAt),
-            components);
+            components,
+            serviceType,
+            disciplineId,
+            testGroupId);
 
         model.ValidateComponentStructure(componentCatalog);
         if (isActive)
@@ -162,7 +217,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             VacutainerType,
             true,
             ModifiedAudit(AuditTrail, userId, activatedAt),
-            _components);
+            _components,
+            ServiceType,
+            DisciplineId,
+            TestGroupId);
 
         model.ValidateActiveInvariants(componentCatalog);
         return model;
@@ -184,7 +242,10 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             VacutainerType,
             false,
             ModifiedAudit(AuditTrail, userId, deactivatedAt),
-            _components);
+            _components,
+            ServiceType,
+            DisciplineId,
+            TestGroupId);
     }
 
     private static AuditTrailType ModifiedAudit(AuditTrailType current, string userId, DateTime modifiedAt = default)
