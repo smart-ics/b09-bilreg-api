@@ -282,8 +282,8 @@ Review Status: NOT-REVIEWED
 ### P4-S07
 
 Title: REST API Endpoints & Official PDF Renderer Enhancements  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Mengekspos endpoint API ingesti LIS, memperbarui endpoint entri & verifikasi, dan memutakhirkan renderer PDF hasil laboratorium agar menampilkan ekspertise patolog dan catatan nilai kritis.  
 Depends On: P3-S04, P3-S05, P3-S06  
 Repository: `b09-bilreg-api`  
@@ -293,7 +293,34 @@ Completion Criteria:
 - Endpoint `POST api/LabContext/LabResultFeature/record` menerima field `CriticalNote`.
 - `LabResultPdfRenderer` diperbarui untuk merender bagian khusus "Catatan Ekspertise Patologi Klinik", identitas/tanda tangan verifikator Sp.PK (atau validator LIS), serta banner peringatan jika terdapat nilai kritis atau `CriticalNote`.
 - Pengujian unit `LabResultPdfRendererTest.cs` memverifikasi kelengkapan layout PDF tanpa error.  
-Notes: Format PDF mematuhi standar rekam medis penunjang diagnostic hospital.
+Notes: Format PDF mematuhi standar rekam medis penunjang diagnostic hospital.  
+Implementation Notes:
+- Memperbarui `LabResultController`:
+  - Menambahkan endpoint `POST api/LabContext/LabResultFeature/ingest-lis` (dengan alias `ingestLis`) yang menerima `LabResultIngestLisRequest` dan memetakan ke command `LabResultIngestFromLisCmd`.
+  - Memperbarui endpoint `PATCH api/LabContext/LabResultFeature/verify` yang menerima `LabResultVerifyRequest` memuat `ExpertiseNote` dan memetakan ke command `LabResultVerifyCmd`.
+  - Memperbarui endpoint `POST api/LabContext/LabResultFeature/record` yang menerima `LabResultRecordRequest` memuat `CriticalNote` serta fallback mapping payload `Items` dan memetakan ke command `LabResultRecordCmd`.
+  - Menyediakan implicit conversion operator dan backward-compatible constructors pada seluruh request DTO controller.
+- Memperbarui `LabResultPdfView` dan `LabResultPdfQuery`:
+  - Menambahkan field `ExpertiseNote` dan `CriticalNote` dengan nilai default kosong pada record `LabResultPdfView`.
+  - Memutakhirkan `MapToPdfView` pada `LabResultPdfHandler` untuk memetakan `result.ExpertiseNote` dan `result.CriticalNote`, serta menyelaraskan label status `Released` dan `Amended`.
+- Memutakhirkan `LabResultPdfRenderer`:
+  - Merender banner peringatan nilai kritis (`[PERINGATAN NILAI KRITIS]`) berlatar belakang merah muda lembut dan bergaris tepi merah jika terdeteksi flag kritis (`C` / `Critical`) atau jika `CriticalNote` terisi.
+  - Menyorot komponen tes berstatus kritis dengan warna merah tebal (`fontBodyBold` & dark red brush) pada tabel rincian hasil.
+  - Merender bagian khusus "Catatan Ekspertise Patologi Klinik:" secara rapi dengan word-wrapping multiline otomatis jika `ExpertiseNote` terisi.
+  - Merender blok penanggung jawab / verifikator digital di bagian bawah dokumen yang membedakan dokter Sp.PK dan validator LIS (`lis:...`) beserta stempel waktu verifikasi.
+- Menulis dan memperluas unit test:
+  - `LabResultPdfRendererTest.cs`: Menguji rendering PDF standar, dokumen dengan catatan ekspertise patolog, dokumen dengan penanda dan banner nilai kritis, dokumen dengan identitas validator LIS, serta dokumen multi-halaman dengan 60 item komponen.
+  - `LabResultControllerTest.cs`: Menguji seluruh anotasi routing, atribut `[ApiController]` dan `[Authorize]`, serta pemanggilan use case `Record`, `Verify`, `IngestLis`, `VerificationWorklist`, `Get`, `Amend`, dan pengunduhan file `Pdf`.
+  - `LabResultPdfHandlerTest.cs`: Menguji pemetaan data agregat hasil lab (termasuk `ExpertiseNote` dan `CriticalNote`) ke `LabResultPdfView` pada query handler.
+- Menjalankan pengujian: Seluruh 18 unit test pada `LabResultPdf` & `LabResultController`, serta seluruh 88 unit test pada `LabResultFeature` lulus verifikasi 100%.
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Api/Controllers/LabContext/LabResultFeature/LabResultController.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultPdfQuery.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultPdfRenderer.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultPdfRendererTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultControllerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultPdfHandlerTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-HASIL-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
