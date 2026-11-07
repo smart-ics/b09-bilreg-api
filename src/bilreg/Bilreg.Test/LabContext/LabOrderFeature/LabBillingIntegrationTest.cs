@@ -127,6 +127,43 @@ public class LabBillingIntegrationTest
     }
 
     [Fact]
+    public void ChargeOrder_AdmissionPatient_WithExecutionRegId_ChargesAgainstExecutionRegistration()
+    {
+        var sut = CreateSut();
+        var order = LabOrderTestSupport.CreateEmrOrder();
+        order.Defer("Reagen habis", DateTime.Now.AddDays(1), "U1", DateTime.Now.AddHours(-1));
+        order.ActivateFromDeferred("REG-EXEC-001", "U1", DateTime.Now);
+
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-EXEC-001")))
+            .Returns(MayBe.From(SampleReg("REG-EXEC-001")));
+        _jaminanRepo.Setup(r => r.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(JaminanType.Umum));
+        _tarifRepo.Setup(r => r.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default));
+        _nilaiTarifRepo.Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe.From(NilaiTarifType.Default));
+        _komponenRepo.Setup(r => r.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+
+        var billingId = sut.ChargeOrder(order, "U1", DateTime.Now);
+
+        var expectedId = order.OrderId.Length > 12 ? order.OrderId[..12] : order.OrderId;
+        billingId.Should().Be(expectedId);
+
+        _regRepo.Verify(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-EXEC-001")), Times.Once);
+        _regRepo.Verify(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == order.Patient.RegId)), Times.Never);
+        _addBillAppService.Verify(a => a.FromLabOrderItem(
+            order,
+            It.IsAny<LabOrderItemModel>(),
+            It.Is<RegModel>(r => r.RegId == "REG-EXEC-001"),
+            It.IsAny<JaminanType>(),
+            It.IsAny<TarifType>(),
+            It.IsAny<NilaiTarifType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<DateTime>()), Times.Exactly(order.Items.Count));
+    }
+
+    [Fact]
     public void ChargeOrder_ExternalPatient_LoadsExternalAndChargesItems()
     {
         var sut = CreateSut();
