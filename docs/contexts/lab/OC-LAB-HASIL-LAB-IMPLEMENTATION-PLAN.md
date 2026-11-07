@@ -170,7 +170,7 @@ Review Status: NOT-REVIEWED
 
 Title: Ingestion Use Case for External LIS Results (Oware to Bilreg)  
 Implementation Status: IMPLEMENTED  
-Review Status: NOT-REVIEWED  
+Review Status: GO  
 Objective: Mengembangkan use case `LabResultIngestFromLisCmd` untuk menerima data analitik yang sudah terpetakan dari Oware, melakukan pencocokan 1:1 ke perancah order berdasarkan ComponentCode (PemeriksaanId), mengadopsi flag LIS dengan fallback domain service, dan menyimpan dokumen berstatus `Verified`.  
 Depends On: P1-S02, P2-S03  
 Repository: `b09-bilreg-api`  
@@ -211,7 +211,7 @@ Changed Files:
 ### P3-S05
 
 Title: Verification & Release Use Case Enhancements  
-Implementation Status: IN-PROGRESS  
+Implementation Status: IMPLEMENTED  
 Review Status: NOT-REVIEWED  
 Objective: Memperbarui `LabResultVerifyCmd` untuk mendukung catatan ekspertise patolog dan penegakan otorisasi Sp.PK, serta menyelaraskan `LabOrderReleaseCmd` untuk memperbarui status dokumen hasil menjadi `Released`.  
 Depends On: P1-S02, P2-S03  
@@ -221,7 +221,30 @@ Completion Criteria:
 - `LabResultVerifyHandler` memvalidasi otorisasi verifikator (memeriksa peran dokter spesialis patologi klinik `doktersppk` atau permission `lab.result.verify`) dan meneruskan catatan ekspertise ke domain model `result.Verify(userId, date, expertiseNote)`.
 - Use case `LabOrderReleaseCmd` memuat dokumen hasil yang berelasi dan memanggil `result.MarkReleased(userId, releaseDate)` saat verifikasi clearance billing `TRK-BILLING` berstatus `CLEAR`.
 - Pengujian unit `LabResultVerifyHandlerTest.cs` memverifikasi lolosnya verifikasi Sp.PK, penolakan non-Sp.PK, dan penyimpanan catatan ekspertise.  
-Notes: Menjaga pemisahan tegas antara otorisasi medis internal dan rilis administratif ke pasien.
+Notes: Menjaga pemisahan tegas antara otorisasi medis internal dan rilis administratif ke pasien.  
+Implementation Notes:
+- Memperbarui `LabResultVerifyCmd` dengan penambahan properti opsional `string ExpertiseNote = ""`.
+- Memperbarui `LabResultVerifyHandler`:
+  - Menginjeksi `ICurrentUserContext` (dengan constructor chaining untuk backwards-compatibility) dan memvalidasi otorisasi verifikator dengan memeriksa peran Sp.PK (`doktersppk`, `dokter_sppk`, `sp.pk`, `sppk`) atau permission `lab.result.verify`. Menolak verifikator tanpa otorisasi dengan melempar `UnauthorizedAccessException`.
+  - Meneruskan `request.ExpertiseNote` ke metode agregat domain `result.Verify(request.VerifiedUserId, request.VerifiedDate, request.ExpertiseNote)`.
+  - Memastikan pembaruan status `LabOrderModel` dan `LabResultDocumentModel` tersimpan secara atomik dalam satu transaksi database (`TransHelper.NewScope()`).
+- Memperbarui `LabOrderReleaseCmd` dan `LabOrderReleaseHandler`:
+  - Menambahkan dependensi `ILabResultDocumentRepo? _labResultDocumentRepo` pada constructor.
+  - Saat proses pelepasan order (`LabOrderReleaseCmd`), memuat dokumen hasil laboratorium terkait via `_labResultDocumentRepo.LoadByOrderId(request.LabOrderId)`. Jika dokumen hasil ditemukan dan berstatus `Verified`, menandai dokumen menjadi `Released` via `result.MarkReleased(request.UserId, releaseDate)` dan menyimpannya secara atomik dalam transaksi `releaseTrans`.
+- Memperbaiki pemanggilan spesimen pada `LabResultIngestFromLisHandlerTest.cs` agar selaras dengan signature domain `CollectSpecimen`.
+- Memperbarui dan memperluas unit test pada `LabResultVerifyHandlerTest.cs`:
+  - Mocking `ICurrentUserContext` dengan otorisasi `doktersppk` dan `lab.result.verify`.
+  - Menguji skenario verifikasi berhasil dan tersimpannya `ExpertiseNote`.
+  - Menguji skenario penolakan akses verifikator tanpa peran/permission yang sesuai (`UnauthorizedAccessException`).
+  - Menguji skenario invariant guard mandatori komponen hasil lab yang belum terisi (`InvalidOperationException`).
+- Menambahkan pengujian pada `LabOrderReleaseHandlerTest.cs` untuk memverifikasi sinkronisasi status dokumen hasil lab ke `Released` ketika order dirilis, serta mengabaikan dokumen yang belum berstatus `Verified`.
+- Seluruh pengujian lulus 100%: 8 unit test pada `LabResultVerifyHandlerTest`, 6 unit test pada `LabOrderReleaseHandlerTest`, dan 71 unit test pada `LabResultFeature`.
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultVerifyCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Application/LabContext/LabOrderFeature/UseCases/LabOrderReleaseCmd.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultVerifyHandlerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabOrderFeature/LabOrderReleaseHandlerTest.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultIngestFromLisHandlerTest.cs`
 
 ---
 

@@ -125,6 +125,7 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
         {
             LabResultFlagEnum.Low => "L",
             LabResultFlagEnum.High => "H",
+            LabResultFlagEnum.Critical => "C",
             LabResultFlagEnum.Normal => "",
             _ => ""
         };
