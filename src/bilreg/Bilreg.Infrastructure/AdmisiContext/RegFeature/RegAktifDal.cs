@@ -19,6 +19,7 @@ public interface IRegAktifDal :
     IListData<RegAktifDto, IPasienKey>,
     IListData<RegAktifDto>
 {
+    IEnumerable<RegAktifDto> ListDataRajalIgd();
     IEnumerable<RegAktifDto> ListDataByName(Dictionary<string, string[]> listName);
 }
 
@@ -212,6 +213,34 @@ public class RegAktifDal : IRegAktifDal
                LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
            """;
         
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<RegAktifDto>(sql);
+    }
+
+    public IEnumerable<RegAktifDto> ListDataRajalIgd()
+    {
+        const string sql = """
+           SELECT
+               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisReg, 
+               aa.LayananId, aa.DokterId, aa.TipeJaminanId,
+               ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+               ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
+               ISNULL(cc.fs_nm_layanan, '') AS LayananName,
+               ISNULL(dd.fs_nm_peg, '') AS DokterName,
+               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName,
+               ISNULL(ff.Status, 0) AS StatusTataRekening
+           FROM
+               BILRG_RegAktif aa
+               LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
+               LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+               LEFT JOIN BILRG_TataRekening ff ON aa.RegId = ff.RegId
+           WHERE aa.JenisReg IN ('0', '3')
+           ORDER BY aa.RegDate DESC, aa.RegId DESC
+           """;
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RegAktifDto>(sql);
     }
