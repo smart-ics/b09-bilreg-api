@@ -361,8 +361,8 @@ Changed Files:
 ### P5-S09
 
 Title: Realtime Result Dispatching via Bilreg Lab Result Client in SaveResultLabCommandHandler  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Mengintegrasikan reverse-lookup pemetaan OWARE_MapPemeriksaan, penanganan unmapped items (logging peringatan), dan pengiriman HTTP client ke Bilreg API secara realtime dalam SaveResultLabCommandHandler.  
 Depends On: P4-S07, P5-S08  
 Repository: `a046_oware_ordermiddlewareapi`  
@@ -377,6 +377,31 @@ Completion Criteria:
 - Jika panggilan Bilreg gagal sementara karena koneksi, log ditandai `Failed` untuk retry tanpa membatalkan transaksi lokal Oware.
 - Pengujian unit `SaveResultLabCommandHandlerTest` memverifikasi pemetaan berhasil, unmapped item dicatat log, dan client Bilreg dipanggil dengan payload yang valid.  
 Notes: Bilreg menerima data bersih yang sudah terpetakan ke ComponentCode HIS resmi.
+Implementation Notes:
+- Membuat DTO request ingesti hasil lab `BilregLabResultIngestRequestDto` dan `BilregLabResultIngestItemDto` di `Oware.Application/Contracts/DTOs/BilregLabResultIngestDto.cs`.
+- Membuat interface `IBilregLabResultClient` di `Oware.Application/Contracts/IServices/IBilregLabResultClient.cs` dengan method `Task<bool> IngestLabResultAsync(BilregLabResultIngestRequestDto request)`.
+- Mengembangkan implementasi `BilregLabResultClient` di `Oware.Infrastructure/Shared/BilregLabResultClient.cs` yang memanggil endpoint `POST api/LabContext/LabResultFeature/ingest-lis` menggunakan RestSharp dan Bearer JWT token dari `IBilregAuthTokenService`, lengkap dengan mekanisme auto-refresh token saat 401 Unauthorized.
+- Mendaftarkan `IBilregLabResultClient` ke IoC container pada `Startup.cs` (`services.AddScoped<IBilregLabResultClient, BilregLabResultClient>()`).
+- Memperbarui `SaveResultLabCommandHandler` di `SaveResultLabCommand.cs`:
+  - Menginjeksi `IMapPemeriksaanDal` dan `IBilregLabResultClient` dengan backwards-compatible constructor chaining.
+  - Mengeksekusi alur reverse-lookup pemetaan `_mapPemeriksaanDal.GetByLabTestCode(request.ClientId, item.TestId)` pada hasil parser `resultSaved.ListPemeriksaan`.
+  - Memetakan kode tes yang valid ke `ComponentCode = PemeriksaanId` beserta nilai, satuan, rentang rujukan, dan flag LIS.
+  - Menangani item unmapped: melewati (*skip*) item tersebut dan mencatat audit warning ke tabel `OWARE_ResultLog` via `_logDal.Insert`.
+  - Memanggil realtime dispatch `await _bilregClient.IngestLabResultAsync(...)` jika terdapat komponen hasil yang berhasil dipetakan.
+  - Melindungi integritas transaksi lokal Oware dengan menangkap kegagalan koneksi/HTTP ke Bilreg API dan mencatat warning log tanpa melempar eksepsi keluar.
+- Menulis test suite menyeluruh di `Oware.Test`:
+  - `BilregLabResultClientTest.cs`: 5 unit tests memvalidasi validasi argumen, eksekusi POST dengan token, refresh token saat 401, dan penanganan HTTP error.
+  - `SaveResultLabCommandHandlerTest.cs`: 6 unit tests memvalidasi mapping sukses seluruh item, skipping dan audit warning item unmapped, kondisi seluruh item unmapped, ketahanan transaksi lokal saat Bilreg API error, dan penanganan list kosong.
+- Verifikasi pengujian: seluruh 47 unit tests pada filter `FullyQualifiedName~SaveResultLab|FullyQualifiedName~Bilreg` dan seluruh 88 unit tests pada `Bilreg.Test` lulus 100%.
+Changed Files:
+- `a046_oware_ordermiddlewareapi/Oware.Application/Contracts/DTOs/BilregLabResultIngestDto.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Application/Contracts/IServices/IBilregLabResultClient.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Infrastructure/Shared/BilregLabResultClient.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Api/Startup.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Application/UseCases/Commands/SaveResultLabCommand.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Test/BilregLabResultClientTest.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Test/SaveResultLabCommandHandlerTest.cs`
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-HASIL-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
