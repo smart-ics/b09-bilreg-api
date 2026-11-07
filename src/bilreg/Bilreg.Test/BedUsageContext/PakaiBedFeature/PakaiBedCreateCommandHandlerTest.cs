@@ -119,6 +119,32 @@ public class PakaiBedCreateCommandHandlerTest
     }
 
     [Fact]
+    public async Task Handle_ShouldExtractKomponenTarifAndKelasTindakan_AndPassToPakaiBedModel()
+    {
+        // Arrange
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: new DateTime(2026, 10, 17, 10, 0, 0));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(p =>
+            p.PakaiBedId == result.PakaiBedId &&
+            p.KelasTindakanId == "KLS01" &&
+            p.ListKomponen.Count == 1 &&
+            p.ListKomponen[0].KomponenId == "KM01" &&
+            p.ListKomponen[0].Tarif == 200000m &&
+            p.ListKomponen[0].HariKe == 1)), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_WithWaitingListId_WhenStatusIsWaiting_ShouldPlaceWaitingListAndSave()
     {
         // Arrange

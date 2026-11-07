@@ -48,7 +48,8 @@ public sealed record CoordinatedCancellationState(
     bool IsCoherentlyCancelled,
     object AuditSnapshot,
     bool AdmissionExists = true,
-    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null);
+    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null,
+    string InpatientOrderId = "-");
 
 /// <summary>
 /// Immutable, entity-scoped pre-change images captured while the cancellation

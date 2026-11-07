@@ -3,8 +3,7 @@ using System.Data.SqlClient;
 using System.Text;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
-using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -29,11 +28,16 @@ public class OperationalWorklistDal : IOperationalWorklistDal
         var includeAdmission = string.IsNullOrWhiteSpace(filter.Jenis) || filter.Jenis == "admission";
         var includeWaitingList = string.IsNullOrWhiteSpace(filter.Jenis) || filter.Jenis == "waitingList";
 
-        if (includeOpname)
-            branches.Add(BuildOpnameBranch(filter.IncludeTerminal));
+        if (includeOpname || includeReservation)
+        {
+            string? jenisFilter = null;
+            if (includeOpname && !includeReservation)
+                jenisFilter = "opname";
+            else if (!includeOpname && includeReservation)
+                jenisFilter = "reservation";
 
-        if (includeReservation)
-            branches.Add(BuildReservationBranch(filter.IncludeTerminal));
+            branches.Add(BuildInpatientOrderBranch(filter.IncludeTerminal, jenisFilter));
+        }
 
         if (includeAdmission)
             branches.Add(BuildAdmissionBranch(filter.IncludeTerminal));
@@ -75,13 +79,11 @@ public class OperationalWorklistDal : IOperationalWorklistDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
-        dp.AddParam("@OpnameCancelled", (int)OpnameRequestStatusEnum.Cancelled, SqlDbType.Int);
-        dp.AddParam("@ReservationCancelled", (int)ReservationStatusEnum.Cancelled, SqlDbType.Int);
+        dp.AddParam("@OrderCancelled", (int)InpatientOrderStatusEnum.Cancelled, SqlDbType.Int);
+        dp.AddParam("@OrderFulfilled", (int)InpatientOrderStatusEnum.Fulfilled, SqlDbType.Int);
         dp.AddParam("@AdmissionCompleted", (int)AdmissionStatusEnum.Completed, SqlDbType.Int);
         dp.AddParam("@AdmissionCancelled", (int)AdmissionStatusEnum.Cancelled, SqlDbType.Int);
         dp.AddParam("@WaitingListClosed", (int)WaitingListStatusEnum.Closed, SqlDbType.Int);
-        dp.AddParam("@ReservationRealized", (int)ReservationStatusEnum.Realized, SqlDbType.Int);
-        dp.AddParam("@OpnameFulfilled", (int)OpnameRequestStatusEnum.Fulfilled, SqlDbType.Int);
 
         if (!string.IsNullOrWhiteSpace(filter.DokterId))
             dp.AddParam("@DokterId", filter.DokterId.Trim(), SqlDbType.VarChar);
@@ -109,64 +111,44 @@ public class OperationalWorklistDal : IOperationalWorklistDal
         return rows?.Select(ToView) ?? [];
     }
 
-    private static string BuildOpnameBranch(bool includeTerminal)
+    internal static string BuildInpatientOrderBranch(bool includeTerminal, string? jenisFilter = null)
     {
         var terminalFilter = includeTerminal
             ? ""
-            : " AND aa.OpnameRequestStatus NOT IN (@OpnameCancelled, @OpnameFulfilled)";
+            : " AND aa.OrderStatus NOT IN (@OrderCancelled, @OrderFulfilled)";
+
+        var sourceFilter = jenisFilter switch
+        {
+            "opname" => " AND aa.OrderSource IN (1, 2)",
+            "reservation" => " AND aa.OrderSource IN (3, 4)",
+            _ => ""
+        };
 
         return $"""
             SELECT
-                aa.OpnameRequestId AS ItemId,
-                'opname' AS Jenis,
-                aa.OpnameRequestStatus AS AggregateStatus,
+                aa.InpatientOrderId AS ItemId,
+                CASE 
+                    WHEN aa.OrderSource IN (1, 2) THEN 'opname'
+                    ELSE 'reservation'
+                END AS Jenis,
+                aa.OrderStatus AS AggregateStatus,
                 aa.PasienId,
-                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ISNULL(bb.fs_nm_pasien, aa.PasienName) AS PasienName,
+                ISNULL(bb.fs_jns_kelamin, aa.Gender) AS Gender,
                 aa.DokterId,
                 aa.DokterName,
-                '' AS KelasId,
-                '' AS KelasName,
-                '' AS BangsalId,
-                '' AS BangsalName,
-                '' AS TipeJaminanId,
-                '' AS TipeJaminanName,
-                aa.CrtDate AS SortDate,
-                aa.CrtDate,
-                CAST(NULL AS INT) AS Priority
-            FROM BILRG_AdmOpnameRequest aa
-            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
-            WHERE aa.VodDate = @VodDate{terminalFilter}
-            """;
-    }
-
-    private static string BuildReservationBranch(bool includeTerminal)
-    {
-        var terminalFilter = includeTerminal
-            ? ""
-            : " AND aa.ReservationStatus NOT IN (@ReservationCancelled, @ReservationRealized)";
-
-        return $"""
-            SELECT
-                aa.ReservationId AS ItemId,
-                'reservation' AS Jenis,
-                aa.ReservationStatus AS AggregateStatus,
-                aa.PasienId,
-                ISNULL(aa.PasienName, '') AS PasienName,
-                ISNULL(aa.Gender, '') AS Gender,
-                '' AS DokterId,
-                '' AS DokterName,
                 aa.KelasId,
                 aa.KelasName,
                 aa.BangsalId,
                 aa.BangsalName,
-                '' AS TipeJaminanId,
-                '' AS TipeJaminanName,
+                aa.TipeJaminanId,
+                aa.TipeJaminanName,
                 aa.PlannedDate AS SortDate,
                 aa.CrtDate,
                 CAST(NULL AS INT) AS Priority
-            FROM BILRG_AdmReservation aa
-            WHERE aa.VodDate = @VodDate{terminalFilter}
+            FROM BILRG_AdmInpatientOrder aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            WHERE aa.VodDate = @VodDate{terminalFilter}{sourceFilter}
             """;
     }
 
@@ -197,9 +179,9 @@ public class OperationalWorklistDal : IOperationalWorklistDal
                 CAST(NULL AS INT) AS Priority
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
-            LEFT JOIN BILRG_AdmOpnameRequest op
-                ON aa.OpnameRequestId = op.OpnameRequestId
-                AND aa.OpnameRequestId <> '-'
+            LEFT JOIN BILRG_AdmInpatientOrder op
+                ON (aa.InpatientOrderId <> '-' AND aa.InpatientOrderId = op.InpatientOrderId)
+                OR (aa.InpatientOrderId = '-' AND aa.OpnameRequestId <> '-' AND aa.OpnameRequestId = op.InpatientOrderId)
             LEFT JOIN ta_registrasi reg ON aa.RegId = reg.fs_kd_reg
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
             WHERE aa.VodDate = @VodDate{terminalFilter}

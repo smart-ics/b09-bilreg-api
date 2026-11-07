@@ -92,7 +92,8 @@ public class PakaiBedDal : IPakaiBedDal
                 fs_kd_reg, fs_kd_layanan, fs_kd_layanan_dk,
                 fs_kd_kamar_tipe, fs_kd_bed, fn_tarif,
                 fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                fd_tgl_entry, fs_jam_entry, fs_kd_kelas)
+                fd_tgl_entry, fs_jam_entry, fs_kd_kelas,
+                fs_kd_kelas_tindakan, fd_tgl_jam_in)
             VALUES(
                 @fs_kd_trs,
                 @fd_tgl_in, @fs_jam_in, @fs_kd_petugas,
@@ -100,7 +101,8 @@ public class PakaiBedDal : IPakaiBedDal
                 @fs_kd_reg, @fs_kd_layanan, @fs_kd_layanan_dk,
                 @fs_kd_kamar_tipe, @fs_kd_bed, @fn_tarif,
                 @fd_tgl_void, @fs_jam_void, @fs_kd_petugas_void,
-                @fd_tgl_entry, @fs_jam_entry, @fs_kd_kelas);
+                @fd_tgl_entry, @fs_jam_entry, @fs_kd_kelas,
+                @fs_kd_kelas_tindakan, @fd_tgl_jam_in);
 
             -- 4. Synchronize legacy bed status in ta_bed (ONLY if NOT rooming-in)
             IF @isRoomingIn = 0
@@ -121,6 +123,23 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+
+        conn.Execute("DELETE FROM ta_trs_bed2 WHERE fs_kd_trs = @fs_kd_trs", new { fs_kd_trs = SafeTruncate(dto.fs_kd_trs, 10) });
+        if (dto.list_komponen != null && dto.list_komponen.Count > 0)
+        {
+            const string sqlInsertBed2 = """
+                INSERT INTO ta_trs_bed2(fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike)
+                VALUES (@fs_kd_trs, @fs_kd_detil_tarif, @fn_tarif, @fn_harike);
+                """;
+            var komponenParams = dto.list_komponen.Select(k => new
+            {
+                fs_kd_trs = SafeTruncate(k.fs_kd_trs, 10),
+                fs_kd_detil_tarif = SafeTruncate(k.fs_kd_detil_tarif, 3),
+                fn_tarif = k.fn_tarif,
+                fn_harike = k.fn_harike
+            });
+            conn.Execute(sqlInsertBed2, komponenParams);
+        }
     }
 
     public void Update(PakaiBedDto dto)
@@ -146,7 +165,9 @@ public class PakaiBedDal : IPakaiBedDal
                 fs_kd_petugas_void = @fs_kd_petugas_void,
                 fd_tgl_entry = @fd_tgl_entry,
                 fs_jam_entry = @fs_jam_entry,
-                fs_kd_kelas = @fs_kd_kelas
+                fs_kd_kelas = @fs_kd_kelas,
+                fs_kd_kelas_tindakan = @fs_kd_kelas_tindakan,
+                fd_tgl_jam_in = @fd_tgl_jam_in
             WHERE
                 fs_kd_trs = @fs_kd_trs
             """;
@@ -154,6 +175,23 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+
+        if (dto.list_komponen != null && dto.list_komponen.Count > 0)
+        {
+            conn.Execute("DELETE FROM ta_trs_bed2 WHERE fs_kd_trs = @fs_kd_trs", new { fs_kd_trs = SafeTruncate(dto.fs_kd_trs, 10) });
+            const string sqlInsertBed2 = """
+                INSERT INTO ta_trs_bed2(fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike)
+                VALUES (@fs_kd_trs, @fs_kd_detil_tarif, @fn_tarif, @fn_harike);
+                """;
+            var komponenParams = dto.list_komponen.Select(k => new
+            {
+                fs_kd_trs = SafeTruncate(k.fs_kd_trs, 10),
+                fs_kd_detil_tarif = SafeTruncate(k.fs_kd_detil_tarif, 3),
+                fn_tarif = k.fn_tarif,
+                fn_harike = k.fn_harike
+            });
+            conn.Execute(sqlInsertBed2, komponenParams);
+        }
 
         // Synchronize legacy bed status in ta_bed
         var isReleasedOrVoid =
@@ -258,13 +296,18 @@ public class PakaiBedDal : IPakaiBedDal
         var existing = GetData(key);
         const string sql = """
             DELETE FROM
+                ta_trs_bed2
+            WHERE
+                fs_kd_trs = @fs_kd_trs;
+
+            DELETE FROM
                 ta_trs_bed
             WHERE
-                fs_kd_trs = @fs_kd_trs
+                fs_kd_trs = @fs_kd_trs;
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -298,10 +341,27 @@ public class PakaiBedDal : IPakaiBedDal
     {
         var sql = $"{SELECT_FROM}\nWHERE aa.fs_kd_trs = @fs_kd_trs";
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+        var dto = conn.ReadSingle<PakaiBedDto>(sql, dp);
+        if (dto != null)
+        {
+            const string sqlKomponen = """
+                SELECT fs_kd_trs, fs_kd_detil_tarif, fn_tarif, fn_harike
+                FROM ta_trs_bed2
+                WHERE fs_kd_trs = @fs_kd_trs
+                ORDER BY fn_harike, fs_kd_detil_tarif
+                """;
+            var dpKomponen = new DynamicParameters();
+            dpKomponen.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 10), SqlDbType.VarChar);
+            var komponenList = conn.Read<PakaiBedKomponenDto>(sqlKomponen, dpKomponen)?.ToList();
+            if (komponenList != null && komponenList.Count > 0)
+            {
+                dto = dto with { list_komponen = komponenList };
+            }
+        }
+        return dto;
     }
 
     public IEnumerable<PakaiBedDto> ListData(IRegKey filter)
@@ -443,31 +503,67 @@ public class PakaiBedDal : IPakaiBedDal
                 END
             END
 
-            -- 3. Void ta_trs_roomcharge & log (if exists)
+            -- 3. Check and Void ta_trs_roomcharge, ta_trs_billing & log (if exists)
             IF OBJECT_ID('ta_trs_roomcharge', 'U') IS NOT NULL
             BEGIN
-                DECLARE @colRcBedRef VARCHAR(50) = CASE 
-                    WHEN COL_LENGTH('ta_trs_roomcharge', 'fs_kd_pakai_bed') IS NOT NULL THEN 'fs_kd_pakai_bed'
-                    WHEN COL_LENGTH('ta_trs_roomcharge', 'fs_kd_trs_bed') IS NOT NULL THEN 'fs_kd_trs_bed'
-                    ELSE NULL 
+                DECLARE @whereRcCondition NVARCHAR(MAX) = CASE 
+                    WHEN COL_LENGTH('ta_trs_roomcharge', 'fs_kd_pakai_bed') IS NOT NULL AND COL_LENGTH('ta_trs_roomcharge', 'fs_kd_trs_bed') IS NOT NULL 
+                        THEN N'(rc.fs_kd_pakai_bed = @pakaiBedId OR rc.fs_kd_trs_bed = @pakaiBedId OR LEFT(rc.fs_kd_trs, 10) = @pakaiBedId)'
+                    WHEN COL_LENGTH('ta_trs_roomcharge', 'fs_kd_pakai_bed') IS NOT NULL 
+                        THEN N'(rc.fs_kd_pakai_bed = @pakaiBedId OR LEFT(rc.fs_kd_trs, 10) = @pakaiBedId)'
+                    WHEN COL_LENGTH('ta_trs_roomcharge', 'fs_kd_trs_bed') IS NOT NULL 
+                        THEN N'(rc.fs_kd_trs_bed = @pakaiBedId OR LEFT(rc.fs_kd_trs, 10) = @pakaiBedId)'
+                    ELSE N'(LEFT(rc.fs_kd_trs, 10) = @pakaiBedId)'
                 END;
-                IF @colRcBedRef IS NOT NULL
+
+                -- 3a. Cashier Payment Guard: Throw error if room charge is already paid
+                IF COL_LENGTH('ta_trs_roomcharge', 'fs_kd_trs_dx') IS NOT NULL
                 BEGIN
-                    -- 3a. Clean up ta_trs_roomcharge2 components (if exists)
-                    IF OBJECT_ID('ta_trs_roomcharge2', 'U') IS NOT NULL
-                    BEGIN
-                        DECLARE @sqlRc2 NVARCHAR(MAX) = N'DELETE rc2 FROM ta_trs_roomcharge2 rc2 INNER JOIN ta_trs_roomcharge rc ON rc2.fs_kd_trs = rc.fs_kd_trs WHERE rc.' + @colRcBedRef + N' = @pakaiBedId';
-                        EXEC sp_executesql @sqlRc2, N'@pakaiBedId VARCHAR(50)', @pakaiBedId;
-                    END
+                    DECLARE @sqlCheckPaid NVARCHAR(MAX) = N'
+                        IF EXISTS (
+                            SELECT 1 FROM ta_trs_roomcharge rc 
+                            WHERE ' + @whereRcCondition + N' AND ISNULL(rc.fs_kd_trs_dx, '''') <> ''''
+                        )
+                        BEGIN
+                            THROW 51000, ''Kamar tidak dapat dibatalkan karena tagihan sewa kamar sudah terbayar di kasir.'', 1;
+                        END';
+                    EXEC sp_executesql @sqlCheckPaid, N'@pakaiBedId VARCHAR(50)', @pakaiBedId;
+                END
 
-                    -- 3b. Void ta_trs_roomcharge
-                    DECLARE @sqlRc NVARCHAR(MAX) = N'UPDATE ta_trs_roomcharge SET fs_ket = LEFT(''Reversed: '' + @alasanBatal, 40) WHERE ' + @colRcBedRef + N' = @pakaiBedId';
-                    EXEC sp_executesql @sqlRc, N'@alasanBatal VARCHAR(255), @pakaiBedId VARCHAR(50)', @alasanBatal, @pakaiBedId;
+                -- 3b. Clean up ta_trs_roomcharge2 components (if exists)
+                IF OBJECT_ID('ta_trs_roomcharge2', 'U') IS NOT NULL
+                BEGIN
+                    DECLARE @sqlRc2 NVARCHAR(MAX) = N'
+                        DELETE rc2 
+                        FROM ta_trs_roomcharge2 rc2 
+                        INNER JOIN ta_trs_roomcharge rc ON rc2.fs_kd_trs = rc.fs_kd_trs 
+                        WHERE ' + @whereRcCondition;
+                    EXEC sp_executesql @sqlRc2, N'@pakaiBedId VARCHAR(50)', @pakaiBedId;
+                END
 
-                    -- 3c. Insert void snapshot log
-                    IF OBJECT_ID('ta_trs_roomcharge_log', 'U') IS NOT NULL
-                    BEGIN
-                        DECLARE @sqlRcLog NVARCHAR(MAX) = N'INSERT INTO ta_trs_roomcharge_log (
+                -- 3c. Clean up draft ta_trs_billing & ta_trs_billing2 generated by Taksaka/RoomCharge
+                IF OBJECT_ID('ta_trs_billing', 'U') IS NOT NULL
+                BEGIN
+                    DECLARE @sqlBill NVARCHAR(MAX) = N'
+                        IF OBJECT_ID(''ta_trs_billing2'', ''U'') IS NOT NULL
+                        BEGIN
+                            DELETE b2 
+                            FROM ta_trs_billing2 b2 
+                            INNER JOIN ta_trs_roomcharge rc ON b2.fs_kd_trs = rc.fs_kd_trs 
+                            WHERE ' + @whereRcCondition + N';
+                        END;
+                        DELETE b 
+                        FROM ta_trs_billing b 
+                        INNER JOIN ta_trs_roomcharge rc ON b.fs_kd_trs = rc.fs_kd_trs 
+                        WHERE ' + @whereRcCondition + N';';
+                    EXEC sp_executesql @sqlBill, N'@pakaiBedId VARCHAR(50)', @pakaiBedId;
+                END
+
+                -- 3d. Insert void snapshot log
+                IF OBJECT_ID('ta_trs_roomcharge_log', 'U') IS NOT NULL
+                BEGIN
+                    DECLARE @sqlRcLog NVARCHAR(MAX) = N'
+                        INSERT INTO ta_trs_roomcharge_log (
                             fs_kd_trs, fd_tgl_trs, fd_tgl_upd, fs_jam_upd,
                             fs_kd_petugas, fs_kd_upd, fs_kd_reg,
                             fs_kd_layanan, fs_kd_bed,
@@ -478,14 +574,17 @@ public class PakaiBedDal : IPakaiBedDal
                             rc.fs_kd_layanan, rc.fs_kd_bed,
                             rc.fn_tarif, rc.fn_qty, 1
                         FROM ta_trs_roomcharge rc
-                        WHERE rc.' + @colRcBedRef + N' = @pakaiBedId
+                        WHERE ' + @whereRcCondition + N'
                           AND NOT EXISTS (
                               SELECT 1 FROM ta_trs_roomcharge_log lg
                               WHERE lg.fs_kd_trs = rc.fs_kd_trs AND lg.fb_status_void = 1
                           )';
-                        EXEC sp_executesql @sqlRcLog, N'@nowDate VARCHAR(10), @nowTime VARCHAR(10), @userId VARCHAR(50), @pakaiBedId VARCHAR(50)', @nowDate, @nowTime, @userId, @pakaiBedId;
-                    END
+                    EXEC sp_executesql @sqlRcLog, N'@nowDate VARCHAR(10), @nowTime VARCHAR(10), @userId VARCHAR(50), @pakaiBedId VARCHAR(50)', @nowDate, @nowTime, @userId, @pakaiBedId;
                 END
+
+                -- 3e. Delete ta_trs_roomcharge (Physical delete matching legacy VB6 frmTrsPesanBed.UnChargeAll; snapshot preserved in ta_trs_roomcharge_log)
+                DECLARE @sqlRc NVARCHAR(MAX) = N'DELETE rc FROM ta_trs_roomcharge rc WHERE ' + @whereRcCondition;
+                EXEC sp_executesql @sqlRc, N'@pakaiBedId VARCHAR(50)', @pakaiBedId;
             END
 
             -- 4. Legacy ta_bed status synchronization
@@ -584,19 +683,19 @@ public class PakaiBedDal : IPakaiBedDal
                     OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
                     FROM BILRG_BedWaitingList wl
                     WHERE wl.WaitingListStatus = 2
-                      AND (
-                          -- Direct match for voided pakaiBed
-                          wl.RegId = (SELECT TOP 1 fs_kd_reg FROM ta_trs_bed WHERE fs_kd_trs = @pakaiBedId)
-                          ' + @wherePakaiBed + N'
-                          OR (wl.PasienId = (SELECT TOP 1 r.fs_mr FROM ta_trs_bed tb INNER JOIN ta_registrasi r ON tb.fs_kd_reg = r.fs_kd_reg WHERE tb.fs_kd_trs = @pakaiBedId))
-                          -- Rooming-in pair match (Mother & Baby)
-                          OR EXISTS (
-                              SELECT 1 FROM #RoomingInPairs p
-                              WHERE wl.RegId = p.MotherRegId
-                                 OR wl.RegId = p.BabyRegId
-                                 OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
-                          )
-                      )';
+                    AND (
+                        -- Direct match for voided pakaiBed
+                        wl.RegId = (SELECT TOP 1 fs_kd_reg FROM ta_trs_bed WHERE fs_kd_trs = @pakaiBedId)
+                        ' + @wherePakaiBed + N'
+                        OR (wl.PasienId = (SELECT TOP 1 r.fs_mr FROM ta_trs_bed tb INNER JOIN ta_registrasi r ON tb.fs_kd_reg = r.fs_kd_reg WHERE tb.fs_kd_trs = @pakaiBedId))
+                        -- Rooming-in pair match (Mother & Baby)
+                        OR EXISTS (
+                            SELECT 1 FROM #RoomingInPairs p
+                            WHERE wl.RegId = p.MotherRegId
+                                OR wl.RegId = p.BabyRegId
+                                OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
+                        )
+                    )';
                 EXEC sp_executesql @sqlRevertWl, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
             END
 
@@ -705,6 +804,14 @@ public class PakaiBedDal : IPakaiBedDal
         dp.AddParam("@fd_tgl_entry", dto.fd_tgl_entry, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_entry", dto.fs_jam_entry, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_kelas", dto.fs_kd_kelas, SqlDbType.VarChar);
+
+        var kdKelasTindakan = dto.fs_kd_kelas_tindakan;
+        var tglJamIn = !string.IsNullOrWhiteSpace(dto.fd_tgl_jam_in)
+            ? dto.fd_tgl_jam_in
+            : (!string.IsNullOrWhiteSpace(dto.fd_tgl_in) ? $"{dto.fd_tgl_in} {dto.fs_jam_in}".Trim() : "");
+
+        dp.AddParam("@fs_kd_kelas_tindakan", SafeTruncate(kdKelasTindakan, 10), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jam_in", SafeTruncate(tglJamIn, 20), SqlDbType.VarChar);
         return dp;
     }
 }

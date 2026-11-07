@@ -1,11 +1,11 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
@@ -16,7 +16,7 @@ namespace Bilreg.Test.AdmisiRanapContext.ReservationFeature;
 
 public class AdmCreateReservationCmdTest
 {
-    private readonly Mock<IReservationRepo> _reservationRepoMock = new();
+    private readonly Mock<IInpatientOrderRepo> _orderRepoMock = new();
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
@@ -41,13 +41,13 @@ public class AdmCreateReservationCmdTest
     public async Task Handle_GivenValidRequest_InvokesCoordinatorWithCreatedReservation()
     {
         // Arrange
-        ReservationModel? savedReservation = null;
-        _reservationRepoMock
-            .Setup(x => x.SaveChanges(It.IsAny<ReservationModel>()))
-            .Callback<ReservationModel>(r => savedReservation = r);
+        InpatientOrderModel? savedOrder = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(r => savedOrder = r);
 
         var handler = new AdmCreateReservationHandler(
-            _reservationRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _wardGatewayMock.Object,
             _auditRepoMock.Object,
@@ -66,12 +66,17 @@ public class AdmCreateReservationCmdTest
 
         // Assert
         response.Should().NotBeNull();
-        response.ReservationId.Should().StartWith("RSV");
-        savedReservation.Should().NotBeNull();
-        savedReservation!.ReservationId.Should().Be(response.ReservationId);
+        response.ReservationId.Should().StartWith("OPN");
+        response.InpatientOrderId.Should().Be(response.ReservationId);
+        savedOrder.Should().NotBeNull();
+        savedOrder!.InpatientOrderId.Should().Be(response.ReservationId);
+        savedOrder.OrderSource.Should().Be(OrderSourceEnum.AdmisiBooking);
+        savedOrder.OrderStatus.Should().Be(InpatientOrderStatusEnum.Requested);
+        savedOrder.KelasRawat.KelasId.Should().Be("K1");
+        savedOrder.Bangsal.BangsalId.Should().Be("B1");
 
         _trackerCoordinatorMock.Verify(x => x.RecordReservationCreated(
-            It.Is<ReservationModel>(r => r.ReservationId == response.ReservationId && r.Pasien.PasienName == "Budi Santoso"),
+            It.Is<InpatientOrderModel>(r => r.InpatientOrderId == response.ReservationId && r.Pasien.PasienName == "Budi Santoso"),
             It.IsAny<DateTime>()), Times.Once);
 
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
@@ -80,7 +85,7 @@ public class AdmCreateReservationCmdTest
     [Fact]
     public async Task Handle_GivenValidRequest_WithRealCoordinator_CreatesPasienTrackerWithEventReservasiAndReservationId()
     {
-        // Arrange: Wire real coordinator with mock tracker repo to verify end-to-end event recording contract
+        // Arrange
         var trackerRepoMock = new Mock<IPasienTrackerRepo>();
         PasienTrackerModel? savedTracker = null;
         trackerRepoMock
@@ -92,7 +97,7 @@ public class AdmCreateReservationCmdTest
             TestTglJamProvider.Instance);
 
         var handler = new AdmCreateReservationHandler(
-            _reservationRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _wardGatewayMock.Object,
             _auditRepoMock.Object,
@@ -134,7 +139,7 @@ public class AdmCreateReservationCmdTest
     {
         // Arrange
         var handler = new AdmCreateReservationHandler(
-            _reservationRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _wardGatewayMock.Object,
             _auditRepoMock.Object,

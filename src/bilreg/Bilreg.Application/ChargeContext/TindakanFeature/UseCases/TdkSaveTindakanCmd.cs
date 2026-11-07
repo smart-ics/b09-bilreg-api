@@ -28,17 +28,19 @@ public record TdkSaveTindakanCmd(string TindakanId, string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkSaveTindakanPpaCmd> ListPpa,
     string PakaiBedId = "", int Qty = 1,
-    bool IsDiskonDokter = false)
+    bool IsDiskonDokter = false,
+    IEnumerable<TdkSaveTindakanKomponenDiskonCmd>? ListKomponenDiskon = null)
     : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey
 {
     public TdkSaveTindakanCmd(string tindakanId, string regId, string layananId, string nilaiTarifId, string userId,
         IEnumerable<TdkSaveTindakanPpaCmd> listPpa, int qty, bool isDiskonDokter = false)
-        : this(tindakanId, regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter)
+        : this(tindakanId, regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter, null)
     {
     }
 }
 
 public record TdkSaveTindakanPpaCmd(string KomponenId, string PpaId);
+public record TdkSaveTindakanKomponenDiskonCmd(string KomponenId, decimal Diskon);
 
 public record TdkSaveTindakanRespose(string TindakanId);
 
@@ -145,7 +147,8 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter);
+        var diskonMap = request.ListKomponenDiskon?.ToDictionary(x => x.KomponenId, x => x.Diskon);
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter, diskonMap);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
@@ -259,15 +262,16 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
         NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
-        DateTime occurredAt, string pakaiBedId = "", int qty = 1, bool isDiskonDokter = false)
+        DateTime occurredAt, string pakaiBedId = "", int qty = 1, bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty, isDiskonDokter);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap
         );
     }
 

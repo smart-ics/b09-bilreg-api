@@ -1,8 +1,9 @@
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -15,7 +16,7 @@ namespace Bilreg.Test.AdmisiRanapContext.ReservationFeature;
 
 public class AdmReservationHandlerTest
 {
-    private readonly Mock<IReservationRepo> _reservationRepoMock = new();
+    private readonly Mock<IInpatientOrderRepo> _orderRepoMock = new();
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
@@ -25,16 +26,17 @@ public class AdmReservationHandlerTest
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesReservation()
     {
         SetupMasters();
-        ReservationModel? saved = null;
-        _reservationRepoMock
-            .Setup(x => x.SaveChanges(It.IsAny<ReservationModel>()))
-            .Callback<ReservationModel>(m => saved = m);
+        InpatientOrderModel? saved = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(m => saved = m);
 
         var handler = new AdmCreateReservationHandler(
-            _reservationRepoMock.Object,
+            _orderRepoMock.Object,
             _patientGatewayMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object, TestTglJamProvider.Instance,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance,
             _trackerCoordinatorMock.Object);
 
         var response = await handler.Handle(
@@ -46,43 +48,45 @@ public class AdmReservationHandlerTest
                 "user1"),
             CancellationToken.None);
 
-        response.ReservationId.Should().StartWith("RSV");
+        response.ReservationId.Should().StartWith("OPN");
         saved.Should().NotBeNull();
-        saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Reserved);
+        saved!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Requested);
+        saved.OrderSource.Should().Be(OrderSourceEnum.AdmisiBooking);
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
         _trackerCoordinatorMock.Verify(x => x.RecordReservationCreated(
-            It.Is<ReservationModel>(r => r.ReservationId == response.ReservationId),
+            It.Is<InpatientOrderModel>(r => r.InpatientOrderId == response.ReservationId),
             It.IsAny<DateTime>()), Times.Once);
     }
 
     [Fact]
     public async Task UT02_GivenReservedReservation_WhenMaintain_ThenSavesMaintained()
     {
-        var reserved = ReservationModel.Create(
+        var reserved = InpatientOrderModel.CreateBooking(
             SamplePasienReff(),
             new DateTime(2026, 8, 1),
             SampleKelas(),
             SampleBangsal(),
             "user1");
 
-        _reservationRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IReservationKey>(k => k.ReservationId == reserved.ReservationId)))
+        _orderRepoMock
+            .Setup(x => x.GetByKey(reserved.InpatientOrderId))
             .Returns(MayBe.From(reserved));
         SetupMasters();
 
-        ReservationModel? saved = null;
-        _reservationRepoMock
-            .Setup(x => x.SaveChanges(It.IsAny<ReservationModel>()))
-            .Callback<ReservationModel>(m => saved = m);
+        InpatientOrderModel? saved = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(m => saved = m);
 
         var handler = new AdmMaintainReservationHandler(
-            _reservationRepoMock.Object,
+            _orderRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object, TestTglJamProvider.Instance);
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance);
 
         await handler.Handle(
             new AdmMaintainReservationCmd(
-                reserved.ReservationId,
+                reserved.InpatientOrderId,
                 "2026-08-05",
                 "K2",
                 "B2",
@@ -90,53 +94,55 @@ public class AdmReservationHandlerTest
             CancellationToken.None);
 
         saved.Should().NotBeNull();
-        saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Maintained);
+        saved!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Maintained);
+        saved.KelasRawat.KelasId.Should().Be("K2");
+        saved.Bangsal.BangsalId.Should().Be("B2");
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     [Fact]
     public async Task UT03_GivenReservedReservation_WhenCancel_ThenSavesCancelledAndLogsAuditWithReason()
     {
-        var reserved = ReservationModel.Create(
+        var reserved = InpatientOrderModel.CreateBooking(
             SamplePasienReff(),
             new DateTime(2026, 8, 1),
             SampleKelas(),
             SampleBangsal(),
             "user1");
 
-        _reservationRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IReservationKey>(k => k.ReservationId == reserved.ReservationId)))
+        _orderRepoMock
+            .Setup(x => x.GetByKey(reserved.InpatientOrderId))
             .Returns(MayBe.From(reserved));
 
-        ReservationModel? saved = null;
-        _reservationRepoMock
-            .Setup(x => x.SaveChanges(It.IsAny<ReservationModel>()))
-            .Callback<ReservationModel>(m => saved = m);
+        InpatientOrderModel? saved = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(m => saved = m);
 
         AuditLog? loggedAudit = null;
         _auditRepoMock
             .Setup(x => x.SaveChanges(It.IsAny<AuditLog>()))
             .Callback<AuditLog>(a => loggedAudit = a);
 
-        var handler = new AdmCancelReservationHandler(
-            _reservationRepoMock.Object,
+        var handler = new AdmCancelInpatientOrderHandler(
+            _orderRepoMock.Object,
             _auditRepoMock.Object,
             TestTglJamProvider.Instance);
 
         const string reason = "Pasien membatalkan rencana rawat inap";
         await handler.Handle(
-            new AdmCancelReservationCmd(reserved.ReservationId, "user2", reason),
+            new AdmCancelInpatientOrderCmd(reserved.InpatientOrderId, "user2", reason),
             CancellationToken.None);
 
         saved.Should().NotBeNull();
-        saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Cancelled);
+        saved!.OrderStatus.Should().Be(InpatientOrderStatusEnum.Cancelled);
         saved.AuditTrail.Voided.UserId.Should().Be("user2");
 
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
         loggedAudit.Should().NotBeNull();
         loggedAudit!.ActionType.Should().Be("VOID");
-        loggedAudit.EntityName.Should().Be(nameof(ReservationModel));
-        loggedAudit.EntityId.Should().Be(reserved.ReservationId);
+        loggedAudit.EntityName.Should().Be(nameof(InpatientOrderModel));
+        loggedAudit.EntityId.Should().Be(reserved.InpatientOrderId);
         loggedAudit.UserId.Should().Be("user2");
         loggedAudit.Reason.Should().Be(reason);
     }
@@ -147,13 +153,13 @@ public class AdmReservationHandlerTest
     [InlineData("   ")]
     public async Task UT04_GivenInvalidReason_WhenCancel_ThenThrowsArgumentException(string? invalidReason)
     {
-        var handler = new AdmCancelReservationHandler(
-            _reservationRepoMock.Object,
+        var handler = new AdmCancelInpatientOrderHandler(
+            _orderRepoMock.Object,
             _auditRepoMock.Object,
             TestTglJamProvider.Instance);
 
         var act = () => handler.Handle(
-            new AdmCancelReservationCmd("RSV001", "user1", invalidReason!),
+            new AdmCancelInpatientOrderCmd("RSV001", "user1", invalidReason!),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();

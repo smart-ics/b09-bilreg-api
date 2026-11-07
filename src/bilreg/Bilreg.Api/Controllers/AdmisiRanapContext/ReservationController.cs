@@ -1,5 +1,5 @@
 using Bilreg.Api.Filters;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -58,7 +58,7 @@ public class ReservationController : ControllerBase
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id, [FromBody] AdmCancelReservationBody body)
     {
-        await _mediator.Send(new AdmCancelReservationCmd(id, body.UserId, body.Reason));
+        await _mediator.Send(new AdmCancelInpatientOrderCmd(id, body.UserId, body.Reason));
         return Ok(new JSendOk("Done"));
     }
 }

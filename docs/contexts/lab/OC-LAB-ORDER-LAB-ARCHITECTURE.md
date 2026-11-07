@@ -2,8 +2,8 @@
 Title: Order Pemeriksaan Laboratorium Architecture
 Code: OC-LAB-ORDER-LAB
 Artifact: ARCHITECTURE
-Version: 1.0
-LastUpdated: 2026-10-15
+Version: 1.1
+LastUpdated: 2026-11-06
 ---
 
 # 1. Overview
@@ -29,6 +29,12 @@ Arsitektur ini menetapkan realisasi teknis komprehensif pada backend BILREG API 
    - Menyediakan deteksi otomatis atas tes laboratorium berulang pada pasien yang sama dalam 24 jam terakhir dengan mekanisme konfirmasi klinis (*soft-warning* / overrideable via parameter `AllowDuplicateConfirmation`).
 7. **Migrasi Skema Basis Data Non-Breaking**:
    - Menyediakan skrip DDL SQL `BILRG_LabOrder_M11_Alter.sql` untuk menambahkan kolom-kolom baru dengan default constraint, menjamin kompatibilitas penuh dan *zero-downtime* terhadap data historis.
+8. **Realisasi Operasional Eksekusi Registrasi Order Tertunda (Deferred Order Execution - Hybrid Model)**:
+   - Menggantikan placeholder dummy sequence (`REG-FAKE-0001`) pada `LabRegIntegration` dengan alur integrasi registrasi riil:
+     - *Pasien Luar (`OrderSource.ExternalPatient`)*: Menggunakan kembali `RegExternalId` sebagai `ExecutionRegId`.
+     - *Pasien Internal RS (`OrderSource.Emr`)*: Memeriksa registrasi aktif pasien hari ini (`_regAktifRepo.ListData`). Jika ditemukan 1 registrasi aktif, otomatis dipasangkan. Jika ditemukan >1 registrasi aktif, petugas memilih salah satu registrasi aktif melalui dialog aktivasi. Jika tidak ada registrasi aktif hari ini: pasien BPJS/Asuransi wajib diarahkan ke Loket Admisi untuk penerbitan SEP/eligibilitas legal, sedangkan pasien Umum otomatis diterbitkan registrasi penunjang baru di `ta_registrasi` (Layanan = Laboratorium dari konfigurasi `LabOptions:LayananLabId = "LAB"`, Dokter = Dokter DPJP Perujuk asal, Karcis = `KarcisType.Default` Rp 0).
+   - Menyelaraskan integrasi penagihan kasir (`LabBillingIntegration`): Memprioritaskan `ExecutionRegId` di atas `Patient.RegId` untuk pembebanan tindakan (`Charge`) dan pembatalan tindakan (`CancelCharge`).
+   - Memperkaya dialog aktivasi frontend (`LabActivateDeferredDialog.vue`) dengan pendeteksian registrasi aktif hari ini dan pemilihan interaktif jika terdapat lebih dari satu kunjungan.
 
 ## Referenced Artifacts
 
@@ -112,7 +118,18 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
    - Skrip migrasi DDL `BILRG_LabOrder_M11_Alter.sql` untuk tabel `BILRG_LabOrder` dan `BILRG_LabOrderItem`.
    - Non-clustered index untuk optimasi kueri order Cito pada tabel `BILRG_LabOrder`.
 5. **Web API Controller (`Bilreg.Api/Controllers/LabContext/LabOrderFeature`)**:
-   - Pembaruan controller `LabOrderController.cs` untuk mengekspos endpoint pembuatan order, kueri detail, dan worklist dengan model DTO yang diperkaya.
+   - Pembaruan controller `LabOrderController.cs` untuk mengekspos endpoint pembuatan order, kueri detail, worklist, serta aktivasi deferred order dengan payload terstandar `JSendOk`.
+6. **Realisasi Integrasi Registrasi Eksekusi Order Tertunda (`Bilreg.Application` & `Bilreg.Infrastructure`)**:
+   - `LabOrderActivateDeferredCmd` diperluas dengan parameter opsional `string? ExecutionRegId = null`.
+   - `ILabRegIntegration` & `LabRegIntegration` mengimplementasikan logika Hybrid:
+     - Deteksi registrasi aktif hari ini (`_regAktifRepo.ListData`).
+     - Validasi `ExecutionRegId` eksplisit jika dikirim klien.
+     - Proteksi edukasi BPJS: tolak aktivasi otomatis tanpa registrasi aktif dari Admisi.
+     - Auto-generate registrasi penunjang untuk pasien Umum (`ta_registrasi` via `_regRepo` dan `BILRG_RegAktif` via `_regAktifRepo`) dengan Layanan Laboratorium (konfigurasi `LabOptions:LayananLabId`), DPJP perujuk asal, dan karcis Rp 0.
+7. **Resolusi Billing terhadap Registrasi Efektif (`Bilreg.Infrastructure.LabContext.Integration`)**:
+   - `LabBillingIntegration.ChargeAdmisiPatient` dan `CancelCharge` menentukan `effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId) ? order.ExecutionRegId : order.Patient.RegId;` untuk menjamin keselarasan beban biaya pada akun kasir aktif.
+8. **Antarmuka Dialog Frontend (`c012_myhospital_web`)**:
+   - `LabActivateDeferredDialog.vue` mengintegrasikan pengecekan registrasi aktif hari ini via API `GET /api/AdmisiContext/RegFeature/aktif/{pasienId}`, menyajikan antarmuka pemilihan jika terdapat >1 registrasi, edukasi admisi untuk BPJS/asuransi, dan mengirim `executionRegId` terpilih.
 
 ## Excluded
 
@@ -183,6 +200,47 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
   - Handler melempar `DuplicateLabOrderWarningException` yang berisi daftar nama tes yang duplikat beserta nomor order sebelumnya.
 - Jika pengguna mengirimkan command dengan `AllowDuplicateConfirmation == true`, sistem melanjutkan proses persistensi order.
 
+## AD-07: Real Operational Execution Registration (Hybrid Model)
+
+**Keputusan**: Menggantikan implementasi placeholder `REG-FAKE-0001` pada `LabRegIntegration` dengan mekanisme resolusi registrasi hibrida (*Hybrid Model*):
+1. **Pasien Luar (`OrderSource.ExternalPatient`)**:
+   - Mengembalikan `RegExternalId` asal (dari `order.Patient.RegId`) sebagai `ExecutionRegId`, karena transaksi registrasi laboratorium eksternal bersifat mandiri dan tidak tertutup shift kunjungan poliklinik.
+2. **Pasien Internal RS (`OrderSource.Emr`)**:
+   - **Kasus A: `ExecutionRegId` Dikirim Eksplisit**:
+     - Jika pemanggil mengirimkan parameter `ExecutionRegId`, sistem memvalidasi bahwa registrasi tersebut benar terdaftar aktif pada hari ini untuk pasien bersangkutan (`_regAktifRepo.LoadEntity`). Jika valid, kembalikan `ExecutionRegId` tersebut.
+   - **Kasus B: `ExecutionRegId` Tidak Dikirim (Auto-Resolution)**:
+     - Sistem mencari daftar registrasi aktif hari ini untuk pasien (`_regAktifRepo.ListData(pasien)` dengan tanggal `RegDate == Hari Ini`).
+     - Jika ditemukan **tepat 1 registrasi aktif hari ini**: sistem otomatis mengikat `RegId` tersebut sebagai `ExecutionRegId`.
+     - Jika ditemukan **> 1 registrasi aktif hari ini**: sistem melempar `ValidationException` (*"Terdapat lebih dari satu registrasi aktif hari ini untuk pasien. Silakan pilih nomor registrasi kunjungan."*), mengarahkan pengguna untuk memilih melalui dialog aktivasi.
+     - Jika ditemukan **0 registrasi aktif hari ini**:
+       - Sistem memuat data registrasi kunjungan asal (`_regRepo.LoadEntity(order.Patient.RegId)`).
+       - Jika pasien berstatus **BPJS / Asuransi Non-Umum** (`TipeJaminanId != "00000"` / `JaminanId != "000"`): sistem melempar `ValidationException` (*"Pasien BPJS/Asuransi wajib melakukan pendaftaran di Loket Admisi terlebih dahulu untuk penerbitan eligibilitas (SEP)."*).
+       - Jika pasien berstatus **Umum (Bayar Sendiri)**: sistem otomatis menerbitkan registrasi penunjang baru di `ta_registrasi` dan `BILRG_RegAktif`.
+
+## AD-08: Penunjang Registration Attributes for Auto-Generated Visit
+
+**Keputusan**: Registrasi otomatis yang diterbitkan untuk pasien Umum pada hari eksekusi dikonstruksi dengan spesifikasi:
+1. **Identifier Registrasi**: `RG{seq:D8}` menggunakan sequence counter manual `"NOREG"`.
+2. **Waktu Kunjungan**: Tanggal dan jam kedatangan fisik saat aktivasi dijalankan (`_tglJamProvider.Now`).
+3. **Unit Layanan**: Instalasi Laboratorium (dibaca dari konfigurasi `appsettings.json`: `LabOptions:LayananLabId = "LAB"`, diverifikasi ke `ILayananRepo`). Tidak menggunakan layanan poli asal guna mencegah distorsi sensus statistik rawat jalan poli (*zero ghost visit*).
+4. **Dokter Penanggung Jawab**: Tetap menggunakan Dokter DPJP Perujuk asal (`order.DokterPerujukId` dan `order.DokterPerujukName`) guna menjaga akuntabilitas medis dan alokasi jasa rujukan.
+5. **Karcis Admisi**: Menggunakan `KarcisType.Default` (Rp 0) agar pasien tidak dibebani tiket pendaftaran ganda hanya untuk pengambilan sampel darah/urin.
+6. **Jaminan & Kelas**: Menyalin dari profil kunjungan asal (`TipeJaminanType.BayarSendiri` / `Kelas III`).
+7. **Sinkronisasi Status Aktif**: Menyimpan entitas ke `_regRepo.SaveChanges(reg)` dan `_regAktifRepo.SaveChanges(regAktif)`.
+
+## AD-09: Billing Resolution on Effective Registration (`effectiveRegId`)
+
+**Keputusan**: Penagihan tindakan laboratorium (`TRK-BILLING`) wajib diarahkan ke akun registrasi aktif hari ini agar tidak membentur penutupan kasir shift kemarin:
+1. Pada `LabBillingIntegration.ChargeAdmisiPatient`:
+   ```csharp
+   var effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId)
+       ? order.ExecutionRegId
+       : order.Patient.RegId;
+   ```
+   Pembebanan tarif tindakan (`_addBillAppService.FromLabOrderItem`) diterbitkan di bawah `effectiveRegId`.
+2. Pada `LabBillingIntegration.CancelCharge` dan `LabOrderCancelCmd`:
+   Pembatalan beban biaya (*charge reversal / void*) diarahkan ke `effectiveRegId` tempat tindakan tersebut sebelumnya dibebankan.
+
 ---
 
 # 5. Component Responsibilities
@@ -201,7 +259,11 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
 | `ILabOrderDal` & `LabOrderDal` | Application / Infra | Menyediakan eksekusi kueri Dapper tingkat baris untuk persistensi tabel `BILRG_LabOrder` dan deteksi order duplikat 24 jam. |
 | `ILabOrderItemDal` & `LabOrderItemDal` | Application / Infra | Menyediakan eksekusi kueri Dapper untuk baris rincian pada tabel `BILRG_LabOrderItem`. |
 | `ILabOrderWorklistDal` & `LabOrderWorklistDal` | Application / Infra | Menyediakan eksekusi kueri SQL teroptimasi untuk worklist operasional laboratorium dengan filter Cito. |
-| `LabOrderController` | API | Menyediakan endpoint RESTful Web API untuk pembuatan order, pembatalan, pembacaan detail, dan worklist operasional. |
+| `LabOrderActivateDeferredCmd` & `Handler` | Application | Mengelola alur aktivasi order tertunda, mengorkestrasi pembuatan atau pencocokan registrasi eksekusi melalui `ILabRegIntegration`, dan mengembalikan status ke `Ordered`. |
+| `ILabRegIntegration` & `LabRegIntegration` | Application / Infra | Menyediakan implementasi resolusi registrasi eksekusi hibrida: validasi registrasi aktif, proteksi admisi pasien BPJS, dan pembuatan registrasi penunjang Umum di `ta_registrasi`. |
+| `ILabBillingIntegration` & `LabBillingIntegration` | Application / Infra | Mengarahkan pembebanan tindakan (`Charge`) dan pembatalan tindakan (`CancelCharge`) ke registrasi efektif (`effectiveRegId`). |
+| `LabOrderController` | API | Menyediakan endpoint RESTful Web API untuk pembuatan order, pembatalan, aktivasi deferred order, pembacaan detail, dan worklist operasional. |
+| `LabActivateDeferredDialog.vue` | Frontend UI | Dialog konfirmasi interaktif untuk aktivasi order tertunda dengan deteksi registrasi aktif hari ini, pilihan multiregistrasi, dan proteksi edukasi BPJS. |
 
 ---
 
@@ -214,6 +276,12 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
 | `LabOrderCreateExternalPatientHandler` | `ILabExternalRepo` (`LAB-EXTERNAL`) | In-Memory C# Interface | Validasi bahwa `RegExternalId` terdaftar aktif dan auto-populasi data perujuk luar dari `ReferralInfo`. |
 | `LabOrderCreateFromEmrHandler` / `External` | `ILabTestResolutionService` | In-Memory C# Service | Resolusi pemetaan `TarifId` $\rightarrow$ `TestDefinitionId`, tipe tabung vacutainer, jenis spesimen, dan komponen uji. |
 | `LabOrderCancelHandler` | `ITataRekeningRepo` / `ChargeContext` | In-Memory C# Interface | Verifikasi status tagihan kasir dan eksekusi kompensasi pelepasan charge (`VoidTindakan`) jika order dibatalkan pasca-charge. |
+| `LabRegIntegration` | `IRegAktifRepo` (`ADM-REG`) | In-Memory C# Interface | Kueri daftar registrasi aktif hari ini untuk pasien guna auto-binding atau validasi pemilihan. |
+| `LabRegIntegration` | `IRegRepo` (`ADM-REG`) | In-Memory C# Interface | Pemuatan profil registrasi asal dan penyimpanan registrasi penunjang baru di `ta_registrasi`. |
+| `LabRegIntegration` | `ILayananRepo` (`ORG-LAYANAN`) | In-Memory C# Interface | Validasi eksistensi dan data Layanan Laboratorium yang dikonfigurasi pada `appsettings.json`. |
+| `LabRegIntegration` | `ISequencerManual` | In-Memory C# Interface | Pembuatan nomor urut pendaftaran baru (`NOREG` -> `RG{seq:D8}`). |
+| `LabBillingIntegration` | `IAddBillAppService` / `ITataRekeningRepo` | In-Memory C# Interface | Pembebanan dan pembatalan tindakan laboratorium ke akun kasir registrasi efektif (`effectiveRegId`). |
+| `LabActivateDeferredDialog.vue` | `RegController.ListAktifByMr` | HTTP REST (`GET /api/AdmisiContext/RegFeature/aktif/{pasienId}`) | Pengecekan daftar registrasi aktif hari ini untuk pasien sebelum konfirmasi aktivasi. |
 | `LabOrderController` | Frontend Web / EMR Modul | HTTP REST (JSON) | Pertukaran data transaksi pemesanan tes lab, pembatalan, pemantauan worklist, dan pengambilan detail order. |
 
 ---
@@ -333,3 +401,11 @@ Implementasi dianggap lengkap secara arsitektural apabila:
 5. Use case `LabOrderCancelCmd` menolak pembatalan jika spesimen telah diambil (`>= Collected`), serta menyinkronkan pembatalan beban billing ke Tata Rekening jika order telah berstatus `Charged`.
 6. Antarmuka kueri `LabOrderWorklistDal` menyajikan kolom `IsCito`, nama perujuk, layanan perujuk, dan mendukung filter prioritas order Cito.
 7. Seluruh pengujian otomatis (*unit & integration tests*) pada `Bilreg.Test/LabContext/LabOrderFeature` lulus 100%.
+8. Integrasi registrasi eksekusi riil (`LabRegIntegration`) berhasil mengaitkan `ExecutionRegId`:
+   - Pasien luar menggunakan kembali `RegExternalId`.
+   - Pasien internal dengan 1 registrasi aktif hari ini otomatis diikat.
+   - Pasien internal dengan >1 registrasi aktif hari ini berhasil diikat berdasarkan pilihan `ExecutionRegId`.
+   - Pasien internal Umum tanpa registrasi aktif hari ini berhasil dibuatkan registrasi penunjang baru di `ta_registrasi` (Layanan Laboratorium, DPJP perujuk asal, karcis Rp 0) dan `BILRG_RegAktif`.
+   - Pasien internal BPJS tanpa registrasi aktif hari ini ditolak dengan pesan edukasi wajib mendaftar di Loket Admisi.
+9. Integrasi penagihan (`LabBillingIntegration.ChargeAdmisiPatient` dan `CancelCharge`) memprioritaskan `ExecutionRegId` di atas `Patient.RegId`, membebankan tindakan ke akun kasir yang aktif, dan membatalkan tagihan pada akun efektif tersebut saat order dibatalkan.
+10. Dialog frontend `LabActivateDeferredDialog.vue` terintegrasi dengan kueri registrasi aktif hari ini, memfasilitasi pemilihan registrasi jika >1, dan menampilkan edukasi Admisi untuk BPJS/asuransi.

@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -62,6 +63,20 @@ public class PasienTrackerInpatientCoordinator : IPasienTrackerInpatientCoordina
             occurredAt);
     }
 
+    public PasienTrackerModel RecordReservationCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default)
+    {
+        Guard.Against.Null(order, nameof(order));
+        var visitDate = DateOnly.FromDateTime(order.PlannedDate);
+        return RecordReservationCreated(
+            order.Pasien.PasienName,
+            order.Pasien.TglLahir,
+            visitDate,
+            order.InpatientOrderId,
+            occurredAt);
+    }
+
     public PasienTrackerModel RecordOpnameRequestCreated(
         string personName,
         DateOnly tglLahir,
@@ -97,6 +112,30 @@ public class PasienTrackerInpatientCoordinator : IPasienTrackerInpatientCoordina
             visitDate,
             opnameRequest.OpnameRequestId,
             occurredAt);
+    }
+
+    public PasienTrackerModel RecordOpnameRequestCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default)
+    {
+        Guard.Against.Null(order, nameof(order));
+        var visitDate = DateOnly.FromDateTime(order.PlannedDate);
+        return RecordOpnameRequestCreated(
+            order.Pasien.PasienName,
+            order.Pasien.TglLahir,
+            visitDate,
+            order.InpatientOrderId,
+            occurredAt);
+    }
+
+    public PasienTrackerModel RecordInpatientOrderCreated(
+        InpatientOrderModel order,
+        DateTime occurredAt = default)
+    {
+        Guard.Against.Null(order, nameof(order));
+        return order.OrderSource == OrderSourceEnum.AdmisiBooking
+            ? RecordReservationCreated(order, occurredAt)
+            : RecordOpnameRequestCreated(order, occurredAt);
     }
 
     public PasienTrackerModel RecordAdmissionRegistered(
@@ -140,6 +179,22 @@ public class PasienTrackerInpatientCoordinator : IPasienTrackerInpatientCoordina
 
         _trackerRepo.SaveChanges(fallbackTracker);
         return fallbackTracker;
+    }
+
+    public PasienTrackerModel RecordAdmissionRegistered(
+        InpatientOrderModel order,
+        string regId,
+        DateTime occurredAt = default)
+    {
+        Guard.Against.Null(order, nameof(order));
+        var visitDate = DateOnly.FromDateTime(order.PlannedDate);
+        return RecordAdmissionRegistered(
+            order.Pasien.PasienName,
+            order.Pasien.TglLahir,
+            visitDate,
+            regId,
+            order.InpatientOrderId,
+            occurredAt);
     }
 
     public PasienTrackerModel RecordAdmissionRegistered(

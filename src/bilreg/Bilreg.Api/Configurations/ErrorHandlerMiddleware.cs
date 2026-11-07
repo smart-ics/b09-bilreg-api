@@ -118,6 +118,10 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "BIZ_VALIDATION_FAILED";
                     break;
+                case FluentValidation.ValidationException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "VALIDATION_FAILED";
+                    break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
