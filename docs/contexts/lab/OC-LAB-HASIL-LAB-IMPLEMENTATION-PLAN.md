@@ -138,8 +138,8 @@ Review Status: NOT-REVIEWED
 ### P2-S03
 
 Title: Infrastructure DTO & DAL Updates for Document Persistence  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperbarui pemetaan DTO, query SQL eksplisit (Dapper), dan repository `ILabResultDocumentRepo` untuk menyimpan dan membaca kolom `ExpertiseNote` dan `CriticalNote`.  
 Depends On: P1-S01, P1-S02  
 Repository: `b09-bilreg-api`  
@@ -148,7 +148,16 @@ Completion Criteria:
 - `LabResultDocumentDal` diperbarui pada klausa `SELECT`, `INSERT`, dan `UPDATE` eksplisit untuk menyertakan `ExpertiseNote` dan `CriticalNote`.
 - Kueri `LoadByOrderId` dan `LoadEntity` mengembalikan agregat domain lengkap dengan nilai ekspertise dan catatan kritis.
 - Pengujian repositori pada `Bilreg.Test/LabContext/LabResultFeature/LabResultDocumentRepoTest.cs` lulus verifikasi simpan dan muat.  
-Notes: Menggunakan Dapper SQL eksplisit tanpa ORM berat.
+Notes: Menggunakan Dapper SQL eksplisit tanpa ORM berat.  
+Implementation Notes:
+- Menambahkan properti `ExpertiseNote` dan `CriticalNote` ke dalam record `LabResultDocumentDto` serta memetakan keduanya pada metode `FromModel` dan `ToModel` (meneruskan ke `LabResultDocumentModel.Load`).
+- Memperbarui SQL eksplisit pada `LabResultDocumentDal`: menyertakan kolom `ExpertiseNote` dan `CriticalNote` pada pernyataan `INSERT`, `UPDATE`, `GetData` (`SELECT`), dan `GetByOrderId` (`SELECT`), serta menambahkan parameter Dapper bertipe `SqlDbType.VarChar` pada `BuildParams`.
+- Memperbarui dan memperluas unit test pada `LabResultDocumentRepoTest.cs` untuk memverifikasi pemetaan catatan ekspertise dan kritis saat insert, update, pembacaan agregat (`LoadEntity` dan `LoadByOrderId`), serta pemetaan bolak-balik DTO (`FromModel` / `ToModel`).
+- Menjalankan seluruh pengujian repositori dan fitur hasil lab: 8 unit test pada `LabResultDocumentRepoTest` dan 55 unit test pada `LabResult` lulus 100%.
+Changed Files:
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultDocumentDto.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultDocumentDal.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultDocumentRepoTest.cs`
 
 ---
 
