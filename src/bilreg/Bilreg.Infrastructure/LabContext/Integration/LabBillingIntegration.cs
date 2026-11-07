@@ -214,7 +214,10 @@ public class LabBillingIntegration : ILabBillingIntegration
 
     private void ChargeAdmisiPatient(LabOrderModel order, DateTime occurredAt)
     {
-        var regKey = RegModel.Key(order.Patient.RegId);
+        var effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId)
+            ? order.ExecutionRegId
+            : order.Patient.RegId;
+        var regKey = RegModel.Key(effectiveRegId);
         var reg = LoadReg(regKey);
 
         var jaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
