@@ -4,7 +4,7 @@ Code: OC-LAB-HASIL-LAB
 Artifact: IMPLEMENTATION-PLAN
 Version: 2.0
 LastUpdated: 2026-11-06
-Status: NOT-STARTED
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -413,8 +413,8 @@ Review Status: NOT-REVIEWED
 ### P6-S10
 
 Title: Multi-Repo Backend & Middleware Targeted Regression & Acceptance Verification  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Menjalankan rangkaian verifikasi terarah pada core backend Bilreg dan middleware Oware untuk membuktikan terpenuhinya seluruh kondisi penerimaan arsitektur core (AC-COND-01 s/d AC-COND-05, dan AC-COND-07).  
 Depends On: P4-S07, P5-S09  
 Repository: `b09-bilreg-api`  
@@ -428,7 +428,23 @@ Completion Criteria:
   - Verifikasi manual memvalidasi kelengkapan komponen mandatori dan otorisasi dokter Sp.PK.
   - Catatan ekspertise patolog dan catatan nilai kritis tersimpan persisten dan tampil pada cetakan PDF resmi.
   - Status rilis tersinkronisasi akurat saat clearance tagihan `TRK-BILLING`.  
-Notes: Pintu gerbang kelulusan tahap Core Backend sebelum dilanjutkan ke tahap perancangan UI/UX dan BFF frontend.
+Notes: Pintu gerbang kelulusan tahap Core Backend sebelum dilanjutkan ke tahap perancangan UI/UX dan BFF frontend.  
+Implementation Notes:
+- Melakukan eksekusi rangkaian test suite backend `b09-bilreg-api`:
+  - `dotnet test b09-bilreg-api/src/bilreg/Bilreg.Test --filter "FullyQualifiedName~LabResult|FullyQualifiedName~LabOrderRelease"`: 94 passed, 0 failed, 0 skipped (100% lulus dalam durasi 933 ms).
+- Melakukan eksekusi rangkaian test suite middleware `a046_oware_ordermiddlewareapi`:
+  - `dotnet test a046_oware_ordermiddlewareapi/Oware.Test --filter "FullyQualifiedName~SaveResultLab|FullyQualifiedName~MapPemeriksaan|FullyQualifiedName~BilregLabResultClient"`: 23 passed, 0 failed, 0 skipped (100% lulus dalam durasi 315 ms).
+  - Regresi terarah lab Oware menyeluruh (`FullyQualifiedName~Lab`): 125 passed, 0 failed, 0 skipped (100% lulus).
+- Memverifikasi secara komprehensif seluruh Kondisi Penerimaan Arsitektur (AC-COND-01 s/d AC-COND-07):
+  - **AC-COND-01**: Endpoint `POST api/LabContext/LabResultFeature/ingest-lis` berhasil menerima payload dari Oware, direct match 1:1 terhadap `ComponentCode` perancah order, menetapkan status `Verified`, menandai `ResultSource = ExternalLis`, dan menyematkan identifier validator LIS (`lis:{id}`) serta timestamp verifikasi LIS.
+  - **AC-COND-02**: Endpoint `PATCH api/LabContext/LabResultFeature/verify` menolak eksekusi verifikasi manual jika akun pengguna bukan Dokter Sp.PK (`EX-02`), atau jika terdapat komponen uji berflag mandatori yang nilainya masih kosong (`EX-01`).
+  - **AC-COND-03**: Kolom `ExpertiseNote` tersimpan persisten pada `BILRG_LabResultDocument`, dapat diperbarui saat verifikasi Sp.PK, dipertahankan saat amandemen versi baru, dan dirender secara rapi dengan word-wrapping pada dokumen resmi PDF.
+  - **AC-COND-04**: Komponen dengan flag nilai kritis (`C`/`Critical`) dan catatan `CriticalNote` memicu banner merah lembut peringatan nilai kritis dan teks merah tebal pada PDF, tersimpan persisten pada dokumen hasil, dan tidak memblokir rilis hasil ke pasien secara klinis (*soft-warning*).
+  - **AC-COND-05**: Status rilis dokumen hasil (`Released`) tersinkronisasi secara otomatis saat rilis order penyerahan hasil `LabOrderReleaseCmd` setelah validasi kelayakan tagihan `TRK-BILLING` terpenuhi.
+  - **AC-COND-06**: Reverse lookup di Oware melalui `OWARE_MapPemeriksaan` (+ `ConsId`) berhasil memetakan `(ConsId, LabTestCode)` LIS ke `PemeriksaanId` HIS, mencatat log unmapped items ke `OWARE_ResultLog`, dan men-dispatch payload analitik secara realtime via `BilregLabResultClient`.
+  - **AC-COND-07**: Seluruh 117 unit test terarah di kedua repositori (`Bilreg.Test` 94 test dan `Oware.Test` 23 test) lulus 100% tanpa kegagalan.  
+Changed Files:
+- `b09-bilreg-api/docs/contexts/lab/OC-LAB-HASIL-LAB-IMPLEMENTATION-PLAN.md`
 
 ---
 
