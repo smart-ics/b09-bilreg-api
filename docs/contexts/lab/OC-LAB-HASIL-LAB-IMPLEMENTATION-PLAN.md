@@ -106,7 +106,7 @@ Changed Files:
 
 Title: Domain Model Evolution for Status Lifecycle, Mandatory Guard, and LIS Ingestion  
 Implementation Status: IMPLEMENTED  
-Review Status: NOT-REVIEWED  
+Review Status: GO  
 Objective: Memutakhirkan enumerasi status, agregat `LabResultDocumentModel`, dan domain logic untuk mendukung ekspertise patolog, catatan nilai kritis, guard komponen mandatori, sinkronisasi rilis, dan pembentukan dokumen dari hasil LIS.  
 Depends On: None  
 Repository: `b09-bilreg-api`  
@@ -243,8 +243,8 @@ Review Status: NOT-REVIEWED
 ### P5-S08
 
 Title: OWARE_MapPemeriksaan Schema Evolution & Reverse-Lookup Service  
-Implementation Status: IN-PROGRESS  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperkaya skema tabel OWARE_MapPemeriksaan dengan kolom ConsId untuk mendukung multi-vendor LIS, serta menyediakan repository/helper reverse-lookup (ConsId, LabTestCode) -> PemeriksaanId.  
 Depends On: None  
 Repository: `a046_oware_ordermiddlewareapi`  
@@ -253,7 +253,19 @@ Completion Criteria:
 - Pembaruan `MapPemeriksaanModel` dengan properti `ConsId`.
 - Pembaruan `IMapPemeriksaanDal` dan `MapPemeriksaanDal` untuk mendukung penyimpanan, pembacaan, dan kueri reverse-lookup berdasarkan `(ConsId, LabTestCode)`.
 - Pengujian unit di `Oware.Test` memverifikasi reverse-lookup pemetaan berhasil menemukan `PemeriksaanId` yang sesuai per `ConsId`.  
-Notes: Menjamin isolasi pemetaan antar vendor LIS tanpa bentrok kode tes.
+Notes: Menjamin isolasi pemetaan antar vendor LIS tanpa bentrok kode tes.  
+Implementation Notes:
+- Menambahkan skrip DDL `OWARE_MapPemeriksaan_Alter_ConsId.sql` yang menambahkan kolom `ConsId VARCHAR(20)` dengan default constraint `''` dan indeks `IX_OWARE_MapPemeriksaan_ConsId_LabTestCode` covering `PemeriksaanId`.
+- Memperbarui `MapPemeriksaanModel` dengan properti `ConsId` dan implementasi interface `IConsumerKey`.
+- Memperbarui `IMapPemeriksaanDal` dengan signature reverse-lookup `GetByLabTestCode(string consId, string labTestCode)`.
+- Memperbarui `MapPemeriksaanDal` pada query `INSERT`, `UPDATE`, `GetData`, `ListData`, dan menambahkan implementasi `GetByLabTestCode(consId, labTestCode)` serta perbaikan query `Delete`.
+- Menambahkan test suite `MapPemeriksaanDalTest.cs` di `Oware.Test` (5 unit test) yang memvalidasi reverse lookup, resolusi per ConsId multi-vendor, unmapped code handling, dan implementasi interface. Seluruh test lulus 100%.  
+Changed Files:
+- `a046_oware_ordermiddlewareapi/Oware.SqlDb/TablesScripts/OWARE_MapPemeriksaan_Alter_ConsId.sql`
+- `a046_oware_ordermiddlewareapi/Oware.Domain/Entities/Lab/MapPemeriksaanModel.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Application/Contracts/IRepos/IMapPemeriksaanDal.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Infrastructure/Repos/MapPemeriksaanDal.cs`
+- `a046_oware_ordermiddlewareapi/Oware.Test/MapPemeriksaanDalTest.cs`
 
 ---
 

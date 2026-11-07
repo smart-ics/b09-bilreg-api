@@ -26,7 +26,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         string amendedUserId,
         string previousVersionId,
         AuditTrailType auditTrail,
-        IEnumerable<LabResultItemModel> items)
+        IEnumerable<LabResultItemModel> items,
+        string expertiseNote = "",
+        string criticalNote = "")
     {
         ResultDocumentId = resultDocumentId;
         OrderId = orderId;
@@ -44,6 +46,8 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         PreviousVersionId = previousVersionId;
         AuditTrail = auditTrail;
         _items = items.ToList();
+        ExpertiseNote = expertiseNote ?? string.Empty;
+        CriticalNote = criticalNote ?? string.Empty;
     }
 
     public static LabResultDocumentModel Default => new(
@@ -62,7 +66,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         "",
         "",
         AuditTrailType.Default,
-        []);
+        [],
+        "",
+        "");
 
     private sealed class ResultDocumentKey : ILabResultDocumentKey
     {
@@ -88,7 +94,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         string amendedUserId,
         string previousVersionId,
         AuditTrailType auditTrail,
-        IEnumerable<LabResultItemModel> items)
+        IEnumerable<LabResultItemModel> items,
+        string expertiseNote = "",
+        string criticalNote = "")
         => new(
             resultDocumentId,
             orderId,
@@ -105,7 +113,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             amendedUserId,
             previousVersionId,
             auditTrail,
-            items);
+            items,
+            expertiseNote,
+            criticalNote);
 
     public static LabResultDocumentModel CreateInitial(string orderId, AuditInfoType audit)
     {
@@ -132,11 +142,62 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             amendedUserId: "",
             previousVersionId: "",
             auditTrail,
-            []);
+            [],
+            "",
+            "");
+    }
+
+    public static LabResultDocumentModel CreateFromLisIngestion(
+        string orderId,
+        IEnumerable<LabResultItemModel> items,
+        string validatorName,
+        DateTime validatedAt,
+        AuditInfoType audit,
+        string criticalNote = "",
+        string expertiseNote = "")
+    {
+        Guard.Against.NullOrWhiteSpace(orderId, nameof(orderId));
+        Guard.Against.Null(items, nameof(items));
+        Guard.Against.NullOrWhiteSpace(validatorName, nameof(validatorName));
+        Guard.Against.Null(audit);
+        Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
+
+        var itemList = items.ToList();
+        var at = validatedAt == default ? audit.Timestamp : validatedAt;
+        var resultDocumentId = NunaId.New(IdPrefix);
+        var auditTrail = AuditTrailType.Create(audit.UserId, audit.Timestamp);
+
+        var critNote = (criticalNote ?? string.Empty).Trim();
+        if (critNote.Length > 1000)
+            critNote = critNote[..1000];
+
+        var expNote = (expertiseNote ?? string.Empty).Trim();
+        if (expNote.Length > 2000)
+            expNote = expNote[..2000];
+
+        return new LabResultDocumentModel(
+            resultDocumentId,
+            orderId,
+            versionNo: 1,
+            isCurrentVersion: true,
+            resultSource: LabResultSourceEnum.ExternalLis,
+            resultStatus: LabResultStatusEnum.Verified,
+            recordedDate: at,
+            recordedUserId: validatorName,
+            verifiedDate: at,
+            verifiedUserId: validatorName,
+            amendmentReason: string.Empty,
+            amendedDate: EmptyDateSentinel,
+            amendedUserId: string.Empty,
+            previousVersionId: string.Empty,
+            auditTrail,
+            itemList,
+            expNote,
+            critNote);
     }
 
     /// <summary>
-    /// Creates a non-current snapshot of this verified version and a new current version in Recorded status (re-verification required).
+    /// Creates a non-current snapshot of this verified/released version and a new current version in Recorded status (re-verification required).
     /// </summary>
     public (LabResultDocumentModel RetiredVersion, LabResultDocumentModel NewVersion) AmendVerifiedToNewVersion(
         IEnumerable<LabResultItemModel> regeneratedScaffoldItems,
@@ -159,9 +220,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} bukan versi saat ini; amend tidak diperbolehkan.");
 
-        if (ResultStatus != LabResultStatusEnum.Verified)
+        if (ResultStatus != LabResultStatusEnum.Verified && ResultStatus != LabResultStatusEnum.Released)
             throw new InvalidOperationException(
-                $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; amend hanya diperbolehkan untuk hasil Verified.");
+                $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; amend hanya diperbolehkan untuk hasil Verified atau Released.");
 
         var r = reason.Trim();
         if (r.Length == 0)
@@ -182,7 +243,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             VersionNo,
             isCurrentVersion: false,
             ResultSource,
-            ResultStatus,
+            LabResultStatusEnum.Amended,
             RecordedDate,
             RecordedUserId,
             VerifiedDate,
@@ -192,7 +253,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             AmendedUserId,
             PreviousVersionId,
             retiredAudit,
-            retiredItems);
+            retiredItems,
+            ExpertiseNote,
+            CriticalNote);
 
         var newId = NunaId.New(IdPrefix);
         var newAudit = AuditTrailType.Create(amendedBy, amendedAt);
@@ -213,7 +276,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             amendedUserId: amendedBy,
             previousVersionId: ResultDocumentId,
             newAudit,
-            newItems);
+            newItems,
+            ExpertiseNote,
+            CriticalNote);
 
         return (retired, newVersion);
     }
@@ -268,7 +333,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah void; rekaman hasil tidak diperbolehkan.");
 
-        if (ResultStatus == LabResultStatusEnum.Verified)
+        if (ResultStatus == LabResultStatusEnum.Verified || ResultStatus == LabResultStatusEnum.Released)
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah diverifikasi; rekaman hasil tidak dapat diubah.");
 
@@ -336,7 +401,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah void; MarkRecorded tidak diperbolehkan.");
 
-        if (ResultStatus == LabResultStatusEnum.Verified)
+        if (ResultStatus == LabResultStatusEnum.Verified || ResultStatus == LabResultStatusEnum.Released)
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah diverifikasi; MarkRecorded tidak diperbolehkan.");
 
@@ -347,7 +412,41 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         AuditTrail.Modif(userId, at);
     }
 
-    public void Verify(string verifiedUserId, DateTime verifiedDate)
+    public void SetCriticalNote(string note)
+    {
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah void; penataan catatan kritis tidak diperbolehkan.");
+
+        if (ResultStatus == LabResultStatusEnum.Released)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah dirilis; penataan catatan kritis tidak diperbolehkan.");
+
+        var trimmed = (note ?? string.Empty).Trim();
+        if (trimmed.Length > 1000)
+            trimmed = trimmed[..1000];
+
+        CriticalNote = trimmed;
+    }
+
+    public void SetExpertiseNote(string note)
+    {
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah void; penataan catatan ekspertise tidak diperbolehkan.");
+
+        if (ResultStatus == LabResultStatusEnum.Released)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah dirilis; penataan catatan ekspertise tidak diperbolehkan.");
+
+        var trimmed = (note ?? string.Empty).Trim();
+        if (trimmed.Length > 2000)
+            trimmed = trimmed[..2000];
+
+        ExpertiseNote = trimmed;
+    }
+
+    public void Verify(string verifiedUserId, DateTime verifiedDate, string expertiseNote = "")
     {
         Guard.Against.NullOrWhiteSpace(verifiedUserId, nameof(verifiedUserId));
 
@@ -355,7 +454,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah void; verifikasi tidak diperbolehkan.");
 
-        if (ResultStatus == LabResultStatusEnum.Verified)
+        if (ResultStatus == LabResultStatusEnum.Verified || ResultStatus == LabResultStatusEnum.Released)
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah diverifikasi.");
 
@@ -363,10 +462,63 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; verifikasi hanya diperbolehkan setelah hasil direkam (Recorded).");
 
+        var missingMandatory = _items
+            .Where(i => i.IsMandatory && IsItemValueEmpty(i))
+            .ToList();
+
+        if (missingMandatory.Count > 0)
+        {
+            var names = string.Join(", ", missingMandatory.Select(m =>
+                string.IsNullOrWhiteSpace(m.ComponentName) ? m.ComponentCode : m.ComponentName));
+            throw new InvalidOperationException($"Komponen mandatori belum terisi: {names}.");
+        }
+
         ResultStatus = LabResultStatusEnum.Verified;
         VerifiedUserId = verifiedUserId;
         VerifiedDate = verifiedDate;
+
+        if (!string.IsNullOrWhiteSpace(expertiseNote))
+        {
+            var note = expertiseNote.Trim();
+            if (note.Length > 2000)
+                note = note[..2000];
+            ExpertiseNote = note;
+        }
+
         AuditTrail.Modif(verifiedUserId, verifiedDate);
+    }
+
+    public void MarkReleased(string userId, DateTime releasedAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah void; MarkReleased tidak diperbolehkan.");
+
+        if (ResultStatus == LabResultStatusEnum.Released)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah dirilis.");
+
+        if (ResultStatus != LabResultStatusEnum.Verified)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; hanya dokumen berstatus Verified yang dapat dirilis.");
+
+        var at = releasedAt == default ? DateTime.Now : releasedAt;
+        ResultStatus = LabResultStatusEnum.Released;
+        AuditTrail.Modif(userId, at);
+    }
+
+    private static bool IsItemValueEmpty(LabResultItemModel item)
+    {
+        return item.ResultType switch
+        {
+            LabResultTypeEnum.Numeric => item.NumericValue == 0 && string.IsNullOrWhiteSpace(item.TextValue),
+            LabResultTypeEnum.Text => string.IsNullOrWhiteSpace(item.TextValue),
+            LabResultTypeEnum.Option => string.IsNullOrWhiteSpace(item.OptionValue),
+            LabResultTypeEnum.Narrative => string.IsNullOrWhiteSpace(item.NarrativeValue),
+            _ => string.IsNullOrWhiteSpace(item.TextValue) && item.NumericValue == 0
+        };
     }
 
     public string ResultDocumentId { get; init; }
@@ -383,6 +535,8 @@ public class LabResultDocumentModel : ILabResultDocumentKey
     public DateTime AmendedDate { get; init; }
     public string AmendedUserId { get; init; }
     public string PreviousVersionId { get; init; }
+    public string ExpertiseNote { get; private set; }
+    public string CriticalNote { get; private set; }
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<LabResultItemModel> Items => _items;
 }
