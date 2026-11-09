@@ -138,6 +138,29 @@ public class AdmisiRanapWaitingListControllerTest
     }
 
     [Fact]
+    public async Task Reject_DelegatesToBedUsageWaitingListRejectCmd()
+    {
+        var body = new AdmRejectWaitingListBody("Bangsal penuh", "usr6");
+
+        BedUsageUseCases.WaitingListRejectCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<BedUsageUseCases.WaitingListRejectCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((req, _) => capturedCmd = (BedUsageUseCases.WaitingListRejectCmd)req)
+            .Returns(Task.CompletedTask);
+
+        var actionResult = await _sut.Reject("WTL001", body);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.WaitingListId.Should().Be("WTL001");
+        capturedCmd.Reason.Should().Be("Bangsal penuh");
+        capturedCmd.UserId.Should().Be("usr6");
+    }
+
+    [Fact]
     public async Task Reroute_ForwardsToBedUsageRerouteCmd()
     {
         var body = new WaitingListRerouteBody("B02", "Penuh", "usr6");
