@@ -407,6 +407,75 @@ public class WaitingListHandlerTest
 
     #endregion
 
+    #region REJECT COMMAND TESTS
+
+    [Fact]
+    public async Task UT12A_Reject_GivenActiveWaitingList_ThenRejectsWithReason()
+    {
+        var waitingList = CreateActiveWaitingList();
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe.From(waitingList));
+
+        WaitingListModel? saved = null;
+        _waitingListRepoMock.Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(m => saved = m);
+
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        await handler.Handle(
+            new WaitingListRejectCmd(waitingList.WaitingListId, "Kamar penuh / tidak ada bed isolasi", "user_bangsal"),
+            CancellationToken.None);
+
+        saved.Should().NotBeNull();
+        saved!.WaitingListStatus.Should().Be(WaitingListStatusEnum.Rejected);
+        saved.RejectReason.Should().Be("Kamar penuh / tidak ada bed isolasi");
+        saved.AuditTrail.Modified.UserId.Should().Be("user_bangsal");
+    }
+
+    [Theory]
+    [InlineData("", "Alasan", "user1")]
+    [InlineData("   ", "Alasan", "user1")]
+    [InlineData("WTL01", "", "user1")]
+    [InlineData("WTL01", "   ", "user1")]
+    [InlineData("WTL01", "Alasan", "")]
+    [InlineData("WTL01", "Alasan", "   ")]
+    public async Task UT12B_Reject_GivenInvalidGuardArgs_ThenThrowsArgumentException(
+        string waitingListId,
+        string reason,
+        string userId)
+    {
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new WaitingListRejectCmd(waitingListId, reason, userId),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task UT12C_Reject_GivenNonExistingWaitingList_ThenThrowsKeyNotFoundException()
+    {
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new WaitingListRejectCmd("WTL999", "Alasan", "user1"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    #endregion
+
     #region REROUTE COMMAND TESTS
 
     [Fact]

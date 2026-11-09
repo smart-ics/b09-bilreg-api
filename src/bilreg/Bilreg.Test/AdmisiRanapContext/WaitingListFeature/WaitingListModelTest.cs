@@ -147,4 +147,10 @@ public class WaitingListModelTest
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void GivenRejectedEnum_ValueIsFive()
+    {
+        ((int)WaitingListStatusEnum.Rejected).Should().Be(5);
+    }
 }
