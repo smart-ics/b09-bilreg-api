@@ -1,6 +1,7 @@
 using Bilreg.Api.Controllers.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -137,6 +138,64 @@ public class WaitingListControllerTest
         capturedCmd!.WaitingListId.Should().Be("WTL001");
         capturedCmd.Reason.Should().Be("Pasien menolak dirawat");
         capturedCmd.UserId.Should().Be("user4");
+    }
+
+    [Fact]
+    public async Task Reject_GivenValidBody_ThenSendsRejectCmdAndPublishesSignalRAndReturnsDone()
+    {
+        var eventPublisherMock = new Mock<IWardCockpitEventPublisher>();
+        var sut = new WaitingListController(_mediatorMock.Object, eventPublisherMock.Object);
+
+        var body = new WaitingListRejectBody("Bangsal penuh", "user_bangsal");
+
+        WaitingListRejectCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<WaitingListRejectCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((req, _) => capturedCmd = (WaitingListRejectCmd)req)
+            .Returns(Task.CompletedTask);
+
+        var getResponse = new WaitingListGetResponse(
+            WaitingListId: "WTL001",
+            WaitingListStatus: WaitingListStatusEnum.Rejected,
+            RegId: "REG01",
+            Pasien: new PasienReff("P01", "Pasien A", new DateOnly(1990, 1, 1), "L"),
+            KelasRawat: new KelasReff("K01", "Kelas 1"),
+            Bangsal: new BangsalReff("B01", "Bangsal Melati"),
+            ArrivalSourceType: ArrivalSourceTypeEnum.Igd,
+            ReferringUnit: new LayananReff("U01", "IGD"),
+            ReferringDoctor: new DokterReff("D01", "dr. Budi"),
+            ClinicalUrgency: ClinicalUrgencyEnum.Routine,
+            SpecialRequirements: "",
+            PlannedBed: new BedReff("-", "-", false),
+            CancellationReason: "",
+            RerouteReason: "",
+            PreviousWaitListId: "",
+            PlacedBedId: "",
+            PlacedPakaiBedId: "",
+            Priority: 0,
+            CrtDate: new DateTime(2026, 10, 17, 8, 0, 0),
+            CrtUser: "admin",
+            UpdDate: new DateTime(3000, 1, 1),
+            UpdUser: "",
+            VodDate: new DateTime(3000, 1, 1),
+            VodUser: "");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WaitingListGetQuery>(q => q.WaitingListId == "WTL001"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(getResponse);
+
+        var actionResult = await sut.Reject("WTL001", body);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.WaitingListId.Should().Be("WTL001");
+        capturedCmd.Reason.Should().Be("Bangsal penuh");
+        capturedCmd.UserId.Should().Be("user_bangsal");
+
+        eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("B01", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

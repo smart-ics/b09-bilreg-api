@@ -66,6 +66,14 @@ public class WaitingListController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost("{id}/reject")]
+    public async Task<IActionResult> Reject(string id, [FromBody] AdmRejectWaitingListBody body)
+    {
+        var cmd = new BedUsageUseCases.WaitingListRejectCmd(id, body.Reason, body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost("{id}/reroute")]
     public async Task<IActionResult> Reroute(string id, [FromBody] WaitingListRerouteBody body)
     {
@@ -121,3 +129,5 @@ public record AdmUpdateWaitingListBody(
     string UserId);
 
 public record AdmCloseWaitingListBody(string UserId);
+
+public record AdmRejectWaitingListBody(string Reason, string UserId);

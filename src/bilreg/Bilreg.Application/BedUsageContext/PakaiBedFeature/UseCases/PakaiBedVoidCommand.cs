@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
@@ -36,6 +37,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         private readonly IBangsalRepo? _bangsalRepo;
         private readonly IBedOperationalRepo? _bedOperationalRepo;
         private readonly IWardCockpitEventPublisher? _eventPublisher;
+        private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
 
         public PakaiBedDeleteCommandHandler(
             IPakaiBedRepo pakaiBedRepo, 
@@ -49,7 +51,8 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             IBedRepo? bedRepo = null,
             IBangsalRepo? bangsalRepo = null,
             IBedOperationalRepo? bedOperationalRepo = null,
-            IWardCockpitEventPublisher? eventPublisher = null)
+            IWardCockpitEventPublisher? eventPublisher = null,
+            IEmr20AntrianRanapGateway? emr20Gateway = null)
         {
             _pakaiBedRepo = pakaiBedRepo;
             _auditRepo = auditRepo;
@@ -63,6 +66,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             _bangsalRepo = bangsalRepo;
             _bedOperationalRepo = bedOperationalRepo;
             _eventPublisher = eventPublisher;
+            _emr20Gateway = emr20Gateway;
         }
 
         public async Task Handle(PakaiBedVoidCommand request, CancellationToken cancellationToken)
@@ -94,6 +98,11 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             // 3. Update Domain Model state and persist
             saved.Void(request.UserId, occurredAt);
             _pakaiBedRepo.SaveChanges(saved);
+
+            if (_emr20Gateway != null)
+            {
+                await _emr20Gateway.DischargeRegRanapAsync(saved.Reg.RegId, isGabung: false, cancellationToken);
+            }
 
             // 4. Atomic Void on Bed & Room Charge in DAL
             if (_pakaiBedDal != null)
