@@ -13,6 +13,7 @@ public interface IInpatientOrderRepo :
     IEnumerable<InpatientOrderModel> ListActive();
     IEnumerable<InpatientOrderModel> ListData(InpatientOrderListFilter filter);
     MayBe<InpatientOrderModel> GetByExternalReference(string externalReferenceId, string externalSystemSource);
+    IEnumerable<InpatientOrderAuditRecord> ListAudits(string inpatientOrderId);
 }
 
 public record InpatientOrderListFilter(
@@ -20,3 +21,11 @@ public record InpatientOrderListFilter(
     OrderSourceEnum? OrderSource = null,
     DateTime? PlannedFrom = null,
     DateTime? PlannedTo = null);
+
+public record InpatientOrderAuditRecord(
+    string AuditId,
+    DateTime EventTime,
+    string UserId,
+    string ActionType,
+    string Reason,
+    string OriginalDataJson);
