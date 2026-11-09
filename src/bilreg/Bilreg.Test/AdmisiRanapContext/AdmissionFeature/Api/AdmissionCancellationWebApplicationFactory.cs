@@ -83,6 +83,7 @@ public sealed class AdmissionCancellationApiHarness
         Repo.Setup(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Repo.Setup(x => x.CompleteLedger(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Eligibility.Setup(x => x.HasBillingItems(It.IsAny<string>())).Returns(false);
+        Eligibility.Setup(x => x.HasActiveBedPlacement(It.IsAny<string>())).Returns(false);
     }
 
     public static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new(

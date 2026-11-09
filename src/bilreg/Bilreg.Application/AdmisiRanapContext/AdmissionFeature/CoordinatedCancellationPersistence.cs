@@ -68,6 +68,7 @@ public sealed record CoordinatedCancellationAuditSnapshots(
 public static class CoordinatedCancellationErrorCode
 {
     public const string RegistrationHasBillingItems = "REGISTRATION_HAS_BILLING_ITEMS";
+    public const string RegistrationHasActiveBedPlacement = "RegistrationHasActiveBedPlacement";
     public const string ConcurrencyConflict = "CONCURRENCY_CONFLICT";
     public const string SourceStateMismatch = "SOURCE_STATE_MISMATCH";
     public const string RequestIdReused = "REQUEST_ID_REUSED";

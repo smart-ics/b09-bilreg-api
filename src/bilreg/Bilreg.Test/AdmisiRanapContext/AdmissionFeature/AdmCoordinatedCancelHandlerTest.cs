@@ -92,6 +92,26 @@ public class AdmCoordinatedCancelHandlerTest
     }
 
     [Fact]
+    public async Task ActiveBedPlacement_RejectsBeforeAnyMutation()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(State());
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        eligibility.Setup(x => x.HasActiveBedPlacement("RG00000001")).Returns(true);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
+
+        var act = () => sut.Handle(Command(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<CoordinatedCancellationException>();
+        ex.Which.Code.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement);
+        ex.Which.Message.Should().Be("Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
+        repo.Verify(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
     public async Task SameCompletedRequest_ReplaysStoredResponseWithoutMutations()
     {
         var response = new AdmCoordinatedCancelResponse("RG00000001", AdmissionStatusEnum.Cancelled, true, false, null, null, "REQ1");

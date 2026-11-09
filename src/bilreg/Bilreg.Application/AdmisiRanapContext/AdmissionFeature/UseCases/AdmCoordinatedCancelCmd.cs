@@ -84,6 +84,10 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         if (_eligibility.HasBillingItems(normalized.RegId))
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.RegistrationHasBillingItems,
                 "Registration cancellation is not eligible.");
+        if (_eligibility.HasActiveBedPlacement(normalized.RegId))
+            throw new CoordinatedCancellationException(
+                CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement,
+                "Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
 
         if (state.WaitingListId is not null) Ensure(_repo.CancelWaitingList(state, normalized.UserId, occurredAt));
         if (state.ActiveDoctorAssignments > 0 && _repo.EndDoctorAssignments(normalized.RegId, DateOnly.FromDateTime(occurredAt)) < 1)
