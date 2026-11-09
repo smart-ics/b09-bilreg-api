@@ -33,6 +33,7 @@ public class BookingCreateSoftDuplicateHandlerTest
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IJourneyCandidateFinder> _candidateFinder = new();
     private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
+    private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
     private readonly BookingCreateHandler _sut;
 
     public BookingCreateSoftDuplicateHandlerTest()
@@ -50,7 +51,8 @@ public class BookingCreateSoftDuplicateHandlerTest
             _queueAdapter.Object,
             _featureResolver.Object,
             _candidateFinder.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            _clinicQueueRefreshPublisher.Object);
     }
 
     [Fact]
@@ -77,6 +79,9 @@ public class BookingCreateSoftDuplicateHandlerTest
         result.Candidates.Should().HaveCount(1);
         _bookingRepo.Verify(x => x.SaveChanges(It.IsAny<BookingModel>()), Times.Never);
         _emrQueueRepo.Verify(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()), Times.Never);
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -105,6 +110,9 @@ public class BookingCreateSoftDuplicateHandlerTest
         _candidateFinder.Verify(
             x => x.Find(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()),
             Times.Never);
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint("LY1", "DR1", It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -138,6 +146,9 @@ public class BookingCreateSoftDuplicateHandlerTest
         _candidateFinder.Verify(
             x => x.Find(It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>()),
             Times.Never);
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint("LY1", "DR1", It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private void SetupCreatePath()

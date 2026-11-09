@@ -44,6 +44,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IJourneyCandidateFinder _candidateFinder;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
@@ -53,7 +54,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
         IJourneyCandidateFinder candidateFinder,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -67,9 +69,10 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _featureResolver = featureResolver;
         _candidateFinder = candidateFinder;
         _tglJamProvider = tglJamProvider;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
 
-    public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
+    public async Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         //  GUARD
@@ -96,8 +99,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             var candidates = _candidateFinder.Find(person.PersonName, person.TglLahir, tglBerobat);
             if (candidates.Count > 0)
             {
-                return Task.FromResult(new BookingCreateResponse(
-                    "-", 0, true, false, "-", candidates));
+                return new BookingCreateResponse(
+                    "-", 0, true, false, "-", candidates);
             }
         }
 
@@ -160,7 +163,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
                 []);
         }
 
-        return Task.FromResult(response);
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(booking.Layanan.LayananId, booking.Dokter.PpaId, cancellationToken);
+
+        return response;
     }
 
     private PasienTrackerModel ResolveTracker(
