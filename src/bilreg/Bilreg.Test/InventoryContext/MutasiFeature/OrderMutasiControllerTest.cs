@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bilreg.Api.Controllers.InventoryContext.MutasiFeature;
 using Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -18,6 +19,63 @@ public class OrderMutasiControllerTest
     public OrderMutasiControllerTest()
     {
         _sut = new OrderMutasiController(_mediatorMock.Object);
+    }
+
+    [Fact]
+    public void AddItem_DeserializeFromJson_WithoutOrderMutasiId_MapsCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+            "brgId": "BRG01",
+            "qty": 5,
+            "satuanId": "SAT01",
+            "layananOrderId": "LAY01",
+            "userId": "USR01"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Act
+        var result = JsonSerializer.Deserialize<OrderMutasiAddItemCommand>(json, options);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.BrgId.Should().Be("BRG01");
+        result.Qty.Should().Be(5);
+        result.SatuanId.Should().Be("SAT01");
+        result.LayananOrderId.Should().Be("LAY01");
+        result.UserId.Should().Be("USR01");
+        result.OrderMutasiId.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddItem_DeserializeFromJson_WithOrderMutasiId_MapsCorrectly()
+    {
+        // Arrange
+        var json = """
+        {
+            "orderMutasiId": "ORD001",
+            "brgId": "BRG02",
+            "qty": 12.5,
+            "satuanId": "SAT02",
+            "layananOrderId": "LAY02",
+            "userId": "USR02"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Act
+        var result = JsonSerializer.Deserialize<OrderMutasiAddItemCommand>(json, options);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.OrderMutasiId.Should().Be("ORD001");
+        result.BrgId.Should().Be("BRG02");
+        result.Qty.Should().Be(12.5m);
+        result.SatuanId.Should().Be("SAT02");
+        result.LayananOrderId.Should().Be("LAY02");
+        result.UserId.Should().Be("USR02");
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.BrgContext.BrgFeature;
@@ -8,6 +9,7 @@ using MediatR;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
+[method: JsonConstructor]
 public record OrderMutasiAddItemCommand(
     string BrgId,
     decimal Qty,
