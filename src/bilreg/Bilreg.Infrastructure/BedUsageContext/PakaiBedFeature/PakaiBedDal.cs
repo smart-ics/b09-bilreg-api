@@ -59,15 +59,18 @@ public class PakaiBedDal : IPakaiBedDal
     public void Insert(PakaiBedDto dto)
     {
         const string sql = """
-            -- 1. Check rooming-in rule matching VB6 clsTrsPakaiBed.cls (line 918)
+            -- 1. Check rooming-in rule via Physical Bed Pairing Rule (TD-02)
             DECLARE @isRoomingIn BIT = 0;
             IF EXISTS (
-                SELECT 1
-                FROM ta_kamar_tipe kt
-                INNER JOIN ta_registrasi reg ON reg.fs_kd_reg = @fs_kd_reg
-                WHERE kt.fs_kd_kamar_tipe = @fs_kd_kamar_tipe
-                  AND kt.fb_gabung = 1
-                  AND ISNULL(reg.fs_reg_ibu, '') <> ''
+                SELECT 1 
+                FROM ta_registrasi reg
+                INNER JOIN ta_trs_bed trs_ibu ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
+                WHERE reg.fs_kd_reg = @fs_kd_reg
+                  AND trs_ibu.fs_kd_bed = @fs_kd_bed
+                  AND (trs_ibu.fd_tgl_out = '' OR trs_ibu.fd_tgl_out = '3000-01-01' OR trs_ibu.fd_tgl_out IS NULL)
+                  AND (trs_ibu.fd_tgl_void = '' OR trs_ibu.fd_tgl_void = '3000-01-01' OR trs_ibu.fd_tgl_void IS NULL)
+                  AND trs_ibu.fn_tarif > 0
+                  AND @fn_tarif = 0
             )
             BEGIN
                 SET @isRoomingIn = 1;
@@ -255,14 +258,18 @@ public class PakaiBedDal : IPakaiBedDal
             else
             {
                 const string sqlOccupyBed = """
+                    -- Check rooming-in rule via Physical Bed Pairing Rule (TD-02)
                     DECLARE @isRoomingIn BIT = 0;
                     IF EXISTS (
-                        SELECT 1
-                        FROM ta_kamar_tipe kt
-                        INNER JOIN ta_registrasi reg ON reg.fs_kd_reg = @fs_kd_reg
-                        WHERE kt.fs_kd_kamar_tipe = @fs_kd_kamar_tipe
-                          AND kt.fb_gabung = 1
-                          AND ISNULL(reg.fs_reg_ibu, '') <> ''
+                        SELECT 1 
+                        FROM ta_registrasi reg
+                        INNER JOIN ta_trs_bed trs_ibu ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
+                        WHERE reg.fs_kd_reg = @fs_kd_reg
+                          AND trs_ibu.fs_kd_bed = @fs_kd_bed
+                          AND (trs_ibu.fd_tgl_out = '' OR trs_ibu.fd_tgl_out = '3000-01-01' OR trs_ibu.fd_tgl_out IS NULL)
+                          AND (trs_ibu.fd_tgl_void = '' OR trs_ibu.fd_tgl_void = '3000-01-01' OR trs_ibu.fd_tgl_void IS NULL)
+                          AND trs_ibu.fn_tarif > 0
+                          AND @fn_tarif = 0
                     )
                     BEGIN
                         SET @isRoomingIn = 1;
@@ -611,51 +618,7 @@ public class PakaiBedDal : IPakaiBedDal
                   )
               );
 
-            -- 5. Normalisasi ta_registrasi for rooming-in pairs (TD-01)
-            IF EXISTS (SELECT 1 FROM #RoomingInPairs)
-            BEGIN
-                IF OBJECT_ID('ta_registrasi', 'U') IS NOT NULL
-                BEGIN
-                    -- 5a. Normalisasi Registrasi Ibu: fs_kd_jenis_inap = '2' (Obstetri)
-                    IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL
-                    BEGIN
-                        UPDATE r
-                        SET r.fs_kd_jenis_inap = '2'
-                        FROM ta_registrasi r
-                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.MotherRegId
-                        WHERE (r.fs_kd_jenis_inap <> '2' OR r.fs_kd_jenis_inap IS NULL);
-                    END
-
-                    -- 5b. Normalisasi Registrasi Bayi: fs_kd_jenis_inap = '3' (Perinatal) dan fs_reg_ibu = MotherRegId
-                    IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL AND COL_LENGTH('ta_registrasi', 'fs_reg_ibu') IS NOT NULL
-                    BEGIN
-                        UPDATE r
-                        SET r.fs_kd_jenis_inap = '3',
-                            r.fs_reg_ibu = p.MotherRegId
-                        FROM ta_registrasi r
-                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
-                        WHERE (r.fs_kd_jenis_inap <> '3' OR r.fs_kd_jenis_inap IS NULL OR ISNULL(r.fs_reg_ibu, '') = '' OR r.fs_reg_ibu <> p.MotherRegId);
-                    END
-                    ELSE IF COL_LENGTH('ta_registrasi', 'fs_kd_jenis_inap') IS NOT NULL
-                    BEGIN
-                        UPDATE r
-                        SET r.fs_kd_jenis_inap = '3'
-                        FROM ta_registrasi r
-                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
-                        WHERE (r.fs_kd_jenis_inap <> '3' OR r.fs_kd_jenis_inap IS NULL);
-                    END
-                    ELSE IF COL_LENGTH('ta_registrasi', 'fs_reg_ibu') IS NOT NULL
-                    BEGIN
-                        UPDATE r
-                        SET r.fs_reg_ibu = p.MotherRegId
-                        FROM ta_registrasi r
-                        INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId
-                        WHERE (ISNULL(r.fs_reg_ibu, '') = '' OR r.fs_reg_ibu <> p.MotherRegId);
-                    END
-                END
-            END
-
-            -- 6. Dual Waiting List Reversal (TD-02)
+            -- 5. Dual Waiting List Reversal (TD-02)
             IF OBJECT_ID('BILRG_BedWaitingList', 'U') IS NOT NULL
             BEGIN
                 DECLARE @clearCols NVARCHAR(MAX) = N'';
@@ -699,7 +662,7 @@ public class PakaiBedDal : IPakaiBedDal
                 EXEC sp_executesql @sqlRevertWl, N'@userId VARCHAR(50), @now DATETIME, @pakaiBedId VARCHAR(50)', @userId, @now, @pakaiBedId;
             END
 
-            -- 7. Cascade void on ta_trs_bed for rooming-in babies on the same bed
+            -- 6. Cascade void on ta_trs_bed for rooming-in babies on the same bed
             UPDATE baby
             SET fd_tgl_void = @nowDate,
                 fs_jam_void = @nowTime,
@@ -711,7 +674,7 @@ public class PakaiBedDal : IPakaiBedDal
               AND baby.fs_kd_trs <> mother.fs_kd_trs
               AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
 
-            -- 8. Return affected bangsal list & cleanup
+            -- 7. Return affected bangsal list & cleanup
             SELECT DISTINCT BangsalId FROM #RevertedBangsals WHERE ISNULL(BangsalId, '') <> '';
             DROP TABLE #RevertedBangsals;
             DROP TABLE #RoomingInPairs;
