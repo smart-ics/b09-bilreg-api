@@ -77,4 +77,18 @@ public class LabResultScaffoldServiceTest
         captures[0].NumericValue.Should().Be(13.2m);
         captures[0].ComponentName.Should().Be("Hemoglobin");
     }
+
+    [Fact]
+    public void BuildCaptures_ResolvesByComponentCodeWhenComponentIdMatchesCode()
+    {
+        var order = LabOrderTestSupport.CreateEmrOrder();
+        var scaffold = _sut.BuildFromOrder(order);
+
+        var captures = _sut.BuildCaptures(scaffold, [new LabResultRecordValueDto("HB", "14.5")]);
+
+        captures.Should().ContainSingle();
+        captures[0].ComponentId.Should().Be("MLC0001");
+        captures[0].ComponentCode.Should().Be("HB");
+        captures[0].NumericValue.Should().Be(14.5m);
+    }
 }

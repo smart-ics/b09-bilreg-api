@@ -60,6 +60,9 @@ public class LabResultScaffoldService : ILabResultScaffoldService
             throw new ArgumentException("At least one result value is required.", nameof(values));
 
         var scaffoldById = scaffold.ToDictionary(x => x.ComponentId, StringComparer.Ordinal);
+        var scaffoldByCode = scaffold
+            .Where(x => !string.IsNullOrWhiteSpace(x.ComponentCode))
+            .ToLookup(x => x.ComponentCode, StringComparer.OrdinalIgnoreCase);
         var valueById = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var entry in valueList)
@@ -67,14 +70,29 @@ public class LabResultScaffoldService : ILabResultScaffoldService
             if (string.IsNullOrWhiteSpace(entry.ComponentId))
                 throw new ArgumentException("ComponentId is required on each value line.", nameof(values));
 
-            var id = entry.ComponentId.Trim();
-            if (!scaffoldById.ContainsKey(id))
-                throw new InvalidOperationException(
-                    $"LAB_RESULT_UNKNOWN_LINE: ComponentId '{id}' is not on the server scaffold.");
+            var key = entry.ComponentId.Trim();
+            string resolvedId;
+            if (scaffoldById.ContainsKey(key))
+            {
+                resolvedId = key;
+            }
+            else
+            {
+                var match = scaffoldByCode[key].FirstOrDefault();
+                if (match is not null)
+                {
+                    resolvedId = match.ComponentId;
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"LAB_RESULT_UNKNOWN_LINE: ComponentId '{key}' is not on the server scaffold.");
+                }
+            }
 
-            if (!valueById.TryAdd(id, entry.Value ?? string.Empty))
+            if (!valueById.TryAdd(resolvedId, entry.Value ?? string.Empty))
                 throw new InvalidOperationException(
-                    $"LAB_RESULT_EXTRA_LINE: Duplicate value for ComponentId '{id}'.");
+                    $"LAB_RESULT_EXTRA_LINE: Duplicate value for ComponentId '{resolvedId}'.");
         }
 
         if (valueList.Count > scaffold.Count)
