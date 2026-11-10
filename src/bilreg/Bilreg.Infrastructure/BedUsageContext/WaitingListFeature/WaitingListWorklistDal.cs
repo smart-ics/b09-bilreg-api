@@ -32,26 +32,27 @@ public class WaitingListWorklistDal : IWaitingListWorklistDal
                 aa.KelasName,
                 aa.BangsalId,
                 aa.BangsalName,
-                aa.ArrivalSourceType,
-                aa.ReferringUnitId,
-                aa.ReferringUnitName,
-                aa.ReferringDoctorId,
-                aa.ReferringDoctorName,
-                aa.ClinicalUrgency,
-                aa.SpecialRequirements,
-                aa.PlannedBedId,
-                aa.PlannedBedName,
-                aa.PreviousWaitListId,
+                ISNULL(aa.EntrySource, 0) AS ArrivalSourceType,
+                ISNULL(aa.UnitPengirimId, '') AS ReferringUnitId,
+                ISNULL(aa.UnitPengirimName, '') AS ReferringUnitName,
+                ISNULL(aa.DpjpId, '') AS ReferringDoctorId,
+                ISNULL(aa.DpjpName, '') AS ReferringDoctorName,
+                ISNULL(aa.UrgencyLevel, 0) AS ClinicalUrgency,
+                ISNULL(aa.SpecialNeeds, '') AS SpecialRequirements,
+                ISNULL(aa.AdvisoryBedId, '') AS PlannedBedId,
+                ISNULL(aa.AdvisoryBedName, '') AS PlannedBedName,
+                '' AS PreviousWaitListId,
                 aa.CrtUser,
                 aa.CrtDate
             FROM BILRG_BedWaitingList aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
-            WHERE BangsalId = @BangsalId AND WaitingListStatus IN (0, 1)
-            ORDER BY ClinicalUrgency DESC, CrtDate ASC
+            WHERE aa.BangsalId = @BangsalId AND aa.WaitingListStatus IN (0, 1) AND aa.VodDate = @VodDate
+            ORDER BY aa.UrgencyLevel DESC, aa.CrtDate ASC
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@BangsalId", bangsalId?.Trim() ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var rows = conn.Read<WaitingListWorklistView>(sql, dp);
@@ -60,6 +61,7 @@ public class WaitingListWorklistDal : IWaitingListWorklistDal
 
     public IEnumerable<WaitingListWorklistView> List(WaitingListWorklistFilter filter)
     {
+        filter ??= new WaitingListWorklistFilter();
         var sql = """
             SELECT
                 aa.WaitingListId,
@@ -74,16 +76,16 @@ public class WaitingListWorklistDal : IWaitingListWorklistDal
                 aa.KelasName,
                 aa.BangsalId,
                 aa.BangsalName,
-                aa.ArrivalSourceType,
-                aa.ReferringUnitId,
-                aa.ReferringUnitName,
-                aa.ReferringDoctorId,
-                aa.ReferringDoctorName,
-                aa.ClinicalUrgency,
-                aa.SpecialRequirements,
-                aa.PlannedBedId,
-                aa.PlannedBedName,
-                aa.PreviousWaitListId,
+                ISNULL(aa.EntrySource, 0) AS ArrivalSourceType,
+                ISNULL(aa.UnitPengirimId, '') AS ReferringUnitId,
+                ISNULL(aa.UnitPengirimName, '') AS ReferringUnitName,
+                ISNULL(aa.DpjpId, '') AS ReferringDoctorId,
+                ISNULL(aa.DpjpName, '') AS ReferringDoctorName,
+                ISNULL(aa.UrgencyLevel, 0) AS ClinicalUrgency,
+                ISNULL(aa.SpecialNeeds, '') AS SpecialRequirements,
+                ISNULL(aa.AdvisoryBedId, '') AS PlannedBedId,
+                ISNULL(aa.AdvisoryBedName, '') AS PlannedBedName,
+                '' AS PreviousWaitListId,
                 aa.CrtUser,
                 aa.CrtDate
             FROM BILRG_BedWaitingList aa
