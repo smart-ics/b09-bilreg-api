@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +35,37 @@ public class ScheduleOpController : ControllerBase
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
+    }
+
+    [HttpPost("SaveWorkbench")]
+    public async Task<IActionResult> SaveWorkbench(OkScheduleOpSaveWorkbenchCommand cmd)
+    {
+        try
+        {
+            var userId = GetUserId();
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                cmd = cmd with { UserId = userId };
+            }
+            var response = await _mediator.Send(cmd);
+            return Ok(new JSendOk(response));
+        }
+        catch (ScheduleCollisionException ex)
+        {
+            return Conflict(new JSendFail(ex.Message));
+        }
+        catch (ScheduleWarningException ex)
+        {
+            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new JSendFail(ex.Message));
+        }
     }
 
     [HttpPatch]
@@ -75,4 +108,22 @@ public class ScheduleOpController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    private string GetUserId()
+    {
+        var user = HttpContext?.User;
+        if (user == null)
+            return string.Empty;
+
+        return user.FindFirstValue("UserId")
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("pegId")
+            ?? user.FindFirstValue("sub")
+            ?? user.FindFirstValue(ClaimTypes.Name)
+            ?? user.FindFirstValue(ClaimTypes.Email)
+            ?? user.Identity?.Name
+            ?? string.Empty;
+    }
 }
+
+public record JSendFail(object Data, string Status = "fail");

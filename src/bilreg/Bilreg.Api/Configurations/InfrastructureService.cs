@@ -223,6 +223,10 @@ public static class InfrastructureService
             .AddScoped<Bilreg.Application.BedUsageContext.PakaiBedFeature.IPakaiBedBillingLockChecker, Bilreg.Infrastructure.BedUsageContext.PakaiBedFeature.PakaiBedBillingLockChecker>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBedOccupancyQuery, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BedOccupancyQuery>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeTarifService, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeTarifService>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IOrderOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IOrderOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
