@@ -978,7 +978,7 @@ public sealed partial class JourneyDal : IJourneyDal
 
     private static string BuildNonStageWhere(JourneyListFilter filter) =>
         """
-        (@ScopeActive = 0 OR j.SqlStage NOT IN (5, 6))
+        (@ScopeActive = 0 OR j.SqlStage NOT IN (4, 5, 6))
           AND (@HasDokter = 0 OR j.DokterId = @DokterId)
           AND (@HasBangsal = 0 OR j.BangsalId = @BangsalId)
           AND (@HasKelas = 0 OR j.KelasId = @KelasId)
