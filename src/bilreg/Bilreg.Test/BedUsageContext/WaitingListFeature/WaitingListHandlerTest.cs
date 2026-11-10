@@ -130,12 +130,12 @@ public class WaitingListHandlerTest
     }
 
     [Fact]
-    public async Task UT03_Create_GivenActiveQueueAlreadyExists_ThenThrowsInvalidOperationException()
+    public async Task UT03_Create_GivenActiveQueueAlreadyExists_ThenReturnsExistingWaitingListIdIdempotently()
     {
         var admission = AdmissionModel.Admit(_defaultPasien, KelasDkType.Default, _defaultBangsal.ToReff(), null, null, "user1");
-        _admissionRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
-            .Returns(MayBe.From(admission));
+        var existing = CreateActiveWaitingList() with { WaitingListId = "WTL-EXISTING" };
         _waitingListRepoMock.Setup(x => x.HasActiveByRegId(admission.RegId)).Returns(true);
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId(admission.RegId)).Returns(MayBe.From(existing));
 
         var handler = new WaitingListCreateHandler(
             _waitingListRepoMock.Object,
@@ -145,12 +145,12 @@ public class WaitingListHandlerTest
             _bedRepoMock.Object,
             TestTglJamProvider.Instance);
 
-        var act = async () => await handler.Handle(
+        var response = await handler.Handle(
             new WaitingListCreateCmd(admission.RegId, "K01", "B01", UserId: "user1"),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sudah memiliki Waiting List aktif*");
+        response.Should().NotBeNull();
+        response.WaitingListId.Should().Be("WTL-EXISTING");
         _waitingListRepoMock.Verify(x => x.Save(It.IsAny<WaitingListModel>()), Times.Never);
     }
 
@@ -586,25 +586,44 @@ public class WaitingListHandlerTest
     #region GET BY REG QUERY TESTS
 
     [Fact]
-    public async Task UT17_GetByReg_GivenExistingRegId_ThenReturnsQueueHistory()
+    public async Task UT17_GetByReg_GivenActiveQueueExists_ThenReturnsActiveEntry()
     {
-        var entry1 = CreateActiveWaitingList() with { WaitingListId = "WTL01" };
-        var entry2 = CreateActiveWaitingList() with { WaitingListId = "WTL02" };
+        var active = CreateActiveWaitingList() with { WaitingListId = "WTL-ACTIVE" };
 
-        _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
-            .Returns(new[] { entry1, entry2 });
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe.From(active));
 
         var handler = new WaitingListGetByRegHandler(_waitingListRepoMock.Object);
 
         var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
 
-        response.Should().HaveCount(2);
-        response.Select(x => x.WaitingListId).Should().ContainInOrder("WTL01", "WTL02");
+        response.Should().NotBeNull();
+        response!.WaitingListId.Should().Be("WTL-ACTIVE");
     }
 
     [Fact]
-    public async Task UT18_GetByReg_GivenNoEntries_ThenReturnsEmptyList()
+    public async Task UT18_GetByReg_GivenNoActiveQueue_WhenHistoryExists_ThenReturnsLatestEntry()
     {
+        var historical = CreateActiveWaitingList() with { WaitingListId = "WTL-HISTORICAL" };
+
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe<WaitingListModel>.None);
+        _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
+            .Returns(new[] { historical });
+
+        var handler = new WaitingListGetByRegHandler(_waitingListRepoMock.Object);
+
+        var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response!.WaitingListId.Should().Be("WTL-HISTORICAL");
+    }
+
+    [Fact]
+    public async Task UT18B_GetByReg_GivenNoEntries_ThenReturnsNull()
+    {
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe<WaitingListModel>.None);
         _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
             .Returns(Enumerable.Empty<WaitingListModel>());
 
@@ -612,7 +631,7 @@ public class WaitingListHandlerTest
 
         var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
 
-        response.Should().BeEmpty();
+        response.Should().BeNull();
     }
 
     #endregion
@@ -647,6 +666,50 @@ public class WaitingListHandlerTest
         var act = async () => await handler.Handle(new WaitingListWorklistQuery(""), CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    #endregion
+
+    #region LIST QUERY TESTS
+
+    [Fact]
+    public async Task UT21_List_GivenFilter_ThenReturnsEnvelopeWithItems()
+    {
+        var items = new List<WaitingListWorklistView>
+        {
+            new("WTL01", "RG001", 0, 1, "P01", "Pasien A", "L", "1990-01-01", "K01", "Kelas 1", "B01", "Bangsal A", 0, "IGD", "IGD", "DOC1", "dr. Budi", 2, "ISOLASI", "", "", "", "user1", DateTime.Now)
+        };
+
+        _worklistDalMock.Setup(x => x.List(It.Is<WaitingListWorklistFilter>(f => f.BangsalId == "B01" && f.WaitingListStatus == 0)))
+            .Returns(items);
+
+        var handler = new WaitingListListHandler(_worklistDalMock.Object);
+
+        var response = await handler.Handle(new WaitingListListQuery("B01", 0), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Items.Should().HaveCount(1);
+        response.Items.First().WaitingListId.Should().Be("WTL01");
+    }
+
+    [Fact]
+    public async Task UT22_List_GivenNullFilter_ThenPassesNullFilterToDalAndReturnsEnvelope()
+    {
+        var items = new List<WaitingListWorklistView>
+        {
+            new("WTL01", "RG001", 0, 1, "P01", "Pasien A", "L", "1990-01-01", "K01", "Kelas 1", "B01", "Bangsal A", 0, "IGD", "IGD", "DOC1", "dr. Budi", 2, "ISOLASI", "", "", "", "user1", DateTime.Now)
+        };
+
+        _worklistDalMock.Setup(x => x.List(It.Is<WaitingListWorklistFilter>(f => f.BangsalId == null && f.WaitingListStatus == null)))
+            .Returns(items);
+
+        var handler = new WaitingListListHandler(_worklistDalMock.Object);
+
+        var response = await handler.Handle(new WaitingListListQuery(null, null), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Items.Should().HaveCount(1);
+        response.Items.First().WaitingListId.Should().Be("WTL01");
     }
 
     #endregion
