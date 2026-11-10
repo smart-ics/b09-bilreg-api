@@ -26,8 +26,24 @@ public record IgdVisitDto(
 
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
-    string VodUser, DateTime VodDate)
+    string VodUser, DateTime VodDate,
+    bool HasPendingBilling = false)
 {
+    public IgdVisitDto() : this(
+        "", default,
+        "", "", default, "",
+        "", "",
+        false, "", "", "", default, default,
+        "",
+        "", "", "",
+        "", default, "",
+        "",
+        "", default,
+        "", default,
+        "", default,
+        "", default,
+        false) { }
+
     public static IgdVisitDto FromModel(IgdVisitModel model)
     {
         var visitorTglLahir = model.Visitor.TglLahir.ToDateTime(TimeOnly.MinValue);
@@ -66,7 +82,8 @@ public record IgdVisitDto(
 
             CrtUser: model.AuditTrail.Created.UserId, CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId, UpdDate: model.AuditTrail.Modified.Timestamp,
-            VodUser: model.AuditTrail.Voided.UserId, VodDate: model.AuditTrail.Voided.Timestamp);
+            VodUser: model.AuditTrail.Voided.UserId, VodDate: model.AuditTrail.Voided.Timestamp,
+            HasPendingBilling: model.HasPendingBilling);
     }
 
     public IgdVisitModel ToModel(
@@ -141,7 +158,8 @@ public record IgdVisitDto(
             auditTrail: auditTrail,
             dischargeAudit: dischargeAudit,
             listTriage: [],
-            listEvent: []);
+            listEvent: [],
+            hasPendingBilling: HasPendingBilling);
 
         visit.AttachTriages(listTriage);
         visit.AttachEvents(listEvent);
@@ -164,5 +182,6 @@ public record IgdVisitDto(
             AdministrativeState: AdministrativeState,
             RegId: RegId,
             BedIgdId: BedIgdId,
-            BedIgdName: "");
+            BedIgdName: "",
+            HasPendingBilling: HasPendingBilling);
 }

@@ -14,7 +14,7 @@ public class IgdVisitDalTest
 
     private static IgdVisitDto Faker()
         => new IgdVisitDto(
-            IgdVisitId      : "TIGV0000000001",
+            IgdVisitId      : "TIGV00000001",
             DaftarDateTime  : new DateTime(2026, 1, 1, 8, 0, 0),
             VisitorName     : "Tes Visitor",
             VisitorGender   : "L",
@@ -43,9 +43,10 @@ public class IgdVisitDalTest
             UpdUser         : "U1", 
             UpdDate         : new DateTime(2026, 1, 1, 8, 0, 0),
             VodUser         : "", 
-            VodDate         : new DateTime(3000, 1, 1));
+            VodDate         : new DateTime(3000, 1, 1),
+            HasPendingBilling: true);
 
-    private static IIgdVisitKey FakerKey() => IgdVisitModel.Key("TIGV0000000001");
+    private static IIgdVisitKey FakerKey() => IgdVisitModel.Key("TIGV00000001");
     private static Periode FakerPeriode() => new(new DateTime(2026, 1, 1), new DateTime(2026, 1, 31));
 
     [Fact]
@@ -60,7 +61,10 @@ public class IgdVisitDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        _sut.Update(Faker() with { VisitorName = "Updated" });
+        var updated = Faker() with { VisitorName = "Updated", HasPendingBilling = false };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(updated);
     }
 
     [Fact]

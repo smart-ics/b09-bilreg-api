@@ -12,9 +12,14 @@ public record BhpIgdDto(
     string BhpItemName,
     int Qty,
     decimal Price,
+    string? TrsBillId,
+    bool IsPosted,
+    DateTime? PostedDate,
     string CrtUser,
     DateTime CrtDate)
 {
+    public BhpIgdDto() : this("", "", "", "", "", 0, 0, null, false, null, "", default) { }
+
     public static BhpIgdDto FromModel(BhpIgdModel model)
         => new(
             BhpIgdId: model.BhpIgdId,
@@ -24,6 +29,9 @@ public record BhpIgdDto(
             BhpItemName: model.BhpItemName,
             Qty: model.Qty,
             Price: model.Price,
+            TrsBillId: model.TrsBillId,
+            IsPosted: model.IsPosted,
+            PostedDate: model.PostedDate,
             CrtUser: model.Audit.UserId,
             CrtDate: model.Audit.Timestamp);
 
@@ -36,7 +44,10 @@ public record BhpIgdDto(
             bhpItemName: BhpItemName,
             qty: Qty,
             price: Price,
-            audit: new AuditInfoType(CrtUser, CrtDate));
+            audit: new AuditInfoType(CrtUser, CrtDate),
+            trsBillId: TrsBillId ?? string.Empty,
+            isPosted: IsPosted,
+            postedDate: PostedDate);
 
     public BhpIgdView ToView()
         => new(
@@ -48,5 +59,8 @@ public record BhpIgdDto(
             Qty: Qty,
             Price: Price,
             Subtotal: Qty * Price,
-            CreatedDateTime: CrtDate);
+            CreatedDateTime: CrtDate,
+            TrsBillId: TrsBillId ?? string.Empty,
+            IsPosted: IsPosted,
+            PostedDate: PostedDate);
 }

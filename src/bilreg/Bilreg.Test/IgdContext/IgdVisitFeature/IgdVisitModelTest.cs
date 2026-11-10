@@ -388,4 +388,17 @@ public class IgdVisitModelTest
         visit.Triage.OverrideReason.Should().Be("Pasien henti napas dan denyut jantung irreversible di TKP");
         visit.Triage.OverrideDateTime.Should().Be(audit.Timestamp);
     }
+
+    [Fact]
+    public void SetPendingBilling_GivenBool_UpdatesHasPendingBillingFlag()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.HasPendingBilling.Should().BeFalse();
+
+        visit.SetPendingBilling(true);
+        visit.HasPendingBilling.Should().BeTrue();
+
+        visit.SetPendingBilling(false);
+        visit.HasPendingBilling.Should().BeFalse();
+    }
 }

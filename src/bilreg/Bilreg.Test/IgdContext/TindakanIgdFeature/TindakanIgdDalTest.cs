@@ -15,7 +15,7 @@ public class TindakanIgdDalTest
     private static TindakanIgdDto Faker(string id = "TTKI0000001")
         => new TindakanIgdDto(
             TindakanIgdId: id,
-            IgdVisitId: "TIGV0000000001",
+            IgdVisitId: "TIGV00000001",
             RegId: "R001",
             ReffId: "TR001",
             Descriptions: "Tindakan A",
@@ -23,11 +23,15 @@ public class TindakanIgdDalTest
             Aktifitas: 0,
             PpaId: "DR01",
             PpaName: "DOKTER1",
+            TrsTdkId: "TDK001",
+            TrsBillId: "BIL001",
+            IsPosted: true,
+            PostedDate: new DateTime(2026, 1, 1, 12, 30, 0),
             CrtUser: "U1",
             CrtDate: new DateTime(2026, 1, 1, 12, 0, 0));
 
     private static ITindakanIgdKey FakerKey() => TindakanIgdModel.Key("TTKI0000001");
-    private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV0000000001");
+    private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV00000001");
 
     [Fact]
     public void InsertTest()
@@ -43,6 +47,25 @@ public class TindakanIgdDalTest
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker());
+    }
+
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var initial = Faker();
+        _sut.Insert(initial);
+        var updated = initial with
+        {
+            RegId = "R999",
+            TrsTdkId = "TDK_NEW",
+            TrsBillId = "BIL_NEW",
+            IsPosted = true,
+            PostedDate = new DateTime(2026, 1, 1, 14, 0, 0)
+        };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(updated);
     }
 
     [Fact]

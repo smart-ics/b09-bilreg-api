@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.BhpIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -25,16 +27,24 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBhpIgdRepo _bhpRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IRegRepo _regRepo;
+    private readonly IIgdBillingPostingOrchestrator _billingOrchestrator;
 
-    public IgdBhpAddHandler(IIgdVisitRepo igdVisitRepo, IBhpIgdRepo bhpRepo,
-        ITglJamProvider tglJamProvider)
+    public IgdBhpAddHandler(
+        IIgdVisitRepo igdVisitRepo, 
+        IBhpIgdRepo bhpRepo,
+        ITglJamProvider tglJamProvider,
+        IRegRepo regRepo,
+        IIgdBillingPostingOrchestrator billingOrchestrator)
     {
         _igdVisitRepo = igdVisitRepo;
         _bhpRepo = bhpRepo;
         _tglJamProvider = tglJamProvider;
+        _regRepo = regRepo;
+        _billingOrchestrator = billingOrchestrator;
     }
 
-    public Task<IgdBhpAddResponse> Handle(IgdBhpAddCmd request, CancellationToken cancellationToken)
+    public async Task<IgdBhpAddResponse> Handle(IgdBhpAddCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.BhpItemId, nameof(request.BhpItemId));
@@ -57,6 +67,25 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
             response = new IgdBhpAddResponse(bhp.BhpIgdId, visit.IgdVisitId, bhp.Subtotal);
         }
 
-        return Task.FromResult(response);
+        if (visit.HasReg)
+        {
+            var reg = _regRepo.LoadEntity(visit.Reg).GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found");
+            try
+            {
+                var posted = await _billingOrchestrator.PostBhpAsync(visit, reg, bhp, cancellationToken);
+                if (!posted)
+                {
+                    visit.SetPendingBilling(true);
+                    _igdVisitRepo.SaveChanges(visit);
+                }
+            }
+            catch (Exception)
+            {
+                visit.SetPendingBilling(true);
+                _igdVisitRepo.SaveChanges(visit);
+            }
+        }
+
+        return response;
     }
 }

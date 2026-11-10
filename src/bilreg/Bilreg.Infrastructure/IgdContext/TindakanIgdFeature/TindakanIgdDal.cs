@@ -34,10 +34,12 @@ public class TindakanIgdDal : ITindakanIgdDal
             INSERT INTO BILRG_TindakanIgd (
                 TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
                 Qty, Aktifitas, PpaId, PpaName, 
+                TrsTdkId, TrsBillId, IsPosted, PostedDate,
                 CrtUser, CrtDate)
             VALUES (
                 @TindakanIgdId, @IgdVisitId, @RegId, @ReffId, @Descriptions,
                 @Qty, @Aktifitas, @PpaId, @PpaName, 
+                @TrsTdkId, @TrsBillId, @IsPosted, @PostedDate,
                 @CrtUser, @CrtDate)
             """;
         var dp = BuildParams(dto);
@@ -57,6 +59,10 @@ public class TindakanIgdDal : ITindakanIgdDal
                 Aktifitas = @Aktifitas,
                 PpaId = @PpaId,
                 PpaName = @PpaName,
+                TrsTdkId = @TrsTdkId,
+                TrsBillId = @TrsBillId,
+                IsPosted = @IsPosted,
+                PostedDate = @PostedDate,
                 CrtUser = @CrtUser,
                 CrtDate = @CrtDate
             WHERE TindakanIgdId = @TindakanIgdId
@@ -80,6 +86,7 @@ public class TindakanIgdDal : ITindakanIgdDal
         const string sql = """
             SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
                 Qty, Aktifitas, PpaId, PpaName,
+                TrsTdkId, TrsBillId, IsPosted, PostedDate,
                 CrtUser, CrtDate
             FROM BILRG_TindakanIgd
             WHERE TindakanIgdId = @TindakanIgdId
@@ -95,6 +102,7 @@ public class TindakanIgdDal : ITindakanIgdDal
         const string sql = """
             SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
                 Qty, Aktifitas, PpaId, PpaName, 
+                TrsTdkId, TrsBillId, IsPosted, PostedDate,
                 CrtUser, CrtDate
             FROM BILRG_TindakanIgd
             WHERE IgdVisitId = @IgdVisitId
@@ -127,6 +135,10 @@ public class TindakanIgdDal : ITindakanIgdDal
         dp.AddParam("@Aktifitas", dto.Aktifitas, SqlDbType.Int);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@PpaName", dto.PpaName, SqlDbType.VarChar);
+        dp.AddParam("@TrsTdkId", dto.TrsTdkId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@TrsBillId", dto.TrsBillId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@IsPosted", dto.IsPosted, SqlDbType.Bit);
+        dp.AddParam("@PostedDate", dto.PostedDate, SqlDbType.DateTime);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         return dp;

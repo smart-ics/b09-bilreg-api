@@ -15,17 +15,20 @@ public class BhpIgdDalTest
     private static BhpIgdDto Faker(string id = "TBHI0000001")
         => new BhpIgdDto(
             BhpIgdId: id,
-            IgdVisitId: "TIGV0000000001",
+            IgdVisitId: "TIGV00000001",
             RegId: "R001",
             BhpItemId: "BH001",
             BhpItemName: "Spuit 5cc",
             Qty: 3,
             Price: 5000m,
+            TrsBillId: "TBILL001",
+            IsPosted: true,
+            PostedDate: new DateTime(2026, 1, 1, 12, 30, 0),
             CrtUser: "U1",
             CrtDate: new DateTime(2026, 1, 1, 12, 0, 0));
 
     private static IBhpIgdKey FakerKey() => BhpIgdModel.Key("TBHI0000001");
-    private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV0000000001");
+    private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV00000001");
 
     [Fact]
     public void InsertTest()
@@ -41,6 +44,24 @@ public class BhpIgdDalTest
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker());
+    }
+
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var initial = Faker();
+        _sut.Insert(initial);
+        var updated = initial with
+        {
+            RegId = "R002",
+            TrsBillId = "TBILL_NEW",
+            IsPosted = true,
+            PostedDate = new DateTime(2026, 1, 1, 14, 0, 0)
+        };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(updated);
     }
 
     [Fact]

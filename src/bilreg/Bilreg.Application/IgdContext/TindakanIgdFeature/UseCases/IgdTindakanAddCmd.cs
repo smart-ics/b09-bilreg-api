@@ -1,7 +1,9 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using MediatR;
@@ -28,19 +30,26 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
     private readonly ITindakanIgdRepo _tindakanRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IRegRepo _regRepo;
+    private readonly IIgdBillingPostingOrchestrator _billingOrchestrator;
 
-    public IgdTindakanAddHandler(IIgdVisitRepo igdVisitRepo, 
+    public IgdTindakanAddHandler(
+        IIgdVisitRepo igdVisitRepo, 
         ITindakanIgdRepo tindakanRepo, 
         IPpaRepo ppaRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IRegRepo regRepo,
+        IIgdBillingPostingOrchestrator billingOrchestrator)
     {
         _igdVisitRepo = igdVisitRepo;
         _tindakanRepo = tindakanRepo;
         _ppaRepo = ppaRepo;
         _tglJamProvider = tglJamProvider;
+        _regRepo = regRepo;
+        _billingOrchestrator = billingOrchestrator;
     }
 
-    public Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
+    public async Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.PetugasMedisId, nameof(request.PetugasMedisId));
@@ -68,6 +77,25 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
             response = new IgdTindakanAddResponse(tindakan.TindakanIgdId, visit.IgdVisitId);
         }
 
-        return Task.FromResult(response);
+        if (visit.HasReg)
+        {
+            var reg = _regRepo.LoadEntity(visit.Reg).GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found");
+            try
+            {
+                var posted = await _billingOrchestrator.PostTindakanAsync(visit, reg, tindakan, cancellationToken);
+                if (!posted)
+                {
+                    visit.SetPendingBilling(true);
+                    _igdVisitRepo.SaveChanges(visit);
+                }
+            }
+            catch (Exception)
+            {
+                visit.SetPendingBilling(true);
+                _igdVisitRepo.SaveChanges(visit);
+            }
+        }
+
+        return response;
     }
 }

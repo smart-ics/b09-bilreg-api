@@ -1,10 +1,13 @@
 using Bilreg.Application.IgdContext.BedIgdFeature;
+using Bilreg.Application.IgdContext.BhpIgdFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
+using Bilreg.Application.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.BedIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
+using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
@@ -18,11 +21,19 @@ public class IgdVisitDischargeHandlerTest
     private readonly Mock<IIgdVisitRepo> _visitRepo = new();
     private readonly Mock<IBedIgdRepo> _bedRepo = new();
     private readonly Mock<IPakaiBedIgdRepo> _pakaiRepo = new();
+    private readonly Mock<ITindakanIgdRepo> _tindakanRepo = new();
+    private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
     private readonly IgdVisitDischargeHandler _sut;
 
     public IgdVisitDischargeHandlerTest()
     {
-        _sut = new IgdVisitDischargeHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object, new TestTglJamProvider(new DateTime(2026, 1, 1, 12, 0, 0)));
+        _sut = new IgdVisitDischargeHandler(
+            _visitRepo.Object,
+            _bedRepo.Object,
+            _pakaiRepo.Object,
+            new TestTglJamProvider(new DateTime(2026, 1, 1, 12, 0, 0)),
+            _tindakanRepo.Object,
+            _bhpRepo.Object);
     }
 
     private static IgdVisitModel BuildVisit(
@@ -135,5 +146,121 @@ public class IgdVisitDischargeHandlerTest
         bed.IsOccupied.Should().BeFalse();
         pakai.IsOpen.Should().BeFalse();
         visit.HasObserved.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_WhenPendingTindakanExists_SetsPendingBillingTrue_AndDischargesSuccessfully()
+    {
+        var visit = BuildVisit(AdministrativeStateEnum.Registered);
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+
+        var pendingTindakan = new TindakanIgdView(
+            TindakanIgdId: "TKI001",
+            IgdVisitId: visit.IgdVisitId,
+            RegId: "R001",
+            ReffId: "TRF001",
+            Descriptions: "Tindakan Tes",
+            Qty: 1,
+            Aktifitas: ActivityTindakanIgd.Tindakan,
+            Ppa: PpaType.Default.ToReff(),
+            CrtUserId: "U1",
+            CreatedDateTime: DateTime.Now,
+            IsPosted: false);
+
+        _tindakanRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([pendingTindakan]);
+        _bhpRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([]);
+
+        var result = await _sut.Handle(new IgdVisitDischargeCmd(visit.IgdVisitId, "U1"), CancellationToken.None);
+
+        result.AdministrativeState.Should().Be(AdministrativeStateEnum.Discharged.ToCode());
+        visit.HasPendingBilling.Should().BeTrue();
+        _visitRepo.Verify(r => r.SaveChanges(visit), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPendingBhpExists_SetsPendingBillingTrue_AndDischargesSuccessfully()
+    {
+        var visit = BuildVisit(AdministrativeStateEnum.Registered);
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+
+        var pendingBhp = new BhpIgdView(
+            BhpIgdId: "BHP001",
+            IgdVisitId: visit.IgdVisitId,
+            RegId: "R001",
+            BhpItemId: "BRG001",
+            BhpItemName: "Spuit 3cc",
+            Qty: 2,
+            Price: 5000m,
+            Subtotal: 10000m,
+            CreatedDateTime: DateTime.Now,
+            IsPosted: false);
+
+        _tindakanRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([]);
+        _bhpRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([pendingBhp]);
+
+        var result = await _sut.Handle(new IgdVisitDischargeCmd(visit.IgdVisitId, "U1"), CancellationToken.None);
+
+        result.AdministrativeState.Should().Be(AdministrativeStateEnum.Discharged.ToCode());
+        visit.HasPendingBilling.Should().BeTrue();
+        _visitRepo.Verify(r => r.SaveChanges(visit), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAllItemsPosted_DoesNotSetPendingBillingTrue()
+    {
+        var visit = BuildVisit(AdministrativeStateEnum.Registered);
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+
+        var postedTindakan = new TindakanIgdView(
+            TindakanIgdId: "TKI001",
+            IgdVisitId: visit.IgdVisitId,
+            RegId: "R001",
+            ReffId: "TRF001",
+            Descriptions: "Tindakan Tes",
+            Qty: 1,
+            Aktifitas: ActivityTindakanIgd.Tindakan,
+            Ppa: PpaType.Default.ToReff(),
+            CrtUserId: "U1",
+            CreatedDateTime: DateTime.Now,
+            IsPosted: true);
+
+        var postedBhp = new BhpIgdView(
+            BhpIgdId: "BHP001",
+            IgdVisitId: visit.IgdVisitId,
+            RegId: "R001",
+            BhpItemId: "BRG001",
+            BhpItemName: "Spuit 3cc",
+            Qty: 2,
+            Price: 5000m,
+            Subtotal: 10000m,
+            CreatedDateTime: DateTime.Now,
+            IsPosted: true);
+
+        _tindakanRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([postedTindakan]);
+        _bhpRepo
+            .Setup(r => r.ListData(It.IsAny<IIgdVisitKey>()))
+            .Returns([postedBhp]);
+
+        var result = await _sut.Handle(new IgdVisitDischargeCmd(visit.IgdVisitId, "U1"), CancellationToken.None);
+
+        result.AdministrativeState.Should().Be(AdministrativeStateEnum.Discharged.ToCode());
+        visit.HasPendingBilling.Should().BeFalse();
+        _visitRepo.Verify(r => r.SaveChanges(visit), Times.Once);
     }
 }

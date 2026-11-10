@@ -33,10 +33,12 @@ public class BhpIgdDal : IBhpIgdDal
         const string sql = """
             INSERT INTO BILRG_BhpIgd (
                 BhpIgdId, IgdVisitId, RegId, BhpItemId, BhpItemName,
-                Qty, Price, CrtUser, CrtDate)
+                Qty, Price, TrsBillId, IsPosted, PostedDate,
+                CrtUser, CrtDate)
             VALUES (
                 @BhpIgdId, @IgdVisitId, @RegId, @BhpItemId, @BhpItemName,
-                @Qty, @Price, @CrtUser, @CrtDate)
+                @Qty, @Price, @TrsBillId, @IsPosted, @PostedDate,
+                @CrtUser, @CrtDate)
             """;
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -53,6 +55,9 @@ public class BhpIgdDal : IBhpIgdDal
                 BhpItemName = @BhpItemName,
                 Qty = @Qty,
                 Price = @Price,
+                TrsBillId = @TrsBillId,
+                IsPosted = @IsPosted,
+                PostedDate = @PostedDate,
                 CrtUser = @CrtUser,
                 CrtDate = @CrtDate
             WHERE BhpIgdId = @BhpIgdId
@@ -75,7 +80,8 @@ public class BhpIgdDal : IBhpIgdDal
     {
         const string sql = """
             SELECT BhpIgdId, IgdVisitId, RegId, BhpItemId, BhpItemName,
-                Qty, Price, CrtUser, CrtDate
+                Qty, Price, TrsBillId, IsPosted, PostedDate,
+                CrtUser, CrtDate
             FROM BILRG_BhpIgd
             WHERE BhpIgdId = @BhpIgdId
             """;
@@ -89,7 +95,8 @@ public class BhpIgdDal : IBhpIgdDal
     {
         const string sql = """
             SELECT BhpIgdId, IgdVisitId, RegId, BhpItemId, BhpItemName,
-                Qty, Price, CrtUser, CrtDate
+                Qty, Price, TrsBillId, IsPosted, PostedDate,
+                CrtUser, CrtDate
             FROM BILRG_BhpIgd
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY CrtDate
@@ -119,6 +126,9 @@ public class BhpIgdDal : IBhpIgdDal
         dp.AddParam("@BhpItemName", dto.BhpItemName, SqlDbType.VarChar);
         dp.AddParam("@Qty", dto.Qty, SqlDbType.Int);
         dp.AddParam("@Price", dto.Price, SqlDbType.Decimal);
+        dp.AddParam("@TrsBillId", dto.TrsBillId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@IsPosted", dto.IsPosted, SqlDbType.Bit);
+        dp.AddParam("@PostedDate", dto.PostedDate, SqlDbType.DateTime);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         return dp;

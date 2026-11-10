@@ -129,6 +129,14 @@ public class IgdVisitController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("{id}/retry-billing")]
+    public async Task<IActionResult> RetryBilling(string id)
+    {
+        var cmd = new IgdVisitRetryBillingPostingCmd(id);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("{id}/void")]
     public async Task<IActionResult> Void(string id, [FromBody] IgdVoidBody body)
     {

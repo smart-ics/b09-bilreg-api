@@ -1,15 +1,19 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext;
+using Bilreg.Application.IgdContext.BhpIgdFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
 using Bilreg.Application.IgdContext.Integration;
+using Bilreg.Application.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.IgdContext.BhpIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.IgdVisitSmassTaskFeature;
+using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.Shared;
@@ -28,6 +32,9 @@ public class IgdVisitAssignRegisterHandlerTest
     private readonly Mock<IIgdVisitSmassTaskRepo> _taskRepo = new();
     private readonly Mock<ISmassAssessmentGateway> _smassGateway = new();
     private readonly Mock<IEmrLabelGateway> _emrLabelGateway = new();
+    private readonly Mock<ITindakanIgdRepo> _tindakanRepo = new();
+    private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
+    private readonly Mock<IIgdBillingPostingOrchestrator> _billingOrchestrator = new();
 
     private readonly IgdVisitOptions _options = new()
     {
@@ -41,6 +48,21 @@ public class IgdVisitAssignRegisterHandlerTest
     private const string RegId = "REG-001";
     private const string UserId = "USER-007";
 
+    public IgdVisitAssignRegisterHandlerTest()
+    {
+        _smassGateway
+            .Setup(g => g.LinkIgdVisit(It.IsAny<SmassLinkIgdVisitRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SmassGatewayResult(true, "ASM-01", null, new List<string> { "ASM-01" }));
+
+        _emrLabelGateway
+            .Setup(g => g.AddSmassLabel(It.IsAny<EmrAddSmassLabelRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EmrLabelGatewayResult(true, "OK"));
+
+        _billingOrchestrator
+            .Setup(o => o.SyncAllPendingForVisitAsync(It.IsAny<IgdVisitModel>(), It.IsAny<RegModel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+    }
+
     private IgdVisitAssignRegisterHandler CreateSut(IgdVisitOptions? options = null)
     {
         var opt = Options.Create(options ?? _options);
@@ -51,7 +73,10 @@ public class IgdVisitAssignRegisterHandlerTest
             _taskRepo.Object,
             _smassGateway.Object,
             _emrLabelGateway.Object,
-            opt);
+            opt,
+            _tindakanRepo.Object,
+            _bhpRepo.Object,
+            _billingOrchestrator.Object);
     }
 
     private static IgdVisitModel CreateTestVisit(string igdVisitId = IgdVisitId)
@@ -144,7 +169,7 @@ public class IgdVisitAssignRegisterHandlerTest
         _visitRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitModel>(v =>
             v.IgdVisitId == IgdVisitId &&
             v.AdministrativeState == AdministrativeStateEnum.Registered &&
-            v.Reg.RegId == RegId)), Times.Once);
+            v.Reg.RegId == RegId)), Times.Exactly(2));
 
         _taskRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitSmassTaskModel>(t =>
             t.IgdVisitId == IgdVisitId &&
@@ -204,7 +229,7 @@ public class IgdVisitAssignRegisterHandlerTest
         // Assert - should not throw, registration and SMASS task are unaffected
         await act.Should().NotThrowAsync();
 
-        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
+        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Exactly(2));
         _taskRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitSmassTaskModel>(t =>
             t.TaskStatus == SmassTaskStatusEnum.Succeeded)), Times.Once);
     }
@@ -238,7 +263,7 @@ public class IgdVisitAssignRegisterHandlerTest
         await sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
+        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Exactly(2));
         _smassGateway.Verify(g => g.LinkIgdVisit(It.IsAny<SmassLinkIgdVisitRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         _emrLabelGateway.Verify(g => g.AddSmassLabel(It.IsAny<EmrAddSmassLabelRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -298,5 +323,128 @@ public class IgdVisitAssignRegisterHandlerTest
 
         var act = async () => await sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithPendingTindakanAndBhp_UpdatesRegIdAndSyncsBilling()
+    {
+        // Arrange
+        var visit = CreateTestVisit();
+        var reg = CreateTestReg();
+        var cmd = new IgdVisitAssignRegisterCmd(IgdVisitId, RegId, UserId);
+
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.Is<IIgdVisitKey>(k => k.IgdVisitId == IgdVisitId)))
+            .Returns(MayBe.From(visit));
+
+        _regRepo
+            .Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(reg));
+
+        var tdk = TindakanIgdModel.Create(
+            visit, "TDK001", "Injeksi Obat", 1, ActivityTindakanIgd.Tindakan,
+            PpaType.Default, UserId, DateTime.Now);
+        var tdkView = new TindakanIgdView(
+            tdk.TindakanIgdId, visit.IgdVisitId, "-", "TDK001", "Injeksi Obat", 1,
+            ActivityTindakanIgd.Tindakan, PpaType.Default.ToReff(), UserId, DateTime.Now);
+
+        var bhp = BhpIgdModel.Create(
+            visit, "BHP001", "Kassa Steril", 2, 5000m, new AuditInfoType(UserId, DateTime.Now));
+        var bhpView = new BhpIgdView(
+            bhp.BhpIgdId, visit.IgdVisitId, "-", "BHP001", "Kassa Steril", 2, 5000m, 10000m, DateTime.Now);
+
+        _tindakanRepo
+            .Setup(r => r.ListData(It.Is<IIgdVisitKey>(k => k.IgdVisitId == IgdVisitId)))
+            .Returns([tdkView]);
+        _tindakanRepo
+            .Setup(r => r.LoadEntity(It.Is<ITindakanIgdKey>(k => k.TindakanIgdId == tdk.TindakanIgdId)))
+            .Returns(MayBe.From(tdk));
+
+        _bhpRepo
+            .Setup(r => r.ListData(It.Is<IIgdVisitKey>(k => k.IgdVisitId == IgdVisitId)))
+            .Returns([bhpView]);
+        _bhpRepo
+            .Setup(r => r.LoadEntity(It.Is<IBhpIgdKey>(k => k.BhpIgdId == bhp.BhpIgdId)))
+            .Returns(MayBe.From(bhp));
+
+        _billingOrchestrator
+            .Setup(o => o.SyncAllPendingForVisitAsync(visit, reg, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var sut = CreateSut();
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        tdk.RegId.Should().Be(RegId);
+        bhp.RegId.Should().Be(RegId);
+        _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t => t.RegId == RegId)), Times.Once);
+        _bhpRepo.Verify(r => r.SaveChanges(It.Is<BhpIgdModel>(b => b.RegId == RegId)), Times.Once);
+        _billingOrchestrator.Verify(o => o.SyncAllPendingForVisitAsync(visit, reg, It.IsAny<CancellationToken>()), Times.Once);
+        visit.HasPendingBilling.Should().BeFalse();
+        _visitRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitModel>(v => !v.HasPendingBilling)), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSyncAllPendingReturnsFalse_SetsHasPendingBillingTrue()
+    {
+        // Arrange
+        var visit = CreateTestVisit();
+        var reg = CreateTestReg();
+        var cmd = new IgdVisitAssignRegisterCmd(IgdVisitId, RegId, UserId);
+
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+        _regRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(reg));
+
+        _billingOrchestrator
+            .Setup(o => o.SyncAllPendingForVisitAsync(It.IsAny<IgdVisitModel>(), It.IsAny<RegModel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var sut = CreateSut();
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        visit.HasPendingBilling.Should().BeTrue();
+        visit.AdministrativeState.Should().Be(AdministrativeStateEnum.Registered);
+        visit.Reg.RegId.Should().Be(RegId);
+        _visitRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitModel>(v => v.HasPendingBilling)), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Handle_WhenSyncAllPendingThrows_CatchesAndSetsHasPendingBillingTrue_ResiliencePrinciple()
+    {
+        // Arrange
+        var visit = CreateTestVisit();
+        var reg = CreateTestReg();
+        var cmd = new IgdVisitAssignRegisterCmd(IgdVisitId, RegId, UserId);
+
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+        _regRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(reg));
+
+        _billingOrchestrator
+            .Setup(o => o.SyncAllPendingForVisitAsync(It.IsAny<IgdVisitModel>(), It.IsAny<RegModel>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Billing network failure"));
+
+        var sut = CreateSut();
+
+        // Act
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert - resilience principle: does not throw, registration link holds, pending billing flag is set
+        await act.Should().NotThrowAsync();
+        visit.HasPendingBilling.Should().BeTrue();
+        visit.Reg.RegId.Should().Be(RegId);
+        _visitRepo.Verify(r => r.SaveChanges(It.Is<IgdVisitModel>(v => v.HasPendingBilling)), Times.Exactly(2));
     }
 }

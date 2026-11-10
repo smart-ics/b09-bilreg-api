@@ -30,4 +30,5 @@ public record IgdVisitView(
     string AdministrativeState,
     string RegId,
     string BedIgdId,
-    string BedIgdName);
+    string BedIgdName,
+    bool HasPendingBilling = false);
