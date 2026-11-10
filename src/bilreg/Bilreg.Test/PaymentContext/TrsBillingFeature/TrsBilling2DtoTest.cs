@@ -96,7 +96,7 @@ public class TrsBilling2DtoTest
         dto.fn_trs_p.Should().Be(0m);
         dto.fn_trs_n.Should().Be(30_000m);
         dto.fs_kd_trs_bayar.Should().Be("RO00001234");
-        dto.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-mm-dd"));
+        dto.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-MM-dd"));
         dto.fs_jam_bayar.Should().Be("15:45:00");
         dto.fs_kd_petugas_kasir.Should().Be("KSR-99");
         dto.fs_kd_petugas_medis.Should().Be("MED-03");
@@ -127,7 +127,7 @@ public class TrsBilling2DtoTest
         positive.fn_trs_p.Should().Be(0m);
         positive.fn_trs_n.Should().Be(20_000m);
         positive.fs_kd_trs_bayar.Should().Be("PAY-001");
-        positive.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-mm-dd"));
+        positive.fd_tgl_bayar.Should().Be(tglBayar.ToString("yyyy-MM-dd"));
         positive.fs_jam_bayar.Should().Be("09:00:00");
         positive.fs_kd_petugas_medis.Should().Be("MED-04");
 
@@ -286,5 +286,87 @@ public class TrsBilling2DtoTest
 
         act.Should().Throw<ArgumentException>()
             .WithParameterName("fs_kd_jenis_bayar");
+    }
+
+    [Fact]
+    public void FromModelTrans_PopulatedCoa_MapsPersediaanDiscAndTax()
+    {
+        var coa = new TrsBill2CoaType(
+            new CoaType("PPDP-01", ""),
+            new CoaType("PDPT-01", ""),
+            new CoaType("PERSED-01", ""),
+            new CoaType("PDPT-LAIN-01", ""),
+            new CoaType("TAX-01", ""),
+            new CoaType("DISC-01", ""));
+
+        var model = new TrsBill2TransEventType(
+            1,
+            new TrsBill2KomponenType("GR-01", "Obat"),
+            TrsBillJenisBayarType.Pdp,
+            10_000m,
+            new PpaReff("MED-01", "Dr. Satu"),
+            coa);
+
+        var dto = TaTrsBilling2Dto.FromModelTrans(model, BillingId, modul: 1);
+
+        dto.fs_kd_rek_ppdp.Should().Be("PPDP-01");
+        dto.fs_kd_rek_pdpt.Should().Be("PDPT-01");
+        dto.fs_kd_rek_disc.Should().Be("DISC-01");
+        dto.fs_kd_rek_pdpt_lain.Should().Be("PDPT-LAIN-01");
+        dto.fs_kd_rek_persediaan.Should().Be("PERSED-01");
+        dto.fs_kd_rek_tax.Should().Be("TAX-01");
+    }
+
+    [Fact]
+    public void FromModelTrans_DefaultCoaSentinel_NormalizesToEmptyStringAndFallsBackDiscToPdpt()
+    {
+        var coa = new TrsBill2CoaType(
+            new CoaType("PPDP-01", ""),
+            new CoaType("PDPT-01", ""),
+            CoaType.Default,
+            CoaType.Default,
+            CoaType.Default,
+            CoaType.Default);
+
+        var model = new TrsBill2TransEventType(
+            1,
+            JasaKomponen(),
+            TrsBillJenisBayarType.Pdp,
+            50_000m,
+            new PpaReff("MED-01", "Dr. Satu"),
+            coa);
+
+        var dto = TaTrsBilling2Dto.FromModelTrans(model, BillingId, modul: 0);
+
+        dto.fs_kd_rek_ppdp.Should().Be("PPDP-01");
+        dto.fs_kd_rek_pdpt.Should().Be("PDPT-01");
+        dto.fs_kd_rek_disc.Should().Be("PDPT-01");
+        dto.fs_kd_rek_pdpt_lain.Should().Be("");
+        dto.fs_kd_rek_persediaan.Should().Be("");
+        dto.fs_kd_rek_tax.Should().Be("");
+    }
+
+    [Fact]
+    public void FromModelTrans_WhenDiscIsWhitespace_FallsBackToPdpt()
+    {
+        var coa = new TrsBill2CoaType(
+            new CoaType("PPDP-01", ""),
+            new CoaType("PDPT-01", ""),
+            CoaType.Default,
+            CoaType.Default,
+            CoaType.Default,
+            new CoaType("", ""));
+
+        var model = new TrsBill2TransEventType(
+            1,
+            JasaKomponen(),
+            TrsBillJenisBayarType.Pdp,
+            50_000m,
+            new PpaReff("MED-01", "Dr. Satu"),
+            coa);
+
+        var dto = TaTrsBilling2Dto.FromModelTrans(model, BillingId, modul: 0);
+
+        dto.fs_kd_rek_disc.Should().Be("PDPT-01");
     }
 }

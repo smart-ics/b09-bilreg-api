@@ -6,7 +6,9 @@ public record LabOrderWorklistQuery(
     int? LabOrderStatus,
     string? SearchTerm,
     DateTime? Date1,
-    DateTime? Date2) : IRequest<IEnumerable<LabOrderWorklistView>>;
+    DateTime? Date2,
+    bool? IsCitoOnly = null,
+    int? OrderSource = null) : IRequest<IEnumerable<LabOrderWorklistView>>;
 
 public class LabOrderWorklistHandler : IRequestHandler<LabOrderWorklistQuery, IEnumerable<LabOrderWorklistView>>
 {
@@ -25,7 +27,9 @@ public class LabOrderWorklistHandler : IRequestHandler<LabOrderWorklistQuery, IE
             request.LabOrderStatus,
             request.SearchTerm,
             request.Date1,
-            request.Date2);
+            request.Date2,
+            request.IsCitoOnly,
+            request.OrderSource);
 
         return Task.FromResult(_dal.List(filter));
     }

@@ -86,7 +86,7 @@ public class LabComponentMasterDal : ILabComponentMasterDal
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabComponentMasterDto>(sql);
+        return conn.Read<LabComponentMasterDto>(sql) ?? Enumerable.Empty<LabComponentMasterDto>();
     }
 
     public IEnumerable<LabComponentMasterDto> ListData(LabComponentMasterListFilter filter)
@@ -115,6 +115,6 @@ public class LabComponentMasterDal : ILabComponentMasterDal
         dp.AddParam("@SearchPattern", searchPattern ?? string.Empty, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabComponentMasterDto>(sql, dp);
+        return conn.Read<LabComponentMasterDto>(sql, dp) ?? Enumerable.Empty<LabComponentMasterDto>();
     }
 }

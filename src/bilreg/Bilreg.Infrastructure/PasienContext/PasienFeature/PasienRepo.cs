@@ -169,7 +169,8 @@ public class PasienRepo : IPasienRepo
             listContact, pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
-            dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif);
+            dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif,
+            dto.fs_mr_ibu);
 
         //  fetch saset-dto
         var sasetDto = _pasienSasetDal.GetData(key);
@@ -181,14 +182,6 @@ public class PasienRepo : IPasienRepo
         return MayBe.From(pasien);
     }
 
-    public void DeleteEntity(IPasienKey key)
-    {
-        using var trans = TransHelper.NewScope();
-        _pasienDal.Delete(PasienModel.Key(key.PasienId));
-        _pasienKtpDal.Delete(PasienModel.Key(key.PasienId));
-        _pasienSasetDal.Delete(key);
-        trans.Complete();
-    }
     
     public IEnumerable<PasienPersonView> ListData(string keyword)
     {

@@ -7,8 +7,8 @@ namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
 /// <summary>
 /// Pure Release 1 stage / owner / next-task resolver.
-/// Precedence: integrity → cancellation → (completion unreachable) → active WL Waiting →
-/// active WL Accepted → closed handover without placement → active Admission handover →
+/// Precedence: integrity â†’ cancellation â†’ (completion unreachable) â†’ active WL Waiting â†’
+/// active WL Accepted â†’ closed handover without placement â†’ active Admission handover â†’
 /// unregistered prospective source.
 /// </summary>
 public static class Release1JourneyStageResolver
@@ -73,7 +73,7 @@ public static class Release1JourneyStageResolver
                 "Journey prospektif Reservasi dibatalkan sebelum registrasi.",
                 facts.Reservation.StatusAt);
 
-        // 3. Completion — intentionally unreachable in Release 1.
+        // 3. Completion â€” intentionally unreachable in Release 1.
         // Admission.Completed is flagged by integrity (no authoritative owning process).
 
         var activeWl = facts.WaitingLists
@@ -180,10 +180,7 @@ public static class Release1JourneyStageResolver
         {
             return new StageDecision(
                 JourneyOperationalStage.RegistrationRequired,
-                new JourneyCurrentCondition(
-                    "Registrasi diperlukan",
-                    "Reservasi siap diproses menjadi admisi Rawat Inap.",
-                    facts.Reservation.StatusAt),
+                new JourneyCurrentCondition(facts.Reservation.Status == ReservationStatusEnum.Maintained ? "Dijadwalkan ulang" : "Registrasi diperlukan", facts.Reservation.Status == ReservationStatusEnum.Maintained ? "Reservasi telah dijadwalkan ulang dan siap diproses." : "Reservasi siap diproses menjadi admisi Rawat Inap.", facts.Reservation.StatusAt),
                 AdmisiTask(
                     JourneyActionCode.CompleteRegistration,
                     "Selesaikan registrasi",

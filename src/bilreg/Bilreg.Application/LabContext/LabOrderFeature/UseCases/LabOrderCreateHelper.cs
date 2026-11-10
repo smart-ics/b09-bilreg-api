@@ -53,4 +53,13 @@ public static class LabOrderCreateHelper
         => lines
             .Select(x => new LabOrderModel.ResolvedOrderLine(x.Item, x.Components))
             .ToList();
+
+    public static string GetServiceTypeSuffix(LaboratoryServiceType serviceType) =>
+        serviceType switch
+        {
+            LaboratoryServiceType.ClinicalPathology => "PK",
+            LaboratoryServiceType.AnatomicalPathology => "PA",
+            LaboratoryServiceType.Microbiology => "MIC",
+            _ => serviceType.ToString().ToUpperInvariant()
+        };
 }

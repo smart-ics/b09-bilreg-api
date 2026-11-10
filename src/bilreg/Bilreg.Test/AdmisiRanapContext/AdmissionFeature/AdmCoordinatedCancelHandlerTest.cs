@@ -92,6 +92,26 @@ public class AdmCoordinatedCancelHandlerTest
     }
 
     [Fact]
+    public async Task ActiveBedPlacement_RejectsBeforeAnyMutation()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(State());
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        eligibility.Setup(x => x.HasActiveBedPlacement("RG00000001")).Returns(true);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
+
+        var act = () => sut.Handle(Command(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<CoordinatedCancellationException>();
+        ex.Which.Code.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement);
+        ex.Which.Message.Should().Be("Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
+        repo.Verify(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
     public async Task SameCompletedRequest_ReplaysStoredResponseWithoutMutations()
     {
         var response = new AdmCoordinatedCancelResponse("RG00000001", AdmissionStatusEnum.Cancelled, true, false, null, null, "REQ1");
@@ -145,13 +165,123 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Verify(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
+    [Fact]
+    public async Task WhenActiveDoctorAssignmentsZeroAndNoBilling_CancellationSucceedsWithoutEndingDoctors()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        var audit = new Mock<IAuditRepo>();
+        var state = State() with { ActiveDoctorAssignments = 0 };
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(state);
+        repo.Setup(x => x.CancelWaitingList(state, It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.VoidRegistration("RG00000001", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.DeleteRegAktif("RG00000001")).Returns(1);
+        repo.Setup(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance);
+
+        var result = await sut.Handle(Command(), CancellationToken.None);
+
+        result.AdmissionStatus.Should().Be(AdmissionStatusEnum.Cancelled);
+        result.RegistrationVoided.Should().BeTrue();
+        result.AlreadyCancelled.Should().BeFalse();
+        repo.Verify(x => x.EndDoctorAssignments(It.IsAny<string>(), It.IsAny<DateOnly>()), Times.Never);
+        repo.Verify(x => x.VoidRegistration("RG00000001", "user1", It.IsAny<DateTime>()), Times.Once);
+        repo.Verify(x => x.DeleteRegAktif("RG00000001"), Times.Once);
+        repo.Verify(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), "user1", It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task WhenVoidSourceTrueAndSourceExists_CallsVoidSourceAndNeverRestoreSource()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        var audit = new Mock<IAuditRepo>();
+        var state = State(sourceId: "OPN00000001", sourceKind: "OpnameRequestModel");
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(state);
+        repo.Setup(x => x.CancelWaitingList(state, It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.EndDoctorAssignments("RG00000001", It.IsAny<DateOnly>())).Returns(1);
+        repo.Setup(x => x.VoidRegistration("RG00000001", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.DeleteRegAktif("RG00000001")).Returns(1);
+        repo.Setup(x => x.VoidSource(state, "alasan", "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance);
+
+        var result = await sut.Handle(Command() with { VoidSource = true }, CancellationToken.None);
+
+        result.AdmissionStatus.Should().Be(AdmissionStatusEnum.Cancelled);
+        repo.Verify(x => x.VoidSource(state, "alasan", "user1", It.IsAny<DateTime>()), Times.Once);
+        repo.Verify(x => x.RestoreSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task WhenVoidSourceFalseAndSourceExists_CallsRestoreSourceAndNeverVoidSource()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        var audit = new Mock<IAuditRepo>();
+        var state = State(sourceId: "OPN00000001", sourceKind: "OpnameRequestModel");
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(state);
+        repo.Setup(x => x.CancelWaitingList(state, It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.EndDoctorAssignments("RG00000001", It.IsAny<DateOnly>())).Returns(1);
+        repo.Setup(x => x.VoidRegistration("RG00000001", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.DeleteRegAktif("RG00000001")).Returns(1);
+        repo.Setup(x => x.RestoreSource(state, "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance);
+
+        var result = await sut.Handle(Command() with { VoidSource = false }, CancellationToken.None);
+
+        result.AdmissionStatus.Should().Be(AdmissionStatusEnum.Cancelled);
+        repo.Verify(x => x.RestoreSource(state, "user1", It.IsAny<DateTime>()), Times.Once);
+        repo.Verify(x => x.VoidSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task WhenDirectAdmissionWithoutSource_CancellationSucceedsWithoutVoidOrRestoreSource()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        var audit = new Mock<IAuditRepo>();
+        var state = State(sourceId: null, sourceKind: null);
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(state);
+        repo.Setup(x => x.CancelWaitingList(state, It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.EndDoctorAssignments("RG00000001", It.IsAny<DateOnly>())).Returns(1);
+        repo.Setup(x => x.VoidRegistration("RG00000001", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.DeleteRegAktif("RG00000001")).Returns(1);
+        repo.Setup(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), "user1", It.IsAny<DateTime>())).Returns(1);
+        repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance);
+
+        var result = await sut.Handle(Command() with { VoidSource = true }, CancellationToken.None);
+
+        result.AdmissionStatus.Should().Be(AdmissionStatusEnum.Cancelled);
+        result.RegistrationVoided.Should().BeTrue();
+        repo.Verify(x => x.VoidSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+        repo.Verify(x => x.RestoreSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
     private static AdmCoordinatedCancelCmd Command() => new("RG00000001", " alasan ", "user1", AdmissionStatusEnum.Admitted, null, "REQ1", null, null);
     private static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new("RG00000001", AdmissionStatusEnum.Admitted, new DateTime(3000, 1, 1), AdmissionSourceEnum.Legacy, "-", "-", true, true, 1, "WTL00000001", Bilreg.Domain.AdmisiRanapContext.WaitingListFeature.WaitingListStatusEnum.Waiting, 1, sourceId, sourceKind, true, false, new { RegId = "RG00000001" });
     private static string FingerprintFor(AdmCoordinatedCancelCmd cmd)
     {
         // The handler's public replay contract is exercised with a matching deterministic hash.
         using var sha = System.Security.Cryptography.SHA256.Create();
-        var value = string.Join("|", cmd.RegId.Trim(), cmd.Reason.Trim(), cmd.UserId.Trim(), (int)cmd.ExpectedAdmissionStatus, "");
+        var value = string.Join("|", cmd.RegId.Trim(), cmd.Reason.Trim(), cmd.UserId.Trim(), (int)cmd.ExpectedAdmissionStatus, "", cmd.VoidSource);
         return Convert.ToHexString(sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(value)));
     }
 }

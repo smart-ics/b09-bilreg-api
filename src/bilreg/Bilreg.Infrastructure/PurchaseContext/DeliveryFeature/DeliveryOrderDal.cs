@@ -209,6 +209,8 @@ public class DeliveryOrderDal : IDeliveryOrderDal
             aa.fs_kd_trs AS DoId,
             CASE WHEN ISDATE(aa.fd_tgl_trs) = 1 THEN CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) ELSE '3000-01-01' END AS DoDate,
             aa.fs_kd_petugas AS PetugasId,
+            ISNULL(NULLIF(LTRIM(RTRIM(pegCrt.fs_nm_peg)), ''), aa.fs_kd_petugas) AS PetugasName,
+            ISNULL(NULLIF(LTRIM(RTRIM(pegConf.fs_nm_peg)), ''), ISNULL((SELECT TOP 1 ConfirmedBy FROM BILRG_DoInspeksi WHERE DoId = aa.fs_kd_trs AND ConfirmedAt IS NOT NULL), '')) AS ConfirmedByName,
             aa.fs_kd_po AS PoId,
             ISNULL(po.fd_tgl_trs, '') AS PoDate,
             aa.fs_kd_do_asli AS SuratJalanNo,
@@ -233,5 +235,12 @@ public class DeliveryOrderDal : IDeliveryOrderDal
             LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan
             LEFT JOIN t_iii cc ON aa.fs_kd_iii = cc.fs_kd_iii
             LEFT JOIN tb_trs_po po ON aa.fs_kd_po = po.fs_kd_trs
+            LEFT JOIN td_peg pegCrt ON aa.fs_kd_petugas = pegCrt.fs_kd_peg
+            OUTER APPLY (
+                SELECT TOP 1 ConfirmedBy
+                FROM BILRG_DoInspeksi
+                WHERE DoId = aa.fs_kd_trs AND ConfirmedAt IS NOT NULL
+            ) insp
+            LEFT JOIN td_peg pegConf ON insp.ConfirmedBy = pegConf.fs_kd_peg
         """;
 }

@@ -5,6 +5,7 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
@@ -17,6 +18,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -39,7 +41,9 @@ public record AdmissionRegistrationData(
     string ProsedurMasukInapId,
     string? RujukanId,
     string DokterId,
-    string PesertaJaminanId) :
+    string PesertaJaminanId,
+    string? JenisInapId = null,
+    string? RegIbuId = null) :
     ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey;
 
 public interface IAdmissionRegistrationOrchestrator
@@ -49,6 +53,12 @@ public interface IAdmissionRegistrationOrchestrator
 
     Task<AdmProcessAdmissionResponse> ProcessReservation(
         AdmProcessReservationCmd request, CancellationToken cancellationToken);
+
+    Task<AdmProcessAdmissionResponse> ProcessDirectAdmission(
+        AdmProcessDirectAdmissionCmd request, CancellationToken cancellationToken);
+
+    Task<AdmProcessAdmissionResponse> ProcessInpatientOrder(
+        AdmProcessInpatientOrderCmd request, CancellationToken cancellationToken);
 }
 
 public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestrator
@@ -58,6 +68,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IOpnameRequestRepo _opnameRequestRepo;
     private readonly IReservationRepo _reservationRepo;
+    private readonly IInpatientOrderRepo? _inpatientOrderRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IBangsalRepo _bangsalRepo;
     private readonly IPasienRepo _pasienRepo;
@@ -72,6 +83,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IRegRepo _regRepo;
     private readonly IRegInapRepo _regInapRepo;
     private readonly IRegAktifRepo _regAktifRepo;
+    private readonly IRegDal _regDal;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmisiEventPublisher _publisher;
@@ -102,7 +114,9 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IAdmisiEventPublisher publisher,
         IWaitingListRepo waitingListRepo,
         IPasienTrackerInpatientCoordinator trackerCoordinator,
-        ILogger<AdmissionRegistrationOrchestrator>? logger = null)
+        IRegDal? regDal = null,
+        ILogger<AdmissionRegistrationOrchestrator>? logger = null,
+        IInpatientOrderRepo? inpatientOrderRepo = null)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
@@ -126,7 +140,9 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _publisher = publisher;
         _waitingListRepo = waitingListRepo;
         _trackerCoordinator = trackerCoordinator ?? throw new ArgumentNullException(nameof(trackerCoordinator));
+        _regDal = regDal!;
         _logger = logger ?? NullLogger<AdmissionRegistrationOrchestrator>.Instance;
+        _inpatientOrderRepo = inpatientOrderRepo;
     }
 
     public async Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
@@ -135,6 +151,46 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         ValidateRequest(request.OpnameRequestId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
         var occurredAt = _tglJamProvider.Now;
+
+        var orderMaybe = _inpatientOrderRepo?.LoadEntity(InpatientOrderModel.Key(request.OpnameRequestId))
+            ?? MayBe<InpatientOrderModel>.None;
+
+        if (orderMaybe.HasValue)
+        {
+            var order = orderMaybe.Value;
+            if (order.OrderStatus != InpatientOrderStatusEnum.Requested && order.OrderStatus != InpatientOrderStatusEnum.Maintained)
+                throw new InvalidOperationException(
+                    $"Opname Request '{order.InpatientOrderId}' harus Requested untuk diproses (status: {order.OrderStatus}).");
+
+            EnsurePatientAvailable(order.Pasien);
+            var prosedur = ResolveProsedurMasukInap(request.Registration);
+            var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
+                opnameRequestId: null, reservationId: null, request.UserId, occurredAt, inpatientOrderId: order.InpatientOrderId);
+            var reg = CreateRegistration(admission, request.Registration);
+            var regInap = CreateRegInap(admission, reg, prosedur);
+            var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);
+            var snapshot = AuditLogSnapshotJson.Serialize(order);
+
+            using (var trans = TransHelper.NewScope())
+            {
+                SaveCommon(admission, reg, regInap);
+                _inpatientOrderRepo!.SaveChanges(fulfilled);
+                SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(InpatientOrderModel),
+                    fulfilled.InpatientOrderId, snapshot);
+                trans.Complete();
+            }
+
+            RecordTrackerRegistrationGracefully(order, admission.RegId, occurredAt);
+
+            await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
+
+            var waitingListId = PlaceWaitingListGracefully(
+                admission, request.KelasId, request.BangsalId, request.KelasDkId,
+                request.Priority, request.UserId, occurredAt, order.KelasRawat);
+
+            return ToResponse(admission, waitingListId);
+        }
+
         var opname = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
         if (opname.OpnameRequestStatus != OpnameRequestStatusEnum.Requested)
@@ -142,24 +198,150 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 $"Opname Request '{opname.OpnameRequestId}' harus Requested untuk diproses (status: {opname.OpnameRequestStatus}).");
 
         EnsurePatientAvailable(opname.Pasien);
+        var legacyProsedur = ResolveProsedurMasukInap(request.Registration);
+        var legacyAdmission = CreateAdmission(opname.Pasien, request.KelasDkId, request.BangsalId,
+            opname.OpnameRequestId, null, request.UserId, occurredAt, inpatientOrderId: opname.OpnameRequestId);
+        var legacyReg = CreateRegistration(legacyAdmission, request.Registration);
+        var legacyRegInap = CreateRegInap(legacyAdmission, legacyReg, legacyProsedur);
+        var legacyFulfilled = opname.Fulfill(legacyAdmission.RegId, request.UserId, occurredAt);
+        var legacySnapshot = AuditLogSnapshotJson.Serialize(opname);
+
+        using (var trans = TransHelper.NewScope())
+        {
+            SaveCommon(legacyAdmission, legacyReg, legacyRegInap);
+            _opnameRequestRepo.SaveChanges(legacyFulfilled);
+            SaveSourceAudit(legacyFulfilled.AuditTrail.Modified, nameof(OpnameRequestModel),
+                legacyFulfilled.OpnameRequestId, legacySnapshot);
+            trans.Complete();
+        }
+
+        RecordTrackerRegistrationGracefully(opname, legacyAdmission.RegId, occurredAt);
+
+        await _publisher.PublishRanapCreatedAsync(legacyAdmission.RegId, cancellationToken);
+
+        var legacyWaitingListId = PlaceWaitingListGracefully(
+            legacyAdmission, request.KelasId, request.BangsalId, request.KelasDkId,
+            request.Priority, request.UserId, occurredAt);
+
+        return ToResponse(legacyAdmission, legacyWaitingListId);
+    }
+
+    public async Task<AdmProcessAdmissionResponse> ProcessReservation(
+        AdmProcessReservationCmd request, CancellationToken cancellationToken)
+    {
+        ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
+            request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
+
+        var orderMaybe = _inpatientOrderRepo?.LoadEntity(InpatientOrderModel.Key(request.ReservationId))
+            ?? MayBe<InpatientOrderModel>.None;
+
+        if (orderMaybe.HasValue)
+        {
+            var order = orderMaybe.Value;
+            EnsurePatientAvailable(order.Pasien);
+            var prosedur = ResolveProsedurMasukInap(request.Registration);
+            var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
+            if (order.OrderStatus == InpatientOrderStatusEnum.Requested)
+            {
+                var kelasRawat = ResolveKelasRawat(request.KelasId, request.BangsalId, request.KelasDkId, order.KelasRawat);
+                order = order.Maintain(order.PlannedDate, kelasRawat, bangsal, request.UserId, occurredAt);
+            }
+
+            if (order.OrderStatus != InpatientOrderStatusEnum.Maintained)
+                throw new InvalidOperationException(
+                    $"Reservation '{order.InpatientOrderId}' harus Maintained untuk direalisasi (status: {order.OrderStatus}).");
+
+            var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
+                opnameRequestId: null, reservationId: null, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
+            var reg = CreateRegistration(admission, request.Registration);
+            var regInap = CreateRegInap(admission, reg, prosedur);
+            var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);
+            var snapshot = AuditLogSnapshotJson.Serialize(order);
+
+            using (var trans = TransHelper.NewScope())
+            {
+                SaveCommon(admission, reg, regInap);
+                _inpatientOrderRepo!.SaveChanges(fulfilled);
+                SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(InpatientOrderModel),
+                    fulfilled.InpatientOrderId, snapshot);
+                trans.Complete();
+            }
+
+            RecordTrackerRegistrationGracefully(order, admission.RegId, occurredAt);
+
+            await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
+
+            var waitingListId = PlaceWaitingListGracefully(
+                admission, request.KelasId, request.BangsalId, request.KelasDkId,
+                request.Priority, request.UserId, occurredAt, order.KelasRawat);
+
+            return ToResponse(admission, waitingListId);
+        }
+
+        var reservation = _reservationRepo.LoadEntity(request)
+            .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
+
+        EnsurePatientAvailable(reservation.Pasien);
+        var legacyProsedur = ResolveProsedurMasukInap(request.Registration);
+        var legacyBangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
+        if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
+            reservation = reservation.Maintain(
+                reservation.PlannedDate, reservation.KelasRawat, legacyBangsal, request.UserId, occurredAt);
+
+        if (reservation.ReservationStatus != ReservationStatusEnum.Maintained)
+            throw new InvalidOperationException(
+                $"Reservation '{reservation.ReservationId}' harus Maintained untuk direalisasi (status: {reservation.ReservationStatus}).");
+
+        var legacyAdmission = CreateAdmission(reservation.Pasien, request.KelasDkId, request.BangsalId,
+            null, reservation.ReservationId, request.UserId, occurredAt, legacyBangsal, inpatientOrderId: reservation.ReservationId);
+        var legacyReg = CreateRegistration(legacyAdmission, request.Registration);
+        var legacyRegInap = CreateRegInap(legacyAdmission, legacyReg, legacyProsedur);
+        var realized = reservation.Realize(legacyAdmission.RegId, request.UserId, occurredAt);
+        var legacySnapshot = AuditLogSnapshotJson.Serialize(reservation);
+
+        using (var trans = TransHelper.NewScope())
+        {
+            SaveCommon(legacyAdmission, legacyReg, legacyRegInap);
+            _reservationRepo.SaveChanges(realized);
+            SaveSourceAudit(realized.AuditTrail.Modified, nameof(ReservationModel),
+                realized.ReservationId, legacySnapshot);
+            trans.Complete();
+        }
+
+        RecordTrackerRegistrationGracefully(reservation, legacyAdmission.RegId, occurredAt);
+
+        await _publisher.PublishRanapCreatedAsync(legacyAdmission.RegId, cancellationToken);
+
+        var legacyWaitingListId = PlaceWaitingListGracefully(
+            legacyAdmission, request.KelasId, request.BangsalId, request.KelasDkId,
+            request.Priority, request.UserId, occurredAt, reservation.KelasRawat);
+
+        return ToResponse(legacyAdmission, legacyWaitingListId);
+    }
+
+    public async Task<AdmProcessAdmissionResponse> ProcessDirectAdmission(
+        AdmProcessDirectAdmissionCmd request, CancellationToken cancellationToken)
+    {
+        Guard.Against.Null(request, nameof(request));
+        ValidateRequest(request.PasienId, request.KelasDkId, request.BangsalId,
+            request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
+        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
+            .GetValueOrThrow($"Pasien '{request.PasienId}' tidak ditemukan.");
+
+        EnsurePatientAvailable(pasien.ToReff());
         var prosedur = ResolveProsedurMasukInap(request.Registration);
-        var admission = CreateAdmission(opname.Pasien, request.KelasDkId, request.BangsalId,
-            opname.OpnameRequestId, null, request.UserId, occurredAt);
+        var admission = CreateAdmission(pasien.ToReff(), request.KelasDkId, request.BangsalId,
+            null, null, request.UserId, occurredAt);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var fulfilled = opname.Fulfill(admission.RegId, request.UserId, occurredAt);
-        var snapshot = AuditLogSnapshotJson.Serialize(opname);
 
         using (var trans = TransHelper.NewScope())
         {
             SaveCommon(admission, reg, regInap);
-            _opnameRequestRepo.SaveChanges(fulfilled);
-            SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(OpnameRequestModel),
-                fulfilled.OpnameRequestId, snapshot);
             trans.Complete();
         }
-
-        RecordTrackerRegistrationGracefully(opname, admission.RegId, occurredAt);
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
@@ -170,49 +352,55 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         return ToResponse(admission, waitingListId);
     }
 
-    public async Task<AdmProcessAdmissionResponse> ProcessReservation(
-        AdmProcessReservationCmd request, CancellationToken cancellationToken)
+    public async Task<AdmProcessAdmissionResponse> ProcessInpatientOrder(
+        AdmProcessInpatientOrderCmd request, CancellationToken cancellationToken)
     {
-        ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
+        ValidateRequest(request.InpatientOrderId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
         var occurredAt = _tglJamProvider.Now;
-        var reservation = _reservationRepo.LoadEntity(request)
-            .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
+        if (_inpatientOrderRepo == null)
+            throw new InvalidOperationException("IInpatientOrderRepo is not configured.");
 
-        EnsurePatientAvailable(reservation.Pasien);
+        var order = _inpatientOrderRepo.LoadEntity(request)
+            .GetValueOrThrow($"Inpatient Order '{request.InpatientOrderId}' tidak ditemukan.");
+
+        EnsurePatientAvailable(order.Pasien);
         var prosedur = ResolveProsedurMasukInap(request.Registration);
         var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
-        if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
-            reservation = reservation.Maintain(
-                reservation.PlannedDate, reservation.KelasRawat, bangsal, request.UserId, occurredAt);
 
-        if (reservation.ReservationStatus != ReservationStatusEnum.Maintained)
+        if (order.OrderSource == OrderSourceEnum.AdmisiBooking && order.OrderStatus == InpatientOrderStatusEnum.Requested)
+        {
+            var kelasRawat = ResolveKelasRawat(request.KelasId, request.BangsalId, request.KelasDkId, order.KelasRawat);
+            order = order.Maintain(order.PlannedDate, kelasRawat, bangsal, request.UserId, occurredAt);
+        }
+
+        if (order.OrderStatus is not InpatientOrderStatusEnum.Requested and not InpatientOrderStatusEnum.Maintained)
             throw new InvalidOperationException(
-                $"Reservation '{reservation.ReservationId}' harus Maintained untuk direalisasi (status: {reservation.ReservationStatus}).");
+                $"Inpatient Order '{order.InpatientOrderId}' harus Requested atau Maintained untuk diproses (status: {order.OrderStatus}).");
 
-        var admission = CreateAdmission(reservation.Pasien, request.KelasDkId, request.BangsalId,
-            null, reservation.ReservationId, request.UserId, occurredAt, bangsal);
+        var admission = CreateAdmission(order.Pasien, request.KelasDkId, request.BangsalId,
+            opnameRequestId: null, reservationId: null, request.UserId, occurredAt, bangsal, inpatientOrderId: order.InpatientOrderId);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var realized = reservation.Realize(admission.RegId, request.UserId, occurredAt);
-        var snapshot = AuditLogSnapshotJson.Serialize(reservation);
+        var fulfilled = order.Fulfill(admission.RegId, request.UserId, occurredAt);
+        var snapshot = AuditLogSnapshotJson.Serialize(order);
 
         using (var trans = TransHelper.NewScope())
         {
             SaveCommon(admission, reg, regInap);
-            _reservationRepo.SaveChanges(realized);
-            SaveSourceAudit(realized.AuditTrail.Modified, nameof(ReservationModel),
-                realized.ReservationId, snapshot);
+            _inpatientOrderRepo.SaveChanges(fulfilled);
+            SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(InpatientOrderModel),
+                fulfilled.InpatientOrderId, snapshot);
             trans.Complete();
         }
 
-        RecordTrackerRegistrationGracefully(reservation, admission.RegId, occurredAt);
+        RecordTrackerRegistrationGracefully(order, admission.RegId, occurredAt);
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
         var waitingListId = PlaceWaitingListGracefully(
             admission, request.KelasId, request.BangsalId, request.KelasDkId,
-            request.Priority, request.UserId, occurredAt, reservation.KelasRawat);
+            request.Priority, request.UserId, occurredAt, order.KelasRawat);
 
         return ToResponse(admission, waitingListId);
     }
@@ -302,6 +490,23 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         }
     }
 
+    private void RecordTrackerRegistrationGracefully(
+        InpatientOrderModel order,
+        string regId,
+        DateTime occurredAt)
+    {
+        try
+        {
+            _trackerCoordinator.RecordAdmissionRegistered(order, regId, occurredAt);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Registrasi ranap {RegId} berhasil dibuat, namun pencatatan tracker pasien dari InpatientOrder {InpatientOrderId} mengalami kendala: {ErrorMessage}",
+                regId, order.InpatientOrderId, ex.Message);
+        }
+    }
+
     private KelasReff ResolveKelasRawat(
         string? kelasId,
         string bangsalId,
@@ -317,11 +522,11 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
     private AdmissionModel CreateAdmission(PasienReff pasien, string kelasDkId, string bangsalId,
         string? opnameRequestId, string? reservationId, string userId, DateTime occurredAt,
-        BangsalReff? resolvedBangsal = null)
+        BangsalReff? resolvedBangsal = null, string inpatientOrderId = "-")
     {
         var kelasDk = _wardGateway.ResolveKelasDk(kelasDkId);
         var bangsal = resolvedBangsal ?? _wardGateway.ResolveBangsalForCareClass(bangsalId, kelasDkId);
-        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId, occurredAt);
+        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId, occurredAt, inpatientOrderId);
     }
 
     private RegModel CreateRegistration(AdmissionModel admission, AdmissionRegistrationData data)
@@ -338,8 +543,58 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var layanan = ResolveLayananFromBangsal(admission.Bangsal.BangsalId);
         var polis = ResolvePolis(pasien, tipeJaminan);
 
+        var (jenisInap, regIbu) = ResolveJenisInapAndRegIbu(pasien, admission, data);
+
         return _regFactory.CreateRegInapFromAdmission(admission, pasien, tipeJaminan, polis,
-            caraMasuk, rujukan, dokter, layanan, data.PesertaJaminanId);
+            caraMasuk, rujukan, dokter, layanan, data.PesertaJaminanId, jenisInap, regIbu);
+    }
+
+    private (JenisInapType JenisInap, string RegIbu) ResolveJenisInapAndRegIbu(
+        PasienModel pasien,
+        AdmissionModel admission,
+        AdmissionRegistrationData data)
+    {
+        var regDate = DateOnly.FromDateTime(admission.AuditTrail.Created.Timestamp);
+        var jenisInapId = InpatientAgePolicy.ResolveJenisInap(
+            pasien.Person.TglLahir, regDate, data.JenisInapId);
+
+        if (jenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL)
+        {
+            var regIbuId = data.RegIbuId;
+            if (string.IsNullOrWhiteSpace(regIbuId))
+            {
+                var mrIbu = pasien.MrIbu;
+                if (!string.IsNullOrWhiteSpace(mrIbu))
+                {
+                    var regsIbu = _regAktifRepo?.ListData(PasienModel.Key(mrIbu)) ?? [];
+                    var activeMotherReg = regsIbu
+                        .Where(r => r.JenisReg == JenisRegEnum.RegInap)
+                        .OrderByDescending(r => r.RegDate)
+                        .FirstOrDefault();
+
+                    if (activeMotherReg is not null)
+                    {
+                        regIbuId = activeMotherReg.RegId;
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(regIbuId))
+                return (JenisInapType.Perinatal, string.Empty);
+
+            var activeMotherOpt = _regAktifRepo.LoadEntity(RegModel.Key(regIbuId));
+            if (!activeMotherOpt.HasValue)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak aktif di rawat inap.");
+
+            var activeMother = activeMotherOpt.Value;
+            if (activeMother.JenisReg != JenisRegEnum.RegInap)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' bukan registrasi rawat inap.");
+
+            return (JenisInapType.Perinatal, regIbuId);
+        }
+
+        var jenisInap = JenisInapType.FromId(jenisInapId);
+        return (jenisInap, string.Empty);
     }
 
     private LayananType ResolveLayananFromBangsal(string bangsalId)

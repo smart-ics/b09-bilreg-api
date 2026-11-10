@@ -2,6 +2,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature;
 
@@ -13,6 +14,7 @@ public interface INilaiTarifRepo :
 {
     void Import();
     IEnumerable<NilaiTarifView> Search(ILayananKey layanan, INilaiTarifVariant variant, string keyword);
+    MayBe<NilaiTarifType> LoadFirstActiveRate(ITarifKey key);
 }
 
 public record NilaiTarifView(string TarifId, string TarifName, 

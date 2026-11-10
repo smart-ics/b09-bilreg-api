@@ -211,7 +211,6 @@ public sealed partial class JourneyDal
             OpnIds = ToInList(opnIds),
             RsvIds = ToInList(rsvIds),
             RegIds = ToInList(regIds),
-            RegIdCsv = string.Join(",", regIds.Where(HasId).Distinct(StringComparer.OrdinalIgnoreCase)),
             HasRegIds = regIds.Any(HasId) ? 1 : 0
         };
 
@@ -220,39 +219,55 @@ public sealed partial class JourneyDal
 
     private static string BuildOpnameSelectSql() =>
         """
-        SELECT o.OpnameRequestId, o.OpnameRequestStatus, o.FulfilledRegId, o.PasienId,
-               o.DokterId, o.DokterName, o.ClinicalNotes, o.PlannedDate, o.CrtDate, o.UpdDate,
-               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-        FROM BILRG_AdmOpnameRequest o
-        LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
-        WHERE o.VodDate = @VodDate AND o.OpnameRequestId IN @OpnIds
+        SELECT ord.InpatientOrderId AS OpnameRequestId,
+               CASE WHEN ord.OrderStatus = 2 THEN 1 WHEN ord.OrderStatus = 3 THEN 2 ELSE 0 END AS OpnameRequestStatus,
+               ord.FulfilledRegId, ord.PasienId,
+               ord.DokterId, ord.DokterName, ord.ClinicalNotes, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+               ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+               ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+               CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmInpatientOrder ord
+        LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+        WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId IN @OpnIds
         """;
 
     private static string BuildReservationSelectSql() =>
         """
-        SELECT r.ReservationId, r.ReservationStatus, r.RealizedRegId, r.PasienId,
-               ISNULL(r.PasienName,'') AS PasienName, ISNULL(r.Gender,'') AS Gender, r.TglLahir,
-               r.KelasId, r.KelasName, r.BangsalId, r.BangsalName, r.PlannedDate, r.CrtDate, r.UpdDate
-        FROM BILRG_AdmReservation r
-        WHERE r.VodDate = @VodDate AND r.ReservationId IN @RsvIds
+        SELECT ord.InpatientOrderId AS ReservationId, ord.OrderStatus AS ReservationStatus,
+               ord.FulfilledRegId AS RealizedRegId, ord.PasienId,
+               ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+               ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+               CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE '3000-01-01' END AS TglLahir,
+               ord.KelasId, ord.KelasName, ord.BangsalId, ord.BangsalName, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+               ord.DokterId, ord.DokterName, ord.TipeJaminanId, ord.TipeJaminanName, ord.ClinicalNotes
+        FROM BILRG_AdmInpatientOrder ord
+        LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+        WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (3, 4) AND ord.InpatientOrderId IN @RsvIds
         """;
 
-    private static string BuildAdmissionSelectSql() =>
+    internal static string BuildAdmissionSelectSql() =>
         """
-        SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId,
+               CASE 
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId
+                   ELSE '-'
+               END AS OpnameRequestId,
+               CASE 
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (3, 4) THEN a.InpatientOrderId
+                   ELSE '-'
+               END AS ReservationId,
                a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
                ISNULL(mr.fs_nm_pasien,'') AS PasienName,
                ISNULL(mr.fs_jns_kelamin,'') AS Gender,
                CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
         FROM BILRG_AdmAdmission a
         LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        LEFT JOIN BILRG_AdmInpatientOrder io ON a.InpatientOrderId = io.InpatientOrderId AND io.VodDate = @VodDate
         WHERE a.VodDate = @VodDate
           AND (
                 a.RegId IN @RegIds
-                OR a.OpnameRequestId IN @OpnIds
-                OR a.ReservationId IN @RsvIds
+                OR a.InpatientOrderId IN @OpnIds
+                OR a.InpatientOrderId IN @RsvIds
               )
         """;
 
@@ -272,7 +287,7 @@ public sealed partial class JourneyDal
     private static string BuildRegExtrasSelectSql() =>
         """
         SELECT
-            x.RegId,
+            reg.fs_kd_reg AS RegId,
             ISNULL(reg.fs_kd_tipe_jaminan,'') AS TipeJaminanId,
             ISNULL(tj.fs_nm_tipe_jaminan,'') AS TipeJaminanName,
             ISNULL(reg.fs_kd_kelas,'') AS KelasId,
@@ -280,21 +295,21 @@ public sealed partial class JourneyDal
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
             ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
-        FROM (SELECT DISTINCT LTRIM(RTRIM(value)) AS RegId FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '') x
-        LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
+        FROM ta_registrasi reg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
         LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
-        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = x.RegId
+        LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = reg.fs_kd_reg
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
             FROM ta_reg_history_dokter h
             LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
             WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-              AND h.fs_kd_reg IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '')
-        ) hd ON hd.fs_kd_reg = x.RegId AND hd.rn = 1
+              AND h.fs_kd_reg IN @RegIds
+        ) hd ON hd.fs_kd_reg = reg.fs_kd_reg AND hd.rn = 1
         LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
         WHERE @HasRegIds = 1
+          AND reg.fs_kd_reg IN @RegIds
         """;
 
     private JourneyFactBag? FoldOpnameJourney(
@@ -413,9 +428,9 @@ public sealed partial class JourneyDal
             Named(rsv.KelasId, rsv.KelasName),
             Named(rsv.BangsalId, rsv.BangsalName),
             Priority: null,
-            Doctor: null,
-            Guarantor: null,
-            ClinicalNotes: null,
+            Doctor: Named(rsv.DokterId, rsv.DokterName),
+            Guarantor: Named(rsv.TipeJaminanId, rsv.TipeJaminanName),
+            ClinicalNotes: string.IsNullOrWhiteSpace(rsv.ClinicalNotes) ? null : rsv.ClinicalNotes,
             ProcedureSummary: null,
             ReferringDoctor: null,
             ReferralOrSourceSummary: "Reservation",

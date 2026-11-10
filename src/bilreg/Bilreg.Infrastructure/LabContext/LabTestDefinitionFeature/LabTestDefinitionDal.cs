@@ -19,6 +19,7 @@ public interface ILabTestDefinitionDal :
 {
     string? GetMaxTestDefinitionId();
     LabTestDefinitionDto? GetActiveByTarifId(string tarifId, string? excludeTestDefinitionId);
+    IEnumerable<LabTestDefinitionViewDto> ListProjected(LabTestDefinitionListFilter filter);
 }
 
 public class LabTestDefinitionDal : ILabTestDefinitionDal
@@ -38,7 +39,10 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
         UpdUser,
         UpdDate,
         VodUser,
-        VodDate
+        VodDate,
+        ServiceType,
+        DisciplineId,
+        TestGroupId
         """;
 
     private readonly DatabaseOptions _opt;
@@ -54,11 +58,13 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
             INSERT INTO BILRG_LabTestDefinition (
                 TestDefinitionId, TarifId, TarifCode, TarifName,
                 LabTestCode, LabTestName, SpecimenType, VacutainerType, IsActive,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
+                ServiceType, DisciplineId, TestGroupId)
             VALUES (
                 @TestDefinitionId, @TarifId, @TarifCode, @TarifName,
                 @LabTestCode, @LabTestName, @SpecimenType, @VacutainerType, @IsActive,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
+                @ServiceType, @DisciplineId, @TestGroupId)
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -79,7 +85,10 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
                 IsActive = @IsActive,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
-                VodUser = @VodUser, VodDate = @VodDate
+                VodUser = @VodUser, VodDate = @VodDate,
+                ServiceType = @ServiceType,
+                DisciplineId = @DisciplineId,
+                TestGroupId = @TestGroupId
             WHERE TestDefinitionId = @TestDefinitionId
             """;
 
@@ -127,7 +136,7 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabTestDefinitionDto>(sql);
+        return conn.Read<LabTestDefinitionDto>(sql) ?? Enumerable.Empty<LabTestDefinitionDto>();
     }
 
     public IEnumerable<LabTestDefinitionDto> ListData(LabTestDefinitionListFilter filter)
@@ -146,6 +155,8 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
                   OR LabTestName LIKE @SearchPattern
                   OR TarifCode LIKE @SearchPattern
                   OR TarifId LIKE @SearchPattern
+                  OR TarifName LIKE @SearchPattern
+                  OR SpecimenType LIKE @SearchPattern
               )
             ORDER BY LabTestCode
             """;
@@ -161,7 +172,73 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
         dp.AddParam("@SearchPattern", searchPattern ?? string.Empty, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabTestDefinitionDto>(sql, dp);
+        return conn.Read<LabTestDefinitionDto>(sql, dp) ?? Enumerable.Empty<LabTestDefinitionDto>();
+    }
+
+    public IEnumerable<LabTestDefinitionViewDto> ListProjected(LabTestDefinitionListFilter filter)
+    {
+        const string sql = """
+            SELECT 
+                d.TestDefinitionId,
+                d.TarifId,
+                d.TarifCode,
+                d.TarifName,
+                d.LabTestCode,
+                d.LabTestName,
+                d.SpecimenType,
+                d.VacutainerType,
+                d.IsActive,
+                ISNULL(c.ComponentCount, 0) AS ComponentCount,
+                ISNULL(p.TarifPrice, 0.0) AS TarifPrice,
+                d.ServiceType,
+                d.DisciplineId,
+                d.TestGroupId
+            FROM BILRG_LabTestDefinition d
+            OUTER APPLY (
+                SELECT COUNT(*) AS ComponentCount
+                FROM BILRG_LabTestComponent tc
+                WHERE tc.TestDefinitionId = d.TestDefinitionId
+            ) c
+            OUTER APPLY (
+                SELECT TOP 1 nt.Nilai AS TarifPrice
+                FROM BILRG_NilaiTarif nt
+                WHERE nt.TarifId = d.TarifId
+                ORDER BY 
+                    CASE 
+                        WHEN nt.TipeTarifId = 'UMUM' AND nt.KelasId = 'III' THEN 1
+                        WHEN nt.TipeTarifId = 'RJ'   AND nt.KelasId = 'III' THEN 2
+                        WHEN nt.TipeTarifId = ''     AND nt.KelasId = ''    THEN 3
+                        ELSE 4
+                    END,
+                    nt.NilaiTarifId DESC
+            ) p
+            WHERE d.VodUser = ''
+              AND (@ActiveOnly = 0 OR d.IsActive = 1)
+              AND (@TarifId IS NULL OR @TarifId = '' OR d.TarifId = @TarifId)
+              AND (
+                  @Search IS NULL OR @Search = ''
+                  OR d.LabTestCode LIKE @SearchPattern
+                  OR d.LabTestName LIKE @SearchPattern
+                  OR d.TarifCode LIKE @SearchPattern
+                  OR d.TarifId LIKE @SearchPattern
+                  OR d.TarifName LIKE @SearchPattern
+                  OR d.SpecimenType LIKE @SearchPattern
+              )
+            ORDER BY d.LabTestCode
+            """;
+
+        var searchPattern = string.IsNullOrWhiteSpace(filter.Search)
+            ? null
+            : $"%{filter.Search.Trim()}%";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@ActiveOnly", filter.ActiveOnly ? 1 : 0, SqlDbType.Bit);
+        dp.AddParam("@TarifId", filter.TarifId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@Search", filter.Search ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@SearchPattern", searchPattern ?? string.Empty, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<LabTestDefinitionViewDto>(sql, dp) ?? Enumerable.Empty<LabTestDefinitionViewDto>();
     }
 
     public string? GetMaxTestDefinitionId()
@@ -215,6 +292,9 @@ public class LabTestDefinitionDal : ILabTestDefinitionDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@ServiceType", dto.ServiceType, SqlDbType.Int);
+        dp.AddParam("@DisciplineId", dto.DisciplineId, SqlDbType.VarChar);
+        dp.AddParam("@TestGroupId", dto.TestGroupId, SqlDbType.VarChar);
         return dp;
     }
 }

@@ -22,7 +22,8 @@ public record AdmCoordinatedCancelCmd(
     DateTime? ExpectedUpdatedAt,
     string RequestId,
     string? ClientIpAddress,
-    string? UserAgent) : IRequest<AdmCoordinatedCancelResponse>, IRegKey;
+    string? UserAgent,
+    bool VoidSource = false) : IRequest<AdmCoordinatedCancelResponse>, IRegKey;
 
 public record AdmCoordinatedCancelResponse(
     string RegId,
@@ -83,13 +84,23 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         if (_eligibility.HasBillingItems(normalized.RegId))
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.RegistrationHasBillingItems,
                 "Registration cancellation is not eligible.");
+        if (_eligibility.HasActiveBedPlacement(normalized.RegId))
+            throw new CoordinatedCancellationException(
+                CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement,
+                "Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
 
         if (state.WaitingListId is not null) Ensure(_repo.CancelWaitingList(state, normalized.UserId, occurredAt));
-        if (_repo.EndDoctorAssignments(normalized.RegId, DateOnly.FromDateTime(occurredAt)) < 1)
+        if (state.ActiveDoctorAssignments > 0 && _repo.EndDoctorAssignments(normalized.RegId, DateOnly.FromDateTime(occurredAt)) < 1)
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.ConcurrencyConflict, "Penugasan dokter telah berubah.");
         Ensure(_repo.VoidRegistration(normalized.RegId, normalized.UserId, occurredAt));
         Ensure(_repo.DeleteRegAktif(normalized.RegId));
-        if (state.SourceId is not null) EnsureSource(_repo.RestoreSource(state, normalized.UserId, occurredAt));
+        if (state.SourceId is not null)
+        {
+            if (normalized.VoidSource)
+                EnsureSource(_repo.VoidSource(state, normalized.Reason, normalized.UserId, occurredAt));
+            else
+                EnsureSource(_repo.RestoreSource(state, normalized.UserId, occurredAt));
+        }
         Ensure(_repo.CancelAdmission(state, normalized.ExpectedUpdatedAt, normalized.UserId, occurredAt));
 
         WriteAudits(normalized, state, occurredAt);
@@ -109,7 +120,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         Save("VOID", "RegInapModel", state.RegId, snapshots?.RegInapAndDoctorHistory);
         Save("DELETE", "RegAktifModel", state.RegId, snapshots?.RegAktif);
         if (state.WaitingListId is not null) Save("VOID", "WaitingListModel", state.WaitingListId, snapshots?.WaitingList);
-        if (state.SourceId is not null) Save("RESTORE", state.SourceKind!, state.SourceId, snapshots?.Source);
+        if (state.SourceId is not null) Save(cmd.VoidSource ? "VOID" : "RESTORE", state.SourceKind!, state.SourceId, snapshots?.Source);
         void Save(string action, string entity, string id, object? entitySnapshot) => _auditRepo.SaveChanges(AuditLog.Create(info, action, entity, id,
             cmd.Reason, AuditLogSnapshotJson.Serialize(entitySnapshot ?? state.AuditSnapshot), cmd.RequestId, cmd.ClientIpAddress, cmd.UserAgent));
     }
@@ -118,7 +129,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
     {
         if (!state.AdmissionExists || !state.RegistrationExists || !state.RegInapExists)
             throw new KeyNotFoundException($"Admission/Registration '{cmd.RegId}' tidak ditemukan.");
-        if (state.RegAktifCount != 1 || state.ActiveDoctorAssignments < 1)
+        if (state.RegAktifCount != 1)
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.StateInconsistent, "State pembatalan terkoordinasi tidak konsisten.");
         if (state.AdmissionStatus != cmd.ExpectedAdmissionStatus || state.AdmissionStatus is AdmissionStatusEnum.Completed or AdmissionStatusEnum.Cancelled ||
             (cmd.ExpectedUpdatedAt.HasValue && state.AdmissionUpdatedAt != cmd.ExpectedUpdatedAt.Value))
@@ -141,7 +152,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
     private static string Fingerprint(AdmCoordinatedCancelCmd c)
     {
         var text = string.Join("|", c.RegId, c.Reason, c.UserId, (int)c.ExpectedAdmissionStatus,
-            c.ExpectedUpdatedAt?.ToUniversalTime().ToString("O") ?? "");
+            c.ExpectedUpdatedAt?.ToUniversalTime().ToString("O") ?? "", c.VoidSource);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 }

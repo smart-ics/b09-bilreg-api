@@ -7,6 +7,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
+[Collection(StockLedgerSqlCollection.Name)]
 public class LegacyStockReadPortTest
 {
     private readonly LegacyStockReadPort _sut = new(ConnStringHelper.GetTestEnv());
@@ -108,6 +109,28 @@ public class LegacyStockReadPortTest
         balances.Should().OnlyContain(x => x.BrgMasukReffId == DoId);
         balances.Sum(x => x.QtySisa).Should().Be(10);
         balances.Should().Contain(x => x.LegacyStokId == "STSTL00001" && x.QtySisa == 7);
+    }
+
+    [Fact]
+    public void ListActiveDoIdsAtLocation_FiltersByItemLayananQtyAndNonEmptyDo()
+    {
+        using var trans = TransHelper.NewScope();
+
+        const string loc = "LYACT";
+        const string brg = "BRGACTDO001";
+
+        _stokDal.Insert(Stok("STACT00001", brg, loc, "DOACT1", qty: 5, hpp: 100));
+        _stokDal.Insert(Stok("STACT00002", brg, loc, "DOACT2", qty: 3, hpp: 100));
+        _stokDal.Insert(Stok("STACT00003", brg, loc, "DOACT1", qty: 2, hpp: 100)); // duplicate DOACT1 at same loc
+        _stokDal.Insert(Stok("STACT00004", brg, loc, "DOACT0", qty: 0, hpp: 100)); // qty = 0 excluded
+        _stokDal.Insert(Stok("STACT00005", brg, loc, "   ", qty: 10, hpp: 100));   // empty DO excluded
+        _stokDal.Insert(Stok("STACT00006", brg, "LYOTH", "DOOTHER", qty: 10, hpp: 100)); // other loc excluded
+        _stokDal.Insert(Stok("STACT00007", "BRGOTHER", loc, "DOOTHER2", qty: 10, hpp: 100)); // other brg excluded
+
+        var dos = _sut.ListActiveDoIdsAtLocation(brg, loc);
+
+        dos.Should().HaveCount(2);
+        dos.Should().BeEquivalentTo(["DOACT1", "DOACT2"]);
     }
 
     [Fact]

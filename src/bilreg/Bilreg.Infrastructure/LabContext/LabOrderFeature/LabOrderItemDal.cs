@@ -45,6 +45,12 @@ public class LabOrderItemDal : ILabOrderItemDal
         bcp.AddMap("TubeType", "TubeType");
         bcp.AddMap("SpecimenType", "SpecimenType");
         bcp.AddMap("RequiredTubeCount", "RequiredTubeCount");
+        bcp.AddMap("Urgency", "Urgency");
+        bcp.AddMap("ServiceType", "ServiceType");
+        bcp.AddMap("DisciplineId", "DisciplineId");
+        bcp.AddMap("DisciplineName", "DisciplineName");
+        bcp.AddMap("TestGroupId", "TestGroupId");
+        bcp.AddMap("TestGroupName", "TestGroupName");
 
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "BILRG_LabOrderItem";
@@ -72,7 +78,10 @@ public class LabOrderItemDal : ILabOrderItemDal
                 aa.OrderId, aa.ItemNo,
                 aa.TestDefinitionId, aa.LabTestCode, aa.LabTestName,
                 aa.TarifId, aa.TarifCode, aa.TarifName,
-                aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount
+                aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount,
+                aa.Urgency,
+                aa.ServiceType, aa.DisciplineId, aa.DisciplineName,
+                aa.TestGroupId, aa.TestGroupName
             FROM BILRG_LabOrderItem aa
             WHERE aa.OrderId = @OrderId
             ORDER BY aa.ItemNo
@@ -82,6 +91,6 @@ public class LabOrderItemDal : ILabOrderItemDal
         dp.AddParam("@OrderId", filter.OrderId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderItemDto>(sql, dp);
+        return conn.Read<LabOrderItemDto>(sql, dp) ?? Enumerable.Empty<LabOrderItemDto>();
     }
 }

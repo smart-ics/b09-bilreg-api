@@ -47,15 +47,39 @@ public class LabOrderDeferHandlerTest
     }
 
     [Fact]
+    public async Task Handle_OrderIdIsEmrOrderId_ResolvedViaLoadByEmrOrderId_DeferredAndSaved()
+    {
+        var order = OrderedOrder();
+        var until = new DateTime(2026, 5, 20);
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe<LabOrderModel>.None);
+        _repo.Setup(r => r.LoadByEmrOrderId(order.EmrOrderId)).Returns(MayBe.From(order));
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        await _sut.Handle(new LabOrderDeferCmd(order.EmrOrderId, "U2", "Puasa", until), CancellationToken.None);
+
+        persisted.Should().NotBeNull();
+        persisted!.LabOrderStatus.Should().Be(LabOrderStatusEnum.Deferred);
+        persisted.DeferredInfo.Reason.Should().Be("Puasa");
+        persisted.DeferredInfo.Until.Should().Be(until);
+        _repo.Verify(r => r.LoadEntity(It.IsAny<ILabOrderKey>()), Times.Once);
+        _repo.Verify(r => r.LoadByEmrOrderId(order.EmrOrderId), Times.Once);
+        _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_OrderNotFound_Throws()
     {
         _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe<LabOrderModel>.None);
+
+        _repo.Setup(r => r.LoadByEmrOrderId(It.IsAny<string>())).Returns(MayBe<LabOrderModel>.None);
 
         var act = async () => await _sut.Handle(
             new LabOrderDeferCmd("LBO000000999", "U2", "Puasa", DateTime.Now),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>();
+        await act.Should().ThrowAsync<KeyNotFoundException>();
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
     }
 }

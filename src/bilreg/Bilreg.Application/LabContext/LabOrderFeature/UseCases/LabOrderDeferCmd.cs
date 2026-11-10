@@ -30,7 +30,15 @@ public class LabOrderDeferHandler : IRequestHandler<LabOrderDeferCmd>
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NullOrWhiteSpace(request.Reason, nameof(request.Reason));
 
-        var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
+        var order = _labOrderRepo.LoadEntity(request)
+            .Match(
+                onSome: x => x,
+                onNone: () => _labOrderRepo.LoadByEmrOrderId(request.OrderId)
+                    .Match(
+                        onSome: y => y,
+                        onNone: () => throw new KeyNotFoundException($"LabOrder '{request.OrderId}' not found")
+                    )
+            );
         var occurredAt = _tglJamProvider.Now;
         order.Defer(request.Reason, request.UntilDate, request.UserId, occurredAt);
 

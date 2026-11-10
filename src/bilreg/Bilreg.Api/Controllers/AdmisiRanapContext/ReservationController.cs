@@ -1,5 +1,5 @@
 using Bilreg.Api.Filters;
-using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -38,6 +38,13 @@ public class ReservationController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> History(string id)
+    {
+        var result = await _mediator.Send(new AdmGetReservationHistoryQry(id));
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {
@@ -56,9 +63,9 @@ public class ReservationController : ControllerBase
     }
 
     [HttpPost("{id}/cancel")]
-    public async Task<IActionResult> Cansel(string id, [FromBody] AdmCancelReservationBody body)
+    public async Task<IActionResult> Cancel(string id, [FromBody] AdmCancelReservationBody body)
     {
-        await _mediator.Send(new AdmCancelReservationCmd(id, body.UserId));
+        await _mediator.Send(new AdmCancelInpatientOrderCmd(id, body.UserId, body.Reason));
         return Ok(new JSendOk("Done"));
     }
 }
@@ -69,4 +76,4 @@ public record AdmMaintainReservationBody(
     string BangsalId,
     string UserId);
 
-public record AdmCancelReservationBody(string UserId);
+public record AdmCancelReservationBody(string UserId, string Reason);

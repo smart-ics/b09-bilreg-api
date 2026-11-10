@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
@@ -24,7 +24,9 @@ public class RegModel : IRegKey
         RegEligibilityType eligibility,
         IEnumerable<RegKomponenType> listKomponen,
         KelasDkType? kelasDk = null,
-        BangsalReff? bangsal = null)
+        BangsalReff? bangsal = null,
+        JenisInapType? jenisInap = null,
+        string? regIbu = null)
     {
         RegId = regId;
         RegDate = regDate;
@@ -45,6 +47,8 @@ public class RegModel : IRegKey
         Eligibility = eligibility;
         KelasDk = kelasDk ?? KelasDkType.Default;
         Bangsal = bangsal ?? new BangsalReff("-", "-");
+        JenisInap = jenisInap ?? JenisInapType.Default;
+        RegIbu = regIbu ?? string.Empty;
         _listKomponen = listKomponen?.ToList() ?? [];
     }
 
@@ -73,8 +77,8 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
-        && RegVoidAudit == AuditInfoType.Default;
+    public bool IsAktif => (RegKeluarAudit == AuditInfoType.Default || RegKeluarAudit.Timestamp == new DateTime(3000, 1, 1))
+        && (RegVoidAudit == AuditInfoType.Default || RegVoidAudit.Timestamp == new DateTime(3000, 1, 1));
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }
@@ -92,6 +96,8 @@ public class RegModel : IRegKey
     //      Sync enrichment for Admission bridge; not persisted in ta_registrasi.
     public KelasDkType KelasDk { get; init; }
     public BangsalReff Bangsal { get; init; }
+    public JenisInapType JenisInap { get; private set; }
+    public string RegIbu { get; private set; }
     //      Eligibility
     public RegEligibilityType Eligibility { get; private set; }
     //
@@ -206,10 +212,41 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, timestamp);
     }
 
+    public void SetKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah tercatat keluar.");
+
+        RegKeluarAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    public void CancelKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit == AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} belum berstatus keluar.");
+
+        RegCancelOutAudit = new AuditInfoType(userId, timestamp);
+        RegKeluarAudit = AuditInfoType.Default;
+    }
+
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
         Eligibility = data;
+    }
+
+    public void SetJenisInap(JenisInapType jenisInap, string regIbu)
+    {
+        JenisInap = jenisInap ?? JenisInapType.Default;
+        RegIbu = regIbu ?? string.Empty;
     }
 
     #endregion
@@ -224,7 +261,7 @@ public record RegKomponenType(
 public record RegReff(
     string RegId,
     string PasienId,
-    string PasienName);
+    string PasienName) : IRegKey;
 public record RegEligibilityType(
     string SjpId,
     string SjpNo,

@@ -1,12 +1,18 @@
+using Bilreg.Api.Controllers.BedUsageContext.WaitingListFeature;
 using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using BedUsageUseCases = Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
 
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
+/// <summary>
+/// Backward-compatible adapter for WaitingList operations under the AdmisiRanapContext route.
+/// Callers are encouraged to use /api/bed-usage/waiting-list (BedUsageContext.WaitingListFeature).
+/// </summary>
 [Route("api/admisi-ranap/waiting-list")]
 //[ApiController]
 [Authorize]
@@ -44,6 +50,47 @@ public class WaitingListController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost("{id}/reserve")]
+    public async Task<IActionResult> Reserve(string id, [FromBody] WaitingListReserveBody body)
+    {
+        var cmd = new BedUsageUseCases.WaitingListReserveCmd(id, body.BedId, body.UserId, body.BedName);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> Cancel(string id, [FromBody] WaitingListCancelBody body)
+    {
+        var cmd = new BedUsageUseCases.WaitingListCancelCmd(id, body.Reason, body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost("{id}/reject")]
+    public async Task<IActionResult> Reject(string id, [FromBody] AdmRejectWaitingListBody body)
+    {
+        var cmd = new BedUsageUseCases.WaitingListRejectCmd(id, body.Reason, body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost("{id}/reroute")]
+    public async Task<IActionResult> Reroute(string id, [FromBody] WaitingListRerouteBody body)
+    {
+        var cmd = new BedUsageUseCases.WaitingListRerouteCmd(
+            id,
+            body.TargetBangsalId,
+            body.Reason,
+            body.UserId,
+            body.TargetKelasId,
+            body.ClinicalUrgency,
+            body.SpecialRequirements,
+            body.PlannedBedId,
+            body.PlannedBedName);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("by-reg/{regId}")]
     public async Task<IActionResult> GetByReg(string regId)
     {
@@ -66,6 +113,13 @@ public class WaitingListController : ControllerBase
         var result = await _mediator.Send(new AdmListWaitingListQry(bangsalId, waitingListStatus));
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet("worklist")]
+    public async Task<IActionResult> GetWorklist([FromQuery] string bangsalId)
+    {
+        var result = await _mediator.Send(new BedUsageUseCases.WaitingListWorklistQuery(bangsalId));
+        return Ok(new JSendOk(result));
+    }
 }
 
 public record AdmUpdateWaitingListBody(
@@ -75,3 +129,5 @@ public record AdmUpdateWaitingListBody(
     string UserId);
 
 public record AdmCloseWaitingListBody(string UserId);
+
+public record AdmRejectWaitingListBody(string Reason, string UserId);

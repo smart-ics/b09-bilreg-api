@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.Shared.User;
+using Bilreg.Application.Shared.User;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -24,8 +24,9 @@ public class UserController : Controller
     }
 
 
-    [HttpPost]
-    [Route("login")]
+    [HttpPost("login")]
+    [HttpPost("/login")]
+
     public async Task<IActionResult> Login([FromBody]UserGetUserUsmanQuery cmd)
     {
         try
@@ -39,18 +40,26 @@ public class UserController : Controller
 
     }
 
-    private string GetToken(string email, UserGetUserUsmanResponse response)
+    internal string GetToken(string email, UserGetUserUsmanResponse response)
     {
+        var subjectId = !string.IsNullOrWhiteSpace(response.PegId)
+            ? response.PegId.Trim()
+            : (!string.IsNullOrWhiteSpace(response.UserLogin)
+                ? response.UserLogin.Trim()
+                : response.UserName.Trim());
+
         //      - claim identity
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, _configuration["Jwt:Subject"] ?? string.Empty),
+            new Claim(JwtRegisteredClaimNames.Sub, subjectId),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat,
                 DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64),
             new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Name, response.UserName)
+            new Claim(ClaimTypes.NameIdentifier, subjectId),
+            new Claim(ClaimTypes.Name, response.UserName),
+            new Claim("pegId", !string.IsNullOrWhiteSpace(response.PegId) ? response.PegId.Trim() : subjectId)
         };
 
         foreach (var role in response.ListRole ?? [])

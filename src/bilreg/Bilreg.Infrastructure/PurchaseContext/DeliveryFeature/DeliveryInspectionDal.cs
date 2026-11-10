@@ -172,6 +172,7 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
             aa.Status,
             aa.ConfirmedAt,
             aa.ConfirmedBy,
+            ISNULL(NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)), ''), aa.ConfirmedBy) AS ConfirmedByName,
             aa.VoidedAt,
             aa.VoidedBy,
             aa.CreatedAt,
@@ -180,6 +181,7 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
             aa.UpdatedBy
         FROM BILRG_DoInspeksi aa
         LEFT JOIN tb_barang bb ON aa.BrgId = bb.fs_kd_barang
+        LEFT JOIN td_peg peg ON aa.ConfirmedBy = peg.fs_kd_peg
         """;
 
     private static DynamicParameters BuildWriteParams(DeliveryInspectionDto dto)

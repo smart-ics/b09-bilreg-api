@@ -48,7 +48,7 @@ public class LabCollectionPreparationDal : ILabCollectionPreparationDal
 
         var itemDp = new DynamicParameters();
         itemDp.AddParam("@OrderId", orderId, SqlDbType.VarChar);
-        var itemRows = conn.Read<LabCollectionItemRow>(itemsSql, itemDp).ToList();
+        var itemRows = conn.Read<LabCollectionItemRow>(itemsSql, itemDp)?.ToList() ?? [];
 
         var tests = itemRows
             .Select(r => new LabCollectionPreparationTestItem(

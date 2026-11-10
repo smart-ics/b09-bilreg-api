@@ -195,7 +195,7 @@ public class TrsBillingDal : ITrsBillingDal
                 LEFT JOIN ta_rekap_cetak_tarif ff ON aa.fs_kd_rekap_cetak = ff.fs_kd_rekap_cetak_tarif
             WHERE
                 aa.fs_kd_reg = @fs_kd_reg
-            
+                OR aa.fs_kd_reg IN (SELECT fs_kd_reg_asal FROM ta_trs_merge WHERE fs_kd_reg_merge = @fs_kd_reg)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", regKey.RegId, SqlDbType.VarChar);

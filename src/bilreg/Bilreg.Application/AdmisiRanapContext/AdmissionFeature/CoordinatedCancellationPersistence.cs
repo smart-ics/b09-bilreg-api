@@ -14,6 +14,7 @@ public interface ICoordinatedCancellationRepo
     int VoidRegistration(string regId, string userId, DateTime now);
     int DeleteRegAktif(string regId);
     int RestoreSource(CoordinatedCancellationState state, string userId, DateTime now);
+    int VoidSource(CoordinatedCancellationState state, string reason, string userId, DateTime now);
     int CancelAdmission(CoordinatedCancellationState state, DateTime? expectedUpdatedAt, string userId, DateTime now);
     int CompleteLedger(string requestId, string responseJson, DateTime now);
 }
@@ -47,7 +48,8 @@ public sealed record CoordinatedCancellationState(
     bool IsCoherentlyCancelled,
     object AuditSnapshot,
     bool AdmissionExists = true,
-    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null);
+    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null,
+    string InpatientOrderId = "-");
 
 /// <summary>
 /// Immutable, entity-scoped pre-change images captured while the cancellation
@@ -66,6 +68,7 @@ public sealed record CoordinatedCancellationAuditSnapshots(
 public static class CoordinatedCancellationErrorCode
 {
     public const string RegistrationHasBillingItems = "REGISTRATION_HAS_BILLING_ITEMS";
+    public const string RegistrationHasActiveBedPlacement = "RegistrationHasActiveBedPlacement";
     public const string ConcurrencyConflict = "CONCURRENCY_CONFLICT";
     public const string SourceStateMismatch = "SOURCE_STATE_MISMATCH";
     public const string RequestIdReused = "REQUEST_ID_REUSED";

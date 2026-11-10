@@ -567,4 +567,26 @@ public class DeliveryQueryTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
     }
+    [Fact]
+    public async Task DeliveryGet_WhenConfirmedWithUserNames_ReturnsUserNames()
+    {
+        // Arrange
+        var model = CreateTestDeliveryOrder();
+        model.Confirm("CONF01", new DateTime(2026, 10, 15, 11, 0, 0));
+        model.SetCreatedUserName("Petugas Gudang Farmasi");
+        model.SetConfirmedUserName("Kepala Instalasi Farmasi");
+        _deliveryOrderRepoMock.Setup(x => x.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == model.DeliveryOrderId)))
+            .Returns(MayBe.From(model));
+
+        var sut = new DeliveryGetHandler(_deliveryOrderRepoMock.Object);
+        var query = new DeliveryGetQuery(model.DeliveryOrderId);
+
+        // Act
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.Created.UserName.Should().Be("Petugas Gudang Farmasi");
+        response.Confirmed.UserName.Should().Be("Kepala Instalasi Farmasi");
+    }
 }

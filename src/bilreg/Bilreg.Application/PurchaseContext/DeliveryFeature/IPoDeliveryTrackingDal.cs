@@ -7,6 +7,7 @@ public class PoQuotaDto
     public string BrgId { get; set; } = string.Empty;
     public string BrgName { get; set; } = string.Empty;
     public string SatuanId { get; set; } = string.Empty;
+    public string SatuanKecilId { get; set; } = string.Empty;
     public decimal QtyPo { get; set; }
     public decimal QtyDo { get; set; }
     public decimal SisaQty { get; set; }
@@ -32,7 +33,8 @@ public class PoQuotaDto
         bool isClosed,
         decimal konversi,
         decimal harga,
-        decimal diskon)
+        decimal diskon,
+        string satuanKecilId = "")
     {
         PoId = poId;
         NoUrut = noUrut;
@@ -46,9 +48,10 @@ public class PoQuotaDto
         Konversi = konversi;
         Harga = harga;
         Diskon = diskon;
+        SatuanKecilId = satuanKecilId;
     }
 
-    [Obsolete("Transitional constructor. Use 12-parameter constructor without layananId. Will be removed in P2-S02.")]
+    [Obsolete("Transitional constructor. Use 12- or 13-parameter constructor without layananId.")]
     public PoQuotaDto(
         string poId,
         int noUrut,
@@ -62,8 +65,9 @@ public class PoQuotaDto
         string layananId,
         decimal konversi,
         decimal harga,
-        decimal diskon)
-        : this(poId, noUrut, brgId, brgName, satuanId, qtyPo, qtyDo, sisaQty, isClosed, konversi, harga, diskon)
+        decimal diskon,
+        string satuanKecilId = "")
+        : this(poId, noUrut, brgId, brgName, satuanId, qtyPo, qtyDo, sisaQty, isClosed, konversi, harga, diskon, satuanKecilId)
     {
         LayananId = layananId;
     }
@@ -89,6 +93,7 @@ public class PoPendingItemDto
     public string BrgName { get; set; } = string.Empty;
     public string SatuanId { get; set; } = string.Empty;
     public string SatuanName { get; set; } = string.Empty;
+    public string SatuanKecilId { get; set; } = string.Empty;
     public decimal QtyPo { get; set; }
     public decimal QtyDo { get; set; }
     public decimal SisaQty { get; set; }
@@ -96,6 +101,8 @@ public class PoPendingItemDto
     public decimal Harga { get; set; }
     public decimal Diskon { get; set; }
 }
+
+public class DeliveryPendingPoItemDto : PoPendingItemDto { }
 
 public interface IPoDeliveryTrackingDal
 {

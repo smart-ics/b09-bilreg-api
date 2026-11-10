@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
@@ -7,11 +8,19 @@ using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 
+public record PakaiBedKomponenType(
+    string KomponenId,
+    string KomponenName,
+    decimal Tarif,
+    int HariKe = 1);
+
 public class PakaiBedModel : IPakaiBed
 {
     public PakaiBedModel(string pakaiBedId, PeriodePakaiBedType periode,
         RegReff reg, LayananReff layanan, BedReff bed, TipeKamarReff tipeKamar,
-        KelasReff kelas, decimal tarif, AuditTrailType auditTrail)
+        KelasReff kelas, decimal tarif, AuditTrailType auditTrail,
+        IEnumerable<PakaiBedKomponenType>? listKomponen = null,
+        string kelasTindakanId = "")
     {
         PakaiBedId = pakaiBedId;
         Periode = periode;
@@ -22,6 +31,8 @@ public class PakaiBedModel : IPakaiBed
         Kelas = kelas;
         Tarif = tarif;
         AuditTrail = auditTrail;
+        ListKomponen = listKomponen?.ToList() ?? new List<PakaiBedKomponenType>();
+        KelasTindakanId = string.IsNullOrWhiteSpace(kelasTindakanId) ? kelas.KelasId : kelasTindakanId;
     }
 
     public static IPakaiBed Key(string id) => new PakaiBedModel(id, PeriodePakaiBedType.Default,
@@ -31,14 +42,17 @@ public class PakaiBedModel : IPakaiBed
 
     public static PakaiBedModel Create(RegModel reg, AuditInfoType masuk,
         LayananType layanan, BedType bed, TipeKamarType tipeKamar,
-        KelasType kelas, decimal tarif)
+        KelasType kelas, decimal tarif,
+        IEnumerable<PakaiBedKomponenType>? listKomponen = null,
+        string kelasTindakanId = "")
     {
         var newId = NunaId.NewLegacy("BE", 'A');
         var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
         return new PakaiBedModel(newId, 
             new PeriodePakaiBedType(masuk, AuditInfoType.Default),
             reg.ToReff(), layanan.ToReff(), bed.ToReff(), tipeKamar.ToReff(),
-            kelas.ToReff(), tarif, auditTrail);
+            kelas.ToReff(), tarif, auditTrail,
+            listKomponen, kelasTindakanId);
     }
 
     public void Void(string userId, DateTime voidDateTime)
@@ -46,7 +60,19 @@ public class PakaiBedModel : IPakaiBed
         AuditTrail.Batal(userId, voidDateTime);
     }
 
-public string PakaiBedId { get; init; }
+    public void Release(string userId, DateTime keluarDateTime)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        if (keluarDateTime == default)
+            throw new ArgumentException("Checkout time must be valid.", nameof(keluarDateTime));
+
+        Periode = new PeriodePakaiBedType(
+            Periode.Masuk,
+            new AuditInfoType(userId, keluarDateTime));
+        AuditTrail.Modif(userId, keluarDateTime);
+    }
+
+    public string PakaiBedId { get; init; }
     public PeriodePakaiBedType Periode { get; private set; }
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; private set; }
@@ -55,8 +81,8 @@ public string PakaiBedId { get; init; }
     public KelasReff Kelas { get; private set; }
     public decimal Tarif { get; private set; }
     public AuditTrailType AuditTrail { get; init; }
-    
-    
+    public IReadOnlyList<PakaiBedKomponenType> ListKomponen { get; private set; }
+    public string KelasTindakanId { get; private set; }
 }
 
 public record PeriodePakaiBedType
@@ -75,6 +101,3 @@ public interface IPakaiBed
 {
     string PakaiBedId { get; }
 }
-
-
-

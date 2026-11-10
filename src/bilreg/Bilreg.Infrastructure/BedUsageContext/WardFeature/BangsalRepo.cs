@@ -1,4 +1,4 @@
-using Bilreg.Application.BedUsageContext.WardFeature;
+﻿using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
@@ -49,5 +49,13 @@ public class BangsalRepo : IBangsalRepo
             .Where(x => x.Layanan.LayananId == filter.LayananId)
             .ToList();
         return result;
+    }
+
+    public MayBe<BangsalType> GetByRegId(string regId)
+    {
+        var dto = _bangsalDal.GetBangsalByRegId(regId);
+        if (dto is null)
+            return MayBe<BangsalType>.None;
+        return MayBe.From(dto.ToModel());
     }
 }

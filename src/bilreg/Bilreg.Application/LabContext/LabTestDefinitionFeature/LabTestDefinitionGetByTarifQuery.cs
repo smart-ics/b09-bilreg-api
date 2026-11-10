@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.ChargeContext.TarifFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -11,10 +12,14 @@ public class LabTestDefinitionGetByTarifHandler
     : IRequestHandler<LabTestDefinitionGetByTarifQuery, LabTestDefinitionDetailResponse>
 {
     private readonly ILabTestDefinitionRepo _repo;
+    private readonly INilaiTarifRepo? _nilaiTarifRepo;
 
-    public LabTestDefinitionGetByTarifHandler(ILabTestDefinitionRepo repo)
+    public LabTestDefinitionGetByTarifHandler(
+        ILabTestDefinitionRepo repo,
+        INilaiTarifRepo? nilaiTarifRepo = null)
     {
         _repo = repo;
+        _nilaiTarifRepo = nilaiTarifRepo;
     }
 
     public Task<LabTestDefinitionDetailResponse> Handle(
@@ -30,6 +35,7 @@ public class LabTestDefinitionGetByTarifHandler
             throw new InvalidOperationException(
                 $"LAB_TEST_DEFINITION_INACTIVE: LabTestDefinition '{model.TestDefinitionId}' is inactive.");
 
-        return Task.FromResult(LabTestDefinitionResponseMapper.ToDetailResponse(model));
+        var tarifPrice = LabTestDefinitionSupport.ResolveTarifPrice(_nilaiTarifRepo, model.TarifId);
+        return Task.FromResult(LabTestDefinitionResponseMapper.ToDetailResponse(model, tarifPrice));
     }
 }

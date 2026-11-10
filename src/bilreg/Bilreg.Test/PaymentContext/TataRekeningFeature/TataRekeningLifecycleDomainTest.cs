@@ -27,6 +27,14 @@ public class TataRekeningLifecycleDomainTest
             finalizationDate: new DateTime(2026, 6, 16, 10, 0, 0));
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        tataRekening.ListTrsBill.Should().AllSatisfy(bill =>
+        {
+            bill.ListFinalization.Should().AllSatisfy(f =>
+            {
+                f.TglBayar.Should().Be(new DateTime(2026, 6, 16, 10, 0, 0));
+                f.PetugasKasir.Should().Be("kasir-01");
+            });
+        });
 
         tataRekening.Pay(
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
@@ -106,6 +114,17 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
+    public void UT07b_GivenOpenedTataRekening_WhenDeleteBillWithTruncatedPrefix_ThenShouldMatchAndRemove()
+    {
+        var bill = CreateBill("TDK09KZ0XHX7", BillModulGroup.Jasa, 700_000m);
+        var tataRekening = HydrateOpened(bill);
+
+        tataRekening.DeleteBill("TDK09KZ0XH");
+
+        tataRekening.ListTrsBill.Should().BeEmpty();
+    }
+
+    [Fact]
     public void UT08_GivenPartialAllocationInput_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-02", BillModulGroup.Jasa, 100_000m));
@@ -124,7 +143,7 @@ public class TataRekeningLifecycleDomainTest
     {
         var tataRekening = CreateFinalizedTataRekening();
 
-        tataRekening.CancelFinalization();
+        tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
         tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
@@ -141,7 +160,7 @@ public class TataRekeningLifecycleDomainTest
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
 
-        Action act = () => tataRekening.CancelFinalization();
+        Action act = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*sudah ada pembayaran*");
@@ -210,7 +229,7 @@ public class TataRekeningLifecycleDomainTest
         Action allocate = () => tataRekening.AllocateFinancialResponsibility([]);
         Action initiateSettlement = () => tataRekening.InitiateSettlement("kasir", DateTime.Now);
         Action pay = () => tataRekening.Pay([], "PAY", DateTime.Now);
-        Action cancel = () => tataRekening.CancelFinalization();
+        Action cancel = () => tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector());
         Action delete = () => tataRekening.DeleteBill("BILL-JASA-01");
 
         close.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
@@ -222,6 +241,82 @@ public class TataRekeningLifecycleDomainTest
         pay.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         cancel.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         delete.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+    }
+
+    [Fact]
+    public void UT15_GivenMultipleBillsWithAllocations_WhenFinalizeFinancialResponsibility_ThenFinalizationTimestampSynchronizedAcrossAllBills()
+    {
+        var jasaBill = CreateBill("BILL-SYNC-JASA", BillModulGroup.Jasa, 60_000m);
+        var obatBill = CreateBill("BILL-SYNC-OBAT", BillModulGroup.Obat, 40_000m);
+        var tataRekening = HydrateOpened(jasaBill, obatBill);
+        tataRekening.Close();
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
+            [BuildPayment(PaymentType.ByKas, 60_000m, 40_000m)],
+            "kasir-awal");
+
+        var finalDate = new DateTime(2026, 6, 16, 15, 30, 45);
+        tataRekening.FinalizeFinancialResponsibility("verif-final", finalDate);
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        tataRekening.ListTrsBill.Should().HaveCount(2);
+        tataRekening.ListTrsBill.Should().AllSatisfy(bill =>
+        {
+            bill.ListFinalization.Should().NotBeEmpty();
+            bill.ListFinalization.Should().AllSatisfy(f =>
+            {
+                f.TglBayar.Should().Be(finalDate);
+                f.PetugasKasir.Should().Be("verif-final");
+            });
+        });
+    }
+
+    [Fact]
+    public void UT16_GivenClosedTataRekeningWithVerificationAndAllocation_WhenReOpen_ThenTransitionsToOpenedAndResetsVerificationAndAllocation()
+    {
+        var tataRekening = HydrateOpened(CreateBill("BILL-REOPEN-01", BillModulGroup.Jasa, 100_000m));
+        tataRekening.Close();
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
+            [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
+            "kasir-01");
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
+        tataRekening.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.Valid);
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeTrue();
+
+        tataRekening.ReOpen();
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Opened);
+        tataRekening.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.NotVerified);
+        tataRekening.FinancialVerificationInfo.Should().BeNull();
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        tataRekening.SettlementInitiated.Should().BeFalse();
+        tataRekening.FinalizationInfo.Should().Be(TataRekeningFinalizationType.Default);
+        tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UT17_GivenFinalizedTataRekening_WhenCancelFinalizationThenReOpen_ThenFullLifecycleSucceedsBackToOpened()
+    {
+        var tataRekening = CreateFinalizedTataRekening();
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+
+        // Cancel finalization with internal allocation present reverts to Closed
+        tataRekening.CancelFinalization(new FakeDownstreamSettlementInspector(hasApprovedAllocation: true, hasCashierSettlement: false));
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        tataRekening.SettlementInitiated.Should().BeFalse();
+        tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
+
+        // Reopen reverts Closed to Opened and resets verification & allocation
+        tataRekening.ReOpen();
+
+        tataRekening.Status.Should().Be(TataRekeningStatusEnum.Opened);
+        tataRekening.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.NotVerified);
+        tataRekening.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        tataRekening.SettlementInitiated.Should().BeFalse();
     }
 
     private static TataRekeningModel HydrateOpened(params TrsBillType[] listTrsBill) =>

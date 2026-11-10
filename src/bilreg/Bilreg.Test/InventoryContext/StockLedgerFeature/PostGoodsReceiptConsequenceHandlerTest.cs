@@ -252,6 +252,33 @@ public class PostGoodsReceiptConsequenceHandlerTest
         scope.Value.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
     }
 
+    [Fact]
+    public async Task Handle_WithSatuanId_PassesSatuanIdToLegacyInboundWriteRequest()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        var uowMock = new Mock<IStockConsequenceUnitOfWork>();
+        StockConsequenceDraft? capturedDraft = null;
+        uowMock
+            .Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
+            .Callback<StockConsequenceDraft>(d => capturedDraft = d);
+
+        var sut = CreateHandler(
+            gateOutcome: EnsureFreshnessOutcomeEnum.Success,
+            uow: uowMock.Object);
+
+        var cmd = NewCommand(trsReffId: "TRSD20007", qty: 10, hpp: 100m, satuanId: "BH");
+
+        var result = await sut.Handle(cmd, default);
+
+        result.Outcome.Should().Be(PostGoodsReceiptOutcomeEnum.Success);
+        capturedDraft.Should().NotBeNull();
+        var operation = capturedDraft!.LegacyOperations.Should().ContainSingle().Subject;
+        var inboundOp = operation.Should().BeOfType<LegacyInboundWriteOperation>().Subject;
+        inboundOp.Request.SatuanId.Should().Be("BH");
+    }
+
     private PostGoodsReceiptConsequenceHandler CreateHandler(
         EnsureFreshnessOutcomeEnum gateOutcome,
         string inconsistencyReason = "",
@@ -292,7 +319,8 @@ public class PostGoodsReceiptConsequenceHandlerTest
         string trsReffId,
         decimal qty,
         decimal hpp,
-        DateTime? tglMutasi = null) =>
+        DateTime? tglMutasi = null,
+        string? satuanId = null) =>
         new(
             BrgId,
             DoId,
@@ -304,5 +332,6 @@ public class PostGoodsReceiptConsequenceHandlerTest
             UserId: UserId,
             TglEd: TglEd,
             PoReffId: "POSTLD201",
-            NoBatch: "NB-D2");
+            NoBatch: "NB-D2",
+            SatuanId: satuanId);
 }
