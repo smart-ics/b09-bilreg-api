@@ -4,7 +4,7 @@ Code: WAITING-LIST-BED-USAGE-CONSOLIDATION
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-11-09
-Status: IN-PROGRESS
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -72,14 +72,14 @@ Architecture Applicability: ARCHITECTURE-REQUIRED
 
 # 4. Progress Summary
 
-Status: IN-PROGRESS  
+Status: COMPLETED  
 Execution Approval: APPROVED  
 
 | Phase | Description | Repository | Implementation Status | Review Status | Progress |
 | :--- | :--- | :--- | :--- | :--- | :---: |
 | **P1** | BedUsage API Enhancement & Parity | `b09-bilreg-api` | IMPLEMENTED | GO | 2/2 |
-| **P2** | Admisi Ranap Backend Migration & Cleanup | `b09-bilreg-api` | NOT-STARTED | NOT-REVIEWED | 0/2 |
-| **P3** | Frontend Migration & UI Verification | `c012_myhospital_web` | NOT-STARTED | NOT-REVIEWED | 0/2 |
+| **P2** | Admisi Ranap Backend Migration & Cleanup | `b09-bilreg-api` | IMPLEMENTED | GO | 2/2 |
+| **P3** | Frontend Migration & UI Verification | `c012_myhospital_web` | IMPLEMENTED | GO | 2/2 |
 
 ---
 
@@ -168,15 +168,15 @@ Notes:
 
 ## P2 - Admisi Ranap Backend Migration & Cleanup
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 
 ---
 
 ### P2-S03
 Title: Pengalihan Dependensi Orkestrator Admisi ke BedUsage dan Notifikasi Event Real-Time  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective:
 Mengalihkan seluruh ketergantungan internal pada konteks Admisi Ranap ke `BedUsageContext`:
 1. Pada [`AdmissionRegistrationOrchestrator.cs`](file:///d:/project_aktif/project_MyHospitalWeb/b09-bilreg-api/src/bilreg/Bilreg.Application/AdmisiRanapContext/AdmissionFeature/UseCases/AdmissionRegistrationOrchestrator.cs):
@@ -195,6 +195,43 @@ Completion Criteria:
 - Event `PublishWaitingListUpdatedAsync` dipicu saat registrasi berhasil.
 - Seluruh test di `Bilreg.Test/AdmisiRanapContext/` lulus tanpa referensi ke repo lama.
 
+Implementation Notes:
+- Mengalihkan injeksi `IWaitingListRepo` pada `AdmissionRegistrationOrchestrator` ke namespace `Bilreg.Application.BedUsageContext.WaitingListFeature.IWaitingListRepo`.
+- Menginjeksi `IWardCockpitEventPublisher` ke dalam `AdmissionRegistrationOrchestrator` (dengan fallback default ke `NullWardCockpitEventPublisher`) dan memanggil `await _wardCockpitEventPublisher.PublishWaitingListUpdatedAsync(bangsalId);` setelah antrean tersimpan.
+- Memperbarui `PlaceWaitingListGracefully` menjadi `async Task<string?>` yang membuat model menggunakan `Bilreg.Domain.BedUsageContext.WaitingListFeature.WaitingListModel.Create(...)` serta membungkus seluruh operasi (termasuk penyimpanan ke repo dan publikasi event) dalam try-catch agar kegagalan antrean tidak menggagalkan pendaftaran pasien.
+- Mengalihkan seluruh call-site `PlaceWaitingListGracefully` (6 rute registrasi admisi) untuk menggunakan `await`.
+- Memperbarui referensi `WaitingListStatusEnum` pada `AdmCoordinatedCancelCmd.cs`, `CoordinatedCancellationPersistence.cs`, `CoordinatedCancellationRepo.cs`, `IWardAccommodationGateway.cs`, serta seluruh komponen `JourneyFeature` (`JourneyContracts.cs`, `Release1JourneyStageResolver.cs`, `Release1JourneySqlStageExpression.cs`, `JourneyIntegrityValidator.cs`, `JourneyDal.cs`) ke `Bilreg.Domain.BedUsageContext.WaitingListFeature.WaitingListStatusEnum`, termasuk mapping status: `Waiting` (0), `Reserved` (1), `Placed` (2), `Cancelled` (3).
+- Memverifikasi konfigurasi DI di `Bilreg.Api/Configurations/ApplicationService.cs` dan `PresentationService.cs` untuk `IWardCockpitEventPublisher` dan `IWaitingListRepo`.
+- Memperbarui unit test pada `Bilreg.Test/AdmisiRanapContext/` (`AdmissionRegistrationOrchestratorTest.cs`, `AdmCoordinatedCancelHandlerTest.cs`, `JourneyApiIntegrationTest.cs`, `Release1JourneySqlStageParityTest.cs`, dll.) agar menggunakan mock BedUsage `IWaitingListRepo` dan memverifikasi pemanggilan `PublishWaitingListUpdatedAsync` serta graceful fallback.
+- Seluruh 51 pengujian unit di `AdmissionRegistrationOrchestratorTest`, 63 pengujian unit di `AdmisiRanapContext` (cancellation, journey resolver, integrity validator), dan 100 pengujian unit di `BedUsageContext.WaitingListFeature` lulus 100%.
+
+Changed Files:
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/AdmissionFeature/UseCases/AdmissionRegistrationOrchestrator.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/AdmissionFeature/UseCases/AdmCoordinatedCancelCmd.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/AdmissionFeature/CoordinatedCancellationPersistence.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/Integration/IWardAccommodationGateway.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/JourneyFeature/JourneyContracts.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/JourneyFeature/Release1JourneyStageResolver.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/JourneyFeature/Release1JourneySqlStageExpression.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/JourneyFeature/JourneyIntegrityValidator.cs`
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/WaitingListFeature/UseCases/AdmCreateWaitingListCmd.cs`
+- `src/bilreg/Bilreg.Infrastructure/AdmisiRanapContext/AdmissionFeature/CoordinatedCancellationRepo.cs`
+- `src/bilreg/Bilreg.Infrastructure/AdmisiRanapContext/JourneyFeature/JourneyDal.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmissionFeature/AdmissionRegistrationOrchestratorTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmissionFeature/AdmCoordinatedCancelHandlerTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmissionFeature/Api/AdmissionCancellationWebApplicationFactory.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmissionFeature/CoordinatedCancellationRepoTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/Integration/WardAccommodationGatewayTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyApiIntegrationTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyDalIntegrationTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyDalVolumeTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyIntegrityValidatorTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyOperationalReservationScenarioTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/Release1JourneySqlStageParityTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/Release1JourneyStageResolverTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/WaitingListFeature/AdmCreateWaitingListHandlerTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/WaitingListFeature/AdmWaitingListHandlerTest.cs`
+
 Notes:
 - Pastikan blok *graceful fallback* (try-catch) pada `PlaceWaitingListGracefully` tetap membungkus proses agar kegagalan antrean tidak membatalkan registrasi pasien.
 
@@ -202,8 +239,8 @@ Notes:
 
 ### P2-S04
 Title: Penghapusan Total Modul dan Controller Lama di AdmisiRanapContext  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective:
 Membersihkan seluruh sisa kode duplikat WaitingList di `AdmisiRanapContext`:
 1. Hapus berkas controller [`Bilreg.Api/Controllers/AdmisiRanapContext/WaitingListController.cs`](file:///d:/project_aktif/project_MyHospitalWeb/b09-bilreg-api/src/bilreg/Bilreg.Api/Controllers/AdmisiRanapContext/WaitingListController.cs).
@@ -219,6 +256,32 @@ Completion Criteria:
 - Tidak ada lagi direktori `WaitingListFeature` di dalam `AdmisiRanapContext`.
 - Proyek `b09-bilreg-api` berhasil di-build (`dotnet build`) dengan 0 error dan seluruh test (`dotnet test`) lulus 100%.
 
+Implementation Notes:
+- Menghapus controller usang `Bilreg.Api/Controllers/AdmisiRanapContext/WaitingListController.cs`.
+- Menghapus seluruh direktori modul duplikat `WaitingListFeature` pada `AdmisiRanapContext` di keempat layer dan pengujian:
+  - `Bilreg.Domain/AdmisiRanapContext/WaitingListFeature/`
+  - `Bilreg.Application/AdmisiRanapContext/WaitingListFeature/`
+  - `Bilreg.Infrastructure/AdmisiRanapContext/WaitingListFeature/`
+  - `Bilreg.Test/AdmisiRanapContext/WaitingListFeature/`
+- Menghapus pendaftaran DI lama `IWaitingListWorklistDal` serta namespace using usang di `Bilreg.Api/Configurations/InfrastructureService.cs`.
+- Memperbarui referensi enum `WaitingListStatusEnum` pada `OperationalWorklistDal.cs` ke namespace `Bilreg.Domain.BedUsageContext.WaitingListFeature` (menggunakan status `Placed` sebagai filter penutupan).
+- Memperbarui pengujian integrasi dan alur kerja admisi (`AdmisiRanapWorkflowTest.cs`, `AdmisiRanapPersistenceIntegrationTest.cs`, `JourneyDalIntegrationTest.cs`, `JourneyDalVolumeTest.cs`) agar menggunakan model dan handler `BedUsageContext.WaitingListFeature`.
+- Memverifikasi build solusi `b09-bilreg-api.sln` sukses dengan 0 error (`dotnet build`).
+- Memverifikasi 100 pengujian unit `BedUsageContext.WaitingListFeature`, 51 pengujian unit `AdmissionRegistrationOrchestratorTest`, 110 pengujian `JourneyFeature`, 139 pengujian `AdmissionFeature`, 12 pengujian `OperationalWorklistFeature`, dan 4 skenario `AdmisiRanapWorkflowTest` seluruhnya lulus 100%.
+
+Changed Files:
+- `src/bilreg/Bilreg.Api/Configurations/InfrastructureService.cs`
+- `src/bilreg/Bilreg.Api/Controllers/AdmisiRanapContext/WaitingListController.cs` (deleted)
+- `src/bilreg/Bilreg.Application/AdmisiRanapContext/WaitingListFeature/` (deleted)
+- `src/bilreg/Bilreg.Domain/AdmisiRanapContext/WaitingListFeature/` (deleted)
+- `src/bilreg/Bilreg.Infrastructure/AdmisiRanapContext/OperationalWorklistFeature/OperationalWorklistDal.cs`
+- `src/bilreg/Bilreg.Infrastructure/AdmisiRanapContext/WaitingListFeature/` (deleted)
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmisiRanapPersistenceIntegrationTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/AdmisiRanapWorkflowTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyDalIntegrationTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/JourneyFeature/JourneyDalVolumeTest.cs`
+- `src/bilreg/Bilreg.Test/AdmisiRanapContext/WaitingListFeature/` (deleted)
+
 Notes:
 - Pastikan tidak ada namespace using yang tertinggal di berkas-berkas lain.
 
@@ -226,15 +289,15 @@ Notes:
 
 ## P3 - Frontend Migration & UI Verification
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 
 ---
 
 ### P3-S05
 Title: Pembaruan Endpoint Service, Pembersihan Dead-Code, dan Penyelarasan Schema di Frontend  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective:
 Mengalihkan pemanggilan API dan menyelaraskan skema kontrak pada modul Admisi Ranap di `c012_myhospital_web`:
 1. Di [`AdmisiRanapService.ts`](file:///d:/project_aktif/project_MyHospitalWeb/c012_myhospital_web/src/modules/Admisi/queries/AdmisiRanapService.ts):
@@ -259,6 +322,29 @@ Completion Criteria:
 - Zod schema validasi berhasil mem-parse status `0, 1, 2, 3, 4, 5`.
 - Fungsi `useCloseWaitingList` bersih dari codebase frontend.
 
+Implementation Notes:
+- Menyelesaikan unresolved merge conflict pada 3 berkas (`JourneySidebar.vue`, `AdmisiRanapConsole.vue`, `JourneyCaseCard.vue`) dengan mempertahankan versi HEAD (`view-history` emit dan `JourneyListItem` type).
+- Mengubah `API_ENDPOINT.WAITING_LIST` dari `'admisi-ranap/waiting-list'` menjadi `'bed-usage/waiting-list'` pada `AdmisiRanapService.ts`.
+- Menghapus fungsi `useCloseWaitingList()`, skema `closeWaitingListInputSchema`, dan tipe `CloseWaitingListInput` dari `AdmisiRanapService.ts` dan `admisiRanap.ts`.
+- Memperbarui `waitingListStatusSchema` menjadi union status 0, 1, 2, 3, 4, 5 serta menyelaraskan konstanta `WAITING_LIST_STATUS` dengan enum BedUsage (`RESERVED: 1`, `PLACED: 2`, `REROUTED: 4`).
+- Memperbarui `WAITING_LIST_STATUS_MAP` pada `admisiRanapStatus.ts` untuk menyertakan status `1` ('Dipesankan', variant 'success'), `2` ('Ditempatkan', variant 'outline'), dan `4` ('Dialihkan', variant 'secondary').
+- Menambahkan opsi status `4` ('Dialihkan') dan menyelaraskan status `1` ('Dipesankan') pada `WAITING_LIST_STATUS_FILTER_OPTIONS` di `admisiRanapConsole.ts`.
+- Menyelaraskan seluruh unit test di `AdmisiRanapService.spec.ts`, `admisiRanap.spec.ts`, `admisiRanapStatus.spec.ts`, dan `admisiRanapConsole.spec.ts`.
+- Memverifikasi keberhasilan type-check TypeScript (`vue-tsc -p tsconfig.app.json --noEmit` lulus dengan 0 error) dan unit test vitest (102 tests pada suites target dan 310 tests pada Ranap UI & composables seluruhnya lulus 100%).
+
+Changed Files:
+- `src/modules/Admisi/components/ranap/journey/JourneyCaseCard.vue`
+- `src/modules/Admisi/components/ranap/journey/JourneySidebar.vue`
+- `src/modules/Admisi/configs/__tests__/admisiRanapConsole.spec.ts`
+- `src/modules/Admisi/configs/__tests__/admisiRanapStatus.spec.ts`
+- `src/modules/Admisi/configs/admisiRanapConsole.ts`
+- `src/modules/Admisi/configs/admisiRanapStatus.ts`
+- `src/modules/Admisi/queries/AdmisiRanapService.ts`
+- `src/modules/Admisi/queries/__tests__/AdmisiRanapService.spec.ts`
+- `src/modules/Admisi/types/__tests__/admisiRanap.spec.ts`
+- `src/modules/Admisi/types/admisiRanap.ts`
+- `src/modules/Admisi/views/AdmisiRanapConsole.vue`
+
 Notes:
 - Pastikan `waitingListDetailSchema` dan `waitingListListResponseSchema` tetap cocok dengan JSON yang dikembalikan backend.
 
@@ -266,8 +352,8 @@ Notes:
 
 ### P3-S06
 Title: Verifikasi Komponen UI Admisi Ranap dan Validasi Kepatuhan SOP Outstanding  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective:
 Memvalidasi integrasi antarmuka pengguna pada konsol Admisi Ranap:
 1. Verifikasi [`DaftarTungguLane.vue`](file:///d:/project_aktif/project_MyHospitalWeb/c012_myhospital_web/src/modules/Admisi/components/ranap/lanes/DaftarTungguLane.vue):
@@ -287,6 +373,23 @@ Repository: `c012_myhospital_web`
 Completion Criteria:
 - Seluruh pengujian unit frontend pada modul Admisi Ranap lulus 100%.
 - Alur pendaftaran admisi, mutasi antrean, dan alur SOP Outstanding berjalan mulus tanpa regresi (*zero-regression*).
+
+Implementation Notes:
+- Memperbarui `DaftarTungguLane.vue` dengan filter eksklusi eksplisit (*defense-in-depth*) untuk memastikan pasien dengan status `Placed (2)` dan `Cancelled (3)` tidak pernah muncul pada antrean aktif.
+- Menambahkan test suite baru `DaftarTungguLane.spec.ts` dengan 10 pengujian komprehensif yang memvalidasi integrasi data endpoint BedUsage, penolakan status 2 dan 3, mapping server filters (`bangsalId`, `waitingListStatus`), client-side filtering (nama/MR, kelas, prioritas, aging bucket), skeleton loading, dan penanganan retry saat error.
+- Memverifikasi fungsionalitas `WaitingListDrawer.vue` dan `WaitingListFork.vue` melalui unit test (`WaitingListDrawer.spec.ts`, `WaitingListFork.spec.ts`, `WaitingListCard.spec.ts`, `useWaitingListDrawer.spec.ts`) yang membuktikan alur pembuatan antrean baru, update data antrean, serta penampilan banner penolakan ruangan (`status 5`) lengkap dengan alasan penolakan berjalan lancar.
+- Memvalidasi kepatuhan alur SOP Outstanding pada `AdmisiRanapConsole.vue`, `SopOutstandingAlertBanner.vue`, dan `DialogTindakLanjutOutstanding.vue`:
+  - Saat `outstandingCount > 0`, sistem mengunci kategori/filter ke `Outstanding Only`.
+  - Aksi registrasi langsung dan pembuatan reservasi diblokir (`isSopBlocked = true`) dan peringatan SOP Outstanding ditampilkan di workspace.
+  - Tindak lanjut reservasi via `DialogTindakLanjutOutstanding.vue` (reschedule/cancel) otomatis membuka blokir saat antrean tuntas (`outstandingCount = 0`).
+- Menyelaraskan assertion pada `RegAktifContextBanner.spec.ts` terkait penambahan tombol close dan verifikasi ketiadaan tombol Change (7 tests lulus 100%).
+- Menjalankan seluruh pengujian unit frontend pada modul Admisi: 119 file test suites (1274 pengujian unit) lulus 100%.
+- Memverifikasi type-check TypeScript (`vue-tsc -p tsconfig.app.json --noEmit`) lulus dengan 0 error.
+
+Changed Files:
+- `src/modules/Admisi/components/ranap/lanes/DaftarTungguLane.vue`
+- `src/modules/Admisi/components/ranap/lanes/__tests__/DaftarTungguLane.spec.ts`
+- `src/modules/Admisi/components/regAktif/__tests__/RegAktifContextBanner.spec.ts`
 
 Notes:
 - Lakukan pengujian regresi menyeluruh pada komponen dialog dan workspace admisi ranap.
