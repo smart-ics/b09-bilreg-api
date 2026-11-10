@@ -206,7 +206,6 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         DateTime amendedAt)
     {
         Guard.Against.Null(regeneratedScaffoldItems, nameof(regeneratedScaffoldItems));
-        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(amendedBy, nameof(amendedBy));
 
         var scaffoldItems = regeneratedScaffoldItems.ToList();
@@ -224,9 +223,10 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; amend hanya diperbolehkan untuk hasil Verified atau Released.");
 
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 10)
+            throw new ArgumentException("Alasan amandemen wajib diisi minimal 10 karakter.", nameof(reason));
+
         var r = reason.Trim();
-        if (r.Length == 0)
-            throw new ArgumentException("Amendment reason wajib diisi.", nameof(reason));
         if (r.Length > 500)
             r = r[..500];
 

@@ -375,7 +375,7 @@ public class LabResultDocumentModelTest
         var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
             new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
 
-        var act = () => doc.AmendVerifiedToNewVersion(regenerated, "reason", "U1", DateTime.Now);
+        var act = () => doc.AmendVerifiedToNewVersion(regenerated, "Koreksi nilai pemeriksaan", "U1", DateTime.Now);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
     }
@@ -389,6 +389,39 @@ public class LabResultDocumentModelTest
 
         var act = () => doc.AmendVerifiedToNewVersion(regenerated, "   ", "U1", DateTime.Now);
 
-        act.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Alasan amandemen wajib diisi minimal 10 karakter*");
+    }
+
+    [Theory]
+    [InlineData("123456789")]
+    [InlineData("pendek")]
+    [InlineData("koreksi")]
+    public void AmendVerifiedToNewVersion_ReasonLessThan10Characters_Throws(string shortReason)
+    {
+        var doc = VerifiedDocument();
+        var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
+            new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
+
+        var act = () => doc.AmendVerifiedToNewVersion(regenerated, shortReason, "U1", DateTime.Now);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Alasan amandemen wajib diisi minimal 10 karakter*");
+    }
+
+    [Theory]
+    [InlineData("1234567890")]
+    [InlineData("Koreksi nilai analit hasil tes ulang")]
+    public void AmendVerifiedToNewVersion_ReasonTenCharactersOrMore_Succeeds(string validReason)
+    {
+        var doc = VerifiedDocument();
+        var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
+            new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
+
+        var (retired, newVersion) = doc.AmendVerifiedToNewVersion(regenerated, validReason, "U1", DateTime.Now);
+
+        retired.ResultStatus.Should().Be(LabResultStatusEnum.Amended);
+        newVersion.AmendmentReason.Should().Be(validReason.Trim());
+        newVersion.ResultStatus.Should().Be(LabResultStatusEnum.Recorded);
     }
 }

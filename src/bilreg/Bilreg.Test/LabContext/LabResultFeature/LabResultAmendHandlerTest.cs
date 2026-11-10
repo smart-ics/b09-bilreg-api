@@ -59,7 +59,7 @@ public class LabResultAmendHandlerTest
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(result));
 
-        await _sut.Handle(new LabResultAmendCmd(order.OrderId, "Koreksi", "UAMEND"), CancellationToken.None);
+        await _sut.Handle(new LabResultAmendCmd(order.OrderId, "Koreksi nilai analit hasil tes ulang", "UAMEND"), CancellationToken.None);
 
         _orderRepo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o =>
             o.LabOrderStatus == LabOrderStatusEnum.Recorded)), Times.Once);
@@ -119,7 +119,7 @@ public class LabResultAmendHandlerTest
             audit: new AuditInfoType("U1", DateTime.Now));
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
-        var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "r", "U1"), CancellationToken.None);
+        var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "Koreksi nilai analit hasil tes ulang", "U1"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
@@ -136,8 +136,37 @@ public class LabResultAmendHandlerTest
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
         _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(result));
 
-        var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "r", "U1"), CancellationToken.None);
+        var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "Koreksi nilai analit hasil tes ulang", "U1"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Verified*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Handle_WhenReasonNullOrWhiteSpace_ThrowsArgumentException(string? invalidReason)
+    {
+        var act = async () => await _sut.Handle(new LabResultAmendCmd("LAB001", invalidReason!, "UAMEND"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        _resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("pendek")]
+    [InlineData("123456789")]
+    public async Task Handle_WhenReasonLessThan10Characters_Throws(string invalidReason)
+    {
+        var order = VerifiedOrder();
+        var result = VerifiedResult(order.OrderId);
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(result));
+
+        var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, invalidReason, "UAMEND"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Alasan amandemen wajib diisi minimal 10 karakter*");
+        _resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
     }
 }
