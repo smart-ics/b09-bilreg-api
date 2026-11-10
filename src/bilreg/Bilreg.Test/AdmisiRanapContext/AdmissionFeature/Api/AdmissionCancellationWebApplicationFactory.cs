@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;

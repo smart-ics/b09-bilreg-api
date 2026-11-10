@@ -5,7 +5,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
@@ -134,7 +134,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         if (state.AdmissionStatus != cmd.ExpectedAdmissionStatus || state.AdmissionStatus is AdmissionStatusEnum.Completed or AdmissionStatusEnum.Cancelled ||
             (cmd.ExpectedUpdatedAt.HasValue && state.AdmissionUpdatedAt != cmd.ExpectedUpdatedAt.Value))
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.ConcurrencyConflict, "Admission telah berubah.");
-        if (state.WaitingListStatus is not null and not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Accepted))
+        if (state.WaitingListStatus is not null and not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved))
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.ConcurrencyConflict, "Waiting List telah berubah.");
         if (state.SourceId is not null && !state.SourceOwnedAndCancellable)
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.SourceStateMismatch, "Sumber admission tidak sesuai.");

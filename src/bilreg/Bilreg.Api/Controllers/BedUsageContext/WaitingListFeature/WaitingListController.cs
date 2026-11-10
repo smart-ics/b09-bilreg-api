@@ -100,6 +100,15 @@ public class WaitingListController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] string? bangsalId,
+        [FromQuery] int? waitingListStatus)
+    {
+        var result = await _mediator.Send(new WaitingListListQuery(bangsalId, waitingListStatus));
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {

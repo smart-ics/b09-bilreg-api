@@ -2,7 +2,7 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
@@ -68,7 +68,7 @@ public sealed record WaitingListJourneyFact(
     string? BangsalName = null)
 {
     public bool IsActive =>
-        Status is WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Accepted;
+        Status is WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved;
 }
 
 public sealed record JourneyPatientSummary(

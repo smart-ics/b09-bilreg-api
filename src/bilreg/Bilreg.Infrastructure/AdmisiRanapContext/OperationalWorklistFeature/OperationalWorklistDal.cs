@@ -4,7 +4,7 @@ using System.Text;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -83,7 +83,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
         dp.AddParam("@OrderFulfilled", (int)InpatientOrderStatusEnum.Fulfilled, SqlDbType.Int);
         dp.AddParam("@AdmissionCompleted", (int)AdmissionStatusEnum.Completed, SqlDbType.Int);
         dp.AddParam("@AdmissionCancelled", (int)AdmissionStatusEnum.Cancelled, SqlDbType.Int);
-        dp.AddParam("@WaitingListClosed", (int)WaitingListStatusEnum.Closed, SqlDbType.Int);
+        dp.AddParam("@WaitingListClosed", (int)WaitingListStatusEnum.Placed, SqlDbType.Int);
 
         if (!string.IsNullOrWhiteSpace(filter.DokterId))
             dp.AddParam("@DokterId", filter.DokterId.Trim(), SqlDbType.VarChar);
