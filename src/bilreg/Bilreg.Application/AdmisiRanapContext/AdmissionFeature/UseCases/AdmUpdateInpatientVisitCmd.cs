@@ -2,10 +2,12 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
@@ -20,7 +22,8 @@ public record AdmUpdateInpatientVisitCmd(
     string ProsedurMasukInapId,
     string JenisInapId,
     string RegIbu,
-    string UserId) : IRequest, IRegKey;
+    string UserId,
+    string? CaraMasukDkId = null) : IRequest, IRegKey;
 
 public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatientVisitCmd>
 {
@@ -32,6 +35,7 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IRegAktifRepo? _regAktifRepo;
+    private readonly ICaraMasukDkRepo? _caraMasukDkRepo;
 
     public AdmUpdateInpatientVisitHandler(
         IRegRepo regRepo,
@@ -41,7 +45,8 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
         ILayananRepo layananRepo,
         IAuditRepo auditRepo,
         ITglJamProvider tglJamProvider,
-        IRegAktifRepo? regAktifRepo = null)
+        IRegAktifRepo? regAktifRepo = null,
+        ICaraMasukDkRepo? caraMasukDkRepo = null)
     {
         _regRepo = regRepo;
         _regInapRepo = regInapRepo;
@@ -51,6 +56,7 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
         _regAktifRepo = regAktifRepo;
+        _caraMasukDkRepo = caraMasukDkRepo;
     }
 
     public Task Handle(AdmUpdateInpatientVisitCmd request, CancellationToken cancellationToken)
@@ -115,6 +121,27 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
         regInap.SetProsedurMasukInap(prosedur);
         reg.AssignInpatientVisitTo(dokter, layanan);
         reg.SetJenisInap(jenisInap, regIbu);
+
+        if (!string.IsNullOrWhiteSpace(request.CaraMasukDkId) && _caraMasukDkRepo != null)
+        {
+            var caraMasuk = _caraMasukDkRepo.LoadEntity(CaraMasukDkType.Key(request.CaraMasukDkId))
+                .GetValueOrThrow($"Cara Masuk '{request.CaraMasukDkId}' tidak ditemukan.");
+
+            if (!caraMasuk.RequiresRujukan)
+            {
+                reg.SpecifyCaraMasuk(caraMasuk, RujukanType.Default);
+            }
+            else
+            {
+                var rujukan = RujukanType.Default with
+                {
+                    RujukanId = reg.Rujukan?.RujukanId ?? "-",
+                    RujukanName = reg.Rujukan?.RujukanName ?? "-",
+                    CaraMasukDk = caraMasuk
+                };
+                reg.SpecifyCaraMasuk(caraMasuk, rujukan);
+            }
+        }
 
         using (var trans = TransHelper.NewScope())
         {

@@ -28,6 +28,7 @@ public class AdmUpdateInpatientVisitHandlerTest
     private readonly Mock<ILayananRepo> _layananRepoMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
     private readonly Mock<IRegAktifRepo> _regAktifRepoMock = new();
+    private readonly Mock<ICaraMasukDkRepo> _caraMasukRepoMock = new();
 
     private readonly AdmUpdateInpatientVisitHandler _sut;
 
@@ -41,7 +42,8 @@ public class AdmUpdateInpatientVisitHandlerTest
             _layananRepoMock.Object,
             _auditRepoMock.Object,
             TestTglJamProvider.Instance,
-            _regAktifRepoMock.Object);
+            _regAktifRepoMock.Object,
+            _caraMasukRepoMock.Object);
     }
 
     [Fact]
@@ -350,6 +352,29 @@ public class AdmUpdateInpatientVisitHandlerTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task UT15_GivenValidRequestWithCaraMasuk_WhenHandled_UpdatesCaraMasukOnReg()
+    {
+        // Arrange
+        var reg = CreateSampleReg("RG001", "DK1", "L1", isAktif: true);
+        var regInap = CreateSampleRegInap("RG001", "DK1", "P1");
+        SetupDefaults(reg, regInap);
+
+        var caraMasuk = new CaraMasukDkType("8", "DATANG SENDIRI");
+        _caraMasukRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ICaraMasukDkKey>(k => k.CaraMasukDkId == "8")))
+            .Returns(MayBe.From(caraMasuk));
+
+        var cmd = new AdmUpdateInpatientVisitCmd("RG001", "DK1", "P1", "1", "", "user1", "8");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        reg.CaraMasukDk.CaraMasukDkId.Should().Be("8");
+        _regRepoMock.Verify(x => x.SaveChanges(reg), Times.Once);
     }
 
     private void SetupDefaults(RegModel reg, RegInapModel regInap)

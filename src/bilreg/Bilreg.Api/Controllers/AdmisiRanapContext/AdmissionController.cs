@@ -77,7 +77,8 @@ public class AdmissionController : ControllerBase
             body.ProsedurMasukInapId,
             body.JenisInapId,
             body.RegIbu,
-            body.UserId);
+            body.UserId,
+            body.CaraMasukDkId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -230,7 +231,8 @@ public record AdmUpdateInpatientVisitBody(
     string ProsedurMasukInapId,
     string JenisInapId,
     string RegIbu,
-    string UserId);
+    string UserId,
+    string? CaraMasukDkId = null);
 
 public record AdmUpdateInpatientJaminanBody(
     string TipeJaminanId,
