@@ -74,6 +74,14 @@ public class ScheduleOpController : ControllerBase
         {
             return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new JSendFail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new JSendFail(ex.Message));
+        }
     }
 
     [HttpPatch]
@@ -194,6 +202,7 @@ public class ScheduleOpController : ControllerBase
 
         return user.FindFirstValue("UserId")
             ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("pegId")
             ?? user.FindFirstValue("sub")
             ?? user.FindFirstValue(ClaimTypes.Name)
             ?? user.FindFirstValue(ClaimTypes.Email)

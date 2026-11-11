@@ -75,6 +75,16 @@ public class EnsureFreshnessForScopesHandler
 
                 if (hydrate.Outcome == HydrateScopeOutcomeEnum.Inconsistent)
                     return Abort(key, hydrate.InconsistencyReason);
+
+                // Fresh inbound scope optimization:
+                // When a new goods receipt is hydrated with 0 legacy journals, the scope is aligned at empty date baseline.
+                // Catch-up is skipped since there are no legacy journal deltas to replay.
+                if (hydrate.Outcome == HydrateScopeOutcomeEnum.Success &&
+                    hydrate.AlignmentStatus == AlignmentStatusEnum.Aligned &&
+                    hydrate.AppliedJournalCount == 0)
+                {
+                    continue;
+                }
             }
             else if (scope.AlignmentStatus == AlignmentStatusEnum.Aligned)
             {

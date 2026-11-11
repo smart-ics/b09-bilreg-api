@@ -2,7 +2,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using FluentAssertions;
 
 namespace Bilreg.Test.AdmisiRanapContext.JourneyFeature;
@@ -156,7 +156,7 @@ public class Release1JourneyStageResolverTest
         var facts = Facts(
             JourneyOriginKind.DirectOrLegacyAdmission,
             admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)],
-            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Accepted)]);
+            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Reserved)]);
 
         var result = Release1JourneyStageResolver.Resolve(facts);
 
@@ -173,7 +173,7 @@ public class Release1JourneyStageResolverTest
         var facts = Facts(
             JourneyOriginKind.DirectOrLegacyAdmission,
             admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)],
-            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Closed)]);
+            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Placed)]);
 
         var result = Release1JourneyStageResolver.Resolve(facts);
 
@@ -208,7 +208,7 @@ public class Release1JourneyStageResolverTest
             admissions: [Admission("RG1", AdmissionStatusEnum.Updated)],
             waitingLists:
             [
-                WaitingList("WL1", "RG1", WaitingListStatusEnum.Closed, T1),
+                WaitingList("WL1", "RG1", WaitingListStatusEnum.Placed, T1),
                 WaitingList("WL2", "RG1", WaitingListStatusEnum.Cancelled, T2)
             ]);
 
@@ -355,7 +355,7 @@ public class Release1JourneyStageResolverTest
             waitingLists:
             [
                 WaitingList("WL1", "RG1", WaitingListStatusEnum.Waiting),
-                WaitingList("WL2", "RG1", WaitingListStatusEnum.Accepted)
+                WaitingList("WL2", "RG1", WaitingListStatusEnum.Reserved)
             ]);
 
         var result = Release1JourneyStageResolver.Resolve(facts);
@@ -452,7 +452,7 @@ public class Release1JourneyStageResolverTest
         var facts = Facts(
             JourneyOriginKind.DirectOrLegacyAdmission,
             admissions: [Admission("RG1", AdmissionStatusEnum.Completed)],
-            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Closed)]);
+            waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Placed)]);
 
         var result = Release1JourneyStageResolver.Resolve(facts);
 
@@ -642,16 +642,16 @@ public class Release1JourneyStageResolverTest
         ("adm-waiting-no-wl", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Waiting)])),
         ("adm-cancelled", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Cancelled)])),
         ("wl-waiting", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Waiting)])),
-        ("wl-accepted", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Accepted)])),
-        ("wl-closed", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Closed)])),
+        ("wl-accepted", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Reserved)])),
+        ("wl-closed", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Placed)])),
         ("wl-cancelled", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Cancelled)])),
-        ("wl-closed-then-cancelled", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Closed, T1), WaitingList("WL2", "RG1", WaitingListStatusEnum.Cancelled, T2)])),
+        ("wl-closed-then-cancelled", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Placed, T1), WaitingList("WL2", "RG1", WaitingListStatusEnum.Cancelled, T2)])),
         ("fulfilled-linked", Facts(JourneyOriginKind.OpnameRequest, opn: Opname("OPN1", OpnameRequestStatusEnum.Fulfilled, "RG1"), admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, opnameRequestId: "OPN1")])),
         ("realized-linked", Facts(JourneyOriginKind.Reservation, rsv: Reservation("RSV1", ReservationStatusEnum.Realized, "RG1"), admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, reservationId: "RSV1")])),
         ("fulfilled-missing-adm", Facts(JourneyOriginKind.OpnameRequest, opn: Opname("OPN1", OpnameRequestStatusEnum.Fulfilled, "RGX"))),
         ("multi-adm", Facts(JourneyOriginKind.OpnameRequest, opn: Opname("OPN1", OpnameRequestStatusEnum.Fulfilled, "RG1"), admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, opnameRequestId: "OPN1"), Admission("RG2", AdmissionStatusEnum.Admitted, opnameRequestId: "OPN1")])),
         ("both-sources", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted, "OPN1", "RSV1")])),
-        ("multi-active-wl", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Waiting), WaitingList("WL2", "RG1", WaitingListStatusEnum.Accepted)])),
+        ("multi-active-wl", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], waitingLists: [WaitingList("WL1", "RG1", WaitingListStatusEnum.Waiting), WaitingList("WL2", "RG1", WaitingListStatusEnum.Reserved)])),
         ("orphan-wl", Facts(JourneyOriginKind.OpnameRequest, opn: Opname("OPN1", OpnameRequestStatusEnum.Requested), waitingLists: [WaitingList("WL1", "RGX", WaitingListStatusEnum.Waiting)])),
         ("orphan-reg", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Admitted)], orphanRegistration: true)),
         ("adm-completed", Facts(JourneyOriginKind.DirectOrLegacyAdmission, admissions: [Admission("RG1", AdmissionStatusEnum.Completed)]))

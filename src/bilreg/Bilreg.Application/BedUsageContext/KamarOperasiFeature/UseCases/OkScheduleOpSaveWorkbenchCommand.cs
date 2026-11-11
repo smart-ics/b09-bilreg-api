@@ -13,6 +13,24 @@ using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
+public record SaveWorkbenchResourceDto(
+    string Id = "",
+    string Category = "",
+    string Name = "",
+    int Qty = 1,
+    string Unit = "",
+    string? Notes = null
+);
+
+public record SaveWorkbenchResourceInput(
+    string Id = "",
+    string Category = "",
+    string Name = "",
+    int Qty = 1,
+    string Unit = "",
+    string? Notes = null
+) : SaveWorkbenchResourceDto(Id, Category, Name, Qty, Unit, Notes);
+
 public record OkScheduleOpSaveWorkbenchCommand(
     string OrderOpId,
     string KamarId,
@@ -27,7 +45,8 @@ public record OkScheduleOpSaveWorkbenchCommand(
     string AlasanAssignLeader = "",
     bool IsOverride = false,
     string OverrideReason = "",
-    bool Publish = false
+    bool Publish = false,
+    List<SaveWorkbenchResourceDto>? Resources = null
 ) : IRequest<OkScheduleOpSaveWorkbenchResponse>, IOrderOpKey;
 
 public record OkScheduleOpSaveWorkbenchResponse(
@@ -36,7 +55,9 @@ public record OkScheduleOpSaveWorkbenchResponse(
     bool Rescheduled,
     bool LeaderChanged,
     bool PpaChanged,
-    bool Published
+    bool Published,
+    bool ResourceChanged = false,
+    List<OrderOpResourceDto>? Resources = null
 );
 
 public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSaveWorkbenchCommand, OkScheduleOpSaveWorkbenchResponse>
@@ -46,6 +67,7 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
     private readonly IKamarRepo _kamarRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IOrderOpResourceRepo _resourceRepo;
     private readonly IMediator _mediator;
     private readonly ITglJamProvider _tglJamProvider;
 
@@ -55,6 +77,7 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo,
+        IOrderOpResourceRepo resourceRepo,
         IMediator mediator,
         ITglJamProvider tglJamProvider)
     {
@@ -63,6 +86,7 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
         _kamarRepo = kamarRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _resourceRepo = resourceRepo;
         _mediator = mediator;
         _tglJamProvider = tglJamProvider;
     }
@@ -72,6 +96,7 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
         var occurredAt = _tglJamProvider.Now;
 
         // 1. Validasi format input dasar
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.OrderOpId, nameof(request.OrderOpId));
         Guard.Against.NullOrWhiteSpace(request.KamarId, nameof(request.KamarId));
         Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
@@ -172,6 +197,43 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
                 .ToList();
 
             isPpaChanged = !currentSupportingPpaIds.ToHashSet().SetEquals(targetSupportingPpaIds.ToHashSet());
+        }
+
+        // 7.3 Evaluasi Delta Sumber Daya / Resources (TD-56)
+        bool isResourceChanged = false;
+        List<OrderOpResourceDto> existingResources = [];
+        if (request.Resources != null)
+        {
+            existingResources = _resourceRepo.ListData(request.OrderOpId).ToList();
+            if (existingResources.Count != request.Resources.Count)
+            {
+                isResourceChanged = true;
+            }
+            else
+            {
+                var existingMap = existingResources.ToDictionary(x => x.OrderOpResourceId, x => x);
+                foreach (var r in request.Resources)
+                {
+                    if (string.IsNullOrWhiteSpace(r.Id) || !existingMap.TryGetValue(r.Id, out var existingItem))
+                    {
+                        isResourceChanged = true;
+                        break;
+                    }
+
+                    var reqCat = OrderOpResourceDto.MapResourceTypeToCategory(
+                        OrderOpResourceDto.MapCategoryToResourceType(r.Category), r.Category);
+
+                    if (!string.Equals(existingItem.Name, r.Name, StringComparison.Ordinal) ||
+                        existingItem.Qty != r.Qty ||
+                        !string.Equals(existingItem.Unit, r.Unit, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(existingItem.Category, reqCat, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(existingItem.Notes ?? string.Empty, r.Notes ?? string.Empty, StringComparison.Ordinal))
+                    {
+                        isResourceChanged = true;
+                        break;
+                    }
+                }
+            }
         }
 
         // 8. Penegakan Validasi Alasan Mutasi Selektif pada Jadwal Resmi (TD-46)
@@ -391,11 +453,42 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
         }
 
         // 12. Transaksi Database Atomik (All-or-Nothing)
+        List<OrderOpResourceDto> finalResources;
         using (var trans = TransHelper.NewScope())
         {
             _scheduleOpRepo.SaveChanges(scheduleOp);
             _opCaseRepo.SaveChanges(opCase);
             _orderOpRepo.SaveChanges(orderOp);
+
+            if (request.Resources != null)
+            {
+                var targetDtos = request.Resources.Select(r =>
+                    OrderOpResourceDto.Create(
+                        id: r.Id,
+                        orderOpId: request.OrderOpId,
+                        scheduleOpId: scheduleOp.ScheduleOpId,
+                        category: r.Category,
+                        name: r.Name,
+                        qty: r.Qty,
+                        unit: r.Unit,
+                        notes: r.Notes ?? string.Empty,
+                        userId: request.UserId,
+                        occurredAt: occurredAt
+                    )
+                ).ToList();
+
+                finalResources = _resourceRepo.Reconcile(
+                    request.OrderOpId,
+                    scheduleOp.ScheduleOpId,
+                    targetDtos,
+                    request.UserId
+                );
+            }
+            else
+            {
+                finalResources = _resourceRepo.ListData(request.OrderOpId).ToList();
+            }
+
             trans.Complete();
         }
 
@@ -427,6 +520,8 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
             isRescheduleChanged,
             isLeaderChanged,
             isPpaChanged,
-            isPublished);
+            isPublished,
+            isResourceChanged,
+            finalResources);
     }
 }

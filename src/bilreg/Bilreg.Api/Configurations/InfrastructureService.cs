@@ -6,7 +6,6 @@ using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.LabContext.LabExternalFeature;
@@ -52,7 +51,6 @@ using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
-using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext;
@@ -162,7 +160,6 @@ public static class InfrastructureService
             .AddScoped<IAptIntegrationHandler, StockReturnNoShowHandler>()
             .AddScoped<IAptIntegrationHandler, BillingChargeHandler>()
             .AddScoped<IAptIntegrationHandler, IterConsumeHandler>()
-            .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<Bilreg.Application.BedUsageContext.WaitingListFeature.IWaitingListWorklistDal, Bilreg.Infrastructure.BedUsageContext.WaitingListFeature.WaitingListWorklistDal>()
             .AddScoped<Bilreg.Application.BedUsageContext.WaitingListFeature.IWaitingListRepo, Bilreg.Infrastructure.BedUsageContext.WaitingListFeature.WaitingListRepo>()
             .AddScoped<Bilreg.Application.BedUsageContext.WardCockpitFeature.IWardCockpitDal, Bilreg.Infrastructure.BedUsageContext.WardCockpitFeature.WardCockpitDal>()
@@ -225,6 +222,10 @@ public static class InfrastructureService
             .AddScoped<Bilreg.Application.BedUsageContext.PakaiBedFeature.IPakaiBedBillingLockChecker, Bilreg.Infrastructure.BedUsageContext.PakaiBedFeature.PakaiBedBillingLockChecker>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBedOccupancyQuery, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BedOccupancyQuery>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeTarifService, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeTarifService>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IOrderOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IOrderOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

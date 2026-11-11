@@ -25,17 +25,24 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
     private readonly Mock<IKamarRepo> _kamarRepoMock = new();
     private readonly Mock<IPpaRepo> _ppaRepoMock = new();
     private readonly Mock<IOpCaseRepo> _opCaseRepoMock = new();
+    private readonly Mock<IOrderOpResourceRepo> _resourceRepoMock = new();
     private readonly Mock<IMediator> _mediatorMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
 
     private OkScheduleOpSaveWorkbenchHandler CreateSut()
     {
+        _resourceRepoMock.Setup(x => x.ListData(It.IsAny<string>())).Returns([]);
+        _resourceRepoMock
+            .Setup(x => x.Reconcile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<OrderOpResourceDto>>(), It.IsAny<string>()))
+            .Returns<string, string, IEnumerable<OrderOpResourceDto>, string>((_, _, dtos, _) => dtos.ToList());
+
         return new OkScheduleOpSaveWorkbenchHandler(
             _scheduleOpRepoMock.Object,
             _orderOpRepoMock.Object,
             _kamarRepoMock.Object,
             _ppaRepoMock.Object,
             _opCaseRepoMock.Object,
+            _resourceRepoMock.Object,
             _mediatorMock.Object,
             _tglJamProviderMock.Object);
     }
@@ -1328,6 +1335,97 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
         // Verify atomic SaveChanges
         _scheduleOpRepoMock.Verify(x => x.SaveChanges(existingSchedule), Times.Once);
         _orderOpRepoMock.Verify(x => x.SaveChanges(orderOp), Times.Once);
+    }
+
+    #endregion
+
+    #region Resource Persistence Integration (TD-56)
+
+    [Fact]
+    public async Task Handle_WhenResourcesNull_SkipsResourceReconciliation()
+    {
+        var sut = CreateSut();
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var doctor = CreateSampleDoctor("DOC-01", "dr. Bedah Sp.B");
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.Scheduled);
+        var existingSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "KAMAR-1", tglOp: new DateTime(2026, 10, 20, 8, 0, 0), isDraft: false);
+        opCase.Schedule(existingSchedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<ScheduleOpModel>())).Returns(MayBe.From(existingSchedule));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<PpaType>())).Returns(MayBe.From(doctor));
+
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KAMAR-1",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-01",
+            Resources: null);
+
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.ResourceChanged.Should().BeFalse();
+        _resourceRepoMock.Verify(x => x.Reconcile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<OrderOpResourceDto>>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenResourcesProvided_ReconcilesResourcesViaResourceRepo()
+    {
+        var sut = CreateSut();
+        var now = new DateTime(2026, 10, 20, 7, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        var doctor = CreateSampleDoctor("DOC-01", "dr. Bedah Sp.B");
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.Scheduled);
+        var existingSchedule = CreateSampleScheduleOp("SCH-001", "ORD-001", "KAMAR-1", tglOp: new DateTime(2026, 10, 20, 8, 0, 0), isDraft: false);
+        opCase.Schedule(existingSchedule);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<ScheduleOpModel>())).Returns(MayBe.From(existingSchedule));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<PpaType>())).Returns(MayBe.From(doctor));
+
+        var inputResources = new List<SaveWorkbenchResourceDto>
+        {
+            new("RES-01", "BLOOD", "PRC Gol A", 2, "Kolf", "Urgent")
+        };
+        var expectedPersisted = new List<OrderOpResourceDto>
+        {
+            OrderOpResourceDto.Create("RES-01", "ORD-001", "SCH-001", "BLOOD", "PRC Gol A", 2, "Kolf", "Urgent", "user-01", now)
+        };
+        _resourceRepoMock
+            .Setup(x => x.Reconcile("ORD-001", "SCH-001", It.IsAny<IEnumerable<OrderOpResourceDto>>(), "user-01"))
+            .Returns(expectedPersisted);
+
+        var cmd = new OkScheduleOpSaveWorkbenchCommand(
+            OrderOpId: "ORD-001",
+            KamarId: "KAMAR-1",
+            Tgl: "2026-10-20",
+            Jam: "08:00",
+            Durasi: 60,
+            UserId: "user-01",
+            DokterOperatorId: "DOC-01",
+            Resources: inputResources);
+
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.ResourceChanged.Should().BeTrue();
+        response.Resources.Should().BeEquivalentTo(expectedPersisted);
+        _resourceRepoMock.Verify(x => x.Reconcile("ORD-001", "SCH-001", It.IsAny<IEnumerable<OrderOpResourceDto>>(), "user-01"), Times.Once);
     }
 
     #endregion

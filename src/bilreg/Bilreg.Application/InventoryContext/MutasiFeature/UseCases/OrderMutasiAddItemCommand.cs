@@ -1,17 +1,34 @@
+using System.Text.Json.Serialization;
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.BrgContext.BrgFeature;
-using Bilreg.Application.InventoryContext.StokFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using MediatR;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
-public record OrderMutasiAddItemCommand(string BrgId, int Qty, string SatuanId, 
-    string LayananOrderId, string UserId) : IRequest, IBrgKey, ISatuanKey;
+[method: JsonConstructor]
+public record OrderMutasiAddItemCommand(
+    string BrgId,
+    decimal Qty,
+    string SatuanId,
+    string LayananOrderId,
+    string UserId,
+    string OrderMutasiId = "") : IRequest, IBrgKey, ISatuanKey
+{
+    public OrderMutasiAddItemCommand(
+        string orderMutasiId,
+        string layananOrderId,
+        string brgId,
+        decimal qty,
+        string satuanId,
+        string userId = "")
+        : this(brgId, qty, satuanId, layananOrderId, userId, orderMutasiId)
+    {
+    }
+}
 
 public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemCommand>
 {
@@ -19,14 +36,20 @@ public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemComma
     private readonly IBrgRepo _brgRepo;
     private readonly ISatuanRepo _satuanRepo;
     private readonly ILayananRepo _layananRepo;
+    private readonly IStokLokasiDal? _stokLokasiDal;
 
-    public OrderMutasiAddItemHandler(IOrderMutasiRepo orderMutasiRepo, 
-        IBrgRepo brgRepo, ISatuanRepo satuanRepo, ILayananRepo layananRepo)
+    public OrderMutasiAddItemHandler(
+        IOrderMutasiRepo orderMutasiRepo,
+        IBrgRepo brgRepo,
+        ISatuanRepo satuanRepo,
+        ILayananRepo layananRepo,
+        IStokLokasiDal? stokLokasiDal = null)
     {
         _orderMutasiRepo = orderMutasiRepo;
         _brgRepo = brgRepo;
         _satuanRepo = satuanRepo;
         _layananRepo = layananRepo;
+        _stokLokasiDal = stokLokasiDal;
     }
 
     public Task Handle(OrderMutasiAddItemCommand request, CancellationToken cancellationToken)
@@ -38,8 +61,9 @@ public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemComma
         Guard.Against.NegativeOrZero(request.Qty);
 
         // BUILD
-        var order = GetOrderDraft(request);        
-        var item = CreateItem(request);        
+        var order = GetOrderDraft(request);
+        var stokCurrent = _stokLokasiDal?.ListAllocationCandidates(request.BrgId, request.LayananOrderId)?.Sum(x => x.QtySisa) ?? 0m;
+        var item = CreateItem(request, stokCurrent);
         order.AddItem(item);
 
         // WRITE
@@ -71,6 +95,14 @@ public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemComma
 
     private OrderMutasiModel GetOrderDraft(OrderMutasiAddItemCommand request)
     {
+        if (!string.IsNullOrWhiteSpace(request.OrderMutasiId))
+        {
+            var requestedKey = OrderMutasiModel.Key(request.OrderMutasiId);
+            var requestedMaybe = _orderMutasiRepo.LoadEntity(requestedKey);
+            if (requestedMaybe.HasValue)
+                return requestedMaybe.Value;
+        }
+
         var header = _orderMutasiRepo.ListDraftState()
             .FirstOrDefault(x => x.LayananOrder.LayananId == request.LayananOrderId);
         if (header is null)
@@ -100,11 +132,11 @@ public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemComma
         );
     }
 
-    private OrderMutasiItemModel CreateItem(OrderMutasiAddItemCommand request)
+    private OrderMutasiItemModel CreateItem(OrderMutasiAddItemCommand request, decimal stokCurrent)
     {
         var brg = GetBrg(request);
         var satuan = GetSatuan(request);
-        var item = new OrderMutasiItemModel(1, brg, request.Qty, satuan);
+        var item = new OrderMutasiItemModel(1, brg, request.Qty, satuan, stokCurrent);
 
         return item;
     }
