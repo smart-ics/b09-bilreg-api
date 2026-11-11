@@ -41,6 +41,7 @@ using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.InventoryContext;
 using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
@@ -317,6 +318,9 @@ public static class InfrastructureService
 
         // PenjualanFeature (tb_trs_dobill_umum3)
         services.AddScoped<IPenjualanItemBatchDal, PenjualanItemBatchDal>();
+
+        // MutasiBrgFeature (BILRG_MutasiBrg, BILRG_MutasiBrgItem)
+        services.AddInventoryContext();
 
         services.AddBrgFeature();
         services.AddScoped<IBrgHargaJualDal, BrgHargaJualDal>();

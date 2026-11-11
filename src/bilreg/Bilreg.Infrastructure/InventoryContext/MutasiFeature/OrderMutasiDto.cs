@@ -45,9 +45,10 @@ public record OrderMutasiDto(
 
     public OrderMutasiModel ToModel(IEnumerable<OrderMutasiItemModel> listBrg)
     {
-        var auditTrail = AuditTrailType.Create(CrtUser, CrtDate);
-        auditTrail.Modif(UpdUser, UpdDate);
-        auditTrail.Batal(VodUser, VodDate);
+        var crt = new AuditInfoType(CrtUser, CrtDate);
+        var upd = new AuditInfoType(UpdUser, UpdDate);
+        var vod = new AuditInfoType(VodUser, VodDate);
+        var auditTrail = new AuditTrailType(crt, upd, vod);
         var approval = new ApprovalType(ApprovalUserId, ApprovalDate);
         var rejection = new ApprovalType(RejectionUserId, RejectionDate);
 
