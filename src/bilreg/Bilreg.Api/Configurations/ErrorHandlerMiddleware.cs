@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Diagnostics;
@@ -70,6 +71,7 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.NotFound;
                     status = "AQ_RESOURCE_NOT_FOUND";
                     break;
+                case ValidationException:
                 case ArgumentException:
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "AQ_INVALID_REQUEST";

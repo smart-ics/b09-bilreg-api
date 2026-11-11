@@ -9,7 +9,8 @@ public record AdmProcessOpnameRequestCmd(
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration) : IRequest<AdmProcessAdmissionResponse>, IOpnameRequestKey;
+    AdmissionRegistrationData Registration,
+    bool IsBbl = false) : IRequest<AdmProcessAdmissionResponse>, IOpnameRequestKey;
 
 public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRequestCmd, AdmProcessAdmissionResponse>
 {

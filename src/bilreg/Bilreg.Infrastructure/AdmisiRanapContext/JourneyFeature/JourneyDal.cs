@@ -313,7 +313,10 @@ public sealed partial class JourneyDal : IJourneyDal
                     bag.ProcedureSummary,
                     bag.Doctor,
                     bag.ReferringDoctor,
-                    bag.ReferralOrSourceSummary),
+                    bag.ReferralOrSourceSummary,
+                    bag.JenisInap,
+                    bag.ProsedurMasuk,
+                    bag.CaraMasuk),
                 resolution.PlacementAvailability,
                 new JourneyHandoverInfo(resolution.HandoverSummary, bag.TargetBangsal, bag.Priority)),
             resolution.SystemAudit,
@@ -487,7 +490,7 @@ public sealed partial class JourneyDal : IJourneyDal
         return AssembleAdmissionBag(admission, origin, opname, reservation, wlRows, regExtras);
     }
 
-    private JourneyFactBag AssembleAdmissionBag(
+    internal JourneyFactBag AssembleAdmissionBag(
         AdmissionRowDto admission,
         JourneyOriginKind origin,
         OpnameRowDto? opname,
@@ -600,7 +603,10 @@ public sealed partial class JourneyDal : IJourneyDal
                 _ => "Direct/Legacy Admission"
             },
             regExtras.PolicySummary,
-            regExtras.AddressSummary);
+            regExtras.AddressSummary,
+            regExtras.JenisInap,
+            regExtras.ProsedurMasuk,
+            regExtras.CaraMasuk);
     }
 
     private AdmissionRowDto? FindAdmissionByOpname(IDbConnection conn, string opnameRequestId, string? fulfilledRegId)
@@ -746,12 +752,20 @@ public sealed partial class JourneyDal : IJourneyDal
                     ISNULL(kl.fs_nm_kelas,'') AS KelasName,
                     ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
                     ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
-                    ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
+                    ISNULL(reg.fs_kd_jenis_inap,'') AS JenisInapId,
+                    ISNULL(ji.fs_nm_jenis_inap,'') AS JenisInapName,
+                    ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId,
+                    ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName,
+                    ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId,
+                    ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName
                 FROM (SELECT @RegId AS RegId) x
                 LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
                 LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
                 LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
                 LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = x.RegId
+                LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
+                LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap
+                LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk
                 LEFT JOIN (
                     SELECT TOP 1 h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg
                     FROM ta_reg_history_dokter h
@@ -774,7 +788,10 @@ public sealed partial class JourneyDal : IJourneyDal
             Named(row.DokterId, row.DokterName),
             string.IsNullOrWhiteSpace(row.ProsedurMasukId) ? null : $"Prosedur masuk: {row.ProsedurMasukId}",
             null,
-            null);
+            null,
+            Named(row.JenisInapId, row.JenisInapName),
+            Named(row.ProsedurMasukId, row.ProsedurMasukName),
+            Named(row.CaraMasukId, row.CaraMasukName));
     }
 
     private SqlConnection Open()
@@ -1201,15 +1218,21 @@ public sealed partial class JourneyDal : IJourneyDal
         JourneyIdName? ReferringDoctor,
         string? ReferralOrSourceSummary,
         string? PolicySummary,
-        string? AddressSummary);
+        string? AddressSummary,
+        JourneyIdName? JenisInap = null,
+        JourneyIdName? ProsedurMasuk = null,
+        JourneyIdName? CaraMasuk = null);
 
-    private sealed record RegExtras(
+    internal sealed record RegExtras(
         JourneyIdName? Guarantor,
         JourneyIdName? CareClass,
         JourneyIdName? Doctor,
         string? ProcedureSummary,
         string? PolicySummary,
-        string? AddressSummary)
+        string? AddressSummary,
+        JourneyIdName? JenisInap = null,
+        JourneyIdName? ProsedurMasuk = null,
+        JourneyIdName? CaraMasuk = null)
     {
         public static RegExtras Empty { get; } = new(null, null, null, null, null, null);
     }
@@ -1223,7 +1246,7 @@ public sealed partial class JourneyDal : IJourneyDal
         int OriginKind,
         string? RegId);
 
-    private sealed record OpnameRowDto(
+    internal sealed record OpnameRowDto(
         string OpnameRequestId,
         int OpnameRequestStatus,
         string FulfilledRegId,
@@ -1238,7 +1261,7 @@ public sealed partial class JourneyDal : IJourneyDal
         string Gender,
         DateTime? TglLahir);
 
-    private sealed record ReservationRowDto(
+    internal sealed record ReservationRowDto(
         string ReservationId,
         int ReservationStatus,
         string RealizedRegId,
@@ -1254,7 +1277,7 @@ public sealed partial class JourneyDal : IJourneyDal
         DateTime CrtDate,
         DateTime UpdDate);
 
-    private sealed record AdmissionRowDto(
+    internal sealed record AdmissionRowDto(
         string RegId,
         int AdmissionStatus,
         string PasienId,
@@ -1271,7 +1294,7 @@ public sealed partial class JourneyDal : IJourneyDal
         string Gender,
         DateTime? TglLahir);
 
-    private sealed record WaitingListRowDto(
+    internal sealed record WaitingListRowDto(
         string WaitingListId,
         string RegId,
         int WaitingListStatus,
@@ -1283,13 +1306,18 @@ public sealed partial class JourneyDal : IJourneyDal
         DateTime CrtDate,
         DateTime UpdDate);
 
-    private sealed record RegExtrasRowDto(
+    internal sealed record RegExtrasRowDto(
         string TipeJaminanId,
         string TipeJaminanName,
         string KelasId,
         string KelasName,
         string DokterId,
         string DokterName,
-        string ProsedurMasukId);
+        string ProsedurMasukId,
+        string ProsedurMasukName,
+        string JenisInapId,
+        string JenisInapName,
+        string CaraMasukId,
+        string CaraMasukName);
 
 }

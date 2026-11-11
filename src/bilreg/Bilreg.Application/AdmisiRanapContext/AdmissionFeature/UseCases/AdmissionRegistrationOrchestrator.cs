@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -34,8 +35,17 @@ public record AdmissionRegistrationData(
     string ProsedurMasukInapId,
     string? RujukanId,
     string DokterId,
-    string PesertaJaminanId) :
-    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey;
+    string PesertaJaminanId,
+    string? JenisInapId = null,
+    string? RegIbuId = null,
+    bool IsBbl = false,
+    string? fs_reg_ibu = null,
+    string? fs_kd_jenis_inap = null) :
+    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey
+{
+    public string? EffectiveRegIbuId => !string.IsNullOrWhiteSpace(RegIbuId) ? RegIbuId : fs_reg_ibu;
+    public string? EffectiveJenisInapId => !string.IsNullOrWhiteSpace(JenisInapId) ? JenisInapId : fs_kd_jenis_inap;
+}
 
 public interface IAdmissionRegistrationOrchestrator
 {
@@ -119,7 +129,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         AdmProcessOpnameRequestCmd request, CancellationToken cancellationToken)
     {
         ValidateRequest(request.OpnameRequestId, request.KelasDkId, request.BangsalId,
-            request.UserId, request.Registration);
+            request.UserId, request.Registration, request.IsBbl);
         var occurredAt = _tglJamProvider.Now;
         var opname = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
@@ -154,7 +164,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         AdmProcessReservationCmd request, CancellationToken cancellationToken)
     {
         ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
-            request.UserId, request.Registration);
+            request.UserId, request.Registration, request.IsBbl);
         var occurredAt = _tglJamProvider.Now;
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
@@ -308,7 +318,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         => new(admission.RegId, admission.AdmissionStatus);
 
     private static void ValidateRequest(string sourceId, string kelasDkId, string bangsalId,
-        string userId, AdmissionRegistrationData data)
+        string userId, AdmissionRegistrationData data, bool isBbl = false)
     {
         Guard.Against.NullOrWhiteSpace(sourceId);
         Guard.Against.NullOrWhiteSpace(kelasDkId);
@@ -320,5 +330,11 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         Guard.Against.NullOrWhiteSpace(data.ProsedurMasukInapId);
         Guard.Against.NullOrWhiteSpace(data.DokterId);
         Guard.Against.Null(data.PesertaJaminanId);
+
+        var isBblFlow = isBbl || data.IsBbl;
+        if (isBblFlow && string.IsNullOrWhiteSpace(data.EffectiveRegIbuId))
+        {
+            throw new ValidationException("Pasien BBL wajib menyertakan Register Ibu yang valid.");
+        }
     }
 }

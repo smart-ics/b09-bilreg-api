@@ -85,7 +85,10 @@ public sealed record JourneyClinicalInfo(
     string? ProcedureSummary,
     JourneyIdName? Dpjp,
     JourneyIdName? ReferringDoctor,
-    string? ReferralOrSourceSummary);
+    string? ReferralOrSourceSummary,
+    JourneyIdName? JenisInap = null,
+    JourneyIdName? ProsedurMasuk = null,
+    JourneyIdName? CaraMasuk = null);
 
 public sealed record JourneyHandoverInfo(
     JourneyAccommodationHandoverSummary Summary,
