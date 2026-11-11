@@ -2,9 +2,12 @@ namespace Bilreg.Domain.InventoryContext.MutasiFeature;
 
 public enum OrderMutasiStateEnum
 {
-    Draft,       // dikumpulkan dari request per barang
-    Submitted,   // siap direview
-    Approved,    // disetujui
-    Rejected,    // ditolak
-    Completed    // mutasi sudah dieksekusi
+    Draft = 0,
+    Submitted = 1,
+    Approved = 2,
+    Rejected = 3,
+    Completed = 4,
+    PartiallyFulfilled = 5,
+    ForceClosed = 6,
+    Cancelled = 7
 }

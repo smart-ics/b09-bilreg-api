@@ -93,6 +93,17 @@ public class InMemoryResepRepo : IResepRepo, Bilreg.Application.SalesContext.Res
         Store.Values.Where(x => x.Register.RegId == filter.RegId);
     public void LockPrescription(string resepId) => LockedPrescriptions.Add(resepId);
     public bool HasBeenProcessed(string resepId) => LockedPrescriptions.Contains(resepId);
+    public IEnumerable<ResepModel> SearchActiveUnbilled(string query, DateOnly date)
+    {
+        var q = query?.Trim() ?? string.Empty;
+        return Store.Values
+            .Where(x => !x.IsVoid)
+            .Where(x => string.IsNullOrEmpty(q) ||
+                        x.ResepId.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        x.Register.RegId.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        x.Register.PasienId.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        x.Register.PasienName.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public class FakeResepDal : Bilreg.Application.SalesContext.ResepFeature.IResepDal
@@ -154,7 +165,7 @@ public class InMemoryDispensingRepo : IDispensingRepo
         => Store.Values.Where(x => x.SalesOrderId == salesOrderId).ToList();
 }
 
-public class InMemoryQueueMappingRepo : IQueueMappingRepo
+public class InMemoryQueueMappingRepo : IQueueMappingRepo, IPharmacyQueueMappingRepo
 {
     public Dictionary<string, QueueMappingModel> Store { get; } = new();
     private static string Id(IQueueMappingKey key) => $"{(int)key.DemandKind}:{key.DemandId}";
@@ -163,6 +174,18 @@ public class InMemoryQueueMappingRepo : IQueueMappingRepo
         => Store.TryGetValue(Id(key), out var m) ? MayBe.From(m) : MayBe<QueueMappingModel>.None;
     public IReadOnlyList<QueueMappingModel> ListByQueue(string antrianId, int noUrut)
         => Store.Values.Where(x => x.AntrianId == antrianId && x.NoUrut == noUrut).ToList();
+    public MayBe<QueueMappingModel> GetByDemand(QueueDemandKindEnum demandKind, string demandId)
+        => LoadEntity(QueueMappingModel.Key(demandKind, demandId));
+    public bool SetPasienHadir(QueueDemandKindEnum demandKind, string demandId, string userId, DateTime at)
+    {
+        var key = QueueMappingModel.Key(demandKind, demandId);
+        if (Store.TryGetValue(Id(key), out var m))
+        {
+            m.MarkPasienHadir(at);
+            return true;
+        }
+        return false;
+    }
 }
 
 public class InMemoryQueueCloseRepo : IQueueCloseRepo
@@ -209,7 +232,7 @@ public class AllowAllAuth : IAptAuthorizationPolicy
     public void AssertCommandAllowed(string commandName, string actorUserId) { }
 }
 
-public class FakePaymentPort : IPaymentClearancePort
+public class FakePaymentPort : Bilreg.Application.ApotekContext.InvoiceFeature.IPaymentClearancePort
 {
     public PaymentClearanceEvidence? Evidence { get; set; }
     public PaymentClearanceEvidence? Load(string paymentClearanceReff) => Evidence;
