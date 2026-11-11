@@ -60,6 +60,7 @@ public class RegJalanUbahKunjunganHandlerTest
     private readonly Mock<IJurnalRepo> _jurnalRepo = new();
     private readonly Mock<IMapJaminanJkRepo> _mapJaminanJkRepo = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
+    private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
 
     private readonly RegJalanUbahKunjunganHandler _sut;
 
@@ -90,7 +91,8 @@ public class RegJalanUbahKunjunganHandlerTest
             _jurnalRepo.Object,
             _mapJaminanJkRepo.Object,
             _featureResolver.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object);
     }
 
     [Fact]
@@ -169,6 +171,8 @@ public class RegJalanUbahKunjunganHandlerTest
 
         _antrianMapRepo.Verify(x => x.SaveChanges(It.Is<AntrianMapModel>(m => m.AntrianMapId == "MAP01")), Times.Once);
         _regRepo.Verify(x => x.SaveChanges(It.Is<RegModel>(r => r.Karcis.KarcisId == "KC02")), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -272,6 +276,93 @@ public class RegJalanUbahKunjunganHandlerTest
         _queueNumberAdapter.Verify(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>()), Times.Once);
         _antrianMapRepo.Verify(x => x.SaveChanges(It.Is<AntrianMapModel>(m => m.AntrianMapId == "MAP02")), Times.Once);
         _antrianRepo.Verify(x => x.SaveChanges(antrianNew), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR02", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Handle_WhenTransferPoliBerbeda_ShouldPublishHintsForBothDestinationAndOriginPoli()
+    {
+        // Arrange: pasien pindah poli (LAY01 -> LAY02), dokter sama (DR01)
+        var regDate = new DateOnly(2025, 11, 1);
+        var layananOld = CreateLayanan("LAY01", "Poli Umum");
+        var layananNew = CreateLayanan("LAY02", "Poli Gigi");
+        var karcisOld = CreateKarcis("KC01", "Karcis Umum", layananOld);
+        var karcisNew = CreateKarcis("KC02", "Karcis Gigi", layananNew);
+
+        var reg = CreateReg("RG00000001", regDate, "DR01", "dr. Budi", "LAY01", "Poli Umum", "KC01", "Karcis Umum");
+        var regAktif = RegAktifModel.CreateFromReg(reg);
+
+        var dokter = new PpaType("DR01", "dr. Budi", "Dokter Umum", SmfType.Default, GroupSpesialisType.Default, [], [], []);
+
+        var jadwalOld = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Hari = regDate.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0),
+            Dokter = dokter.ToReff(),
+            Layanan = layananOld.ToReff()
+        };
+
+        var jadwalNew = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J02",
+            Hari = regDate.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0),
+            Dokter = dokter.ToReff(),
+            Layanan = layananNew.ToReff()
+        };
+
+        var tracker = PasienTrackerModel.Create(reg, TestTglJamProvider.Instance.Now);
+        var entryOld = AntrianEntryModel.Create(5, PersonType.Default, tracker, reg.RegId, "REG", TestTglJamProvider.Instance.Now);
+        var antrianOld = new AntrianModel("AN01", regDate, new TimeOnly(8, 0), new TimeOnly(12, 0),
+            "TAG1", "desc", new ServicePointType("TAG1", "desc"), [entryOld], null!);
+        var antrianView = new AntrianView(
+            "AN01", (int)AntrianStatusEnum.Waiting, 5, "Budi",
+            reg.RegId, "REG", regDate.ToDateTime(TimeOnly.MinValue), "TAG1",
+            "DR01", "Poli Umum", new TimeOnly(8, 0), new TimeOnly(12, 0));
+
+        var antrianMapHdrOld = new AntrianMapHdrView(
+            "MAP01", "J01", dokter.ToReff(), layananOld.ToReff(),
+            regDate, new TimeOnly(8, 0), new TimeOnly(8, 0));
+        var antrianMapOld = AntrianMapModel.CreateFromJadwal(jadwalOld, regDate) with { AntrianMapId = "MAP01" };
+
+        var antrianMapNew = AntrianMapModel.CreateFromJadwal(jadwalNew, regDate) with { AntrianMapId = "MAP02" };
+        var mapDetilNew = AntrianMapDetilModel.Default with { NoUrut = 1 };
+        var reservedNew = ReservedQueueNumber.FromMap(antrianMapNew, mapDetilNew);
+
+        var antrianNew = new AntrianModel("AN02", regDate, new TimeOnly(8, 0), new TimeOnly(12, 0),
+            "TAG2", "desc", new ServicePointType("TAG2", "desc"), [], null!);
+
+        SetupCommonMocks(reg, regAktif, dokter, layananNew, karcisNew, karcisOld, jadwalNew, antrianOld, antrianView, tracker, antrianMapHdrOld, antrianMapOld);
+
+        _queueNumberAdapter
+            .Setup(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>()))
+            .Returns(Result<ReservedQueueNumber>.Success(reservedNew));
+
+        _antrianRepo.Setup(x => x.ListData(regDate)).Returns([]);
+        _antrianFactory.Setup(x => x.Create(regDate, It.IsAny<JadwalPraktekType>())).Returns(antrianNew);
+
+        var cmd = new RegJalanUbahKunjunganCmd(
+            RegId: "RG00000001",
+            LayananId: "LAY02",
+            DokterId: "DR01",
+            KarcisId: "KC02",
+            JamPraktek: "08:00",
+            UserId: "USER1");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.RegId.Should().Be("RG00000001");
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY02", "DR01", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -355,6 +446,8 @@ public class RegJalanUbahKunjunganHandlerTest
 
         _queueNumberAdapter.Verify(x => x.Release(It.Is<AntrianMapModel>(m => m.AntrianMapId == "MAP01"), 3), Times.Once);
         _queueNumberAdapter.Verify(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>()), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
     }
 
     [Fact]

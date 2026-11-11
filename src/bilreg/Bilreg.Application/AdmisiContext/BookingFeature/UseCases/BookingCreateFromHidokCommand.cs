@@ -35,6 +35,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
@@ -43,7 +44,8 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         IAddAntrianEmrByBookingService addBookingSvc,
         IJadwalPraktekFeatureResolver featureResolver,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -56,8 +58,9 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _featureResolver = featureResolver;
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
-    public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
+    public async Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         //  GUARD
@@ -121,8 +124,9 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             response = new BookingCreateFromHidokResponse(booking.BookingId, antEntry.NoUrut);
         }
 
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(booking.Layanan.LayananId, booking.Dokter.PpaId, cancellationToken);
         
-        return Task.FromResult(response);
+        return response;
     }
 
     private PasienModel FindPasien(BookingCreateFromHidokCommand request)
