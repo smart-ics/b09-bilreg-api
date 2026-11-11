@@ -151,7 +151,7 @@ public class PenjualanDal : IPenjualanDal
         dp.AddParam("@fd_tgl_trs", model.TglJam.ToString(DateFormatEnum.YMD), SqlDbType.VarChar);
         dp.AddParam("@fs_jam_trs", model.TglJam.ToString(DateFormatEnum.HMS), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas", model.UserId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_resep", model.ResepId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_resep", string.IsNullOrWhiteSpace(model.ResepId) ? " " : model.ResepId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan_resep", model.LayananResepId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas_medis", model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", model.LayananId, SqlDbType.VarChar);

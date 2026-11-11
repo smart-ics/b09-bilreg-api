@@ -1,7 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -11,9 +10,14 @@ namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 public record OrderMutasiApprovedListQuery(string TglYmd1, string TglYmd2)
     : IRequest<IEnumerable<OrderMutasiApprovedListResponse>>;
 
-public record OrderMutasiApprovedListResponse(string OrderMutasiId,
-    string OrderMutasiDate, string State,
-    LayananReff LayananOrder, LayananReff LayananTujuan);
+public record OrderMutasiApprovedListResponse(
+    string OrderMutasiId,
+    string OrderMutasiDate,
+    string State,
+    string Priority,
+    LayananReff LayananOrder,
+    LayananReff LayananTujuan,
+    string OrderNote);
 
 public class OrderMutasiApprovedListHandler
     : IRequestHandler<OrderMutasiApprovedListQuery, IEnumerable<OrderMutasiApprovedListResponse>>
@@ -28,6 +32,7 @@ public class OrderMutasiApprovedListHandler
     public Task<IEnumerable<OrderMutasiApprovedListResponse>> Handle(OrderMutasiApprovedListQuery request, 
         CancellationToken cancellationToken)
     {
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.InvalidDateFormat(request.TglYmd1, nameof(request.TglYmd1));
         Guard.Against.InvalidDateFormat(request.TglYmd2, nameof(request.TglYmd2));
 
@@ -39,8 +44,14 @@ public class OrderMutasiApprovedListHandler
     private static IEnumerable<OrderMutasiApprovedListResponse> GenResponse(List<OrderMutasiHeaderView> listApproved)
     {
         var result = listApproved
-            .Select(x => new OrderMutasiApprovedListResponse(x.OrderMutasiId,
-                x.OrderMutasiDate.ToString("yyyy-MM-dd HH:mm:ss"), x.State.ToString(), x.LayananOrder, x.LayananTujuan));
+            .Select(x => new OrderMutasiApprovedListResponse(
+                x.OrderMutasiId,
+                x.OrderMutasiDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                x.State.ToString(),
+                x.Priority.ToString(),
+                x.LayananOrder,
+                x.LayananTujuan,
+                x.OrderNote));
         return result;
     }
 

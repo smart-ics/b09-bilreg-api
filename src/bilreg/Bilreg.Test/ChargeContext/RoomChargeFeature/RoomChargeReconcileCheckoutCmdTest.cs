@@ -148,6 +148,61 @@ public class RoomChargeReconcileCheckoutCmdTest
     }
 
     [Fact]
+    public async Task GivenBabyInIndependentBed_WhenReconciledWithDelay_ThenChargesFullTariffAccordingToOccupancyDuration()
+    {
+        // Arrange: Bayi perinatal bed mandiri (IsRoomingIn = false, BaseTariff = 400000m) checkout terlambat 4 jam (16:00 vs 12:00)
+        var occupant = new BedOccupantItem("PB-BABY-INDEP", "REG-BABY-INDEP", "PAS-BABY-01", "W01", "K01", "BED-BAYI-01",
+            new DateTime(2026, 10, 18, 10, 0, 0), "VIP", "VIP", IsRoomingIn: false, MotherPakaiBedId: "", BaseTariff: 400000m, PayerTariff: 400000m);
+        _bedOccupancyQueryMock.Setup(x => x.GetOccupant("PB-BABY-INDEP")).Returns(occupant);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 16, 0, 0);
+        var cmd = new RoomChargeReconcileCheckoutCmd("PB-BABY-INDEP", checkoutTime, "NURSE01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.ChargedUnits.Should().Be(0.5m);
+        result.TotalAmount.Should().Be(200000m);
+        result.RoomChargeId.Should().NotBeNullOrEmpty();
+
+        _roomChargeRepoMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
+            m.PakaiBedId == "PB-BABY-INDEP" &&
+            m.IsRoomingIn == false &&
+            m.MotherPakaiBedId == "" &&
+            m.ChargeTriggerType == ChargeTriggerTypeEnum.CheckoutReconciliation &&
+            m.ChargedUnits == 0.5m &&
+            m.TotalAmount == 200000m)), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b =>
+            b.Reg.RegId == "REG-BABY-INDEP" &&
+            b.Nilai.SubTotal == 200000m)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenBabyRoomingIn_WhenReconciledWithDelay_ThenReturnsZeroUnitsAndZeroCharge()
+    {
+        // Arrange: Bayi rawat gabung di ranjang ibu (IsRoomingIn = true, MotherPakaiBedId = "PB-MOM")
+        var occupant = new BedOccupantItem("PB-BABY-GABUNG", "REG-BABY-GABUNG", "PAS-BABY-02", "W01", "K01", "BED-MOM-01",
+            new DateTime(2026, 10, 18, 10, 0, 0), "VIP", "VIP", IsRoomingIn: true, MotherPakaiBedId: "PB-MOM", BaseTariff: 400000m, PayerTariff: 400000m);
+        _bedOccupancyQueryMock.Setup(x => x.GetOccupant("PB-BABY-GABUNG")).Returns(occupant);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 16, 0, 0);
+        var cmd = new RoomChargeReconcileCheckoutCmd("PB-BABY-GABUNG", checkoutTime, "NURSE01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.ChargedUnits.Should().Be(0m);
+        result.TotalAmount.Should().Be(0m);
+        result.RoomChargeId.Should().BeNull();
+
+        _billingLockCheckerMock.Verify(x => x.AssertBillingNotFinal("REG-BABY-GABUNG"), Times.Once);
+        _roomChargeRepoMock.Verify(x => x.SaveChanges(It.IsAny<RoomChargeModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GivenBillingIsFinal_WhenReconciled_ThenThrowsBillingEpisodeFinalException()
     {
         // Arrange

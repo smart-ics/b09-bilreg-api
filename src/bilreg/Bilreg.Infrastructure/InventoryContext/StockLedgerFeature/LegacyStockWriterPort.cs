@@ -110,7 +110,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
         stokDp.AddParam("@fd_tgl_do", tglDo, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_do", jamDo, SqlDbType.VarChar);
-        stokDp.AddParam("@fs_kd_mutasi", request.TrsReffId, SqlDbType.VarChar);
+        var safeStokMutasi = request.TrsReffId.Length > 10 ? request.TrsReffId[..10] : request.TrsReffId;
+        stokDp.AddParam("@fs_kd_mutasi", safeStokMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_satuan", satuan, SqlDbType.VarChar);
@@ -304,7 +305,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
         stokDp.AddParam("@fd_tgl_do", tglDo, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_do", jamDo, SqlDbType.VarChar);
-        stokDp.AddParam("@fs_kd_mutasi", request.TrsReffId, SqlDbType.VarChar);
+        var safeStokMutasi = request.TrsReffId.Length > 10 ? request.TrsReffId[..10] : request.TrsReffId;
+        stokDp.AddParam("@fs_kd_mutasi", safeStokMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_satuan", satuan, SqlDbType.VarChar);
@@ -355,7 +357,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         dp.AddParam("@fn_stok_in", qtyIn, SqlDbType.Decimal);
         dp.AddParam("@fn_stok_out", qtyOut, SqlDbType.Decimal);
         dp.AddParam("@fn_hpp", hpp, SqlDbType.Decimal);
-        dp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
+        var safeBukuMutasi = trsReffId.Length > 10 ? trsReffId[..10] : trsReffId;
+        dp.AddParam("@fs_kd_mutasi", safeBukuMutasi, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_mutasi", LegacyStockDateHelper.FormatDateTime(tglMutasi), SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_mutasi", LegacyStockDateHelper.FormatDate(tglMutasi), SqlDbType.VarChar);
         dp.AddParam("@fs_jam_mutasi", LegacyStockDateHelper.FormatTime(tglMutasi), SqlDbType.VarChar);

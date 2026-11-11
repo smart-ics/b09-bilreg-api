@@ -73,6 +73,6 @@ public class LabResultVerificationWorklistDal : ILabResultVerificationWorklistDa
             dp.AddParam("@SearchTerm", $"%{filter.SearchTerm.Trim()}%", SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabResultVerificationWorklistView>(sql, dp);
+        return conn.Read<LabResultVerificationWorklistView>(sql, dp) ?? Enumerable.Empty<LabResultVerificationWorklistView>();
     }
 }

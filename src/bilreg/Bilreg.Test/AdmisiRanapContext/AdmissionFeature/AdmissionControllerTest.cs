@@ -6,6 +6,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Nuna.Lib.ActionResultHelper;
@@ -205,7 +206,10 @@ public class AdmissionControllerTest
             new KelasDkType("KDK01", "Kelas 1"),
             new BangsalReff("B01", "Bangsal A"),
             DateTime.UtcNow,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            "8",
+            "DOK01",
+            "1");
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<AdmGetAdmissionQry>(q => q.RegId == "ADM01"), It.IsAny<CancellationToken>()))
@@ -299,5 +303,68 @@ public class AdmissionControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.status.Should().Be("success");
         jsend.data.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task Cancel_WhenActiveBedPlacement_ReturnsConflict409WithBlocker()
+    {
+        // Arrange
+        var body = new AdmCoordinatedCancelBody(
+            Reason: "Alasan pembatalan",
+            UserId: "USER01",
+            ExpectedAdmissionStatus: AdmissionStatusEnum.Admitted,
+            ExpectedUpdatedAt: null,
+            RequestId: "REQ01",
+            VoidSource: false);
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmCoordinatedCancelCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new CoordinatedCancellationException(
+                CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement,
+                "Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif."));
+
+        // Act
+        var result = await _sut.Cancel("REG01", body);
+
+        // Assert
+        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        var failure = objectResult.Value.Should().BeOfType<CancellationJSendFailure>().Subject;
+        failure.Status.Should().Be("fail");
+        failure.Data.Code.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement);
+        failure.Data.Message.Should().Be("Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
+        failure.Data.Blockers.Should().ContainSingle().Which.Should().Be("RegistrationHasActiveBedPlacement");
+        failure.Data.CorrelationId.Should().Be("REQ01");
+    }
+
+    [Fact]
+    public async Task Cancel_WhenBillingItems_ReturnsBadRequest400WithBlocker()
+    {
+        // Arrange
+        var body = new AdmCoordinatedCancelBody(
+            Reason: "Alasan pembatalan",
+            UserId: "USER01",
+            ExpectedAdmissionStatus: AdmissionStatusEnum.Admitted,
+            ExpectedUpdatedAt: null,
+            RequestId: "REQ01",
+            VoidSource: false);
+
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmCoordinatedCancelCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new CoordinatedCancellationException(
+                CoordinatedCancellationErrorCode.RegistrationHasBillingItems,
+                "Registration cancellation is not eligible."));
+
+        // Act
+        var result = await _sut.Cancel("REG01", body);
+
+        // Assert
+        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        var failure = objectResult.Value.Should().BeOfType<CancellationJSendFailure>().Subject;
+        failure.Status.Should().Be("fail");
+        failure.Data.Code.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasBillingItems);
+        failure.Data.Blockers.Should().ContainSingle().Which.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasBillingItems);
+        failure.Data.CorrelationId.Should().Be("REQ01");
     }
 }

@@ -7,6 +7,7 @@ namespace Bilreg.Domain.SalesContext.PenjualanFeature;
 public record PenjualanItemType
 {
     private readonly List<PenjualanItemRacikType> _listItemRacik;
+    private readonly List<PenjualanItemBatchType> _listBatch;
 
     public PenjualanItemType(
         string penjualanItemId,
@@ -17,7 +18,8 @@ public record PenjualanItemType
         EtiketType etiket,
         NilaiItemType nilai,
         bool isVoided,
-        IEnumerable<PenjualanItemRacikType> listItemRacik)
+        IEnumerable<PenjualanItemRacikType> listItemRacik,
+        IEnumerable<PenjualanItemBatchType>? listBatch = null)
     {
         PenjualanItemId = penjualanItemId;
         NoUrut = noUrut;
@@ -28,6 +30,7 @@ public record PenjualanItemType
         Nilai = nilai;
         IsVoided = isVoided;
         _listItemRacik = listItemRacik.ToList();
+        _listBatch = listBatch?.ToList() ?? [];
     }
 
     public string PenjualanItemId { get; init; }
@@ -39,6 +42,7 @@ public record PenjualanItemType
     public NilaiItemType Nilai { get; private set; }
     public bool IsVoided { get; private set; }
     public IEnumerable<PenjualanItemRacikType> ListItemRacik => _listItemRacik;
+    public IReadOnlyList<PenjualanItemBatchType> ListBatch => _listBatch;
 
     public static PenjualanItemType Create(
         string penjualanItemId,
@@ -48,13 +52,25 @@ public record PenjualanItemType
         decimal qty,
         EtiketType etiket,
         NilaiItemType nilai)
-        => new(penjualanItemId, noUrut, brg.ToReff(), satuan, qty, etiket, nilai, false, []);
+        => new(penjualanItemId, noUrut, brg.ToReff(), satuan, qty, etiket, nilai, false, [], []);
 
     public void SetNoUrut(int noUrut) => NoUrut = noUrut;
 
     public void ApplyNilai(NilaiItemType nilai) => Nilai = nilai;
 
-    public void VoidLine() => IsVoided = true;
+    public void VoidLine()
+    {
+        IsVoided = true;
+        foreach (var batch in _listBatch)
+            batch.VoidBatch();
+    }
+
+    public void AddBatch(string noBatch, DateTime tglEd, string poId, string doId, decimal qty, decimal hpp)
+    {
+        var noUrut = _listBatch.Select(x => x.NoUrut).DefaultIfEmpty(0).Max() + 1;
+        var batchId = $"{PenjualanItemId}-{noUrut:D2}";
+        _listBatch.Add(new PenjualanItemBatchType(batchId, noUrut, noBatch, tglEd, poId, doId, qty, hpp, IsVoided));
+    }
 
     public void AddItemRacik(IBrg itemRacik, SatuanType satuan, decimal qty, decimal dosis, string dosisTxt)
     {

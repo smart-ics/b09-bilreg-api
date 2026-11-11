@@ -56,7 +56,8 @@ public record LabOrderGetResponse(
     string ClinicalNote = "",
     int Urgency = 1,
     bool IsCito = false,
-    string CrtDate = "");
+    string CrtDate = "",
+    int ServiceType = 1);
 
 public record LabOrderItemResponse(
     int ItemNo,
@@ -71,7 +72,12 @@ public record LabOrderItemResponse(
     int RequiredTubeCount,
     int Urgency = 1,
     bool IsCito = false,
-    decimal TarifPrice = 0);
+    decimal TarifPrice = 0,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string DisciplineName = "",
+    string TestGroupId = "",
+    string TestGroupName = "");
 
 public record LabOrderItemComponentResponse(
     int ItemNo,
@@ -120,7 +126,12 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             x.RequiredTubeCount,
             (int)x.Urgency,
             x.IsCito,
-            ResolveTarifPrice(order, x))).ToList();
+            ResolveTarifPrice(order, x),
+            (int)x.ServiceType,
+            x.DisciplineId,
+            x.DisciplineName,
+            x.TestGroupId,
+            x.TestGroupName)).ToList();
 
         var components = order.ItemComponents.Select(x => new LabOrderItemComponentResponse(
             x.ItemNo,
@@ -180,7 +191,8 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             IsCito: order.IsCito,
             CrtDate: order.AuditTrail.Created.Timestamp == DateTime.MinValue
                 ? ""
-                : order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss"));
+                : order.AuditTrail.Created.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss"),
+            ServiceType: (int)order.ServiceType);
 
         return Task.FromResult(response);
     }

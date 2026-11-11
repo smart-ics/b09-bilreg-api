@@ -56,20 +56,22 @@ public record TindakanModel : ITindakanKey
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId, DateTime occurredAt = default,
         string pakaiBedId = "", int qty = 1,
-        bool isDiskonDokter = false)
+        bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
     {
         if (qty <= 0)
             throw new ArgumentException("Qty tindakan minimal 1 / Qty must be at least 1");
 
         var newId = GenerateNewId();
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty, isDiskonDokter, reg.Dokter);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty, isDiskonDokter, reg.Dokter, komponenDiskonMap);
         var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
+        var hasDoctorDiskon = isDiskonDokter || (komponenDiskonMap != null && listKomp.Any(k => k.Diskon > 0 && IsKomponenDokter(k)));
         
         var result = new TindakanModel(newId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
-            tarif, listKomp, audit, pakaiBedId, qty, isDiskonDokter);
+            tarif, listKomp, audit, pakaiBedId, qty, hasDoctorDiskon);
         return result;
     }
 
@@ -77,25 +79,28 @@ public record TindakanModel : ITindakanKey
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId, string pakaiBedId, int qty = 1, DateTime occurredAt = default,
-        bool isDiskonDokter = false)
-        => Create(reg, layanan, nilaiTarif, listKomponenPpaView, userId, occurredAt, pakaiBedId, qty, isDiskonDokter);
+        bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
+        => Create(reg, layanan, nilaiTarif, listKomponenPpaView, userId, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap);
     
     public static TindakanModel Save(string tindakanId, RegModel reg,
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView,
         AuditTrailType auditTrail, DateTime occurredAt = default,
         string pakaiBedId = "", int qty = 1,
-        bool isDiskonDokter = false)
+        bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
     {
         if (qty <= 0)
             throw new ArgumentException("Qty tindakan minimal 1 / Qty must be at least 1");
 
-        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty, isDiskonDokter, reg.Dokter);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView, qty, isDiskonDokter, reg.Dokter, komponenDiskonMap);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
+        var hasDoctorDiskon = isDiskonDokter || (komponenDiskonMap != null && listKomp.Any(k => k.Diskon > 0 && IsKomponenDokter(k)));
 
         var result = new TindakanModel(tindakanId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
-            tarif, listKomp, auditTrail, pakaiBedId, qty, isDiskonDokter);
+            tarif, listKomp, auditTrail, pakaiBedId, qty, hasDoctorDiskon);
         return result;
     }
 
@@ -103,8 +108,9 @@ public record TindakanModel : ITindakanKey
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView,
         AuditTrailType auditTrail, string pakaiBedId, int qty = 1, DateTime occurredAt = default,
-        bool isDiskonDokter = false)
-        => Save(tindakanId, reg, layanan, nilaiTarif, listKomponenPpaView, auditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter);
+        bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
+        => Save(tindakanId, reg, layanan, nilaiTarif, listKomponenPpaView, auditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap);
 
     public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
@@ -147,14 +153,14 @@ public record TindakanModel : ITindakanKey
 
     private static IEnumerable<TindakanKomponenBase> GenListKomponen(
         NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView,
-        int qty = 1, bool isDiskonDokter = false, PpaReff? dpjp = null)
+        int qty = 1, bool isDiskonDokter = false, PpaReff? dpjp = null,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
     {
         var result = new List<TindakanKomponenBase>();
         var listKompPpaFetched = listKomponenPpaView?.ToList() ?? [];
-        var index = 0;
 
         string? targetKomponenId = null;
-        if (isDiskonDokter)
+        if (isDiskonDokter && (komponenDiskonMap == null || komponenDiskonMap.Count == 0))
         {
             var doctorKomps = new List<(NilaiTarifKomponenType item, KomponenPpaView? kompPpa)>();
             foreach (var item in nilaiTarif.ListKomponen)
@@ -189,9 +195,19 @@ public record TindakanModel : ITindakanKey
             var kompPpa = listKompPpaFetched
                 .FirstOrDefault(x => x.Komponen.KomponenId == item.Komponen.KomponenId || x.Komponen.ToReff() == item.Komponen);
 
-            var isDiscounted = isDiskonDokter && item.Komponen.KomponenId == targetKomponenId;
-            var diskon = isDiscounted ? item.Nilai * qty : 0m;
-            var subTotal = (item.Nilai * qty) - diskon;
+            decimal diskon = 0m;
+            var maxKomponenSubTotal = item.Nilai * qty;
+
+            if (komponenDiskonMap != null && komponenDiskonMap.TryGetValue(item.Komponen.KomponenId, out var customDiskon))
+            {
+                diskon = Math.Clamp(customDiskon, 0m, maxKomponenSubTotal);
+            }
+            else if (isDiskonDokter && item.Komponen.KomponenId == targetKomponenId)
+            {
+                diskon = maxKomponenSubTotal;
+            }
+
+            var subTotal = maxKomponenSubTotal - diskon;
             
             TindakanKomponenBase newItem = kompPpa is null 
                 ? new TindakanKomponenWithoutPpaType(item.Komponen, item.NoUrut, item.Nilai, qty, subTotal, diskon) 
@@ -202,6 +218,24 @@ public record TindakanModel : ITindakanKey
         }
         
         return result.AsEnumerable();
+    }
+
+    private static bool IsKomponenDokter(TindakanKomponenBase komp)
+    {
+        if (komp is TindakanKomponenWithPpaType withPpa && !string.IsNullOrWhiteSpace(withPpa.Ppa.PpaName))
+        {
+            if (withPpa.Ppa.PpaName.StartsWith("dr", StringComparison.OrdinalIgnoreCase) ||
+                withPpa.Ppa.PpaName.Contains("dr.", StringComparison.OrdinalIgnoreCase) ||
+                withPpa.Ppa.PpaName.Contains("Sp.", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        if (komp.Komponen.KomponenName.Contains("Dokter", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 
     private static bool IsDoctorKomponen(NilaiTarifKomponenType item, KomponenPpaView? kompPpa)

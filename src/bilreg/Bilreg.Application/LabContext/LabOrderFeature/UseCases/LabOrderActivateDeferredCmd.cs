@@ -7,7 +7,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
-public record LabOrderActivateDeferredCmd(string OrderId, string UserId)
+public record LabOrderActivateDeferredCmd(string OrderId, string UserId, string? ExecutionRegId = null)
     : IRequest<LabOrderActivateDeferredResponse>, ILabOrderKey;
 
 public record LabOrderActivateDeferredResponse(string ExecutionRegId);
@@ -36,7 +36,7 @@ public class LabOrderActivateDeferredHandler
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
         var executionRegId = _labRegIntegration.CreateExecutionRegistration(
-            new LabRegExecutionRequest(request.OrderId, request.UserId));
+            new LabRegExecutionRequest(request.OrderId, request.UserId, request.ExecutionRegId));
         var occurredAt = _tglJamProvider.Now;
         order.ActivateFromDeferred(executionRegId, request.UserId, occurredAt);
 

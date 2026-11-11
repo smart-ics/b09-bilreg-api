@@ -85,8 +85,8 @@ public class AdmissionController : ControllerBase
                 body.ExpectedAdmissionStatus!.Value,
                 body.ExpectedUpdatedAt,
                 body.RequestId!.Trim(),
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers.UserAgent.FirstOrDefault(),
+                HttpContext?.Connection?.RemoteIpAddress?.ToString(),
+                Request?.Headers?.UserAgent.FirstOrDefault(),
                 body.VoidSource ?? false);
             var result = await _mediator.Send(command);
             return Ok(new JSendOk(result));
@@ -100,9 +100,12 @@ public class AdmissionController : ControllerBase
             var statusCode = ex.Code == CoordinatedCancellationErrorCode.RegistrationHasBillingItems
                 ? StatusCodes.Status400BadRequest
                 : StatusCodes.Status409Conflict;
-            var blockers = ex.Code == CoordinatedCancellationErrorCode.RegistrationHasBillingItems
-                ? new[] { CoordinatedCancellationErrorCode.RegistrationHasBillingItems }
-                : null;
+            var blockers = ex.Code switch
+            {
+                CoordinatedCancellationErrorCode.RegistrationHasBillingItems => new[] { CoordinatedCancellationErrorCode.RegistrationHasBillingItems },
+                CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement => new[] { CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement },
+                _ => null
+            };
             return Failure(statusCode, ex.Code, ex.Message, correlationId, blockers);
         }
         catch (ArgumentException ex)

@@ -2,7 +2,9 @@ using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
@@ -40,6 +42,22 @@ public class ErrorHandlerMiddleware
         }
         catch (Exception error)
         {
+            while (true)
+            {
+                if (error is TargetInvocationException tie && tie.InnerException is not null)
+                {
+                    error = tie.InnerException;
+                }
+                else if (error is AggregateException agg && agg.InnerException is not null)
+                {
+                    error = agg.InnerException;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
             var response = context.Response;
             response.ContentType = "application/json";
 
@@ -80,6 +98,18 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "AQ_INVALID_REQUEST";
                     break;
+                case BadHttpRequestException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "AQ_INVALID_REQUEST";
+                    break;
+                case JsonException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "AQ_INVALID_REQUEST";
+                    break;
+                case NotSupportedException notSupportedEx when notSupportedEx.Message.Contains("deserializ", StringComparison.OrdinalIgnoreCase):
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "AQ_INVALID_REQUEST";
+                    break;
                 case SequenceExhaustedException:
                     statusCode = (int)HttpStatusCode.ServiceUnavailable;
                     status = "AQ_SEQUENCE_EXHAUSTED";
@@ -87,6 +117,10 @@ public class ErrorHandlerMiddleware
                 case BusinessValidationException:
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "BIZ_VALIDATION_FAILED";
+                    break;
+                case FluentValidation.ValidationException:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "VALIDATION_FAILED";
                     break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;

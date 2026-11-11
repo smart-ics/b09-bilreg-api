@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
@@ -44,6 +45,7 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
         private readonly IPakaiBedAlokasiRepo _pakaiBedAlokasiRepo;
         private readonly IWaitingListRepo _waitingListRepo;
         private readonly IBedOperationalRepo? _bedOperationalRepo;
+        private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
 
         public PakaiBedCreateCommandHandler(IPakaiBedRepo pakaiBedRepo,
             IPakaiBedAlokasiRepo pakaiBedAlokasiRepo,
@@ -52,7 +54,8 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             ITipeKamarRepo tipeKamarRepo, IRoomRateRepo roomRateRepo, 
             IKelasRepo kelasRepo,
             IWaitingListRepo waitingListRepo,
-            IBedOperationalRepo? bedOperationalRepo = null)
+            IBedOperationalRepo? bedOperationalRepo = null,
+            IEmr20AntrianRanapGateway? emr20Gateway = null)
         {
             _pakaiBedRepo = pakaiBedRepo;
             _pakaiBedAlokasiRepo = pakaiBedAlokasiRepo;
@@ -65,9 +68,10 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
             _kelasRepo = kelasRepo;
             _waitingListRepo = waitingListRepo;
             _bedOperationalRepo = bedOperationalRepo;
+            _emr20Gateway = emr20Gateway;
         }
 
-        public Task<PakaiBedCreateResult> Handle(PakaiBedCreateCommand request, CancellationToken cancellationToken)
+        public async Task<PakaiBedCreateResult> Handle(PakaiBedCreateCommand request, CancellationToken cancellationToken)
         {
             var reg = _regRepo.LoadEntity(RegModel.Key(request.RegId))
                 .GetValueOrThrow("Reg not found");
@@ -121,6 +125,41 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 .FirstOrDefault()
                 ?? throw new Exception("Room Rate for Tipe Kamar not found");
 
+            var listKomponen = new List<PakaiBedKomponenType>();
+
+            if (roomRate is RoomRateDailyType dailyRate)
+            {
+                var dailyTipes = dailyRate.ListTipe
+                    .Where(x => x.TipeKamar.TipeKamarId == request.TipeKamarId)
+                    .ToList();
+                foreach (var d in dailyTipes)
+                {
+                    listKomponen.AddRange(d.ListKomponen.Select(x =>
+                        new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, d.HariKe)));
+                }
+            }
+            else if (rate is RoomRateRegulerTipeType regTipe)
+            {
+                listKomponen.AddRange(regTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, 1)));
+            }
+            else if (rate is RoomRateKelasType kelasTipe)
+            {
+                listKomponen.AddRange(kelasTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, 1)));
+            }
+            else if (rate is RoomRateDayType dayTipe)
+            {
+                listKomponen.AddRange(dayTipe.ListKomponen.Select(x =>
+                    new PakaiBedKomponenType(x.Komponen.KomponenId, x.Komponen.KomponenName, x.Nilai, dayTipe.HariKe)));
+            }
+
+            // Fallback jika tidak ada komponen tarif terdaftar namun ada total nilai
+            if (listKomponen.Count == 0 && rate.TotalNilai > 0)
+            {
+                listKomponen.Add(new PakaiBedKomponenType("AKO", "Akomodasi", rate.TotalNilai, 1));
+            }
+
             WaitingListModel? waitingList = null;
             if (!string.IsNullOrWhiteSpace(request.WaitingListId))
             {
@@ -145,7 +184,9 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 bed, 
                 tipeKamar, 
                 kelas,
-                rate.TotalNilai);
+                rate.TotalNilai,
+                listKomponen,
+                kelas.KelasId);
 
             using var trans = TransHelper.NewScope();
 
@@ -169,7 +210,12 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
 
             trans.Complete();
 
-            return Task.FromResult(new PakaiBedCreateResult(pakaiBed.PakaiBedId));
+            if (_emr20Gateway != null)
+            {
+                await _emr20Gateway.AddRegRanapAsync(request.RegId, cancellationToken);
+            }
+
+            return new PakaiBedCreateResult(pakaiBed.PakaiBedId);
         }
     }
 }

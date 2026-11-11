@@ -1,4 +1,5 @@
 using Dapper;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
@@ -14,10 +15,12 @@ public interface IOrderMutasiDal :
     IUpdate<OrderMutasiDto>,
     IDelete<IOrderMutasiKey>,
     IGetData<OrderMutasiDto, IOrderMutasiKey>,
-    IListData<OrderMutasiDto, Periode>
+    IListData<OrderMutasiDto, Periode>,
+    IListData<OrderMutasiDto, ILayananKey, Periode>
 {
     IEnumerable<OrderMutasiDto> ListDraftState();
     IEnumerable<OrderMutasiDto> ListApprovedState(Periode filter);
+    IEnumerable<OrderMutasiDto> ListByLayananOrder(ILayananKey layananOrder, Periode filter) => ListData(layananOrder, filter);
 }
 
 public class OrderMutasiDal : IOrderMutasiDal
@@ -33,14 +36,14 @@ public class OrderMutasiDal : IOrderMutasiDal
     {
         const string sql = """
             INSERT INTO FARIN_OrderMutasi (
-                OrderMutasiId, OrderMutasiDate, State,
+                OrderMutasiId, OrderMutasiDate, State, Priority,
                 LayananOrderId, LayananOrderName, 
                 LayananTujuanId, LayananTujuanName, 
                 ApprovalUserId, ApprovalDate, 
                 RejectionUserId, RejectionDate, OrderNote,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @OrderMutasiId, @OrderMutasiDate, @State,
+                @OrderMutasiId, @OrderMutasiDate, @State, @Priority,
                 @LayananOrderId, @LayananOrderName, 
                 @LayananTujuanId, @LayananTujuanName, 
                 @ApprovalUserId, @ApprovalDate, 
@@ -52,6 +55,7 @@ public class OrderMutasiDal : IOrderMutasiDal
         dp.AddParam("@OrderMutasiId", dto.OrderMutasiId, SqlDbType.VarChar);
         dp.AddParam("@OrderMutasiDate", dto.OrderMutasiDate, SqlDbType.DateTime);
         dp.AddParam("@State", (int)dto.State, SqlDbType.Int);
+        dp.AddParam("@Priority", (int)dto.Priority, SqlDbType.Int);
         dp.AddParam("@LayananOrderId", dto.LayananOrderId, SqlDbType.VarChar);
         dp.AddParam("@LayananOrderName", dto.LayananOrderName, SqlDbType.VarChar);
         dp.AddParam("@LayananTujuanId", dto.LayananTujuanId, SqlDbType.VarChar);
@@ -78,6 +82,7 @@ public class OrderMutasiDal : IOrderMutasiDal
             UPDATE FARIN_OrderMutasi SET
                 OrderMutasiDate = @OrderMutasiDate,
                 State = @State,
+                Priority = @Priority,
                 LayananOrderId = @LayananOrderId,
                 LayananOrderName = @LayananOrderName,
                 LayananTujuanId = @LayananTujuanId,
@@ -100,6 +105,7 @@ public class OrderMutasiDal : IOrderMutasiDal
         dp.AddParam("@OrderMutasiId", dto.OrderMutasiId, SqlDbType.VarChar);
         dp.AddParam("@OrderMutasiDate", dto.OrderMutasiDate, SqlDbType.DateTime);
         dp.AddParam("@State", (int)dto.State, SqlDbType.Int);
+        dp.AddParam("@Priority", (int)dto.Priority, SqlDbType.Int);
         dp.AddParam("@LayananOrderId", dto.LayananOrderId, SqlDbType.VarChar);
         dp.AddParam("@LayananOrderName", dto.LayananOrderName, SqlDbType.VarChar);
         dp.AddParam("@LayananTujuanId", dto.LayananTujuanId, SqlDbType.VarChar);
@@ -136,7 +142,7 @@ public class OrderMutasiDal : IOrderMutasiDal
     {
         const string sql = """
             SELECT 
-                OrderMutasiId, OrderMutasiDate, State,
+                OrderMutasiId, OrderMutasiDate, State, Priority,
                 LayananOrderId, LayananOrderName, 
                 LayananTujuanId, LayananTujuanName, 
                 ApprovalUserId, ApprovalDate, 
@@ -158,7 +164,7 @@ public class OrderMutasiDal : IOrderMutasiDal
     {
         const string sql = """
             SELECT 
-                OrderMutasiId, OrderMutasiDate, State,
+                OrderMutasiId, OrderMutasiDate, State, Priority,
                 LayananOrderId, LayananOrderName, 
                 LayananTujuanId, LayananTujuanName, 
                 ApprovalUserId, ApprovalDate, 
@@ -174,14 +180,14 @@ public class OrderMutasiDal : IOrderMutasiDal
         dp.AddParam("@Tgl2", filter.Tgl2, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderMutasiDto>(sql, dp);
+        return conn.Read<OrderMutasiDto>(sql, dp) ?? [];
     }
 
     public IEnumerable<OrderMutasiDto> ListDraftState()
     {
         const string sql = """
             SELECT 
-                OrderMutasiId, OrderMutasiDate, State,
+                OrderMutasiId, OrderMutasiDate, State, Priority,
                 LayananOrderId, LayananOrderName, 
                 LayananTujuanId, LayananTujuanName, 
                 ApprovalUserId, ApprovalDate, 
@@ -194,14 +200,14 @@ public class OrderMutasiDal : IOrderMutasiDal
             """;
         var dp = new DynamicParameters();
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderMutasiDto>(sql, dp);
+        return conn.Read<OrderMutasiDto>(sql, dp) ?? [];
     }
 
     public IEnumerable<OrderMutasiDto> ListApprovedState(Periode filter)
     {
         const string sql = """
             SELECT 
-                OrderMutasiId, OrderMutasiDate, State,
+                OrderMutasiId, OrderMutasiDate, State, Priority,
                 LayananOrderId, LayananOrderName, 
                 LayananTujuanId, LayananTujuanName, 
                 ApprovalUserId, ApprovalDate, 
@@ -210,13 +216,42 @@ public class OrderMutasiDal : IOrderMutasiDal
             FROM 
                 FARIN_OrderMutasi
             WHERE 
-                ApprovalDate BETWEEN @Tgl1 AND @Tgl2
+                State IN (2, 5)
+                AND ApprovalDate BETWEEN @Tgl1 AND @Tgl2
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@Tgl1", filter.Tgl1, SqlDbType.DateTime);
         dp.AddParam("@Tgl2", filter.Tgl2, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderMutasiDto>(sql, dp);
+        return conn.Read<OrderMutasiDto>(sql, dp) ?? [];
     }
+
+    public IEnumerable<OrderMutasiDto> ListData(ILayananKey layananOrder, Periode filter)
+    {
+        const string sql = """
+            SELECT 
+                OrderMutasiId, OrderMutasiDate, State, Priority,
+                LayananOrderId, LayananOrderName, 
+                LayananTujuanId, LayananTujuanName, 
+                ApprovalUserId, ApprovalDate, 
+                RejectionUserId, RejectionDate, OrderNote,
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
+            FROM 
+                FARIN_OrderMutasi
+            WHERE 
+                LayananOrderId = @LayananOrderId
+                AND OrderMutasiDate BETWEEN @Tgl1 AND @Tgl2
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@LayananOrderId", layananOrder.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@Tgl1", filter.Tgl1, SqlDbType.DateTime);
+        dp.AddParam("@Tgl2", filter.Tgl2, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<OrderMutasiDto>(sql, dp) ?? [];
+    }
+
+    public IEnumerable<OrderMutasiDto> ListByLayananOrder(ILayananKey layananOrder, Periode filter)
+        => ListData(layananOrder, filter);
 }

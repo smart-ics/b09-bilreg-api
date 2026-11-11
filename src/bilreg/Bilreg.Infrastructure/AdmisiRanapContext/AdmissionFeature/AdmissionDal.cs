@@ -28,9 +28,9 @@ public class AdmissionDal : IAdmissionDal
         ISNULL(bb.fs_nm_pasien, '') AS PasienName,
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-        aa.OpnameRequestId, aa.ReservationId,
         aa.KelasDkId, aa.KelasDkName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
-        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+        ISNULL(aa.InpatientOrderId, '-') AS InpatientOrderId
         """;
 
     private readonly DatabaseOptions _opt;
@@ -42,14 +42,12 @@ public class AdmissionDal : IAdmissionDal
         const string sql = """
             INSERT INTO BILRG_AdmAdmission (
                 RegId, AdmissionStatus, AdmissionSource,
-                PasienId,
-                OpnameRequestId, ReservationId,
+                PasienId, InpatientOrderId,
                 KelasDkId, KelasDkName, BangsalId, BangsalName, AdmissionDate,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @RegId, @AdmissionStatus, @AdmissionSource,
-                @PasienId,
-                @OpnameRequestId, @ReservationId,
+                @PasienId, @InpatientOrderId,
                 @KelasDkId, @KelasDkName, @BangsalId, @BangsalName, @AdmissionDate,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -66,8 +64,7 @@ public class AdmissionDal : IAdmissionDal
                 AdmissionStatus = @AdmissionStatus,
                 AdmissionSource = @AdmissionSource,
                 PasienId = @PasienId,
-                OpnameRequestId = @OpnameRequestId,
-                ReservationId = @ReservationId,
+                InpatientOrderId = @InpatientOrderId,
                 KelasDkId = @KelasDkId,
                 KelasDkName = @KelasDkName,
                 BangsalId = @BangsalId,
@@ -108,23 +105,86 @@ public class AdmissionDal : IAdmissionDal
         var cleanSearch = Regex.Replace(rawSearch, @"[^\w]", "");
 
         var sql = $"""
+            WITH CombinedAdmissions AS (
+                -- 1. All records from BILRG_AdmAdmission
+                SELECT
+                    aa.RegId,
+                    aa.AdmissionStatus,
+                    aa.AdmissionSource,
+                    aa.PasienId,
+                    aa.KelasDkId,
+                    aa.KelasDkName,
+                    aa.BangsalId,
+                    aa.BangsalName,
+                    aa.AdmissionDate,
+                    aa.CrtUser,
+                    aa.CrtDate,
+                    aa.UpdUser,
+                    aa.UpdDate,
+                    aa.VodUser,
+                    aa.VodDate,
+                    ISNULL(aa.InpatientOrderId, '-') AS InpatientOrderId
+                FROM BILRG_AdmAdmission aa
+                WHERE aa.VodDate = @VodDate
+
+                UNION ALL
+
+                -- 2. Active registrations in BILRG_RegAktif that do not exist in BILRG_AdmAdmission
+                SELECT
+                    ra.RegId,
+                    0 AS AdmissionStatus,
+                    0 AS AdmissionSource,
+                    ra.PasienId,
+                    '' AS KelasDkId,
+                    '' AS KelasDkName,
+                    ra.LayananId AS BangsalId,
+                    '' AS BangsalName,
+                    ra.RegDate AS AdmissionDate,
+                    '' AS CrtUser,
+                    ra.RegDate AS CrtDate,
+                    '' AS UpdUser,
+                    '3000-01-01' AS UpdDate,
+                    '' AS VodUser,
+                    '3000-01-01' AS VodDate,
+                    '-' AS InpatientOrderId
+                FROM BILRG_RegAktif ra
+                WHERE ra.JenisReg = '1'
+                  AND NOT EXISTS (SELECT 1 FROM BILRG_AdmAdmission aa2 WHERE aa2.RegId = ra.RegId)
+            )
             SELECT TOP 50
-                {SELECT_COLUMNS}
-            FROM BILRG_AdmAdmission aa
-            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                ca.RegId,
+                ca.AdmissionStatus,
+                ca.AdmissionSource,
+                ca.PasienId,
+                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ca.KelasDkId,
+                ca.KelasDkName,
+                ca.BangsalId,
+                ca.BangsalName,
+                ca.AdmissionDate,
+                ca.CrtUser,
+                ca.CrtDate,
+                ca.UpdUser,
+                ca.UpdDate,
+                ca.VodUser,
+                ca.VodDate,
+                ca.InpatientOrderId
+            FROM CombinedAdmissions ca
+            LEFT JOIN tc_mr bb ON ca.PasienId = bb.fs_mr
             WHERE
-                aa.VodDate = @VodDate
-                AND (@Status IS NULL OR aa.AdmissionStatus = @Status)
-                AND (@PasienId IS NULL OR @PasienId = '' OR aa.PasienId = @PasienId)
+                (@Status IS NULL OR ca.AdmissionStatus = @Status)
+                AND (@PasienId IS NULL OR @PasienId = '' OR ca.PasienId = @PasienId)
                 AND (
                     @Search IS NULL OR @Search = ''
-                    OR aa.RegId = @Search
-                    OR aa.PasienId = @Search
-                    OR (@CleanSearch <> '' AND aa.PasienId LIKE '%' + @CleanSearch + '%')
-                    OR (@CleanSearch <> '' AND LEN(@CleanSearch) = 6 AND RIGHT(aa.PasienId, 6) = @CleanSearch)
+                    OR ca.RegId = @Search
+                    OR ca.PasienId = @Search
+                    OR (@CleanSearch <> '' AND ca.PasienId LIKE '%' + @CleanSearch + '%')
+                    OR (@CleanSearch <> '' AND LEN(@CleanSearch) = 6 AND RIGHT(ca.PasienId, 6) = @CleanSearch)
                     OR bb.fs_nm_pasien LIKE '%' + @Search + '%'
                 )
-            ORDER BY aa.CrtDate DESC, aa.RegId DESC
+            ORDER BY ca.CrtDate DESC, ca.RegId DESC
             """;
 
         var dp = new DynamicParameters();
@@ -145,8 +205,7 @@ public class AdmissionDal : IAdmissionDal
         dp.AddParam("@AdmissionStatus", dto.AdmissionStatus, SqlDbType.Int);
         dp.AddParam("@AdmissionSource", dto.AdmissionSource, SqlDbType.Int);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@OpnameRequestId", dto.OpnameRequestId, SqlDbType.VarChar);
-        dp.AddParam("@ReservationId", dto.ReservationId, SqlDbType.VarChar);
+        dp.AddParam("@InpatientOrderId", string.IsNullOrWhiteSpace(dto.InpatientOrderId) ? "-" : dto.InpatientOrderId, SqlDbType.VarChar);
         dp.AddParam("@KelasDkId", dto.KelasDkId, SqlDbType.VarChar);
         dp.AddParam("@KelasDkName", dto.KelasDkName, SqlDbType.VarChar);
         dp.AddParam("@BangsalId", dto.BangsalId, SqlDbType.VarChar);

@@ -7,6 +7,7 @@ namespace Bilreg.Infrastructure.InventoryContext.MutasiFeature;
 
 public record OrderMutasiDto(
     string OrderMutasiId, DateTime OrderMutasiDate, OrderMutasiStateEnum State,
+    OrderMutasiPriorityEnum Priority,
 
     string LayananOrderId, string LayananOrderName,
     string LayananTujuanId, string LayananTujuanName,
@@ -24,6 +25,7 @@ public record OrderMutasiDto(
             model.OrderMutasiId,
             model.OrderMutasiDate,
             model.State,
+            model.Priority,
             model.LayananOrder.LayananId,
             model.LayananOrder.LayananName,
             model.LayananTujuan.LayananId,
@@ -45,9 +47,10 @@ public record OrderMutasiDto(
 
     public OrderMutasiModel ToModel(IEnumerable<OrderMutasiItemModel> listBrg)
     {
-        var auditTrail = AuditTrailType.Create(CrtUser, CrtDate);
-        auditTrail.Modif(UpdUser, UpdDate);
-        auditTrail.Batal(VodUser, VodDate);
+        var crt = new AuditInfoType(CrtUser, CrtDate);
+        var upd = new AuditInfoType(UpdUser, UpdDate);
+        var vod = new AuditInfoType(VodUser, VodDate);
+        var auditTrail = new AuditTrailType(crt, upd, vod);
         var approval = new ApprovalType(ApprovalUserId, ApprovalDate);
         var rejection = new ApprovalType(RejectionUserId, RejectionDate);
 
@@ -60,8 +63,8 @@ public record OrderMutasiDto(
             approval, rejection,
             OrderNote,
             auditTrail,
-            listBrg?.ToList() ?? []);
+            listBrg?.ToList() ?? [],
+            Priority);
         return result;
     }
-
 }

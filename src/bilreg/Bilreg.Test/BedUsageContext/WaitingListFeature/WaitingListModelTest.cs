@@ -58,6 +58,7 @@ public class WaitingListModelTest
         created.PlannedBed.BedId.Should().Be("-");
         created.CancellationReason.Should().BeEmpty();
         created.RerouteReason.Should().BeEmpty();
+        created.RejectReason.Should().BeEmpty();
         created.PreviousWaitListId.Should().BeEmpty();
         created.PlacedBedId.Should().BeEmpty();
         created.PlacedPakaiBedId.Should().BeEmpty();
@@ -348,6 +349,72 @@ public class WaitingListModelTest
 
     #endregion
 
+    #region REJECT TESTS
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GivenWaitingOrReserved_WhenReject_ThenTransitionsToRejectedAndRecordsReasonAndAudit(bool isReserved)
+    {
+        var entry = CreateWaiting();
+        if (isReserved)
+            entry = entry.ReservePlannedBed(SampleBed(), "nurse1");
+
+        var occurredAt = new DateTime(2026, 10, 17, 9, 30, 0);
+        var rejected = entry.Reject("Kapasitas tempat tidur penuh / tidak ada ranjang siap pakai", "nurse1", occurredAt);
+
+        rejected.WaitingListStatus.Should().Be(WaitingListStatusEnum.Rejected);
+        rejected.IsActive.Should().BeFalse();
+        rejected.RejectReason.Should().Be("Kapasitas tempat tidur penuh / tidak ada ranjang siap pakai");
+        rejected.AuditTrail.Modified.UserId.Should().Be("nurse1");
+        rejected.AuditTrail.Modified.Timestamp.Should().Be(occurredAt);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GivenBlankReason_WhenReject_ThenThrowsArgumentException(string reason)
+    {
+        var entry = CreateWaiting();
+
+        var act = () => entry.Reject(reason, "nurse1");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GivenBlankActorId_WhenReject_ThenThrowsArgumentException(string actorId)
+    {
+        var entry = CreateWaiting();
+
+        var act = () => entry.Reject("Kapasitas penuh", actorId);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void GivenInactiveStatus_WhenReject_ThenThrowsInvalidOperationException()
+    {
+        var placed = CreateWaiting().Place("BED01", "PAK01", "nurse1");
+        var cancelled = CreateWaiting().Cancel("Alasan 1", "admin1");
+        var rejected = CreateWaiting().Reject("Kapasitas penuh", "nurse1");
+
+        var actPlaced = () => placed.Reject("Kapasitas penuh", "nurse1");
+        var actCancelled = () => cancelled.Reject("Kapasitas penuh", "nurse1");
+        var actRejected = () => rejected.Reject("Kapasitas penuh", "nurse1");
+
+        actPlaced.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting atau Reserved*");
+        actCancelled.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting atau Reserved*");
+        actRejected.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting atau Reserved*");
+    }
+
+    #endregion
+
     #region REROUTE TESTS
 
     [Theory]
@@ -463,6 +530,7 @@ public class WaitingListModelTest
         ((int)WaitingListStatusEnum.Placed).Should().Be(2);
         ((int)WaitingListStatusEnum.Cancelled).Should().Be(3);
         ((int)WaitingListStatusEnum.Rerouted).Should().Be(4);
+        ((int)WaitingListStatusEnum.Rejected).Should().Be(5);
 
         ((int)ClinicalUrgencyEnum.Routine).Should().Be(0);
         ((int)ClinicalUrgencyEnum.Urgent).Should().Be(1);

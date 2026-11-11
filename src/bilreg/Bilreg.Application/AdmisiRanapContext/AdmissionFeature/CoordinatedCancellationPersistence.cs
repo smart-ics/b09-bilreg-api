@@ -1,5 +1,5 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 
@@ -48,7 +48,8 @@ public sealed record CoordinatedCancellationState(
     bool IsCoherentlyCancelled,
     object AuditSnapshot,
     bool AdmissionExists = true,
-    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null);
+    CoordinatedCancellationAuditSnapshots? AuditSnapshots = null,
+    string InpatientOrderId = "-");
 
 /// <summary>
 /// Immutable, entity-scoped pre-change images captured while the cancellation
@@ -67,6 +68,7 @@ public sealed record CoordinatedCancellationAuditSnapshots(
 public static class CoordinatedCancellationErrorCode
 {
     public const string RegistrationHasBillingItems = "REGISTRATION_HAS_BILLING_ITEMS";
+    public const string RegistrationHasActiveBedPlacement = "RegistrationHasActiveBedPlacement";
     public const string ConcurrencyConflict = "CONCURRENCY_CONFLICT";
     public const string SourceStateMismatch = "SOURCE_STATE_MISMATCH";
     public const string RequestIdReused = "REQUEST_ID_REUSED";

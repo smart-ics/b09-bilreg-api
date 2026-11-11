@@ -82,6 +82,6 @@ public class LabOrderItemComponentDal : ILabOrderItemComponentDal
         dp.AddParam("@OrderId", filter.OrderId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderItemComponentDto>(sql, dp);
+        return conn.Read<LabOrderItemComponentDto>(sql, dp) ?? Enumerable.Empty<LabOrderItemComponentDto>();
     }
 }

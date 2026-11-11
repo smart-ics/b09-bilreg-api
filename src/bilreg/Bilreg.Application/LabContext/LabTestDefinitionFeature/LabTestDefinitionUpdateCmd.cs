@@ -18,7 +18,10 @@ public record LabTestDefinitionUpdateCmd(
     VacutainerTypeEnum VacutainerType,
     bool IsActive,
     string UserId,
-    IReadOnlyList<LabTestComponentInput> Components)
+    IReadOnlyList<LabTestComponentInput> Components,
+    LaboratoryServiceType ServiceType = LaboratoryServiceType.ClinicalPathology,
+    string DisciplineId = "",
+    string TestGroupId = "")
     : IRequest, ILabTestDefinitionKey;
 
 public class LabTestDefinitionUpdateHandler : IRequestHandler<LabTestDefinitionUpdateCmd>
@@ -73,7 +76,10 @@ public class LabTestDefinitionUpdateHandler : IRequestHandler<LabTestDefinitionU
             components,
             request.UserId,
             _tglJamProvider.Now,
-            catalog);
+            catalog,
+            request.ServiceType,
+            request.DisciplineId,
+            request.TestGroupId);
 
         _definitionRepo.SaveChanges(updated);
         return Task.CompletedTask;

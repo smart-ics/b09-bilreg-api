@@ -1,7 +1,7 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
@@ -48,7 +48,7 @@ public static class JourneyIntegrityValidator
         {
             var hasOpn = JourneyIdFactory.HasValue(admission.OpnameRequestId);
             var hasRsv = JourneyIdFactory.HasValue(admission.ReservationId);
-            if (hasOpn && hasRsv)
+            if (hasOpn && hasRsv && admission.OpnameRequestId != admission.ReservationId)
             {
                 issues.Add(Issue(
                     JourneyReconciliationCodes.AdmissionHasBothSources,

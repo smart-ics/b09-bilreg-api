@@ -3,6 +3,7 @@ CREATE TABLE BILRG_LabOrder (
     EmrOrderId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_EmrOrderId DEFAULT(''),
     OrderNo VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderNo DEFAULT(''),
     OrderSource INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderSource DEFAULT(0),
+    ServiceType INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_ServiceType DEFAULT(1),
     LabOrderStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LabOrderStatus DEFAULT(0),
     LastBillingReleaseStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseStatus DEFAULT(0),
     OwareStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OwareStatus DEFAULT(0),
@@ -67,4 +68,6 @@ GO
 CREATE INDEX IX_BILRG_LabOrder_Urgency ON BILRG_LabOrder(Urgency, LabOrderStatus, CrtDate);
 GO
 CREATE INDEX IX_BILRG_LabOrder_Perujuk ON BILRG_LabOrder(DokterPerujukId, LayananPerujukId) WHERE DokterPerujukId <> '';
+GO
+CREATE INDEX IX_BILRG_LabOrder_ServiceType ON BILRG_LabOrder(ServiceType, CrtDate);
 GO

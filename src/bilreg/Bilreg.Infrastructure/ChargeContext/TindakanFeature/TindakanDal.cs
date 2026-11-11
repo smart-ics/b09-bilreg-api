@@ -315,6 +315,40 @@ public class TindakanDal : ITindakanDal
             UNION ALL
 
             SELECT
+                bb.fs_kd_trs2 AS TransaksiId,
+                CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) AS TransaksiDate,
+                LTRIM(RTRIM(aa.fs_kd_resep)) AS OrderTransaksiId,
+                aa.fs_kd_reg AS RegId,
+                ISNULL(cc.fs_mr, '') AS PasienId,
+                aa.fs_nm_pasien AS PasienName,
+                aa.fs_kd_layanan AS LayananId,
+                ISNULL(dd.fs_nm_layanan, '') AS LayananName,
+                bb.fs_kd_barang AS DiskripsiId,
+                bb.fs_nm_barang AS DiskripsiName,
+                CAST(bb.fn_qty_barang AS INT) AS Qty,
+                bb.fn_total AS Total,
+                'BARANG' AS Tipe,
+                aa.fs_kd_petugas AS CrtUser,
+                CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs) AS CrtDate,
+                '' AS UpdUser,
+                CONVERT(DATETIME, '3000-01-01') AS UpdDate,
+                '' AS VodUser,
+                CONVERT(DATETIME, '3000-01-01') AS VodDate,
+                '' AS PakaiBedId
+            FROM
+                tb_trs_dobill_umum aa
+                INNER JOIN tb_trs_dobill_umum2 bb ON aa.fs_kd_trs = bb.fs_kd_trs
+                LEFT JOIN ta_registrasi cc ON aa.fs_kd_reg = cc.fs_kd_reg
+                LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
+            WHERE
+                aa.fs_kd_reg = @RegId
+                AND (aa.fd_tgl_void = '3000-01-01' OR LTRIM(RTRIM(aa.fs_kd_petugas_void)) = '')
+                AND bb.fb_void = 0
+                AND bb.fb_komponen = 0
+
+            UNION ALL
+
+            SELECT
                 bb.BhpRanapId AS TransaksiId,
                 bb.CrtDate AS TransaksiDate,
                 '' AS OrderTransaksiId,
@@ -344,6 +378,9 @@ public class TindakanDal : ITindakanDal
             WHERE
                 bb.RegId = @RegId
                 AND bb.VodDate = @VodDate
+
+            ORDER BY
+                TransaksiDate DESC, TransaksiId DESC
             """;
 
         var dp = new DynamicParameters();

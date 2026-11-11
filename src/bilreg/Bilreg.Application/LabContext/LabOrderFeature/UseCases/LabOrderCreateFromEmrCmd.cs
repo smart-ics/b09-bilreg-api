@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -30,11 +30,18 @@ public record LabOrderCreateFromEmrCmd(
     bool AllowDuplicateConfirmation = false)
     : IRequest<LabOrderCreateFromEmrResponse>;
 
+public record CreatedOrderInfo(
+    string OrderId,
+    string OrderNo,
+    int ServiceType,
+    string EmrOrderId);
+
 public record LabOrderCreateFromEmrResponse(
     string EmrOrderId,
     int LabOrderStatus,
     string OrderNo,
-    string OrderId = "");
+    string OrderId = "",
+    List<CreatedOrderInfo>? CreatedOrders = null);
 
 public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEmrCmd, LabOrderCreateFromEmrResponse>
 {
@@ -83,11 +90,31 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
 
         if (existingOrder is not null)
         {
+            var createdOrders = new List<CreatedOrderInfo>
+            {
+                new(existingOrder.OrderId, existingOrder.OrderNo, (int)existingOrder.ServiceType, existingOrder.EmrOrderId)
+            };
             return Task.FromResult(new LabOrderCreateFromEmrResponse(
                 existingOrder.EmrOrderId,
                 (int)existingOrder.LabOrderStatus,
                 existingOrder.OrderNo,
-                existingOrder.OrderId));
+                existingOrder.OrderId,
+                createdOrders));
+        }
+
+        var existingSplitOrders = _labOrderRepo.ListByEmrOrderIdPrefix(request.EmrOrderId)?.ToList() ?? [];
+        if (existingSplitOrders.Count > 0)
+        {
+            var primary = existingSplitOrders.First();
+            var createdOrders = existingSplitOrders
+                .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                .ToList();
+            return Task.FromResult(new LabOrderCreateFromEmrResponse(
+                request.EmrOrderId,
+                (int)primary.LabOrderStatus,
+                primary.OrderNo,
+                primary.OrderId,
+                createdOrders));
         }
 
         // 1. Validasi status kunjungan aktif ke ADM-REG (EX-01)
@@ -163,32 +190,88 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
             }
         }
 
-        var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+        var groupedLines = lines
+            .GroupBy(x => x.Item.ServiceType)
+            .OrderBy(g => g.Key)
+            .ToList();
+
         var urgency = (LabOrderUrgencyEnum)request.Urgency;
-
-        var order = LabOrderModel.CreateFromEmr(
-            request.EmrOrderId,
-            snapshot,
-            lines,
-            orderNo,
-            audit,
-            request.DokterPerujukId,
-            dokterPerujukName,
-            request.LayananPerujukId,
-            request.LayananPerujukName,
-            request.ClinicalNote,
-            urgency);
-
         LabOrderCreateFromEmrResponse response;
+
         using (var trans = TransHelper.NewScope())
         {
-            _labOrderRepo.SaveChanges(order);
-            trans.Complete();
-            response = new LabOrderCreateFromEmrResponse(
-                order.EmrOrderId,
-                (int)order.LabOrderStatus,
-                order.OrderNo,
-                order.OrderId);
+            if (groupedLines.Count == 1)
+            {
+                var singleGroup = groupedLines[0];
+                var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                var order = LabOrderModel.CreateFromEmr(
+                    request.EmrOrderId,
+                    snapshot,
+                    singleGroup.ToList(),
+                    orderNo,
+                    audit,
+                    request.DokterPerujukId,
+                    dokterPerujukName,
+                    request.LayananPerujukId,
+                    request.LayananPerujukName,
+                    request.ClinicalNote,
+                    urgency,
+                    singleGroup.Key);
+
+                _labOrderRepo.SaveChanges(order);
+                trans.Complete();
+
+                var createdOrders = new List<CreatedOrderInfo>
+                {
+                    new(order.OrderId, order.OrderNo, (int)order.ServiceType, order.EmrOrderId)
+                };
+                response = new LabOrderCreateFromEmrResponse(
+                    order.EmrOrderId,
+                    (int)order.LabOrderStatus,
+                    order.OrderNo,
+                    order.OrderId,
+                    createdOrders);
+            }
+            else
+            {
+                var createdOrders = new List<LabOrderModel>();
+                foreach (var group in groupedLines)
+                {
+                    var suffix = LabOrderCreateHelper.GetServiceTypeSuffix(group.Key);
+                    var subEmrOrderId = $"{request.EmrOrderId}-{suffix}";
+                    var subOrderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
+                    var subOrder = LabOrderModel.CreateFromEmr(
+                        subEmrOrderId,
+                        snapshot,
+                        group.ToList(),
+                        subOrderNo,
+                        audit,
+                        request.DokterPerujukId,
+                        dokterPerujukName,
+                        request.LayananPerujukId,
+                        request.LayananPerujukName,
+                        request.ClinicalNote,
+                        urgency,
+                        group.Key);
+
+                    _labOrderRepo.SaveChanges(subOrder);
+                    createdOrders.Add(subOrder);
+                }
+
+                trans.Complete();
+
+                var primary = createdOrders.First();
+                var createdOrderInfos = createdOrders
+                    .Select(o => new CreatedOrderInfo(o.OrderId, o.OrderNo, (int)o.ServiceType, o.EmrOrderId))
+                    .ToList();
+
+                response = new LabOrderCreateFromEmrResponse(
+                    request.EmrOrderId,
+                    (int)primary.LabOrderStatus,
+                    primary.OrderNo,
+                    primary.OrderId,
+                    createdOrderInfos);
+            }
         }
 
         return Task.FromResult(response);

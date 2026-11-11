@@ -86,6 +86,31 @@ public class LegacyStockReadPort : ILegacyStockReadPort
         return rows.Select(MapBalance).ToList();
     }
 
+    public IReadOnlyList<string> ListActiveDoIdsAtLocation(string brgId, string layananId)
+    {
+        const string sql = """
+            SELECT DISTINCT
+                aa.fs_kd_do
+            FROM tb_stok aa
+            WHERE
+                aa.fs_kd_barang = @fs_kd_barang
+                AND aa.fs_kd_layanan = @fs_kd_layanan
+                AND aa.fn_qty > 0
+                AND LTRIM(RTRIM(aa.fs_kd_do)) <> ''
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_barang", brgId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", layananId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var rows = conn.Query<string>(sql, dp) ?? [];
+        return rows
+            .Select(x => x?.Trim() ?? string.Empty)
+            .Where(x => x.Length > 0)
+            .ToList();
+    }
+
     private static LegacyStockJournalReadModel MapJournal(LegacyBukuRow row) =>
         new(
             LegacyBukuId: row.fs_kd_trs ?? string.Empty,

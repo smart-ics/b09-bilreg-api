@@ -110,6 +110,28 @@ public class PenjualanModel : IPenjualanKey
             listItem);
     }
 
+    public static PenjualanModel CreateDirectReg(
+        RegModel reg,
+        LayananType layananPoli,
+        TipeBrgReff tipeBrg,
+        string userId,
+        DateTime occurredAt)
+    {
+        var newId = NunaId.NewLegacy("DU", 'A');
+        return new PenjualanModel(
+            newId,
+            " ",
+            reg.ToReff(),
+            new DokterReff(reg.Dokter.PpaId, reg.Dokter.PpaName),
+            layananPoli.ToReff(),
+            layananPoli.ToReff(),
+            reg.TipeJaminan,
+            tipeBrg,
+            NilaiPenjualanType.Default,
+            AuditTrailType.Create(userId, occurredAt),
+            []);
+    }
+
     public string PenjualanId { get; private set; }
     public string ResepId { get; private set; }
     public RegReff Register { get; private set; }
@@ -130,7 +152,9 @@ public class PenjualanModel : IPenjualanKey
             throw new ArgumentException($"Brg sudah ada, tidak bisa duplikasi.\n'{brg}'");
 
         var noUrut = _listItem.Select(x => x.NoUrut).DefaultIfEmpty(0).Max() + 1;
-        var itemId = $"{PenjualanId}{noUrut:D3}";
+        var itemId = (string.IsNullOrWhiteSpace(ResepId) || ResepId == " ")
+            ? $"{PenjualanId}-{noUrut:D2}"
+            : $"{PenjualanId}{noUrut:D3}";
         _listItem.Add(PenjualanItemType.Create(itemId, noUrut, brg, satuan, qty, etiket, nilai));
         Recalculate();
     }
@@ -196,13 +220,15 @@ public class PenjualanModel : IPenjualanKey
 
     public void Modify(string userId) => AuditTrail.Modif(userId, DateTime.Now);
 
-    public void Void(string userId)
+    public void Void(string userId, DateTime voidedAt)
     {
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, voidedAt);
         foreach (var item in _listItem.Where(x => !x.IsVoided))
             item.VoidLine();
         Recalculate();
     }
+
+    public void Void(string userId) => Void(userId, DateTime.Now);
 
     public PenjualanReff ToReff() => new(PenjualanId, AuditTrail.Created.Timestamp, Register);
 
