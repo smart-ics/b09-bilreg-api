@@ -276,7 +276,7 @@ public class AdmCoordinatedCancelHandlerTest
     }
 
     private static AdmCoordinatedCancelCmd Command() => new("RG00000001", " alasan ", "user1", AdmissionStatusEnum.Admitted, null, "REQ1", null, null);
-    private static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new("RG00000001", AdmissionStatusEnum.Admitted, new DateTime(3000, 1, 1), AdmissionSourceEnum.Legacy, "-", "-", true, true, 1, "WTL00000001", Bilreg.Domain.AdmisiRanapContext.WaitingListFeature.WaitingListStatusEnum.Waiting, 1, sourceId, sourceKind, true, false, new { RegId = "RG00000001" });
+    private static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new("RG00000001", AdmissionStatusEnum.Admitted, new DateTime(3000, 1, 1), AdmissionSourceEnum.Legacy, "-", "-", true, true, 1, "WTL00000001", Bilreg.Domain.BedUsageContext.WaitingListFeature.WaitingListStatusEnum.Waiting, 1, sourceId, sourceKind, true, false, new { RegId = "RG00000001" });
     private static string FingerprintFor(AdmCoordinatedCancelCmd cmd)
     {
         // The handler's public replay contract is exercised with a matching deterministic hash.

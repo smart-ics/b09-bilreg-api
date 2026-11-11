@@ -4,7 +4,7 @@ using System.Text.Json;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Test.AdmisiRanapContext.AdmissionFeature.Api;
 using Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 using FluentAssertions;
@@ -179,7 +179,7 @@ public sealed class JourneyApiIntegrationTest : IClassFixture<JourneyApiWebAppli
         new JourneyDetailInformation(null, null, null,
             new JourneyPlacementAvailability(JourneyPlacementAvailabilityStatus.Unavailable,
                 JourneyPlacementUnavailableReasonCode.WardManagementNotImplemented, null, "Tidak tersedia"),
-            new JourneyHandoverInfo(new JourneyAccommodationHandoverSummary(null, WaitingListStatusEnum.Accepted, null, null, 1, 0, 0), null, null)),
+            new JourneyHandoverInfo(new JourneyAccommodationHandoverSummary(null, WaitingListStatusEnum.Reserved, null, null, 1, 0, 0), null, null)),
         new JourneySystemAuditReferences(JourneyOriginKind.OpnameRequest, "OPN-1", null, null, null, "RG-1", null, [], DateTime.UtcNow),
         [], DateTime.UtcNow, 1);
 }

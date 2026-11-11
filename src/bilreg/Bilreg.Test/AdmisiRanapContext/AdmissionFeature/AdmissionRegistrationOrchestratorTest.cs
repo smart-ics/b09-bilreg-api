@@ -23,8 +23,9 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -415,6 +416,7 @@ public class AdmissionRegistrationOrchestratorTest
             h.BangsalId == "B1" &&
             h.KelasId == "K1" &&
             h.Status == WaitingListStatusEnum.Waiting)), Times.Once);
+        harness.WardCockpitPublisher.Verify(x => x.PublishWaitingListUpdatedAsync("B1", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -451,6 +453,7 @@ public class AdmissionRegistrationOrchestratorTest
         harness.AuditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
             a.EntityName == nameof(WaitingListModel) && a.EntityId == response.WaitingListId)), Times.Once);
         harness.WardGateway.Verify(x => x.NotifyHandOver(It.IsAny<WardAccommodationHandOver>()), Times.Once);
+        harness.WardCockpitPublisher.Verify(x => x.PublishWaitingListUpdatedAsync("B1", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1119,6 +1122,26 @@ public class AdmissionRegistrationOrchestratorTest
         harness.AuditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
             a.EntityName == nameof(AdmissionModel) && a.EntityId == response.RegId)), Times.Once);
         harness.Publisher.Verify(x => x.PublishRanapCreatedAsync(response.RegId, CancellationToken.None), Times.Once);
+        harness.WardCockpitPublisher.Verify(x => x.PublishWaitingListUpdatedAsync("B1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDirectAdmission_WhenWaitingListPlacementThrows_ThenRegistrationStillSucceedsGracefullyWithNullWaitingListId()
+    {
+        var harness = CreateDirectHarness();
+        harness.WaitingListRepo.Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
+            .Throws(new InvalidOperationException("DB error on waiting list"));
+
+        var command = new AdmProcessDirectAdmissionCmd("P001", "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        response.WaitingListId.Should().BeNull();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.SavedRegAktif.Should().NotBeNull();
     }
 
     [Fact]
@@ -1285,6 +1308,7 @@ public class AdmissionRegistrationOrchestratorTest
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
         var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
+        var wardCockpitPublisher = new Mock<IWardCockpitEventPublisher>();
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
@@ -1292,12 +1316,12 @@ public class AdmissionRegistrationOrchestratorTest
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
             effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object,
-            regDal.Object);
+            regDal.Object, null, null, wardCockpitPublisher.Object);
 
         return new OpnameHarness(
             sut, opname, publisher, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
             auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo, trackerCoordinator,
-            pasienRepo, regDal,
+            pasienRepo, regDal, wardCockpitPublisher,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname,
             () => savedWaitingList);
     }
@@ -1379,6 +1403,7 @@ public class AdmissionRegistrationOrchestratorTest
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
         var trackerCoordinator = customTrackerCoordinator ?? new Mock<IPasienTrackerInpatientCoordinator>();
+        var wardCockpitPublisher = new Mock<IWardCockpitEventPublisher>();
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
@@ -1386,11 +1411,12 @@ public class AdmissionRegistrationOrchestratorTest
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
             effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object,
-            regDal.Object);
+            regDal.Object, null, null, wardCockpitPublisher.Object);
 
         return new ReservationHarness(
             sut, reservation, publisher, admissionRepo, prosedurRepo, regInapRepo, auditRepo,
-            ward, waitingListRepo, trackerCoordinator, pasienRepo, regAktifRepo, regDal, () => savedRegInap, () => savedWaitingList);
+            ward, waitingListRepo, trackerCoordinator, pasienRepo, regAktifRepo, regDal, wardCockpitPublisher,
+            () => savedRegInap, () => savedWaitingList);
     }
 
     private static LayananType InpatientLayanan() =>
@@ -1419,6 +1445,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
         Mock<IPasienRepo> pasienRepo,
         Mock<IRegDal> regDal,
+        Mock<IWardCockpitEventPublisher> wardCockpitPublisher,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -1445,6 +1472,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
         public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
         public Mock<IRegDal> RegDal { get; } = regDal;
+        public Mock<IWardCockpitEventPublisher> WardCockpitPublisher { get; } = wardCockpitPublisher;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();
@@ -1467,6 +1495,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IPasienRepo> pasienRepo,
         Mock<IRegAktifRepo> regAktifRepo,
         Mock<IRegDal> regDal,
+        Mock<IWardCockpitEventPublisher> wardCockpitPublisher,
         Func<RegInapModel?> savedRegInap,
         Func<WaitingListModel?> savedWaitingList)
     {
@@ -1483,6 +1512,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
         public Mock<IRegAktifRepo> RegAktifRepo { get; } = regAktifRepo;
         public Mock<IRegDal> RegDal { get; } = regDal;
+        public Mock<IWardCockpitEventPublisher> WardCockpitPublisher { get; } = wardCockpitPublisher;
         public RegInapModel? SavedRegInap => savedRegInap();
         public WaitingListModel? SavedWaitingList => savedWaitingList();
     }
@@ -1560,6 +1590,7 @@ public class AdmissionRegistrationOrchestratorTest
         var publisher = new Mock<IAdmisiEventPublisher>();
         var effectivePublisher = customPublisher ?? publisher.Object;
         var trackerCoordinator = new Mock<IPasienTrackerInpatientCoordinator>();
+        var wardCockpitPublisher = new Mock<IWardCockpitEventPublisher>();
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
@@ -1567,12 +1598,12 @@ public class AdmissionRegistrationOrchestratorTest
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
             effectivePublisher, waitingListRepo.Object, trackerCoordinator.Object,
-            regDal.Object);
+            regDal.Object, null, null, wardCockpitPublisher.Object);
 
         return new DirectHarness(
             sut, pasien, publisher, admissionRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
             auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo, ward, waitingListRepo,
-            pasienRepo, regDal,
+            pasienRepo, regDal, wardCockpitPublisher,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif,
             () => savedWaitingList);
     }
@@ -1670,6 +1701,7 @@ public class AdmissionRegistrationOrchestratorTest
         var regDal = new Mock<IRegDal>();
         var publisher = new Mock<IAdmisiEventPublisher>();
         var trackerCoordinator = new Mock<IPasienTrackerInpatientCoordinator>();
+        var wardCockpitPublisher = new Mock<IWardCockpitEventPublisher>();
 
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
@@ -1678,11 +1710,11 @@ public class AdmissionRegistrationOrchestratorTest
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance,
             publisher.Object, waitingListRepo.Object, trackerCoordinator.Object,
-            regDal.Object, null, inpatientOrderRepo.Object);
+            regDal.Object, null, inpatientOrderRepo.Object, wardCockpitPublisher.Object);
 
         return new InpatientOrderHarness(
             sut, order, publisher, admissionRepo, inpatientOrderRepo, regRepo, regInapRepo, regAktifRepo,
-            trackerCoordinator, () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif,
+            trackerCoordinator, wardCockpitPublisher, () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif,
             () => savedOrder, () => savedWaitingList);
     }
 
@@ -1696,6 +1728,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IRegInapRepo> regInapRepo,
         Mock<IRegAktifRepo> regAktifRepo,
         Mock<IPasienTrackerInpatientCoordinator> trackerCoordinator,
+        Mock<IWardCockpitEventPublisher> wardCockpitPublisher,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -1712,6 +1745,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IRegInapRepo> RegInapRepo { get; } = regInapRepo;
         public Mock<IRegAktifRepo> RegAktifRepo { get; } = regAktifRepo;
         public Mock<IPasienTrackerInpatientCoordinator> TrackerCoordinator { get; } = trackerCoordinator;
+        public Mock<IWardCockpitEventPublisher> WardCockpitPublisher { get; } = wardCockpitPublisher;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();
@@ -1738,6 +1772,7 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IWaitingListRepo> waitingListRepo,
         Mock<IPasienRepo> pasienRepo,
         Mock<IRegDal> regDal,
+        Mock<IWardCockpitEventPublisher> wardCockpitPublisher,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -1761,6 +1796,7 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IWaitingListRepo> WaitingListRepo { get; } = waitingListRepo;
         public Mock<IPasienRepo> PasienRepo { get; } = pasienRepo;
         public Mock<IRegDal> RegDal { get; } = regDal;
+        public Mock<IWardCockpitEventPublisher> WardCockpitPublisher { get; } = wardCockpitPublisher;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();

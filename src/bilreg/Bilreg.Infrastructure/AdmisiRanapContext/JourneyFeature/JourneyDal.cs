@@ -5,7 +5,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -978,7 +978,7 @@ public sealed partial class JourneyDal : IJourneyDal
 
     private static string BuildNonStageWhere(JourneyListFilter filter) =>
         """
-        (@ScopeActive = 0 OR j.SqlStage NOT IN (5, 6))
+        (@ScopeActive = 0 OR j.SqlStage NOT IN (4, 5, 6))
           AND (@HasDokter = 0 OR j.DokterId = @DokterId)
           AND (@HasBangsal = 0 OR j.BangsalId = @BangsalId)
           AND (@HasKelas = 0 OR j.KelasId = @KelasId)
