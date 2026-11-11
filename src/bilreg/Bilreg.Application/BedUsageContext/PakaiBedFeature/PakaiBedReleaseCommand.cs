@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.ChargeContext.RoomChargeFeature.UseCases;
 using Bilreg.Application.ChargeContext.TindakanFeature;
@@ -42,6 +43,7 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
     private readonly IBedRepo? _bedRepo;
     private readonly IKamarRepo? _kamarRepo;
     private readonly ITindakanRepo? _tindakanRepo;
+    private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
 
     public PakaiBedReleaseCommandHandler(
         IPakaiBedRepo pakaiBedRepo,
@@ -51,7 +53,8 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
         IBedRepo? bedRepo = null,
         IKamarRepo? kamarRepo = null,
         ITindakanRepo? tindakanRepo = null,
-        IBedOperationalRepo? bedOperationalRepo = null)
+        IBedOperationalRepo? bedOperationalRepo = null,
+        IEmr20AntrianRanapGateway? emr20Gateway = null)
     {
         _pakaiBedRepo = pakaiBedRepo;
         _mediator = mediator;
@@ -61,6 +64,7 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
         _kamarRepo = kamarRepo;
         _tindakanRepo = tindakanRepo;
         _bedOperationalRepo = bedOperationalRepo;
+        _emr20Gateway = emr20Gateway;
     }
 
     public async Task<PakaiBedReleaseResult> Handle(PakaiBedReleaseCommand request, CancellationToken cancellationToken)
@@ -111,6 +115,11 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
         }
         pakaiBed.Release(request.UserId, occurredAt);
         _pakaiBedRepo.SaveChanges(pakaiBed);
+
+        if (_emr20Gateway != null)
+        {
+            await _emr20Gateway.DischargeRegRanapAsync(pakaiBed.Reg.RegId, isGabung: false, cancellationToken);
+        }
 
         // Checkout hook: trigger/send RoomChargeReconcileCheckoutCmd via _mediator only for normal discharge
         RoomChargeReconcileResponse? reconcileResult = null;

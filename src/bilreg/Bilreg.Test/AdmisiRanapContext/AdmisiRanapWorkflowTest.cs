@@ -6,15 +6,16 @@ using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;
@@ -47,7 +48,7 @@ public class AdmisiRanapWorkflowTest
             .Should().Be(AdmissionStatusEnum.Admitted);
 
         var wlResponse = await h.CreateWaitingListHandler.Handle(
-            new AdmCreateWaitingListCmd(admissionResponse.RegId, "K1", "B1", 5, "user3"),
+            new WaitingListCreateCmd(admissionResponse.RegId, "K1", "B1", Priority: 5, UserId: "user3"),
             CancellationToken.None);
 
         h.WaitingLists[wlResponse.WaitingListId].WaitingListStatus
@@ -127,7 +128,7 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var wlResponse = await h.CreateWaitingListHandler.Handle(
-            new AdmCreateWaitingListCmd(admissionResponse.RegId, "K2", "B2", 1, "user3"),
+            new WaitingListCreateCmd(admissionResponse.RegId, "K2", "B2", Priority: 1, UserId: "user3"),
             CancellationToken.None);
 
         var wl = h.WaitingLists[wlResponse.WaitingListId];
@@ -148,7 +149,7 @@ public class AdmisiRanapWorkflowTest
         public AdmCreateReservationHandler CreateReservationHandler { get; }
         public AdmMaintainReservationHandler MaintainReservationHandler { get; }
         public AdmProcessReservationHandler ProcessReservationHandler { get; }
-        public AdmCreateWaitingListHandler CreateWaitingListHandler { get; }
+        public WaitingListCreateHandler CreateWaitingListHandler { get; }
 
         public WorkflowHarness()
         {
@@ -159,6 +160,9 @@ public class AdmisiRanapWorkflowTest
             var patientGateway = CreatePatientGateway();
             var doctorGateway = CreateDoctorGateway();
             var wardGateway = CreateWardGateway();
+            var kelasRepo = CreateKelasRepo();
+            var bangsalRepo = CreateBangsalRepo();
+            var bedRepo = new Mock<IBedRepo>();
             var auditRepo = new Mock<IAuditRepo>();
 
             CreateOpnameHandler = new AdmCreateOpnameRequestHandler(
@@ -170,8 +174,8 @@ public class AdmisiRanapWorkflowTest
             MaintainReservationHandler = new AdmMaintainReservationHandler(
                 reservationRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             ProcessReservationHandler = new AdmProcessReservationHandler(orchestrator.Object);
-            CreateWaitingListHandler = new AdmCreateWaitingListHandler(
-                waitingListRepo.Object, admissionRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+            CreateWaitingListHandler = new WaitingListCreateHandler(
+                waitingListRepo.Object, admissionRepo.Object, kelasRepo.Object, bangsalRepo.Object, bedRepo.Object, TestTglJamProvider.Instance);
         }
 
         private Mock<IAdmissionRegistrationOrchestrator> CreateOrchestrator()
@@ -255,6 +259,8 @@ public class AdmisiRanapWorkflowTest
         private Mock<IWaitingListRepo> CreateWaitingListRepo()
         {
             var mock = new Mock<IWaitingListRepo>();
+            mock.Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+                .Callback<WaitingListModel>(m => WaitingLists[m.WaitingListId] = m);
             mock.Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
                 .Callback<WaitingListModel>(m => WaitingLists[m.WaitingListId] = m);
             mock.Setup(x => x.HasActiveByRegId(It.IsAny<string>()))
@@ -262,7 +268,31 @@ public class AdmisiRanapWorkflowTest
                     WaitingLists.Values.Any(w =>
                         w.RegId == regId &&
                         w.WaitingListStatus is WaitingListStatusEnum.Waiting
-                            or WaitingListStatusEnum.Accepted));
+                            or WaitingListStatusEnum.Reserved));
+            mock.Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+                .Returns((string regId) =>
+                {
+                    var active = WaitingLists.Values.FirstOrDefault(w =>
+                        w.RegId == regId &&
+                        w.WaitingListStatus is WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved);
+                    return active != null ? MayBe.From(active) : MayBe<WaitingListModel>.None;
+                });
+            return mock;
+        }
+
+        private static Mock<IKelasRepo> CreateKelasRepo()
+        {
+            var mock = new Mock<IKelasRepo>();
+            mock.Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
+                .Returns((IKelasKey k) => MayBe.From(KelasType.Default with { KelasId = k.KelasId, KelasName = $"Kelas {k.KelasId}" }));
+            return mock;
+        }
+
+        private static Mock<IBangsalRepo> CreateBangsalRepo()
+        {
+            var mock = new Mock<IBangsalRepo>();
+            mock.Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+                .Returns((IBangsalKey k) => MayBe.From(BangsalType.Default with { BangsalId = k.BangsalId, BangsalName = $"Bangsal {k.BangsalId}" }));
             return mock;
         }
 

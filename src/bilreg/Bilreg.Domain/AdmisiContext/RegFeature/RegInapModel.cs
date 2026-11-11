@@ -80,7 +80,7 @@ public class RegInapModel : IRegKey
     #region PROPERTIES
 
     public string RegId { get; init; }
-    public ProsedurMasukInapType ProsedurMasukInap { get; init; }
+    public ProsedurMasukInapType ProsedurMasukInap { get; private set; }
 
     public IReadOnlyList<RegDokterType> ListDokter => _assignments.AsReadOnly();
     public bool IsTerminal => _isTerminal;
@@ -277,6 +277,13 @@ public class RegInapModel : IRegKey
             null));
 
         ValidateInvariants();
+    }
+
+    public void SetProsedurMasukInap(ProsedurMasukInapType prosedurMasukInap)
+    {
+        Guard.Against.Null(prosedurMasukInap);
+        EnsureNotTerminal();
+        ProsedurMasukInap = prosedurMasukInap;
     }
 
     #endregion

@@ -199,7 +199,7 @@ public class WaitingListDal : IWaitingListDal
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
             WHERE
                 aa.RegId = @RegId
-                AND aa.WaitingListStatus IN (@Waiting, @Reserved)
+                AND aa.WaitingListStatus IN (@Waiting, @Reserved, @Rerouted, @Rejected)
             ORDER BY aa.CrtDate DESC
             """;
 
@@ -207,6 +207,8 @@ public class WaitingListDal : IWaitingListDal
         dp.AddParam("@RegId", regId, SqlDbType.VarChar);
         dp.AddParam("@Waiting", (int)WaitingListStatusEnum.Waiting, SqlDbType.Int);
         dp.AddParam("@Reserved", (int)WaitingListStatusEnum.Reserved, SqlDbType.Int);
+        dp.AddParam("@Rerouted", (int)WaitingListStatusEnum.Rerouted, SqlDbType.Int);
+        dp.AddParam("@Rejected", (int)WaitingListStatusEnum.Rejected, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var resultDto = conn.Read<WaitingListDto>(sql, dp);

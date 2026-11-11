@@ -59,7 +59,10 @@ public class AdmGetAdmissionHandlerTest
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM001")))
             .Returns(MayBe.From(admission));
 
-        var reg = CreateSampleReg("ADM001", caraMasukDkId: "8", dokterId: "REG_DOK");
+        var reg = CreateSampleReg("ADM001", caraMasukDkId: "8", dokterId: "REG_DOK",
+            tipeJaminanId: "TJ01", tipeJaminanName: "BPJS Kesehatan",
+            polisId: "POL01", noPolis: "000123456",
+            jenisInapId: "1", regIbu: "REG-IBU-001");
         _regRepoMock
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM001")))
             .Returns(MayBe.From(reg));
@@ -82,6 +85,12 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().Be("8");
         result.DokterId.Should().Be("DPJP_AKTIF");
         result.ProsedurMasukInapId.Should().Be("1");
+        result.TipeJaminanId.Should().Be("TJ01");
+        result.TipeJaminanName.Should().Be("BPJS Kesehatan");
+        result.PolisId.Should().Be("POL01");
+        result.NoPolis.Should().Be("000123456");
+        result.JenisInapId.Should().Be("1");
+        result.RegIbu.Should().Be("REG-IBU-001");
     }
 
     [Fact]
@@ -140,6 +149,12 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().BeEmpty();
         result.DokterId.Should().BeEmpty();
         result.ProsedurMasukInapId.Should().BeEmpty();
+        result.TipeJaminanId.Should().BeEmpty();
+        result.TipeJaminanName.Should().BeEmpty();
+        result.PolisId.Should().BeEmpty();
+        result.NoPolis.Should().BeEmpty();
+        result.JenisInapId.Should().BeEmpty();
+        result.RegIbu.Should().BeEmpty();
     }
 
     [Fact]
@@ -151,7 +166,9 @@ public class AdmGetAdmissionHandlerTest
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM004")))
             .Returns(MayBe.From(admission));
 
-        var reg = CreateSampleReg("ADM004", caraMasukDkId: "-", dokterId: "-");
+        var reg = CreateSampleReg("ADM004", caraMasukDkId: "-", dokterId: "-",
+            tipeJaminanId: "-", tipeJaminanName: "-", polisId: "-", noPolis: "-",
+            jenisInapId: "-", regIbu: "-");
         _regRepoMock
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM004")))
             .Returns(MayBe.From(reg));
@@ -170,6 +187,12 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().BeEmpty();
         result.DokterId.Should().BeEmpty();
         result.ProsedurMasukInapId.Should().BeEmpty();
+        result.TipeJaminanId.Should().BeEmpty();
+        result.TipeJaminanName.Should().BeEmpty();
+        result.PolisId.Should().BeEmpty();
+        result.NoPolis.Should().BeEmpty();
+        result.JenisInapId.Should().BeEmpty();
+        result.RegIbu.Should().BeEmpty();
     }
 
     private static AdmissionModel CreateSampleAdmission(string regId) =>
@@ -184,7 +207,16 @@ public class AdmGetAdmissionHandlerTest
             new DateTime(2026, 7, 7, 10, 0, 0),
             AuditTrailType.Create("USER01", new DateTime(2026, 7, 7, 10, 0, 0)));
 
-    private static RegModel CreateSampleReg(string regId, string caraMasukDkId, string dokterId) =>
+    private static RegModel CreateSampleReg(
+        string regId,
+        string caraMasukDkId,
+        string dokterId,
+        string tipeJaminanId = "-",
+        string tipeJaminanName = "-",
+        string polisId = "-",
+        string noPolis = "-",
+        string jenisInapId = "-",
+        string regIbu = "") =>
         new(
             regId,
             new DateOnly(2026, 7, 7),
@@ -194,8 +226,8 @@ public class AdmGetAdmissionHandlerTest
             AuditInfoType.Default,
             JenisRegEnum.RegInap,
             new PasienReff("PAS001", "Pasien A", new DateOnly(1990, 1, 1), "L"),
-            TipeJaminanType.Default.ToReff(),
-            PolisModel.Default.ToReff(),
+            new TipeJaminanReff(tipeJaminanId, tipeJaminanName),
+            new PolisReff(polisId, noPolis, "Pemegang Polis Test"),
             KelasType.Default.ToReff(),
             new CaraMasukDkType(caraMasukDkId, "Cara Masuk Test"),
             RujukanType.Default.ToReff(),
@@ -203,7 +235,9 @@ public class AdmGetAdmissionHandlerTest
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
-            []);
+            [],
+            jenisInap: new JenisInapType(jenisInapId, "Jenis Inap Test"),
+            regIbu: regIbu);
 
     private static RegInapModel CreateSampleRegInap(string regId, string prosedurMasukInapId, string dpjpId) =>
         RegInapModel.Create(

@@ -92,6 +92,26 @@ public class AdmCoordinatedCancelHandlerTest
     }
 
     [Fact]
+    public async Task ActiveBedPlacement_RejectsBeforeAnyMutation()
+    {
+        var repo = new Mock<ICoordinatedCancellationRepo>();
+        var eligibility = new Mock<IRegistrationCancellationEligibilityRepo>();
+        repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
+        repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
+        repo.Setup(x => x.LockState("RG00000001")).Returns(State());
+        eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
+        eligibility.Setup(x => x.HasActiveBedPlacement("RG00000001")).Returns(true);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
+
+        var act = () => sut.Handle(Command(), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<CoordinatedCancellationException>();
+        ex.Which.Code.Should().Be(CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement);
+        ex.Which.Message.Should().Be("Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
+        repo.Verify(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
     public async Task SameCompletedRequest_ReplaysStoredResponseWithoutMutations()
     {
         var response = new AdmCoordinatedCancelResponse("RG00000001", AdmissionStatusEnum.Cancelled, true, false, null, null, "REQ1");
@@ -256,7 +276,7 @@ public class AdmCoordinatedCancelHandlerTest
     }
 
     private static AdmCoordinatedCancelCmd Command() => new("RG00000001", " alasan ", "user1", AdmissionStatusEnum.Admitted, null, "REQ1", null, null);
-    private static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new("RG00000001", AdmissionStatusEnum.Admitted, new DateTime(3000, 1, 1), AdmissionSourceEnum.Legacy, "-", "-", true, true, 1, "WTL00000001", Bilreg.Domain.AdmisiRanapContext.WaitingListFeature.WaitingListStatusEnum.Waiting, 1, sourceId, sourceKind, true, false, new { RegId = "RG00000001" });
+    private static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new("RG00000001", AdmissionStatusEnum.Admitted, new DateTime(3000, 1, 1), AdmissionSourceEnum.Legacy, "-", "-", true, true, 1, "WTL00000001", Bilreg.Domain.BedUsageContext.WaitingListFeature.WaitingListStatusEnum.Waiting, 1, sourceId, sourceKind, true, false, new { RegId = "RG00000001" });
     private static string FingerprintFor(AdmCoordinatedCancelCmd cmd)
     {
         // The handler's public replay contract is exercised with a matching deterministic hash.

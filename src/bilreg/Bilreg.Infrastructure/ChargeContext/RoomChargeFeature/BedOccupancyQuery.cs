@@ -37,8 +37,12 @@ public class BedOccupancyQuery : IBedOccupancyQuery
                 ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
                 ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
                 CASE 
-                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
-                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    WHEN (
+                        aa.fn_tarif = 0 
+                        AND mother.fs_kd_trs IS NOT NULL 
+                        AND mother.fs_kd_trs <> ''
+                        AND mother.fs_kd_trs <> aa.fs_kd_trs
+                    ) THEN CAST(1 AS BIT) 
                     ELSE CAST(0 AS BIT) 
                 END AS IsRoomingIn,
                 ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,
@@ -89,8 +93,12 @@ public class BedOccupancyQuery : IBedOccupancyQuery
                 ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
                 ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
                 CASE 
-                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
-                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    WHEN (
+                        aa.fn_tarif = 0 
+                        AND mother.fs_kd_trs IS NOT NULL 
+                        AND mother.fs_kd_trs <> ''
+                        AND mother.fs_kd_trs <> aa.fs_kd_trs
+                    ) THEN CAST(1 AS BIT) 
                     ELSE CAST(0 AS BIT) 
                 END AS IsRoomingIn,
                 ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,
@@ -129,8 +137,12 @@ public class BedOccupancyQuery : IBedOccupancyQuery
                 ISNULL(aa.fs_kd_kelas, '') AS PhysicalClassId,
                 ISNULL(NULLIF(bb.fs_kd_kelas, '000'), ISNULL(aa.fs_kd_kelas, '')) AS PayerClassId,
                 CASE 
-                    WHEN (ISNULL(bb.fs_reg_ibu, '') <> '' OR bb.fs_kd_jenis_inap = '3' OR aa.fn_tarif = 0) 
-                         AND ISNULL(kt.fb_gabung, 0) = 1 THEN CAST(1 AS BIT) 
+                    WHEN (
+                        aa.fn_tarif = 0 
+                        AND mother.fs_kd_trs IS NOT NULL 
+                        AND mother.fs_kd_trs <> ''
+                        AND mother.fs_kd_trs <> aa.fs_kd_trs
+                    ) THEN CAST(1 AS BIT) 
                     ELSE CAST(0 AS BIT) 
                 END AS IsRoomingIn,
                 ISNULL(mother.fs_kd_trs, '') AS MotherPakaiBedId,

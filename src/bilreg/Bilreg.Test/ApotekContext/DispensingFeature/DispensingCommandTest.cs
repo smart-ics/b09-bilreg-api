@@ -13,9 +13,14 @@ using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
+using Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
+using Bilreg.Domain.ApotekContext.PenjualanFeature;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
+using MediatR;
 using Moq;
+using IPenjualanRepo = Bilreg.Application.ApotekContext.PenjualanFeature.IPenjualanRepo;
+using PaymentClearanceEvidence = Bilreg.Application.ApotekContext.InvoiceFeature.PaymentClearanceEvidence;
 
 namespace Bilreg.Test.ApotekContext.DispensingFeature;
 
@@ -247,6 +252,99 @@ public class DispensingCommandTest
         _tasks.Store.Values.Should().Contain(x =>
             x.TaskType == AptIntegrationTaskTypeEnum.BillingCharge
             && x.IdempotencyKey == $"{invoice.InvoiceId}:BILL");
+    }
+
+    [Fact]
+    public async Task Handover_calls_mediator_with_PenjualanUpdateHandoverInfoCmd_when_penjualan_specified()
+    {
+        var order = await SeedAuthorizedBpjsOrder();
+        MapJualBebas("ADQ2");
+        var prepared = await PrepareDispensing(order.SalesOrderId);
+        await new DispensingPickupCallHandler(_map, _so, _disp, _tasks, _auth)
+            .Handle(new DispensingPickupCallCmd("u", "Q1", 1, "TRK1"), default);
+        var reviewed = await new DispensingFinalReviewHandler(_disp, _auth)
+            .Handle(new DispensingFinalReviewCmd("u", prepared.DispensingId, _disp.Store[prepared.DispensingId].Version, FinalReviewOutcomeEnum.Pass, ""), default);
+        var educated = await new DispensingEducationHandler(_disp, _auth)
+            .Handle(new DispensingEducationCmd("u", reviewed.DispensingId, reviewed.Version, ""), default);
+
+        var mediatorMock = new Mock<IMediator>();
+        PenjualanUpdateHandoverInfoCmd? capturedCmd = null;
+        mediatorMock
+            .Setup(x => x.Send(It.IsAny<PenjualanUpdateHandoverInfoCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<Unit>, CancellationToken>((cmd, _) => capturedCmd = (PenjualanUpdateHandoverInfoCmd)cmd)
+            .ReturnsAsync(Unit.Value);
+
+        var handler = new DispensingHandoverHandler(
+            _disp, _so, _inv, _price, _tasks, new FakeWindow(), _auth, mediatorMock.Object, null);
+
+        var handed = await handler.Handle(
+            new DispensingHandoverCmd("u", educated.DispensingId, educated.Version, "0812", "anak", PenjualanId: "DU1234567A", TrsMutasiId: "MUT001"),
+            default);
+
+        handed.Status.Should().Be(DispensingStatusEnum.Completed);
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.PenjualanId.Should().Be("DU1234567A");
+        capturedCmd.TrsMutasiId.Should().Be("MUT001");
+        capturedCmd.PetugasSerah.Should().Be("u");
+        capturedCmd.UserId.Should().Be("u");
+    }
+
+    [Fact]
+    public async Task Handover_discovers_penjualan_via_sales_order_and_updates_repo()
+    {
+        var order = await SeedAuthorizedBpjsOrder();
+        MapJualBebas("ADQ2");
+        var prepared = await PrepareDispensing(order.SalesOrderId);
+        await new DispensingPickupCallHandler(_map, _so, _disp, _tasks, _auth)
+            .Handle(new DispensingPickupCallCmd("u", "Q1", 1, "TRK1"), default);
+        var reviewed = await new DispensingFinalReviewHandler(_disp, _auth)
+            .Handle(new DispensingFinalReviewCmd("u", prepared.DispensingId, _disp.Store[prepared.DispensingId].Version, FinalReviewOutcomeEnum.Pass, ""), default);
+        var educated = await new DispensingEducationHandler(_disp, _auth)
+            .Handle(new DispensingEducationCmd("u", reviewed.DispensingId, reviewed.Version, ""), default);
+
+        var pItem = PenjualanItemModel.Create(
+            noUrut: 1,
+            penjualanItemId: "DU1234567A001",
+            brgId: "B001",
+            brgName: "Paracetamol",
+            satuanId: "TAB",
+            satuanName: "Tablet",
+            qty: 10,
+            hargaSatuan: 500);
+
+        var penjualan = PenjualanModel.CreateFromTelaah(
+            resepId: order.SourceId,
+            regId: order.RegId,
+            pasienName: order.PasienName,
+            dokterId: "D001",
+            layananId: "L001",
+            layananResepId: "L001",
+            tipeJaminanId: "JKN00",
+            kelasId: "KL1",
+            petugasId: "u",
+            penjualanDate: DateTime.Now,
+            items: new[] { pItem },
+            penjualanId: "DU1234567A");
+
+        var penjualanRepoMock = new Mock<IPenjualanRepo>();
+        penjualanRepoMock.Setup(r => r.ListByResep(order.SourceId))
+            .Returns(new List<PenjualanModel> { penjualan });
+        penjualanRepoMock.Setup(r => r.LoadEntity(It.Is<IPenjualanKey>(k => k.PenjualanId == "DU1234567A")))
+            .Returns(Nuna.Lib.PatternHelper.MayBe.From(penjualan));
+        penjualanRepoMock.Setup(r => r.SaveChanges(It.IsAny<PenjualanModel>()));
+
+        var handler = new DispensingHandoverHandler(
+            _disp, _so, _inv, _price, _tasks, new FakeWindow(), _auth, null, penjualanRepoMock.Object);
+
+        var handed = await handler.Handle(
+            new DispensingHandoverCmd("u", educated.DispensingId, educated.Version, "0812", "anak"),
+            default);
+
+        handed.Status.Should().Be(DispensingStatusEnum.Completed);
+        penjualan.TglSerah.Should().NotBe(Bilreg.Domain.ApotekContext.Shared.ApotekDate.Empty);
+        penjualan.PetugasSerah.Should().Be("u");
+        penjualan.TrsMutasiId.Should().Be($"DI-{educated.DispensingId}");
+        penjualanRepoMock.Verify(r => r.SaveChanges(penjualan), Times.Once);
     }
 
     [Fact]
