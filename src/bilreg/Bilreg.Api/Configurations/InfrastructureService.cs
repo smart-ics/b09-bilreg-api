@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AktivasiBerkasFeature.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
@@ -43,6 +44,7 @@ using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.AdmisiContext.AktivasiBerkasFeature.Integration;
 using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
@@ -209,6 +211,7 @@ public static class InfrastructureService
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
             .AddScoped<IEmr20AntrianRanapGateway, Emr20AntrianRanapGateway>()
+            .AddScoped<IAktivasiBerkasEmrGateway, AktivasiBerkasEmrGateway>()
             .AddScoped<IPasienSasetDal, PasienSasetDal>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeRepo, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeRepo>()
             .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeDal>()
