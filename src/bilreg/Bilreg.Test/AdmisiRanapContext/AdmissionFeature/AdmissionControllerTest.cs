@@ -194,6 +194,74 @@ public class AdmissionControllerTest
     }
 
     [Fact]
+    public async Task UpdateInpatientVisit_SendsCmdAndReturnsJSendOkDone()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "1", "REG-IBU-01", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+                cmd.RegId == "ADM01" &&
+                cmd.DokterId == "DOK01" &&
+                cmd.ProsedurMasukInapId == "1" &&
+                cmd.JenisInapId == "1" &&
+                cmd.RegIbu == "REG-IBU-01" &&
+                cmd.UserId == "USER01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+            cmd.RegId == "ADM01" &&
+            cmd.DokterId == "DOK01" &&
+            cmd.ProsedurMasukInapId == "1" &&
+            cmd.JenisInapId == "1" &&
+            cmd.RegIbu == "REG-IBU-01" &&
+            cmd.UserId == "USER01"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateJaminan_SendsCmdAndReturnsJSendOkDone()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientJaminanBody("TJ01", "POL01", "SEP123", "PES01", "SJP01", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<AdmUpdateInpatientJaminanCmd>(cmd =>
+                cmd.RegId == "ADM01" &&
+                cmd.TipeJaminanId == "TJ01" &&
+                cmd.PolisId == "POL01" &&
+                cmd.SjpNo == "SEP123" &&
+                cmd.PesertaJaminanId == "PES01" &&
+                cmd.SjpId == "SJP01" &&
+                cmd.UserId == "USER01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.UpdateJaminan("ADM01", body);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(m => m.Send(It.Is<AdmUpdateInpatientJaminanCmd>(cmd =>
+            cmd.RegId == "ADM01" &&
+            cmd.TipeJaminanId == "TJ01" &&
+            cmd.PolisId == "POL01" &&
+            cmd.SjpNo == "SEP123" &&
+            cmd.PesertaJaminanId == "PES01" &&
+            cmd.SjpId == "SJP01" &&
+            cmd.UserId == "USER01"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Get_SendsQryAndReturnsJSendOk()
     {
         // Arrange
@@ -209,7 +277,13 @@ public class AdmissionControllerTest
             DateTime.UtcNow,
             "8",
             "DOK01",
-            "1");
+            "1",
+            "TJ01",
+            "BPJS Kesehatan",
+            "POL01",
+            "000123456",
+            "1",
+            "REG-IBU-01");
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<AdmGetAdmissionQry>(q => q.RegId == "ADM01"), It.IsAny<CancellationToken>()))

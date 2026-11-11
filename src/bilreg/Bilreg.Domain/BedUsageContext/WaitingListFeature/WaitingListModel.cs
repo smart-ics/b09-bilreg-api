@@ -305,9 +305,9 @@ public record WaitingListModel : IWaitingListKey
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(actorId, nameof(actorId));
 
-        if (WaitingListStatus is not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved))
+        if (WaitingListStatus is not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved or WaitingListStatusEnum.Rejected))
             throw new InvalidOperationException(
-                $"Waiting List {WaitingListId} harus Waiting atau Reserved untuk dialihkan (status saat ini: {WaitingListStatus}).");
+                $"Waiting List {WaitingListId} harus Waiting, Reserved, atau Rejected untuk dialihkan (status saat ini: {WaitingListStatus}).");
 
         var audit = new AuditTrailType(AuditTrail.Created, AuditTrail.Modified, AuditTrail.Voided);
         audit.Modif(actorId, occurredAt == default ? DateTime.Now : occurredAt);

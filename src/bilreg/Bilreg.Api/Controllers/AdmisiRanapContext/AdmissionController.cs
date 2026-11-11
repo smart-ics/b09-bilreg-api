@@ -68,6 +68,35 @@ public class AdmissionController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPut("{id}/inpatient-visit")]
+    public async Task<IActionResult> UpdateInpatientVisit(string id, [FromBody] AdmUpdateInpatientVisitBody body)
+    {
+        var cmd = new AdmUpdateInpatientVisitCmd(
+            id,
+            body.DokterId,
+            body.ProsedurMasukInapId,
+            body.JenisInapId,
+            body.RegIbu,
+            body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPut("{id}/jaminan")]
+    public async Task<IActionResult> UpdateJaminan(string id, [FromBody] AdmUpdateInpatientJaminanBody body)
+    {
+        var cmd = new AdmUpdateInpatientJaminanCmd(
+            id,
+            body.TipeJaminanId,
+            body.PolisId,
+            body.SjpNo,
+            body.PesertaJaminanId,
+            body.SjpId,
+            body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost("{regId}/cancel")]
     public async Task<IActionResult> Cancel(string regId, [FromBody] AdmCoordinatedCancelBody? body)
     {
@@ -194,6 +223,21 @@ public record AdmProcessDirectAdmissionBody(
 public record AdmUpdateAdmissionBody(
     string KelasDkId,
     string BangsalId,
+    string UserId);
+
+public record AdmUpdateInpatientVisitBody(
+    string DokterId,
+    string ProsedurMasukInapId,
+    string JenisInapId,
+    string RegIbu,
+    string UserId);
+
+public record AdmUpdateInpatientJaminanBody(
+    string TipeJaminanId,
+    string PolisId,
+    string? SjpNo,
+    string? PesertaJaminanId,
+    string? SjpId,
     string UserId);
 
 public record AdmCoordinatedCancelBody(
