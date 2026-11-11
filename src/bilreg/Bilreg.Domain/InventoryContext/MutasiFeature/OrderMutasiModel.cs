@@ -233,6 +233,12 @@ public class OrderMutasiModel : IOrderMutasiKey
         State = OrderMutasiStateEnum.Completed;
     }
 
+    public void Reopen()
+    {
+        GuardStatus(OrderMutasiStateEnum.Completed);
+        State = OrderMutasiStateEnum.Approved;
+    }
+
     public void UpdateNote(string note)
     {
         OrderNote = note;

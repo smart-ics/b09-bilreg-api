@@ -132,6 +132,8 @@
     <Folder Include="LabContext\LabMasterFeature\" />
     <Folder Include="LabContext\LabMasterFeature\Data\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
+    <Folder Include="PurchaseContext\" />
+    <Folder Include="PurchaseContext\DeliveryFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -441,6 +443,8 @@
     <None Include="BrgContext\StandardFeature\Kfa\FARPU_KfaReplacement.sql" />
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasi.sql" />
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasiItem.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrg.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrgItem.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.dataseed.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_Stok.sql" />
@@ -449,5 +453,6 @@
     <None Include="InventoryContext\StokFeature\ta_layanan_AddJenisLokasi.sql" />
     <None Include="InventoryContext\StokFeature\tb_buku.sql" />
     <None Include="InventoryContext\StokFeature\tb_stok.sql" />
+    <Build Include="PurchaseContext\DeliveryFeature\BILRG_DoInspeksi.sql" />
   </ItemGroup>
 </Project>
