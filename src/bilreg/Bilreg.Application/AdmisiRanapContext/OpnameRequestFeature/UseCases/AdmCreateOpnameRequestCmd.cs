@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
@@ -25,19 +26,22 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
     private readonly IDoctorServiceGateway _doctorGateway;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IPasienTrackerInpatientCoordinator _trackerCoordinator;
 
     public AdmCreateOpnameRequestHandler(
         IOpnameRequestRepo opnameRequestRepo,
         IPatientAdministrationGateway patientGateway,
         IDoctorServiceGateway doctorGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IPasienTrackerInpatientCoordinator trackerCoordinator)
     {
         _opnameRequestRepo = opnameRequestRepo;
         _patientGateway = patientGateway;
         _doctorGateway = doctorGateway;
         _auditRepo = auditRepo;
         _tglJamProvider = tglJamProvider;
+        _trackerCoordinator = trackerCoordinator;
     }
 
     public Task<AdmCreateOpnameRequestResponse> Handle(
@@ -64,6 +68,8 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
             occurredAt);
 
         _opnameRequestRepo.SaveChanges(opnameRequest);
+
+        _trackerCoordinator.RecordOpnameRequestCreated(opnameRequest, occurredAt);
 
         _auditRepo.SaveChanges(AuditLog.Create(
             opnameRequest.AuditTrail.Created,

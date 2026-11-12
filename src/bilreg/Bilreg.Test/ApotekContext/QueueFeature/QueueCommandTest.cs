@@ -1,10 +1,14 @@
 using Bilreg.Application.ApotekContext.QueueFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.JualBebasFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.Shared;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
@@ -13,7 +17,7 @@ namespace Bilreg.Test.ApotekContext.QueueFeature;
 
 public class QueueCommandTest
 {
-    private readonly InMemoryResepKerjaRepo _resep = new();
+    private readonly InMemoryResepRepo _resep = new();
     private readonly InMemoryJualBebasRepo _jb = new();
     private readonly InMemoryQueueMappingRepo _map = new();
     private readonly InMemoryQueueCloseRepo _close = new();
@@ -24,12 +28,12 @@ public class QueueCommandTest
     [Fact]
     public async Task Map_two_independent_demands_to_one_queue()
     {
-        var resepId = SeedResep().ResepKerjaId;
+        var resepId = SeedResep().ResepId;
         var jualBebasId = SeedJualBebas().JualBebasId;
         var mapHandler = CreateMapHandler();
 
         await mapHandler.Handle(new QueueMapCmd(
-            "mapper", QueueDemandKindEnum.ResepKerja, resepId, "Q-SHARED", 3, "TRK1", QueueMappingMethodEnum.Manual), default);
+            "mapper", QueueDemandKindEnum.Resep, resepId, "Q-SHARED", 3, "TRK1", QueueMappingMethodEnum.Manual), default);
         await mapHandler.Handle(new QueueMapCmd(
             "mapper", QueueDemandKindEnum.JualBebas, jualBebasId, "Q-SHARED", 3, "TRK1", QueueMappingMethodEnum.Tracker), default);
 
@@ -41,16 +45,16 @@ public class QueueCommandTest
     [Fact]
     public async Task Map_correction_updates_existing_row_in_place()
     {
-        var resepId = SeedResep().ResepKerjaId;
+        var resepId = SeedResep().ResepId;
         var mapHandler = CreateMapHandler();
 
         await mapHandler.Handle(new QueueMapCmd(
-            "mapper-a", QueueDemandKindEnum.ResepKerja, resepId, "Q-OLD", 1, "TRK-OLD", QueueMappingMethodEnum.Manual), default);
+            "mapper-a", QueueDemandKindEnum.Resep, resepId, "Q-OLD", 1, "TRK-OLD", QueueMappingMethodEnum.Manual), default);
         await mapHandler.Handle(new QueueMapCmd(
-            "mapper-b", QueueDemandKindEnum.ResepKerja, resepId, "Q-NEW", 2, "TRK-NEW", QueueMappingMethodEnum.Manual), default);
+            "mapper-b", QueueDemandKindEnum.Resep, resepId, "Q-NEW", 2, "TRK-NEW", QueueMappingMethodEnum.Manual), default);
 
         _map.Store.Should().HaveCount(1);
-        var stored = _map.LoadEntity(QueueMappingModel.Key(QueueDemandKindEnum.ResepKerja, resepId)).Value;
+        var stored = _map.LoadEntity(QueueMappingModel.Key(QueueDemandKindEnum.Resep, resepId)).Value;
         stored.AntrianId.Should().Be("Q-NEW");
         stored.NoUrut.Should().Be(2);
         stored.PasienTrackerId.Should().Be("TRK-NEW");
@@ -60,11 +64,11 @@ public class QueueCommandTest
     [Fact]
     public async Task Map_does_not_invoke_tracker_port()
     {
-        var resepId = SeedResep().ResepKerjaId;
+        var resepId = SeedResep().ResepId;
         _tracker.Status = AntrianStatusEnum.Waiting;
 
         await CreateMapHandler().Handle(new QueueMapCmd(
-            "mapper", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            "mapper", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
         _tracker.ServeCount.Should().Be(0);
         _tracker.DoneCount.Should().Be(0);
@@ -138,13 +142,17 @@ public class QueueCommandTest
     private QueueCloseHandler CreateCloseHandler()
         => new(_close, _tracker, _tasks, _auth);
 
-    private ResepKerjaModel SeedResep()
+    private ResepModel SeedResep()
     {
-        var resep = ResepKerjaModel.IntakeElectronic(
-            ResepKerjaSourceKindEnum.LegacyResep, "RS-" + Guid.NewGuid().ToString("N")[..6],
-            "R1", "P1", "Pasien", "D1", "Dokter", "LY01",
-            0, 0, [new ResepKerjaItemModel(1, 1, "A", "A", "TAB", "Tab", 10m, 0, "3x1", "", "", false)],
-            [], AuditTrailType.Create("u", DateTime.Now));
+        var id = "RS-" + Guid.NewGuid().ToString("N")[..6];
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            id, regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), 0, "desc",
+            DateTime.Today, AppConst.DASH, AppConst.DASH, AuditTrailType.Default, []);
+        var brg = BrgObatType.Default with { BrgId = "A", BrgName = "A" };
+        resep.AddObat(brg, SatuanType.Default, 10m, 0, "3x1", "", "");
         _resep.SaveChanges(resep);
         return resep;
     }

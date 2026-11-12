@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using System.Text.RegularExpressions;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -27,9 +28,9 @@ public class AdmissionDal : IAdmissionDal
         ISNULL(bb.fs_nm_pasien, '') AS PasienName,
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-        aa.OpnameRequestId, aa.ReservationId,
         aa.KelasDkId, aa.KelasDkName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
-        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+        ISNULL(aa.InpatientOrderId, '-') AS InpatientOrderId
         """;
 
     private readonly DatabaseOptions _opt;
@@ -41,14 +42,12 @@ public class AdmissionDal : IAdmissionDal
         const string sql = """
             INSERT INTO BILRG_AdmAdmission (
                 RegId, AdmissionStatus, AdmissionSource,
-                PasienId,
-                OpnameRequestId, ReservationId,
+                PasienId, InpatientOrderId,
                 KelasDkId, KelasDkName, BangsalId, BangsalName, AdmissionDate,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @RegId, @AdmissionStatus, @AdmissionSource,
-                @PasienId,
-                @OpnameRequestId, @ReservationId,
+                @PasienId, @InpatientOrderId,
                 @KelasDkId, @KelasDkName, @BangsalId, @BangsalName, @AdmissionDate,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -65,8 +64,7 @@ public class AdmissionDal : IAdmissionDal
                 AdmissionStatus = @AdmissionStatus,
                 AdmissionSource = @AdmissionSource,
                 PasienId = @PasienId,
-                OpnameRequestId = @OpnameRequestId,
-                ReservationId = @ReservationId,
+                InpatientOrderId = @InpatientOrderId,
                 KelasDkId = @KelasDkId,
                 KelasDkName = @KelasDkName,
                 BangsalId = @BangsalId,
@@ -103,8 +101,11 @@ public class AdmissionDal : IAdmissionDal
 
     public IEnumerable<AdmissionDto> ListData(AdmissionListFilter filter)
     {
+        var rawSearch = (filter.Search ?? string.Empty).Trim();
+        var cleanSearch = Regex.Replace(rawSearch, @"[^\w]", "");
+
         var sql = $"""
-            SELECT
+            SELECT TOP 50
                 {SELECT_COLUMNS}
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
@@ -112,6 +113,14 @@ public class AdmissionDal : IAdmissionDal
                 aa.VodDate = @VodDate
                 AND (@Status IS NULL OR aa.AdmissionStatus = @Status)
                 AND (@PasienId IS NULL OR @PasienId = '' OR aa.PasienId = @PasienId)
+                AND (
+                    @Search IS NULL OR @Search = ''
+                    OR aa.RegId = @Search
+                    OR aa.PasienId = @Search
+                    OR (@CleanSearch <> '' AND aa.PasienId LIKE '%' + @CleanSearch + '%')
+                    OR (@CleanSearch <> '' AND LEN(@CleanSearch) = 6 AND RIGHT(aa.PasienId, 6) = @CleanSearch)
+                    OR bb.fs_nm_pasien LIKE '%' + @Search + '%'
+                )
             ORDER BY aa.CrtDate DESC, aa.RegId DESC
             """;
 
@@ -119,6 +128,8 @@ public class AdmissionDal : IAdmissionDal
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
         dp.AddParam("@Status", filter.Status.HasValue ? (int)filter.Status.Value : null, SqlDbType.Int);
         dp.AddParam("@PasienId", filter.PasienId ?? "", SqlDbType.VarChar);
+        dp.AddParam("@Search", rawSearch, SqlDbType.VarChar);
+        dp.AddParam("@CleanSearch", cleanSearch, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AdmissionDto>(sql, dp) ?? [];
@@ -131,8 +142,7 @@ public class AdmissionDal : IAdmissionDal
         dp.AddParam("@AdmissionStatus", dto.AdmissionStatus, SqlDbType.Int);
         dp.AddParam("@AdmissionSource", dto.AdmissionSource, SqlDbType.Int);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@OpnameRequestId", dto.OpnameRequestId, SqlDbType.VarChar);
-        dp.AddParam("@ReservationId", dto.ReservationId, SqlDbType.VarChar);
+        dp.AddParam("@InpatientOrderId", string.IsNullOrWhiteSpace(dto.InpatientOrderId) ? "-" : dto.InpatientOrderId, SqlDbType.VarChar);
         dp.AddParam("@KelasDkId", dto.KelasDkId, SqlDbType.VarChar);
         dp.AddParam("@KelasDkName", dto.KelasDkName, SqlDbType.VarChar);
         dp.AddParam("@BangsalId", dto.BangsalId, SqlDbType.VarChar);

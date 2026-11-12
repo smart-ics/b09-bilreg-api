@@ -244,6 +244,14 @@ public class IgdVisitModel : IIgdVisitKey
             throw new InvalidOperationException(
                 $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat assess triage.");
 
+        if (isManualOverrideBlack)
+        {
+            if (string.IsNullOrWhiteSpace(overrideReason) || overrideReason.Trim() == "-")
+                throw new ArgumentException("Alasan klinis Manual Override Black wajib diisi.");
+            if (string.IsNullOrWhiteSpace(overrideByUserId) || overrideByUserId.Trim() == "-")
+                throw new ArgumentException("Dokter otorisator Manual Override Black wajib diisi.");
+        }
+
         var nextNo = _listTriage.Count == 0 ? 1 : _listTriage.Max(x => x.NoTriage) + 1;
         var overrideTime = isManualOverrideBlack ? audit.Timestamp : new DateTime(3000, 1, 1);
         var newTriage = new IgdVisitTriageType(
@@ -258,10 +266,8 @@ public class IgdVisitModel : IIgdVisitKey
             GcsMotorScore: assessment.GcsMotorScore,
             GcsVoiceScore: assessment.GcsVoiceScore,
             IsManualOverrideBlack: isManualOverrideBlack,
-            OverrideByUserId: isManualOverrideBlack ? overrideByUserId : "-",
-            OverrideReason: isManualOverrideBlack
-                ? (string.IsNullOrWhiteSpace(overrideReason) ? "-" : overrideReason)
-                : "-",
+            OverrideByUserId: isManualOverrideBlack ? overrideByUserId.Trim() : "-",
+            OverrideReason: isManualOverrideBlack ? overrideReason.Trim() : "-",
             OverrideDateTime: overrideTime,
             AssessmentDateTime: audit.Timestamp,
             AssessorUserId: audit.UserId,

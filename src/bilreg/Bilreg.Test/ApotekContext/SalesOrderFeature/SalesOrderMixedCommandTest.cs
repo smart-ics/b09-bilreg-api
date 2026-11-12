@@ -1,12 +1,15 @@
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
 
@@ -14,12 +17,11 @@ namespace Bilreg.Test.ApotekContext.SalesOrderFeature;
 
 public class SalesOrderMixedCommandTest
 {
-    private readonly InMemoryResepKerjaRepo _resep = new();
+    private readonly InMemoryResepRepo _resep = new();
     private readonly InMemoryTelaahRepo _telaah = new();
     private readonly InMemorySalesOrderRepo _so = new();
     private readonly InMemoryInvoiceRepo _inv = new();
     private readonly InMemoryIntegrationTaskRepo _tasks = new();
-    private readonly FakePrescriptionPort _rx = new();
     private readonly ConfigurableSepPort _sep = new();
     private readonly AllowAllAuth _auth = new();
 
@@ -85,16 +87,18 @@ public class SalesOrderMixedCommandTest
 
     private async Task<string> IntakeAndApproveTwoLines()
     {
-        _rx.Contract = new PrescriptionContract(
-            ResepKerjaSourceKindEnum.LegacyResep, "RS-MIX", "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 0,
-            [
-                new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 5, 0, "3x1", "", "", false),
-                new PrescriptionContractItem(2, "B", "B", "TAB", "TAB", 6, 0, "3x1", "", "", false)
-            ], []);
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-MIX"), default);
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            "RS-MIX", regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), 0, "desc",
+            DateTime.Today, AppConst.DASH, AppConst.DASH, AuditTrailType.Default, []);
+        resep.AddObat(BrgObatType.Default with { BrgId = "A", BrgName = "A" }, SatuanType.Default, 5m, 0, "3x1", "", "");
+        resep.AddObat(BrgObatType.Default with { BrgId = "B", BrgName = "B" }, SatuanType.Default, 6m, 0, "3x1", "", "");
+        _resep.SaveChanges(resep);
+
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", intake.ResepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", resep.ResepId, 0), default);
         var v1 = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, 1,
                 TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", 5, ""), default);
@@ -103,6 +107,6 @@ public class SalesOrderMixedCommandTest
                 TelaahDispositionEnum.AcceptedAsPrescribed, "B", "B", 6, ""), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", v2.TelaahResepId, v2.Version), default);
-        return intake.ResepKerjaId;
+        return resep.ResepId;
     }
 }

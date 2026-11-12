@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -14,21 +16,21 @@ public class BrgSatuanDalTest
         => new List<BrgSatuanDto>
         {
             new BrgSatuanDto(
-                fs_kd_barang: "A",
-                fs_kd_satuan: "B",
+                fs_kd_barang: "BRG001",
+                fs_kd_satuan: "TAB",
                 fn_nilai: 1,
-                fs_nm_satuan: "C"
+                fs_nm_satuan: "Tablet"
             ),
             new BrgSatuanDto(
-                fs_kd_barang: "A",
-                fs_kd_satuan: "D",
-                fn_nilai: 2,
-                fs_nm_satuan: "E"
+                fs_kd_barang: "BRG001",
+                fs_kd_satuan: "BOX",
+                fn_nilai: 10,
+                fs_nm_satuan: "Box"
             )
         };
 
     private static IBrgKey FakerKey()
-        => BrgObatType.Key("A");
+        => new BrgKey("BRG001");
 
     [Fact]
     public void InsertTest()
@@ -52,5 +54,18 @@ public class BrgSatuanDalTest
         var actual = _sut.ListData(FakerKey());
         actual.Should().BeEquivalentTo(FakerList(),
             opt => opt.Excluding(x => x.fs_nm_satuan));
+    }
+
+    [Fact]
+    public void Insert_DuplicateKonversi_ThrowsArgumentException()
+    {
+        var duplicateList = new List<BrgSatuanDto>
+        {
+            new("BRG001", "TAB", 1, "Tablet"),
+            new("BRG001", "STR", 1, "Strip")
+        };
+        var act = () => _sut.Insert(duplicateList);
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*duplikat*");
     }
 }

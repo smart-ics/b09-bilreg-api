@@ -13,7 +13,8 @@ public record LabOrderItemDto(
     string TarifName,
     int TubeType,
     string SpecimenType,
-    int RequiredTubeCount)
+    int RequiredTubeCount,
+    int Urgency = 0)
 {
     public static LabOrderItemDto FromModel(string orderId, LabOrderItemModel model)
         => new(
@@ -27,7 +28,8 @@ public record LabOrderItemDto(
             model.TarifName,
             (int)model.TubeType,
             model.SpecimenType,
-            model.RequiredTubeCount);
+            model.RequiredTubeCount,
+            (int)model.Urgency);
 
     public LabOrderItemModel ToModel()
         => new(
@@ -40,5 +42,6 @@ public record LabOrderItemDto(
             TarifName,
             (VacutainerTypeEnum)TubeType,
             SpecimenType,
-            RequiredTubeCount);
+            RequiredTubeCount,
+            (LabOrderUrgencyEnum)Urgency);
 }

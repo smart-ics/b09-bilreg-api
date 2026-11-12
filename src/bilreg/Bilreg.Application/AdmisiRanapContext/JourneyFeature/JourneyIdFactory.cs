@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
@@ -29,6 +30,22 @@ public static class JourneyIdFactory
         return RegPrefix + regId.Trim();
     }
 
+    public static string FromInpatientOrder(string inpatientOrderId, OrderSourceEnum orderSource)
+    {
+        EnsureId(inpatientOrderId, nameof(inpatientOrderId));
+        return orderSource switch
+        {
+            OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd => OpnamePrefix + inpatientOrderId.Trim(),
+            OrderSourceEnum.AdmisiBooking or OrderSourceEnum.ExternalChannel => ReservationPrefix + inpatientOrderId.Trim(),
+            _ => throw new ArgumentOutOfRangeException(nameof(orderSource), orderSource, "Unsupported order source.")
+        };
+    }
+
+    public static string FromOrderSource(string inpatientOrderId, int orderSource)
+    {
+        return FromInpatientOrder(inpatientOrderId, (OrderSourceEnum)orderSource);
+    }
+
     /// <summary>
     /// Derives the canonical JourneyId for valid data. On integrity failure involving a conflicting
     /// Admission, falls back to <c>reg:{RegId}</c> so journeys are not silently merged.
@@ -41,6 +58,12 @@ public static class JourneyIdFactory
             if (primaryAdmission is not null)
                 return FromRegId(primaryAdmission.RegId);
         }
+
+        if (facts.InpatientOrder is not null)
+            return FromInpatientOrder(facts.InpatientOrder.InpatientOrderId, facts.InpatientOrder.OrderSource);
+
+        if (SelectPrimaryAdmission(facts) is { } adm && HasValue(adm.InpatientOrderId) && adm.OrderSource.HasValue)
+            return FromInpatientOrder(adm.InpatientOrderId!, adm.OrderSource.Value);
 
         return facts.OriginKind switch
         {
@@ -78,6 +101,10 @@ public static class JourneyIdFactory
 
         return type switch
         {
+            "inpatientorder" or "order" =>
+                knownFacts?.InpatientOrder is not null
+                    ? FromInpatientOrder(recordId, knownFacts.InpatientOrder.OrderSource)
+                    : FromOpnameRequest(recordId),
             "opnamerequest" or "opname" or "opn" => FromOpnameRequest(recordId),
             "reservation" or "rsv" => FromReservation(recordId),
             "admission" or "registration" or "reg" =>

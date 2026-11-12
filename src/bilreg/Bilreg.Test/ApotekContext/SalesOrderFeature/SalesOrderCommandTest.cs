@@ -1,17 +1,20 @@
 using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature.UseCases;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
 
@@ -19,14 +22,13 @@ namespace Bilreg.Test.ApotekContext.SalesOrderFeature;
 
 public class SalesOrderCommandTest
 {
-    private readonly InMemoryResepKerjaRepo _resep = new();
+    private readonly InMemoryResepRepo _resep = new();
     private readonly InMemoryTelaahRepo _telaah = new();
     private readonly InMemorySalesOrderRepo _so = new();
     private readonly InMemoryJualBebasRepo _jb = new();
     private readonly InMemoryCopyResepRepo _copy = new();
     private readonly InMemoryIntegrationTaskRepo _tasks = new();
     private readonly InMemoryInvoiceRepo _inv = new();
-    private readonly FakePrescriptionPort _rx = new();
     private readonly FakePricePort _price = new();
     private readonly AllowAllAuth _auth = new();
 
@@ -37,7 +39,7 @@ public class SalesOrderCommandTest
         var handler = CreateHandler(DeterministicAvailableStockPort.Full());
 
         var response = await handler.Handle(new SalesOrderEstablishCmd(
-            "u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+            "u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.PatientRequest, [
                 new SalesOrderEstablishItem(1, 5),
                 new SalesOrderEstablishItem(2, 0)
@@ -52,7 +54,7 @@ public class SalesOrderCommandTest
         var copy = _copy.Store.Values.Single();
         copy.Reason.Should().Be((int)PartialReasonEnum.PatientRequest);
         copy.Items.Should().ContainSingle();
-        copy.Items[0].ResepKerjaItemNo.Should().Be(2);
+        copy.Items[0].ResepItemNo.Should().Be(2);
         copy.Items[0].Qty.Should().Be(6m);
     }
 
@@ -63,7 +65,7 @@ public class SalesOrderCommandTest
         var handler = CreateHandler(DeterministicAvailableStockPort.Partial(4));
 
         var act = () => handler.Handle(new SalesOrderEstablishCmd(
-            "u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+            "u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.PatientRequest, null), default);
 
         await act.Should().ThrowAsync<ApotekDomainException>()
@@ -79,7 +81,7 @@ public class SalesOrderCommandTest
         var handler = CreateHandler(DeterministicAvailableStockPort.Full());
 
         var response = await handler.Handle(new SalesOrderEstablishCmd(
-            "u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+            "u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null), default);
 
         _tasks.Store.Should().ContainSingle();
@@ -95,14 +97,12 @@ public class SalesOrderCommandTest
     [Fact]
     public async Task Establish_without_iter_entitled_skips_iter_consume_task()
     {
-        _rx.Contract = ContractNoIter();
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-NO-ITER"), default);
-        var resepId = await CompleteTelaah(intake.ResepKerjaId, 1, 10);
+        var resep = SeedResep("RS-NO-ITER", 0, ("A", "A", 10m));
+        var resepId = await CompleteTelaah(resep.ResepId, 1, 10);
         var handler = CreateHandler(DeterministicAvailableStockPort.Full());
 
         await handler.Handle(new SalesOrderEstablishCmd(
-            "u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+            "u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null), default);
 
         _tasks.Store.Should().BeEmpty();
@@ -114,7 +114,7 @@ public class SalesOrderCommandTest
         var resepId = await IntakeAndApprove();
         var handler = CreateHandler(DeterministicAvailableStockPort.Full());
         var cmd = new SalesOrderEstablishCmd(
-            "u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+            "u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null);
 
         var first = await handler.Handle(cmd, default);
@@ -216,21 +216,34 @@ public class SalesOrderCommandTest
     private SalesOrderEstablishHandler CreateHandler(IAvailableStockPort stock)
         => new(_so, _telaah, _resep, _jb, stock, _copy, _tasks, _auth);
 
+    private ResepModel SeedResep(string resepId, int iter, params (string brgId, string brgName, decimal qty)[] items)
+    {
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            resepId, regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), iter, "desc",
+            DateTime.Today, resepId, AppConst.DASH, AuditTrailType.Default, []);
+        foreach (var (brgId, brgName, qty) in items)
+        {
+            var brg = BrgObatType.Default with { BrgId = brgId, BrgName = brgName };
+            resep.AddObat(brg, SatuanType.Default, qty, 0, "3x1", "", "");
+        }
+        _resep.SaveChanges(resep);
+        return resep;
+    }
+
     private async Task<string> IntakeAndApprove()
     {
-        _rx.Contract = Contract();
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-1"), default);
-        return await CompleteTelaah(intake.ResepKerjaId, 1, 10);
+        var resep = SeedResep("RS-1", 1, ("A", "A", 10m));
+        return await CompleteTelaah(resep.ResepId, 1, 10);
     }
 
     private async Task<string> IntakeAndApproveTwoLines()
     {
-        _rx.Contract = ContractTwoLines();
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-2"), default);
+        var resep = SeedResep("RS-2", 1, ("A", "A", 5m), ("B", "B", 6m));
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", intake.ResepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", resep.ResepId, 0), default);
         var v1 = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, 1,
                 TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", 5, ""), default);
@@ -239,33 +252,18 @@ public class SalesOrderCommandTest
                 TelaahDispositionEnum.AcceptedAsPrescribed, "B", "B", 6, ""), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", v2.TelaahResepId, v2.Version), default);
-        return intake.ResepKerjaId;
+        return resep.ResepId;
     }
 
-    private async Task<string> CompleteTelaah(string resepKerjaId, int itemNo, decimal qty)
+    private async Task<string> CompleteTelaah(string resepId, int itemNo, decimal qty)
     {
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", resepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", resepId, 0), default);
         var updated = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, itemNo,
                 TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", qty, ""), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", updated.TelaahResepId, updated.Version), default);
-        return resepKerjaId;
+        return resepId;
     }
-
-    private static PrescriptionContract Contract()
-        => new(ResepKerjaSourceKindEnum.LegacyResep, "RS-1", "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 1,
-            [new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 10, 0, "3x1", "", "", false)], []);
-
-    private static PrescriptionContract ContractNoIter()
-        => new(ResepKerjaSourceKindEnum.LegacyResep, "RS-NO-ITER", "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 0,
-            [new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 10, 0, "3x1", "", "", false)], []);
-
-    private static PrescriptionContract ContractTwoLines()
-        => new(ResepKerjaSourceKindEnum.LegacyResep, "RS-2", "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 1,
-            [
-                new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 5, 0, "3x1", "", "", false),
-                new PrescriptionContractItem(2, "B", "B", "TAB", "TAB", 6, 0, "3x1", "", "", false)
-            ], []);
 }

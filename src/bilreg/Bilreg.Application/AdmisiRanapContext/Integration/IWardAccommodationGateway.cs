@@ -14,6 +14,10 @@ public interface IWardAccommodationGateway
 {
     KelasReff ResolveKelas(string kelasId);
 
+    KelasType ResolveKelasEntity(string kelasId);
+
+    KelasReff ResolveKelasForCareClass(string bangsalId, string kelasDkId);
+
     KelasDkType ResolveKelasDk(string kelasDkId);
 
     BangsalReff ResolveBangsal(string bangsalId);

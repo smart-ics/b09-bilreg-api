@@ -36,7 +36,7 @@ public class AptWorklistJourneyDalTest
             new SalesOrderItemDal(opt),
             new SalesOrderItemComponentDal(opt),
             new UnfulfilledOutcomeDal(opt));
-        _telaahRepo = new TelaahResepRepo(new TelaahDal(opt), new TelaahItemDal(opt));
+        _telaahRepo = new TelaahResepRepo(new TelaahDal(opt), new TelaahItemDal(opt), new TelaahKajianDal(opt));
         _taskDal = new AptIntegrationTaskDal(opt);
     }
 
@@ -46,7 +46,7 @@ public class AptWorklistJourneyDalTest
         var run = Guid.NewGuid().ToString("N")[..8];
         var antrianId = $"ANT-J-{run}";
         const int noUrut = 1;
-        var resepId = $"ARX{run}";
+        var resepId = $"RX{run}";
         var jualBebasId = $"ADQ{run}";
         var telaahId = $"ATR{run}";
         var regId = "R" + run[..3];
@@ -165,6 +165,7 @@ public class AptWorklistJourneyDalTest
         using var conn = new SqlConnection(ConnStringHelper.Get(opt));
         conn.Execute("DELETE FROM BILRG_AptQueueMapping WHERE DemandId IN (@resepId, @jualBebasId)",
             new { resepId, jualBebasId });
+        conn.Execute("DELETE FROM BILRG_AptTelaahResepKajian WHERE TelaahResepId=@telaahId", new { telaahId });
         conn.Execute("DELETE FROM BILRG_AptTelaahResepItem WHERE TelaahResepId=@telaahId", new { telaahId });
         conn.Execute("DELETE FROM BILRG_AptTelaahResep WHERE TelaahResepId=@telaahId", new { telaahId });
         foreach (var id in salesOrderAndTaskIds)

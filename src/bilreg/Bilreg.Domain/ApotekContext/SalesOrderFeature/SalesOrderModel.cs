@@ -7,6 +7,23 @@ namespace Bilreg.Domain.ApotekContext.SalesOrderFeature;
 public class SalesOrderModel : ISalesOrderKey
 {
     public const string IdPrefix = "ASO";
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
+
     private readonly List<SalesOrderItemModel> _items;
     private readonly List<SalesOrderItemComponentModel> _components;
     private readonly List<UnfulfilledOutcomeModel> _outcomes;
@@ -71,7 +88,7 @@ public class SalesOrderModel : ISalesOrderKey
             throw new ApotekDomainException("Sales Order requires at least one item with positive Accepted Qty.");
 
         return new SalesOrderModel(
-            NunaId.New(IdPrefix),
+            GenerateUniqueId(),
             sourceKind,
             sourceId,
             telaahResepId ?? "",

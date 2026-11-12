@@ -16,6 +16,10 @@ CREATE TABLE ta_trs_kartu_periksa3
     fs_etiket_desc     VARCHAR(100) NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fs_etiket_desc DEFAULT(''),
     fn_etiket_qty      INT NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fn_etiket_qty DEFAULT(0),
     fn_etiket_hari     DECIMAL(18,2) NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fn_etiket_hari DEFAULT(0),
+    fs_etiket_kd_pakai VARCHAR(3) NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fs_etiket_kd_pakai DEFAULT(''),
+    fs_etiket_catatan  VARCHAR(70) NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fs_etiket_catatan DEFAULT(''),
+    fs_udd_waktu       VARCHAR(30) NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fs_udd_waktu DEFAULT(''),
+    fb_void            BIT NOT NULL CONSTRAINT DF_ta_trs_kartu_periksa3_fb_void DEFAULT(0),
 
     CONSTRAINT PK_ta_trs_kartu_periksa3 PRIMARY KEY CLUSTERED(fs_kd_trs, fn_no_urut)
 )

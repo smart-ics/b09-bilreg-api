@@ -1,13 +1,13 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.JualBebasFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.ApotekContext.Shared;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.JualBebasFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -35,13 +35,13 @@ public record QueueCloseResponse(string QueueCloseId);
 public class QueueMapHandler : IRequestHandler<QueueMapCmd, QueueMapResponse>
 {
     private readonly IQueueMappingRepo _repo;
-    private readonly IResepKerjaRepo _resepRepo;
+    private readonly IResepRepo _resepRepo;
     private readonly IJualBebasRepo _jualBebasRepo;
     private readonly IAptAuthorizationPolicy _auth;
 
     public QueueMapHandler(
         IQueueMappingRepo repo,
-        IResepKerjaRepo resepRepo,
+        IResepRepo resepRepo,
         IJualBebasRepo jualBebasRepo,
         IAptAuthorizationPolicy auth)
     {
@@ -55,9 +55,9 @@ public class QueueMapHandler : IRequestHandler<QueueMapCmd, QueueMapResponse>
     {
         _auth.AssertCommandAllowed(nameof(QueueMapCmd), request.UserId);
         Guard.Against.NullOrWhiteSpace(request.DemandId, nameof(request.DemandId));
-        if (request.DemandKind == QueueDemandKindEnum.ResepKerja)
-            _resepRepo.LoadEntity(ResepKerjaModel.Key(request.DemandId))
-                .GetValueOrThrow($"Resep Kerja '{request.DemandId}' not found");
+        if (request.DemandKind == QueueDemandKindEnum.Resep || request.DemandKind == QueueDemandKindEnum.ResepKerja)
+            _resepRepo.LoadEntity(ResepModel.Key(request.DemandId))
+                .GetValueOrThrow($"Resep '{request.DemandId}' not found");
         else
             _jualBebasRepo.LoadEntity(JualBebasModel.Key(request.DemandId))
                 .GetValueOrThrow($"Jual Bebas '{request.DemandId}' not found");

@@ -8,5 +8,5 @@ public interface ILabOwareOutboundQueueRepo :
     ISaveChange<LabOwareOutboundQueueModel>,
     ILoadEntity<LabOwareOutboundQueueModel, ILabOwareOutboundQueueKey>
 {
-    IEnumerable<LabOwareOutboundQueueModel> ListProcessable(int batchSize);
+    IEnumerable<LabOwareOutboundQueueModel> ListProcessable(int batchSize, int maxRetryCount = 3);
 }

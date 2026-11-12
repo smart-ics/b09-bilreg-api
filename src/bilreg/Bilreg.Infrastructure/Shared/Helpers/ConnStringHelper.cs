@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 
 namespace Bilreg.Infrastructure.Shared.Helpers;
 
@@ -10,10 +10,7 @@ public static class ConnStringHelper
     
     public static string Get(DatabaseOptions options)
     {
-        if (_connString.Length == 0)
-            _connString = Generate(options.ServerName, options.DbName);
-
-        return _connString;
+        return Generate(options.ServerName, options.DbName);
     }
 
     private static string Generate(string server, string db)
@@ -27,7 +24,7 @@ public static class ConnStringHelper
         var result = Options.Create<DatabaseOptions>(new DatabaseOptions
         {
             ServerName = "dev.smart-ics.com",
-            DbName = "devTest"
+            DbName = "HOSPITAL_PKL"
             // ServerName = "(local)",
             // DbName = "devTest"
 

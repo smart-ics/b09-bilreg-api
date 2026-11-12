@@ -43,4 +43,15 @@ public class ResepController : ControllerBase
         var response = await _mediator.Send(cmd); 
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("{id}/void")]
+    public async Task<IActionResult> Void(string id, [FromBody] ResepVoidBody body)
+    {
+        var cmd = new ResepVoidCommand(id, body.UserId, body.VoidReason);
+        var response = await _mediator.Send(cmd); 
+        return Ok(new JSendOk(response));
+    }
 }
+
+public record ResepVoidBody(string UserId, string VoidReason);

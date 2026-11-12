@@ -25,13 +25,18 @@ public class BrgSatuanDal : IBrgSatuanDal
     
     public void Insert(IEnumerable<BrgSatuanDto> listModel)
     {
+        var fetched = listModel?.ToList() ?? new List<BrgSatuanDto>();
+        if (fetched.Count == 0) return;
+
+        if (fetched.GroupBy(x => new { x.fs_kd_barang, x.fn_nilai }).Any(g => g.Count() > 1))
+            throw new ArgumentException("Nilai konversi pada barang tidak boleh duplikat.");
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         using var bcp = new SqlBulkCopy(conn);
         conn.Open();
         bcp.AddMap("fs_kd_barang", "fs_kd_barang");
         bcp.AddMap("fs_kd_satuan", "fs_kd_satuan");
         bcp.AddMap("fn_nilai", "fn_nilai");
-        var fetched = listModel.ToList();
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "tb_barang_satuan";
         bcp.WriteToServer(fetched.AsDataTable());

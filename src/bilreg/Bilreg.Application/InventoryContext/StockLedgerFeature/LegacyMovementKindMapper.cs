@@ -25,6 +25,27 @@ public static class LegacyMovementKindMapper
             ["DU_V"] = MovementKindEnum.SaleVoidDu,
             ["DT_V"] = MovementKindEnum.SaleVoidDt,
             ["DI"] = MovementKindEnum.DispenseIssue,
+            ["PK_V"] = MovementKindEnum.InternalConsumptionVoid,
+        };
+
+    private static readonly Dictionary<MovementKindEnum, string> ReverseMap =
+        new()
+        {
+            [MovementKindEnum.GoodsReceipt] = "DO",
+            [MovementKindEnum.TransferOut] = "MT_OUT",
+            [MovementKindEnum.TransferIn] = "MT_IN",
+            [MovementKindEnum.SaleIssueDb] = "DB",
+            [MovementKindEnum.SaleIssueDu] = "DU",
+            [MovementKindEnum.SaleIssueDt] = "DT",
+            [MovementKindEnum.InternalConsumption] = "PK",
+            [MovementKindEnum.SalesReturnRj] = "RJ",
+            [MovementKindEnum.SalesReturnRu] = "RU",
+            [MovementKindEnum.SalesReturnRt] = "RT",
+            [MovementKindEnum.SaleVoidDb] = "DB_V",
+            [MovementKindEnum.SaleVoidDu] = "DU_V",
+            [MovementKindEnum.SaleVoidDt] = "DT_V",
+            [MovementKindEnum.DispenseIssue] = "DI",
+            [MovementKindEnum.InternalConsumptionVoid] = "PK_V",
         };
 
     public static bool TryMap(string? legacyKind, out MovementKindEnum kind)
@@ -34,5 +55,24 @@ public static class LegacyMovementKindMapper
             return false;
 
         return Map.TryGetValue(legacyKind.Trim(), out kind);
+    }
+
+    public static bool TryMap(MovementKindEnum kind, out string legacyKind)
+    {
+        var found = ReverseMap.TryGetValue(kind, out var mapped);
+        legacyKind = mapped ?? string.Empty;
+        return found;
+    }
+
+    public static bool TryMapReverse(MovementKindEnum kind, out string legacyKind)
+    {
+        return TryMap(kind, out legacyKind);
+    }
+
+    public static string ToLegacyString(MovementKindEnum kind)
+    {
+        if (ReverseMap.TryGetValue(kind, out var legacyKind))
+            return legacyKind;
+        throw new ArgumentOutOfRangeException(nameof(kind), kind, $"No legacy string mapping for {kind}.");
     }
 }

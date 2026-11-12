@@ -3,10 +3,15 @@ using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.IntegrationFeature.Handlers;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.Shared;
+using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
@@ -17,7 +22,7 @@ namespace Bilreg.Test.ApotekContext.IntegrationFeature;
 
 public class IterConsumeHandlerTest
 {
-    private readonly InMemoryResepKerjaRepo _resep = new();
+    private readonly InMemoryResepRepo _resep = new();
     private readonly InMemorySalesOrderRepo _salesOrder = new();
     private readonly FakeIterConsumePort _iter = new();
 
@@ -64,8 +69,8 @@ public class IterConsumeHandlerTest
     public void ProcessOne_success_updates_visible_iter_consumed_copy()
     {
         var resep = SeedResepWithIterEntitled(3);
-        var order = SeedSalesOrder(resep.ResepKerjaId);
-        var task = CreateTaskWithSource(order.SalesOrderId, resep.SourceResepId);
+        var order = SeedSalesOrder(resep.ResepId);
+        var task = CreateTaskWithSource(order.SalesOrderId, resep.ResepAsalReffId);
 
         var repo = new Mock<IAptIntegrationTaskRepo>();
         SetupLoad(repo, task);
@@ -79,7 +84,8 @@ public class IterConsumeHandlerTest
 
         result.Success.Should().BeTrue();
         task.TaskStatus.Should().Be(AptIntegrationTaskStatusEnum.Succeeded);
-        _resep.Store[resep.ResepKerjaId].IterConsumed.Should().Be(1);
+        _iter.LastSourceResepId.Should().Be(resep.ResepAsalReffId);
+        _iter.LastConsumeCount.Should().Be(1);
     }
 
     private IterConsumeHandler CreateHandler() => new(_iter, _resep, _salesOrder);
@@ -87,7 +93,7 @@ public class IterConsumeHandlerTest
     private AptIntegrationTaskModel CreateTaskWithSalesOrder(string sourceResepId)
     {
         var resep = SeedResepWithIterEntitled(1);
-        var order = SeedSalesOrder(resep.ResepKerjaId);
+        var order = SeedSalesOrder(resep.ResepId);
         return CreateTaskWithSource(order.SalesOrderId, sourceResepId);
     }
 
@@ -102,23 +108,26 @@ public class IterConsumeHandlerTest
             JsonSerializer.Serialize(new { SourceResepId = sourceResepId, ConsumeCount = 1 }));
     }
 
-    private ResepKerjaModel SeedResepWithIterEntitled(int iterEntitled)
+    private ResepModel SeedResepWithIterEntitled(int iterEntitled)
     {
-        var resep = ResepKerjaModel.IntakeElectronic(
-            ResepKerjaSourceKindEnum.LegacyResep, "RS-ITER-" + Guid.NewGuid().ToString("N")[..6],
-            "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, iterEntitled,
-            [new ResepKerjaItemModel(1, 1, "A", "A", "TAB", "Tab", 10, 0, "3x1", "", "", false)],
-            [],
-            AuditTrailType.Create("u", DateTime.Now));
+        var id = "RS-ITER-" + Guid.NewGuid().ToString("N")[..6];
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            id, regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), iterEntitled, "desc",
+            DateTime.Today, "SOURCE-RS-1", AppConst.DASH, AuditTrailType.Default, []);
+        var brg = BrgObatType.Default with { BrgId = "A", BrgName = "A" };
+        resep.AddObat(brg, SatuanType.Default, 10, 0, "3x1", "", "");
         _resep.SaveChanges(resep);
         return resep;
     }
 
-    private SalesOrderModel SeedSalesOrder(string resepKerjaId)
+    private SalesOrderModel SeedSalesOrder(string resepId)
     {
         var order = SalesOrderModel.Establish(
-            SalesOrderSourceKindEnum.ResepKerja,
-            resepKerjaId,
+            SalesOrderSourceKindEnum.Resep,
+            resepId,
             "T1",
             "R1",
             "P1",

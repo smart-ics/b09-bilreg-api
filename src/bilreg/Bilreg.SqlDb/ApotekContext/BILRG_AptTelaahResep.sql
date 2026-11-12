@@ -1,6 +1,6 @@
 CREATE TABLE BILRG_AptTelaahResep (
     TelaahResepId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_TelaahResepId DEFAULT(''),
-    ResepKerjaId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_ResepKerjaId DEFAULT(''),
+    ResepId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_ResepId DEFAULT(''),
     RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_RegId DEFAULT(''),
     TelaahStatus INT NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_TelaahStatus DEFAULT(0),
     PharmacistId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptTelaahResep_PharmacistId DEFAULT(''),
@@ -16,5 +16,5 @@ CREATE TABLE BILRG_AptTelaahResep (
     CONSTRAINT PK_BILRG_AptTelaahResep PRIMARY KEY CLUSTERED (TelaahResepId)
 );
 GO
-CREATE UNIQUE INDEX UX_BILRG_AptTelaahResep_ResepKerja ON BILRG_AptTelaahResep(ResepKerjaId) WHERE VodDate = '3000-01-01';
+CREATE UNIQUE INDEX UX_BILRG_AptTelaahResep_Resep ON BILRG_AptTelaahResep(ResepId) WHERE VodDate = '3000-01-01';
 GO

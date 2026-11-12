@@ -22,14 +22,14 @@ public class TindakanController : Controller
 
     [HttpPost]
     [Route("create")]
-    public async Task<IActionResult> Create(TdkCreateTindakanCmd cmd)
+    public async Task<IActionResult> Create([FromBody] TdkCreateTindakanCmd cmd)
     {
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
     [HttpPost]
     [Route("save")]
-    public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
+    public async Task<IActionResult> SaveTindakan([FromBody] TdkSaveTindakanCmd cmd)
     {
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
@@ -43,16 +43,32 @@ public class TindakanController : Controller
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("{tindakanId}")]
+    public async Task<IActionResult> Get(string tindakanId)
+    {
+        var query = new TindakanGetQuery(tindakanId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
     
     [HttpPatch]
     [Route("batal")]
     public async Task<IActionResult> Batal(TindakanVoidRequest req)
     {
-        var userAgent = HttpHelper.GetUserAgent(Request);
-        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
-        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        try
+        {
+            var userAgent = HttpHelper.GetUserAgent(Request);
+            var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+            var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new JSendFailed(ex));
+        }
     }
 }
 

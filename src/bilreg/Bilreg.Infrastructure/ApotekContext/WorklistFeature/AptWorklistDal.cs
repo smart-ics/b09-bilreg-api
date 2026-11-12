@@ -20,27 +20,46 @@ public class AptWorklistDal : IAptWorklistDal
     private readonly DatabaseOptions _opt;
     public AptWorklistDal(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
 
-    public IReadOnlyList<TelaahWorklistItem> ListTelaah()
+    public IReadOnlyList<TelaahWorklistItem> ListTelaah(DateOnly businessDate)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<TelaahWorklistItem>("""
             SELECT ISNULL(t.TelaahResepId, '') AS TelaahResepId,
-                   r.ResepKerjaId,
-                   r.PasienName,
+                   aa.fs_kd_trs AS ResepId,
+                   ISNULL(dd.fs_nm_pasien, '') AS PasienName,
+                   ISNULL(cc.fs_mr, '') AS NoRm,
+                   ISNULL(ff.fs_nm_peg, '') AS DokterName,
+                   ISNULL(ee.fs_nm_layanan, '') AS PoliName,
+                   aa.fn_berat_badan AS Bb,
+                   aa.fn_tinggi_badan AS Tb,
+                   aa.fn_lpb AS Lpb,
+                   CAST(CASE WHEN aa.fs_kd_urgenitas IN ('1', 'CITO') THEN 1 ELSE 0 END AS BIT) AS Cito,
+                   ISNULL(bb.fs_catatan_resep, '') AS CatatanResep,
                    ISNULL(t.TelaahStatus, @availableStatus) AS Status,
-                   COALESCE(NULLIF(t.StartedAt, '3000-01-01'), r.CrtDate) AS StartedAt
-            FROM BILRG_AptResepKerja r
-            LEFT JOIN BILRG_AptTelaahResep t
-                ON t.ResepKerjaId = r.ResepKerjaId AND t.VodDate = '3000-01-01'
-            WHERE r.VodDate = '3000-01-01'
+                   COALESCE(NULLIF(t.StartedAt, '3000-01-01'), CONVERT(DATETIME, aa.fd_tgl_trs + ' ' + aa.fs_jam_trs)) AS StartedAt
+            FROM ta_trs_kartu_periksa aa
+            LEFT JOIN ta_trs_kartu_periksa_resep bb ON aa.fs_kd_trs = bb.fs_kd_trs
+            LEFT JOIN ta_registrasi cc ON aa.fs_kd_reg = cc.fs_kd_reg
+            LEFT JOIN tc_mr dd ON cc.fs_mr = dd.fs_mr
+            LEFT JOIN ta_layanan ee ON aa.fs_kd_layanan = ee.fs_kd_layanan
+            LEFT JOIN td_peg ff ON aa.fs_kd_medis_resep = ff.fs_kd_peg
+            LEFT JOIN BILRG_AptTelaahResep t ON t.ResepId = aa.fs_kd_trs AND t.VodDate = '3000-01-01'
+            WHERE aa.fb_resep = 1
+              AND (aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void = '' OR aa.fd_tgl_void IS NULL)
+              AND aa.fn_status_dobill = 0
+              AND aa.fd_tgl_trs = @businessDate
               AND (t.TelaahResepId IS NULL OR t.TelaahStatus IN (@availableStatus, @underReviewStatus))
-            ORDER BY StartedAt
+            ORDER BY Cito DESC, StartedAt ASC
             """, new
             {
                 availableStatus = (int)TelaahStatusEnum.Available,
-                underReviewStatus = (int)TelaahStatusEnum.UnderReview
+                underReviewStatus = (int)TelaahStatusEnum.UnderReview,
+                businessDate = businessDate.ToString("yyyy-MM-dd")
             }).ToList();
     }
+
+    public IReadOnlyList<TelaahWorklistItem> ListTelaah()
+        => ListTelaah(DateOnly.FromDateTime(DateTime.Today));
 
     public IReadOnlyList<PelayananWorklistItem> ListPelayanan(string antrianId, int? noUrut, DateOnly businessDate)
     {

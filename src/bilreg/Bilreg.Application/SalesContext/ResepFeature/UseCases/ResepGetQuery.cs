@@ -4,7 +4,7 @@ using Nuna.Lib.DataTypeExtension;
 
 namespace Bilreg.Application.SalesContext.ResepFeature.UseCases;
 
-public record ResepGetQuery(string ResepId): IRequest<ResepGetResponse>;
+public record ResepGetQuery(string ResepId) : IRequest<ResepGetResponse>;
 
 public record ResepGetResponse(
     string ResepId,
@@ -18,13 +18,19 @@ public record ResepGetResponse(
     string DokterName,
     string LayananId,
     string LayananName,
+    string LayananStokId,
+    string LayananStokName,
     string UrgenitasId,
     string UrgenitasName,
     string TipeBrgId,
     string TipeBrgName,
     int Iter,
     string Description,
-    IReadOnlyList<ResepGetListItemObatResponse> ListObat
+    DateTime TglRencanaPeriksa,
+    IReadOnlyList<ResepGetListItemObatResponse> ListObat,
+    string ResepAsalReffId = "",
+    string VoidReason = "",
+    bool IsVoid = false
 );
 
 public record ResepGetListItemObatResponse(
@@ -39,8 +45,12 @@ public record ResepGetListItemObatResponse(
     string Instruction,
     int Frequency,
     decimal UnitDose,
+    string Route,
+    string MealRelation,
+    string UddTime,
     string Note,
-    IReadOnlyList<ResepGetListItemRacikResponse> ListItemRacik
+    IReadOnlyList<ResepGetListItemRacikResponse> ListItemRacik,
+    bool IsRacik = false
 );
 
 public record ResepGetListItemRacikResponse(
@@ -54,7 +64,7 @@ public record ResepGetListItemRacikResponse(
     string DosisTxt
 );
 
-public class ResepGetHandler: IRequestHandler<ResepGetQuery, ResepGetResponse>
+public class ResepGetHandler : IRequestHandler<ResepGetQuery, ResepGetResponse>
 {
     private readonly IResepRepo _resepRepo;
 
@@ -77,19 +87,36 @@ public class ResepGetHandler: IRequestHandler<ResepGetQuery, ResepGetResponse>
     {
         var listObat = resep.ListObat.Select(item =>
         {
-            var listItemRacik = new List<ResepGetListItemRacikResponse>();
-            if (item.ListItemRacik.Any())
-                item.ListItemRacik.ForEach(itemRacik =>
-                {
-                    var obatRacik = new ResepGetListItemRacikResponse(
-                        itemRacik.NoUrut, itemRacik.Brg.BrgId, itemRacik.Brg.BrgName, itemRacik.Satuan.SatuanId,
-                        itemRacik.Satuan.SatuanName, itemRacik.Qty, itemRacik.Dosis, itemRacik.DosisTxt);
-                    listItemRacik.Add(obatRacik);
-                });
+            var listItemRacik = item.ListItemRacik.Select(itemRacik => new ResepGetListItemRacikResponse(
+                itemRacik.NoUrut,
+                itemRacik.Brg.BrgId,
+                itemRacik.Brg.BrgName,
+                itemRacik.Satuan.SatuanId,
+                itemRacik.Satuan.SatuanName,
+                itemRacik.Qty,
+                itemRacik.Dosis,
+                itemRacik.DosisTxt
+            )).ToList();
 
-            var obat = new ResepGetListItemObatResponse(item.NoUrut, item.Brg.BrgId, item.Brg.BrgName, item.Satuan.SatuanId,
-                item.Satuan.SatuanName, item.Qty, item.Iter, item.Etiket.Signa, item.Etiket.Instruction, item.Etiket.Frequency,
-                item.Etiket.UnitDose, item.Etiket.Note, listItemRacik);
+            var obat = new ResepGetListItemObatResponse(
+                item.NoUrut,
+                item.Brg.BrgId,
+                item.Brg.BrgName,
+                item.Satuan.SatuanId,
+                item.Satuan.SatuanName,
+                item.Qty,
+                item.Iter,
+                item.Etiket.Signa,
+                item.Etiket.Instruction,
+                item.Etiket.Frequency,
+                item.Etiket.UnitDose,
+                item.Etiket.Route,
+                item.Etiket.MealRelation,
+                item.Etiket.UddTime,
+                item.Etiket.Note,
+                listItemRacik,
+                item.IsRacik
+            );
 
             return obat;
         }).ToList();
@@ -98,14 +125,35 @@ public class ResepGetHandler: IRequestHandler<ResepGetQuery, ResepGetResponse>
         var bodyMetric = resep.BodyMetric;
         var dokter = resep.Dokter;
         var layanan = resep.Layanan;
+        var layananStok = resep.LayananStok;
         var urgenitas = resep.Urgenitas;
         var tipeBrg = resep.TipeBrg;
 
         var response = new ResepGetResponse(
-            resep.ResepId, reg.RegId, reg.PasienId, reg.PasienName, bodyMetric.BodyWeight, bodyMetric.BodyHeight,
-            bodyMetric.LingkarPinggang, dokter.DokterId, dokter.DokterName, layanan.LayananId, layanan.LayananName,
-            urgenitas.UrgenitasId, urgenitas.UrgenitasName, tipeBrg.TipeBrgId, tipeBrg.TipeBrgName, resep.Iter, resep.Description,
-            listObat
+            resep.ResepId,
+            reg.RegId,
+            reg.PasienId,
+            reg.PasienName,
+            bodyMetric.BodyWeight,
+            bodyMetric.BodyHeight,
+            bodyMetric.LingkarPinggang,
+            dokter.DokterId,
+            dokter.DokterName,
+            layanan.LayananId,
+            layanan.LayananName,
+            layananStok.LayananId,
+            layananStok.LayananName,
+            urgenitas.UrgenitasId,
+            urgenitas.UrgenitasName,
+            tipeBrg.TipeBrgId,
+            tipeBrg.TipeBrgName,
+            resep.Iter,
+            resep.Description,
+            resep.TglRencanaPeriksa,
+            listObat,
+            resep.ResepAsalReffId,
+            resep.VoidReason,
+            resep.IsVoid
         );
 
         return response;

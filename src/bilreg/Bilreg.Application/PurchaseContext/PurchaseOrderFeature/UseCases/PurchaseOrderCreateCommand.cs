@@ -74,6 +74,9 @@ public class PurchaseOrderCreateHandler : IRequestHandler<PurchaseOrderCreateCom
                 onNone: () => throw new KeyNotFoundException($"Barang {brgKey.BrgId} not found")
             );
 
+        if (!brg.IsAktif)
+            throw new InvalidOperationException($"Barang '{brg.BrgName}' ({brg.BrgId}) berstatus Non-Aktif.");
+
         return brg;
     }
 
@@ -93,7 +96,7 @@ public class PurchaseOrderCreateHandler : IRequestHandler<PurchaseOrderCreateCom
     {
         foreach (var item in listItem)
         {
-            var brgKey = BrgObatType.Key(item.BrgId);
+            var brgKey = new BrgKey(item.BrgId);
             var brg = LoadBrg(brgKey);
 
             var satuanKey = SatuanType.Key(item.SatuanId);

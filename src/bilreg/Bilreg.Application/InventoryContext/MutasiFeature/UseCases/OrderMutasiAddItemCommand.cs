@@ -61,7 +61,12 @@ public class OrderMutasiAddItemHandler : IRequestHandler<OrderMutasiAddItemComma
         var mayBe = _brgRepo.LoadEntity(request);
         if (!mayBe.HasValue)
             throw new KeyNotFoundException($"BrgId {request.BrgId} not found");
-        return mayBe.Value.ToReff();
+
+        var brg = mayBe.Value;
+        if (!brg.IsAktif)
+            throw new InvalidOperationException($"Barang '{brg.BrgName}' ({brg.BrgId}) berstatus Non-Aktif.");
+
+        return brg.ToReff();
     }
 
     private OrderMutasiModel GetOrderDraft(OrderMutasiAddItemCommand request)

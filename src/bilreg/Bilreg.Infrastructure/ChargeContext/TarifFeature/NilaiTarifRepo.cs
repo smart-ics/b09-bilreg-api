@@ -64,6 +64,20 @@ public class NilaiTarifRepo : INilaiTarifRepo
         return MayBe.From(model);
     }
 
+    public MayBe<NilaiTarifType> LoadFirstActiveRate(ITarifKey key)
+    {
+        var listDto = _nilaiTarifDal.ListData(key);
+        var activeDto = listDto?.FirstOrDefault(x => x.Nilai > 0);
+        if (activeDto is null)
+            return MayBe<NilaiTarifType>.None;
+
+        var listKompDto = _nilaiTarifKompDal.ListData(NilaiTarifType.Key(activeDto.NilaiTarifId))?.ToList() ?? [];
+        var listKomp = listKompDto.Select(x => x.ToModel());
+
+        var model = activeDto.ToModel(listKomp);
+        return MayBe.From(model);
+    }
+
     public void DeleteEntity(INilaiTarifKey key)
     {
         _nilaiTarifDal.Delete(key);

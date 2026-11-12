@@ -6,6 +6,7 @@ namespace Bilreg.Domain.ApotekContext.QueueFeature;
 
 public enum QueueDemandKindEnum
 {
+    Resep = 0,
     ResepKerja = 0,
     JualBebas = 1
 }
@@ -95,6 +96,22 @@ public interface IQueueCloseKey
 public class QueueCloseModel : IQueueCloseKey
 {
     public const string IdPrefix = "AQC";
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
 
     private QueueCloseModel(
         string queueCloseId,
@@ -120,7 +137,7 @@ public class QueueCloseModel : IQueueCloseKey
         Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(staffId, nameof(staffId));
-        return new QueueCloseModel(NunaId.New(IdPrefix), antrianId, noUrut, reason, staffId, effectiveAt);
+        return new QueueCloseModel(GenerateUniqueId(), antrianId, noUrut, reason, staffId, effectiveAt);
     }
 
     public static QueueCloseModel Rehydrate(

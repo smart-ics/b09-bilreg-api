@@ -2,6 +2,7 @@ using Bilreg.Domain.BrgContext.KlasifikasiFeature;
 
 namespace Bilreg.Domain.BrgContext.BrgFeature;
 
+[Obsolete("Deprecated in favor of BarangModel")]
 public record BrgBhpType : IBrg, IKlasifikasiUmum, IPabrik
 {
     private readonly List<BrgSatuanType> _listSatuan;
@@ -49,4 +50,9 @@ public record BrgBhpType : IBrg, IKlasifikasiUmum, IPabrik
 
     public IEnumerable<BrgSatuanType> ListSatuan => _listSatuan;
     public BrgReff ToReff() => new BrgReff(BrgId, BrgName);
+
+    PabrikReff IBrg.Pabrik => Pabrik?.ToReff() ?? new PabrikReff("-", "-");
+    SatuanType IBrg.SatuanKecil => _listSatuan.FirstOrDefault()?.Satuan ?? SatuanType.Default;
+    SatuanType IBrg.SatuanBesar => _listSatuan.LastOrDefault()?.Satuan ?? SatuanType.Default;
+    int IBrg.Konversi => _listSatuan.LastOrDefault()?.Konversi ?? 1;
 }

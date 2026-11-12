@@ -126,7 +126,7 @@ public class JualBebasCommandTest
             ]), default);
 
     private async Task<SalesOrderEstablishResponse> EstablishSo(string jualBebasId)
-        => await new SalesOrderEstablishHandler(_so, new InMemoryTelaahRepo(), new InMemoryResepKerjaRepo(),
+        => await new SalesOrderEstablishHandler(_so, new InMemoryTelaahRepo(), new InMemoryResepRepo(),
                 _jb, DeterministicAvailableStockPort.Full(), new InMemoryCopyResepRepo(),
                 new InMemoryIntegrationTaskRepo(), _auth)
             .Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.JualBebas, jualBebasId,

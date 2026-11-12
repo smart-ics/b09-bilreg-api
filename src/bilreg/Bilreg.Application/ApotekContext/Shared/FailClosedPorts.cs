@@ -1,20 +1,12 @@
 using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.QueueFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using MediatR;
 
 namespace Bilreg.Application.ApotekContext.Shared;
-
-public class FailClosedPrescriptionContractPort : IPrescriptionContractPort
-{
-    public PrescriptionContract Load(ResepKerjaSourceKindEnum sourceKind, string sourceResepId)
-        => throw new ApotekDomainException($"Prescription contract adapter is not configured for {sourceKind}:{sourceResepId}.");
-}
 
 public class FailClosedPaymentClearancePort : IPaymentClearancePort
 {

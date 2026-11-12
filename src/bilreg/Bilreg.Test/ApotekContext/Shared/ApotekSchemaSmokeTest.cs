@@ -28,14 +28,12 @@ public class ApotekSchemaSmokeTest
         "BILRG_AptJualBebasItem.sql",
         "BILRG_AptQueueClose.sql",
         "BILRG_AptQueueMapping.sql",
-        "BILRG_AptResepKerja.sql",
-        "BILRG_AptResepKerjaComponent.sql",
-        "BILRG_AptResepKerjaItem.sql",
         "BILRG_AptSalesOrder.sql",
         "BILRG_AptSalesOrderItem.sql",
         "BILRG_AptSalesOrderItemComponent.sql",
         "BILRG_AptTelaahResep.sql",
         "BILRG_AptTelaahResepItem.sql",
+        "BILRG_AptTelaahResepKajian.sql",
         "BILRG_AptUnfulfilledOutcome.sql",
     ];
 

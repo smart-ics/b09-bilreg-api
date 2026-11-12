@@ -84,6 +84,23 @@ public class FinalReviewModel
 public class DispensingModel : IDispensingKey
 {
     public const string IdPrefix = "ADP";
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
+
     private readonly List<DispensingItemModel> _items;
     private readonly List<FinalReviewModel> _reviews;
 
@@ -154,7 +171,7 @@ public class DispensingModel : IDispensingKey
         if (list.Count == 0)
             throw new ApotekDomainException("Dispensing requires Sales Order items.");
         return new DispensingModel(
-            NunaId.New(IdPrefix),
+            GenerateUniqueId(),
             salesOrderId,
             0,
             DispensingStatusEnum.Established,

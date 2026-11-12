@@ -21,6 +21,11 @@ public class ApotekExceptionFilter : IExceptionFilter
                 { StatusCode = StatusCodes.Status400BadRequest };
                 context.ExceptionHandled = true;
                 break;
+            case KeyNotFoundException ex:
+                context.Result = new ObjectResult(new { status = "fail", message = ex.Message, code = "NOT_FOUND" })
+                { StatusCode = StatusCodes.Status404NotFound };
+                context.ExceptionHandled = true;
+                break;
             case UnauthorizedAccessException ex:
                 context.Result = new ObjectResult(new { status = "fail", message = ex.Message, code = "AUTH" })
                 { StatusCode = StatusCodes.Status401Unauthorized };

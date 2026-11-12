@@ -19,13 +19,13 @@ public class ApotekInvariantCoverageTest
     {
         var repo = new InMemorySalesOrderRepo();
         var order = SalesOrderModel.Establish(
-            SalesOrderSourceKindEnum.ResepKerja, "RK1", "TR1", "R1", "P1", "Pasien",
+            SalesOrderSourceKindEnum.Resep, "RK1", "TR1", "R1", "P1", "Pasien",
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None,
             [SalesOrderItemModel.Establish(1, 1, "A", "A", "TAB", 5, FornasCoverageEnum.Unknown, "", false)],
             []);
         repo.SaveChanges(order);
 
-        repo.LoadActive(SalesOrderSourceKindEnum.ResepKerja, "RK1", "R1", PayerPathEnum.GeneralPatientPay)
+        repo.LoadActive(SalesOrderSourceKindEnum.Resep, "RK1", "R1", PayerPathEnum.GeneralPatientPay)
             .Value.SalesOrderId.Should().Be(order.SalesOrderId);
         repo.Store.Values.Count(x => x.IsActiveKey && x.SourceId == "RK1" && x.RegId == "R1").Should().Be(1);
     }
@@ -42,7 +42,7 @@ public class ApotekInvariantCoverageTest
     public void BrApt110_available_stock_evaluation_is_not_persisted_on_sales_order()
     {
         var order = SalesOrderModel.Establish(
-            SalesOrderSourceKindEnum.ResepKerja, "RK1", "TR1", "R1", "P1", "Pasien",
+            SalesOrderSourceKindEnum.Resep, "RK1", "TR1", "R1", "P1", "Pasien",
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None,
             [SalesOrderItemModel.Establish(1, 1, "A", "A", "TAB", 5, FornasCoverageEnum.Unknown, "", false)],
             []);

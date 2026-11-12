@@ -79,6 +79,7 @@ public sealed class AdmissionCancellationApiHarness
         Repo.Setup(x => x.VoidRegistration(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Repo.Setup(x => x.DeleteRegAktif(It.IsAny<string>())).Returns(1);
         Repo.Setup(x => x.RestoreSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
+        Repo.Setup(x => x.VoidSource(It.IsAny<CoordinatedCancellationState>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Repo.Setup(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Repo.Setup(x => x.CompleteLedger(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Eligibility.Setup(x => x.HasBillingItems(It.IsAny<string>())).Returns(false);

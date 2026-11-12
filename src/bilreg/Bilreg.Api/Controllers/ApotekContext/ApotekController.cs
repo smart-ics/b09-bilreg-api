@@ -3,7 +3,6 @@ using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
 using Bilreg.Application.ApotekContext.InvoiceFeature.UseCases;
 using Bilreg.Application.ApotekContext.JualBebasFeature.UseCases;
 using Bilreg.Application.ApotekContext.QueueFeature.UseCases;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
 using Bilreg.Application.ApotekContext.WorklistFeature;
@@ -12,6 +11,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Api.Controllers.ApotekContext;
 
@@ -23,25 +23,13 @@ public class ApotekController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ICurrentUserContext _user;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public ApotekController(IMediator mediator, ICurrentUserContext user)
+    public ApotekController(IMediator mediator, ICurrentUserContext user, ITglJamProvider tglJamProvider)
     {
         _mediator = mediator;
         _user = user;
-    }
-
-    [HttpPost("resep-kerja/intake-electronic")]
-    public async Task<IActionResult> IntakeElectronic(ResepKerjaIntakeElectronicCmd cmd)
-    {
-        Response.Headers["X-Release-Gate"] = "prescription-contract-adapter";
-        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
-    }
-
-    [HttpPost("resep-kerja/intake-physical")]
-    public async Task<IActionResult> IntakePhysical(ResepKerjaIntakePhysicalCmd cmd)
-    {
-        Response.Headers["X-Release-Gate"] = "BC-13";
-        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+        _tglJamProvider = tglJamProvider;
     }
 
     [HttpPost("jual-bebas/accept")]
@@ -59,6 +47,10 @@ public class ApotekController : ControllerBase
     public async Task<IActionResult> TelaahStart(TelaahStartCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
+    [HttpPost("telaah/kajian")]
+    public async Task<IActionResult> TelaahKajian(TelaahUpdateKajianCmd cmd)
+        => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
     [HttpPost("telaah/item")]
     public async Task<IActionResult> TelaahItem(TelaahUpdateItemCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
@@ -66,6 +58,15 @@ public class ApotekController : ControllerBase
     [HttpPost("telaah/complete")]
     public async Task<IActionResult> TelaahComplete(TelaahCompleteCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+
+    [HttpGet("telaah/by-resep/{resepId}")]
+    [HttpGet("telaah/by-resep-kerja/{resepId}")]
+    public async Task<IActionResult> TelaahGetByResep(string resepId)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahGetByResepQuery(resepId))));
+
+    [HttpGet("telaah/{telaahResepId}")]
+    public async Task<IActionResult> TelaahGet(string telaahResepId)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahGetQuery(telaahResepId))));
 
     [HttpPost("sales-order/establish")]
     public async Task<IActionResult> EstablishSalesOrder(SalesOrderEstablishCmd cmd)
@@ -94,8 +95,8 @@ public class ApotekController : ControllerBase
     }
 
     [HttpGet("sales-order/mixed-coverage")]
-    public async Task<IActionResult> MixedCoverage([FromQuery] string resepKerjaId)
-        => Ok(new JSendOk(await _mediator.Send(new MixedCoverageReadQuery(resepKerjaId))));
+    public async Task<IActionResult> MixedCoverage([FromQuery] string? resepId, [FromQuery] string? resepKerjaId)
+        => Ok(new JSendOk(await _mediator.Send(new MixedCoverageReadQuery(resepId ?? resepKerjaId ?? ""))));
 
     [HttpPost("queue/map")]
     public async Task<IActionResult> Map(QueueMapCmd cmd)
@@ -170,8 +171,9 @@ public class ApotekController : ControllerBase
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
 
     [HttpGet("worklist/telaah")]
-    public async Task<IActionResult> TelaahWorklist()
-        => Ok(new JSendOk(await _mediator.Send(new TelaahWorklistQuery())));
+    public async Task<IActionResult> TelaahWorklist([FromQuery] DateOnly? businessDate)
+        => Ok(new JSendOk(await _mediator.Send(new TelaahWorklistQuery(
+            businessDate ?? DateOnly.FromDateTime(_tglJamProvider.Now)))));
 
     [HttpGet("worklist/pelayanan")]
     public async Task<IActionResult> Pelayanan(
@@ -181,7 +183,7 @@ public class ApotekController : ControllerBase
         => Ok(new JSendOk(await _mediator.Send(new PelayananWorklistQuery(
             antrianId ?? "",
             noUrut,
-            businessDate ?? DateOnly.FromDateTime(DateTime.Now)))));
+            businessDate ?? DateOnly.FromDateTime(_tglJamProvider.Now)))));
 
     [HttpGet("worklist/dispensing")]
     public async Task<IActionResult> DispensingWorklist()
@@ -189,7 +191,7 @@ public class ApotekController : ControllerBase
 
     [HttpGet("worklist/serah")]
     public async Task<IActionResult> Serah([FromQuery] DateTime? asOf)
-        => Ok(new JSendOk(await _mediator.Send(new SerahWorklistQuery(asOf ?? DateTime.Now))));
+        => Ok(new JSendOk(await _mediator.Send(new SerahWorklistQuery(asOf ?? _tglJamProvider.Now))));
 
     [HttpGet("journey")]
     public async Task<IActionResult> Journey([FromQuery] string antrianId, [FromQuery] int noUrut)

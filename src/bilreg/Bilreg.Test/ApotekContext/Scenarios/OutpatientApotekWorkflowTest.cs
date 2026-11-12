@@ -5,21 +5,24 @@ using Bilreg.Application.ApotekContext.InvoiceFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature.UseCases;
 using Bilreg.Application.ApotekContext.JualBebasFeature.UseCases;
 using Bilreg.Application.ApotekContext.QueueFeature.UseCases;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature;
-using Bilreg.Application.ApotekContext.ResepKerjaFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.DispensingFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
 using Bilreg.Domain.ApotekContext.InvoiceFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
-using Bilreg.Domain.ApotekContext.ResepKerjaFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.SalesContext.ResepFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
 
@@ -27,7 +30,7 @@ namespace Bilreg.Test.ApotekContext.Scenarios;
 
 public class OutpatientApotekWorkflowTest
 {
-    private readonly InMemoryResepKerjaRepo _resep = new();
+    private readonly InMemoryResepRepo _resep = new();
     private readonly InMemoryTelaahRepo _telaah = new();
     private readonly InMemorySalesOrderRepo _so = new();
     private readonly InMemoryJualBebasRepo _jb = new();
@@ -37,26 +40,12 @@ public class OutpatientApotekWorkflowTest
     private readonly InMemoryQueueMappingRepo _map = new();
     private readonly InMemoryQueueCloseRepo _close = new();
     private readonly InMemoryIntegrationTaskRepo _tasks = new();
-    private readonly FakePrescriptionPort _rx = new();
     private readonly AllowAllAuth _auth = new();
     private readonly FakePaymentPort _pay = new();
     private readonly FakePricePort _price = new();
     private readonly ConfigurableSepPort _sep = new();
     private readonly FakeTrackerPort _tracker = new();
     private readonly DispenseAuthorizedPolicy _policy = new();
-
-    [Fact]
-    public async Task Electronic_intake_is_idempotent_on_source_key()
-    {
-        _rx.Contract = Contract();
-        var handler = new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth);
-        var first = await handler.Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-1"), default);
-        var second = await handler.Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-1"), default);
-        first.IdempotentReplay.Should().BeFalse();
-        second.IdempotentReplay.Should().BeTrue();
-        second.ResepKerjaId.Should().Be(first.ResepKerjaId);
-        _resep.Store.Should().HaveCount(1);
-    }
 
     [Fact]
     public async Task Jual_bebas_accept_creates_one_header_row()
@@ -75,7 +64,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove();
         var handler = new SalesOrderEstablishHandler(
             _so, _telaah, _resep, _jb, new FailClosedAvailableStockPort(), _copy, _tasks, _auth);
-        var act = () => handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+        var act = () => handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null), default);
         await act.Should().ThrowAsync<AvailableStockUnavailableException>();
         _so.Store.Should().BeEmpty();
@@ -88,7 +77,7 @@ public class OutpatientApotekWorkflowTest
         var handler = new SalesOrderEstablishHandler(
             _so, _telaah, _resep, _jb, DeterministicAvailableStockPort.Partial(4), _copy, _tasks, _auth);
 
-        var response = await handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+        var response = await handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null), default);
 
         var stored = _so.Store.Values.Single();
@@ -110,7 +99,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove();
         var handler = new SalesOrderEstablishHandler(
             _so, _telaah, _resep, _jb, DeterministicAvailableStockPort.Zero(), _copy, _tasks, _auth);
-        var act = () => handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.ResepKerja, resepId,
+        var act = () => handler.Handle(new SalesOrderEstablishCmd("u", SalesOrderSourceKindEnum.Resep, resepId,
             PayerPathEnum.GeneralPatientPay, PartialReasonEnum.None, null), default);
         await act.Should().ThrowAsync<ApotekDomainException>()
             .WithMessage("No positive Accepted Qty remains after Available Stock evaluation.");
@@ -124,7 +113,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove("RS-WF1-A");
         var jualBebasId = await AcceptJualBebas();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
             new QueueMapCmd("u", QueueDemandKindEnum.JualBebas, jualBebasId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
@@ -150,18 +139,16 @@ public class OutpatientApotekWorkflowTest
         so.SalesOrderId.Should().NotBeNullOrWhiteSpace();
         _so.Store[so.SalesOrderId].Items.Should().ContainSingle(x => x.AcceptedQty == 10m);
 
-        _rx.Contract = Contract("RS-WF2-REJ");
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-WF2-REJ"), default);
+        var rejectedResep = SeedResep("RS-WF2-REJ", 1, ("A", "A", 10m));
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", intake.ResepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", rejectedResep.ResepId, 0), default);
         var updated = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, 1,
                 TelaahDispositionEnum.Rejected, "A", "A", 0, "contraindicated"), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", updated.TelaahResepId, updated.Version), default);
 
-        var act = () => EstablishSo(intake.ResepKerjaId, PayerPathEnum.GeneralPatientPay);
+        var act = () => EstablishSo(rejectedResep.ResepId, PayerPathEnum.GeneralPatientPay);
         await act.Should().ThrowAsync<ApotekDomainException>();
     }
 
@@ -170,7 +157,7 @@ public class OutpatientApotekWorkflowTest
     {
         var resepId = await IntakeAndApprove();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var so = await EstablishSo(resepId, PayerPathEnum.GeneralPatientPay);
         var inv = await new InvoiceEstablishHandler(_inv, _so, _price, _auth)
             .Handle(new InvoiceEstablishCmd("u", so.SalesOrderId, "UMUM", "Umum", 0, 0, 0), default);
@@ -209,7 +196,7 @@ public class OutpatientApotekWorkflowTest
     {
         var resepId = await IntakeAndApprove();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var so = await EstablishSo(resepId, PayerPathEnum.GeneralPatientPay);
 
         await new SalesOrderDeclinePurchaseHandler(_so, _inv, _disp, _tasks, _auth)
@@ -250,7 +237,7 @@ public class OutpatientApotekWorkflowTest
     {
         var resepId = await IntakeAndApprove();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var so = await EstablishSo(resepId, PayerPathEnum.GeneralPatientPay);
         await PayInvoice(so.SalesOrderId);
         var d = await PrepareReady(so.SalesOrderId);
@@ -332,7 +319,7 @@ public class OutpatientApotekWorkflowTest
         await early.Should().ThrowAsync<ApotekDomainException>();
 
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         _inv.Store.Should().BeEmpty();
         _policy.IsAuthorized(_so.Store[so.SalesOrderId], null).Should().BeTrue();
         var d = await PrepareReady(so.SalesOrderId);
@@ -364,7 +351,7 @@ public class OutpatientApotekWorkflowTest
         await new SalesOrderApplyCoverageHandler(_so, _sep, _auth)
             .Handle(new SalesOrderApplyCoverageCmd("u", so.SalesOrderId, so.Version, "SEP-1", [new SalesOrderCoverageItem(1, FornasCoverageEnum.Covered)]), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var d = await PrepareReady(so.SalesOrderId);
         await new DispensingPickupCallHandler(_map, _so, _disp, _tasks, _auth)
             .Handle(new DispensingPickupCallCmd("u", "Q1", 1, "TRK1"), default);
@@ -394,7 +381,7 @@ public class OutpatientApotekWorkflowTest
         var so = await EstablishSo(resepId, PayerPathEnum.GeneralPatientPay);
         await PayInvoice(so.SalesOrderId);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var d = await PrepareReady(so.SalesOrderId);
         await new DispensingPickupCallHandler(_map, _so, _disp, _tasks, _auth)
             .Handle(new DispensingPickupCallCmd("u", "Q1", 1, "TRK1"), default);
@@ -427,7 +414,7 @@ public class OutpatientApotekWorkflowTest
     {
         var resepId = await IntakeMixedAndApprove();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
         var mixed = await new SalesOrderEstablishMixedHandler(
                 _so, _telaah, _resep, DeterministicAvailableStockPort.Full(), _tasks, _sep, _auth)
@@ -489,7 +476,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove("RS-WF6-A");
         var jualBebasId = await AcceptJualBebas();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
             new QueueMapCmd("u", QueueDemandKindEnum.JualBebas, jualBebasId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
@@ -539,7 +526,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove("RS-WF6-B");
         var jualBebasId = await AcceptJualBebas();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
             new QueueMapCmd("u", QueueDemandKindEnum.JualBebas, jualBebasId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
@@ -567,7 +554,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove("RS-WF6-C");
         var jualBebasId = await AcceptJualBebas();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
             new QueueMapCmd("u", QueueDemandKindEnum.JualBebas, jualBebasId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
@@ -604,7 +591,7 @@ public class OutpatientApotekWorkflowTest
         var resepId = await IntakeAndApprove("RS-WF6-E");
         var jualBebasId = await AcceptJualBebas();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
             new QueueMapCmd("u", QueueDemandKindEnum.JualBebas, jualBebasId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
 
@@ -627,7 +614,7 @@ public class OutpatientApotekWorkflowTest
     {
         var resepId = await IntakeMixedAndApprove();
         await new QueueMapHandler(_map, _resep, _jb, _auth).Handle(
-            new QueueMapCmd("u", QueueDemandKindEnum.ResepKerja, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
+            new QueueMapCmd("u", QueueDemandKindEnum.Resep, resepId, "Q1", 1, "TRK1", QueueMappingMethodEnum.Manual), default);
         var mixed = await new SalesOrderEstablishMixedHandler(
                 _so, _telaah, _resep, DeterministicAvailableStockPort.Full(), _tasks, _sep, _auth)
             .Handle(new SalesOrderEstablishMixedCmd("u", resepId, "SEP-MIX"), default);
@@ -646,20 +633,35 @@ public class OutpatientApotekWorkflowTest
         _so.Store[mixed.BpjsSalesOrderId!].IsActiveKey.Should().BeTrue();
     }
 
+    private ResepModel SeedResep(string resepId, int iter, params (string brgId, string brgName, decimal qty)[] items)
+    {
+        var regReff = new RegReff("R1", "P1", "Pasien");
+        var resep = new ResepModel(
+            resepId, regReff, BodyMetricType.Default(), DokterType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananType.Default.ToReff(),
+            UrgenitasType.Default, TipeBrgType.Default.ToReff(), iter, "desc",
+            DateTime.Today, AppConst.DASH, AppConst.DASH, AuditTrailType.Default, []);
+        foreach (var (brgId, brgName, qty) in items)
+        {
+            var brg = BrgObatType.Default with { BrgId = brgId, BrgName = brgName };
+            resep.AddObat(brg, SatuanType.Default, qty, 0, "3x1", "", "");
+        }
+        _resep.SaveChanges(resep);
+        return resep;
+    }
+
     private async Task<string> IntakeAndApprove(string sourceKey = "RS-1")
     {
         _sep.CoverageByBrgId.Clear();
         _sep.CoverageByBrgId["A"] = FornasCoverageEnum.Covered;
-        _rx.Contract = Contract(sourceKey);
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, sourceKey), default);
+        var resep = SeedResep(sourceKey, 1, ("A", "A", 10m));
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", intake.ResepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", resep.ResepId, 0), default);
         var updated = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, 1, TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", 10, ""), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", updated.TelaahResepId, updated.Version), default);
-        return intake.ResepKerjaId;
+        return resep.ResepId;
     }
 
     private async Task<string> AcceptJualBebas()
@@ -676,11 +678,9 @@ public class OutpatientApotekWorkflowTest
         _sep.CoverageByBrgId.Clear();
         _sep.CoverageByBrgId["A"] = FornasCoverageEnum.Covered;
         _sep.CoverageByBrgId["B"] = FornasCoverageEnum.NotCovered;
-        _rx.Contract = ContractTwoLines();
-        var intake = await new ResepKerjaIntakeElectronicHandler(_resep, _rx, _auth)
-            .Handle(new ResepKerjaIntakeElectronicCmd("u", ResepKerjaSourceKindEnum.LegacyResep, "RS-MIX"), default);
+        var resep = SeedResep("RS-MIX", 0, ("A", "A", 5m), ("B", "B", 6m));
         var start = await new TelaahStartHandler(_telaah, _resep, _auth)
-            .Handle(new TelaahStartCmd("u", intake.ResepKerjaId, 0), default);
+            .Handle(new TelaahStartCmd("u", resep.ResepId, 0), default);
         var v1 = await new TelaahUpdateItemHandler(_telaah, _auth)
             .Handle(new TelaahUpdateItemCmd("u", start.TelaahResepId, start.Version, 1,
                 TelaahDispositionEnum.AcceptedAsPrescribed, "A", "A", 5, ""), default);
@@ -689,11 +689,11 @@ public class OutpatientApotekWorkflowTest
                 TelaahDispositionEnum.AcceptedAsPrescribed, "B", "B", 6, ""), default);
         await new TelaahCompleteHandler(_telaah, _resep, _auth)
             .Handle(new TelaahCompleteCmd("u", v2.TelaahResepId, v2.Version), default);
-        return intake.ResepKerjaId;
+        return resep.ResepId;
     }
 
     private async Task<SalesOrderEstablishResponse> EstablishSo(
-        string sourceId, PayerPathEnum payer, SalesOrderSourceKindEnum sourceKind = SalesOrderSourceKindEnum.ResepKerja)
+        string sourceId, PayerPathEnum payer, SalesOrderSourceKindEnum sourceKind = SalesOrderSourceKindEnum.Resep)
         => await new SalesOrderEstablishHandler(_so, _telaah, _resep, _jb, DeterministicAvailableStockPort.Full(), _copy, _tasks, _auth)
             .Handle(new SalesOrderEstablishCmd("u", sourceKind, sourceId, payer, PartialReasonEnum.None, null), default);
 
@@ -727,15 +727,4 @@ public class OutpatientApotekWorkflowTest
         return await new DispensingPrepareHandler(_disp, _auth)
             .Handle(new DispensingPrepareCmd("u", d.DispensingId, d.Version), default);
     }
-
-    private static PrescriptionContract Contract(string sourceKey = "RS-1")
-        => new(ResepKerjaSourceKindEnum.LegacyResep, sourceKey, "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 1,
-            [new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 10, 0, "3x1", "", "", false)], []);
-
-    private static PrescriptionContract ContractTwoLines()
-        => new(ResepKerjaSourceKindEnum.LegacyResep, "RS-MIX", "R1", "P1", "Pasien", "D1", "Dokter", "LY01", 0, 0,
-            [
-                new PrescriptionContractItem(1, "A", "A", "TAB", "TAB", 5, 0, "3x1", "", "", false),
-                new PrescriptionContractItem(2, "B", "B", "TAB", "TAB", 6, 0, "3x1", "", "", false)
-            ], []);
 }

@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
@@ -161,11 +162,11 @@ public class AdmisiRanapWorkflowTest
             var auditRepo = new Mock<IAuditRepo>();
 
             CreateOpnameHandler = new AdmCreateOpnameRequestHandler(
-                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object, TestTglJamProvider.Instance, new Mock<IPasienTrackerInpatientCoordinator>().Object);
             var orchestrator = CreateOrchestrator();
             ProcessOpnameHandler = new AdmProcessOpnameRequestHandler(orchestrator.Object);
             CreateReservationHandler = new AdmCreateReservationHandler(
-                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance, new Mock<IPasienTrackerInpatientCoordinator>().Object);
             MaintainReservationHandler = new AdmMaintainReservationHandler(
                 reservationRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             ProcessReservationHandler = new AdmProcessReservationHandler(orchestrator.Object);

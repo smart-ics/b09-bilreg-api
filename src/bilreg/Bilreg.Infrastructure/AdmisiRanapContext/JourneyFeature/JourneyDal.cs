@@ -26,11 +26,11 @@ public sealed partial class JourneyDal : IJourneyDal
     private static readonly DateTime VoidSentinel = new(3000, 1, 1);
     private const int CommandTimeoutSeconds = 60;
 
-    /// <summary>Fixed list round-trips when the page is non-empty: facet, page, sources+admissions, wl+reg extras.</summary>
-    public const int FixedListRoundTripsWithPage = 4;
+    /// <summary>Fixed list round-trips when the page is non-empty: facet+page batch, sources+admissions, wl+reg extras.</summary>
+    public const int FixedListRoundTripsWithPage = 3;
 
-    /// <summary>Fixed list round-trips when the page is empty: facet + page only.</summary>
-    public const int FixedListRoundTripsEmptyPage = 2;
+    /// <summary>Fixed list round-trips when the page is empty: facet+page batch only.</summary>
+    public const int FixedListRoundTripsEmptyPage = 1;
 
     private readonly DatabaseOptions _opt;
     private readonly ILogger<JourneyDal> _logger;
@@ -49,7 +49,10 @@ public sealed partial class JourneyDal : IJourneyDal
         _cancellationEligibility = cancellationEligibility;
     }
 
-    public JourneyListResult List(JourneyListFilter filter, DateTime businessNow = default)
+    public async Task<JourneyListResult> ListAsync(
+        JourneyListFilter filter,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         var asOf = businessNow;
         _businessDate = DateOnly.FromDateTime(businessNow);
@@ -57,7 +60,7 @@ public sealed partial class JourneyDal : IJourneyDal
         var swTotal = System.Diagnostics.Stopwatch.StartNew();
         var roundTrips = 0;
 
-        using var conn = Open();
+        await using var conn = await OpenAsync(cancellationToken);
         var dp = BuildCommonParams(filter);
         dp.AddParam("@PageSize", pageSize + 1, SqlDbType.Int);
 
@@ -74,19 +77,15 @@ public sealed partial class JourneyDal : IJourneyDal
             dp.AddParam("@HasCursor", 0, SqlDbType.Int);
         }
 
-        var facetSql = BuildFacetSql(filter);
-        var pageSql = BuildPageSql(filter);
+        var batchSql = BuildFacetAndPageSql(filter);
 
         var swFacetPage = System.Diagnostics.Stopwatch.StartNew();
-        var facets = (conn.Query<FacetRowDto>(
-                new CommandDefinition(facetSql, dp, commandTimeout: CommandTimeoutSeconds))
-            ?? []).ToList();
+        using var multi = await conn.QueryMultipleAsync(
+            new CommandDefinition(batchSql, dp, commandTimeout: CommandTimeoutSeconds, cancellationToken: cancellationToken));
         roundTrips++;
 
-        var pageKeys = (conn.Query<JourneyPageKeyDto>(
-                new CommandDefinition(pageSql, dp, commandTimeout: CommandTimeoutSeconds))
-            ?? []).ToList();
-        roundTrips++;
+        var facets = (await multi.ReadAsync<FacetRowDto>() ?? []).ToList();
+        var pageKeys = (await multi.ReadAsync<JourneyPageKeyDto>() ?? []).ToList();
         swFacetPage.Stop();
 
         string? nextCursor = null;
@@ -100,7 +99,9 @@ public sealed partial class JourneyDal : IJourneyDal
         var totalMatches = facets.Sum(f => f.Cnt);
 
         var swBatch = System.Diagnostics.Stopwatch.StartNew();
-        var bagsByJourneyId = BatchLoadFactBags(conn, pageKeys, ref roundTrips);
+        var bagsByJourneyId = await BatchLoadFactBagsAsync(conn, pageKeys, cancellationToken);
+        if (pageKeys.Count > 0)
+            roundTrips += 2;
         swBatch.Stop();
 
         var swResolve = System.Diagnostics.Stopwatch.StartNew();
@@ -149,7 +150,13 @@ public sealed partial class JourneyDal : IJourneyDal
             JourneyProjectionVersions.Release1);
     }
 
-    public JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow = default)
+    public JourneyListResult List(JourneyListFilter filter, DateTime businessNow = default) =>
+        ListAsync(filter, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    public async Task<JourneyDetailWorkspace?> GetByJourneyIdAsync(
+        string journeyId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(journeyId))
             return null;
@@ -157,8 +164,8 @@ public sealed partial class JourneyDal : IJourneyDal
         var asOf = businessNow;
         _businessDate = DateOnly.FromDateTime(businessNow);
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var conn = Open();
-        var bag = LoadFactBag(conn, journeyId.Trim());
+        await using var conn = await OpenAsync(cancellationToken);
+        var bag = await LoadFactBagAsync(conn, journeyId.Trim(), cancellationToken);
         if (bag is null)
             return null;
 
@@ -167,7 +174,7 @@ public sealed partial class JourneyDal : IJourneyDal
         if (!string.IsNullOrWhiteSpace(resolution.Identity.RegId)
             && resolution.CandidateAdmisiActions.Any(a => a.Code == JourneyActionCode.CancelAdmission))
         {
-            hasBilling = QueryHasBillingItems(conn, resolution.Identity.RegId!);
+            hasBilling = await QueryHasBillingItemsAsync(conn, resolution.Identity.RegId!, cancellationToken);
         }
 
         var detail = MapDetail(bag, resolution, asOf, hasBilling);
@@ -181,7 +188,14 @@ public sealed partial class JourneyDal : IJourneyDal
         return detail;
     }
 
-    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow = default)
+    public JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow = default) =>
+        GetByJourneyIdAsync(journeyId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    public async Task<JourneyLegacyResolution?> ResolveLegacyRecordAsync(
+        string recordType,
+        string recordId,
+        DateTime businessNow = default,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(recordType) || string.IsNullOrWhiteSpace(recordId))
             return null;
@@ -190,10 +204,10 @@ public sealed partial class JourneyDal : IJourneyDal
         var id = recordId.Trim();
         JourneyDetailWorkspace? detail = type switch
         {
-            "opnamerequest" or "opname" or "opn" => GetByJourneyId(JourneyIdFactory.FromOpnameRequest(id), businessNow),
-            "reservation" or "rsv" => GetByJourneyId(JourneyIdFactory.FromReservation(id), businessNow),
-            "admission" or "registration" or "reg" => GetByJourneyId(JourneyIdFactory.FromRegId(id), businessNow),
-            "waitinglist" or "wl" or "wtl" => ResolveWaitingList(id, businessNow),
+            "opnamerequest" or "opname" or "opn" => await GetByJourneyIdAsync(JourneyIdFactory.FromOpnameRequest(id), businessNow, cancellationToken),
+            "reservation" or "rsv" => await GetByJourneyIdAsync(JourneyIdFactory.FromReservation(id), businessNow, cancellationToken),
+            "admission" or "registration" or "reg" => await GetByJourneyIdAsync(JourneyIdFactory.FromRegId(id), businessNow, cancellationToken),
+            "waitinglist" or "wl" or "wtl" => await ResolveWaitingListAsync(id, businessNow, cancellationToken),
             _ => null
         };
 
@@ -207,31 +221,44 @@ public sealed partial class JourneyDal : IJourneyDal
             detail.ReconciliationIssues);
     }
 
-    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId, DateTime businessNow)
+    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow = default) =>
+        ResolveLegacyRecordAsync(recordType, recordId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyDetailWorkspace?> ResolveWaitingListAsync(
+        string waitingListId,
+        DateTime businessNow,
+        CancellationToken cancellationToken = default)
     {
-        using var conn = Open();
-        var regId = conn.ExecuteScalar<string?>(new CommandDefinition(
+        await using var conn = await OpenAsync(cancellationToken);
+        var regId = await conn.ExecuteScalarAsync<string?>(new CommandDefinition(
             """
             SELECT RegId
             FROM BILRG_BedWaitingList
             WHERE VodDate = @VodDate AND WaitingListId = @WaitingListId
             """,
             new { VodDate = VoidSentinel, WaitingListId = waitingListId },
-            commandTimeout: CommandTimeoutSeconds));
+            commandTimeout: CommandTimeoutSeconds,
+            cancellationToken: cancellationToken));
 
         return string.IsNullOrWhiteSpace(regId)
             ? null
-            : GetByJourneyId(JourneyIdFactory.FromRegId(regId), businessNow);
+            : await GetByJourneyIdAsync(JourneyIdFactory.FromRegId(regId), businessNow, cancellationToken);
     }
 
+    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId, DateTime businessNow) =>
+        ResolveWaitingListAsync(waitingListId, businessNow, CancellationToken.None).GetAwaiter().GetResult();
+
     /// <summary>
-    /// Single-journey fact load (detail path and batch-parity oracle). Prefer <see cref="BatchLoadFactBags"/> for lists.
+    /// Single-journey fact load (detail path and batch-parity oracle). Prefer <see cref="BatchLoadFactBagsAsync"/> for lists.
     /// </summary>
-    internal JourneyFactBag? LoadFactBagForTests(string journeyId)
+    internal async Task<JourneyFactBag?> LoadFactBagForTestsAsync(string journeyId, CancellationToken cancellationToken = default)
     {
-        using var conn = Open();
-        return LoadFactBag(conn, journeyId);
+        await using var conn = await OpenAsync(cancellationToken);
+        return await LoadFactBagAsync(conn, journeyId, cancellationToken);
     }
+
+    internal JourneyFactBag? LoadFactBagForTests(string journeyId) =>
+        LoadFactBagForTestsAsync(journeyId).GetAwaiter().GetResult();
 
     private static JourneyListItem MapListItem(
         JourneyFactBag bag,
@@ -327,50 +354,70 @@ public sealed partial class JourneyDal : IJourneyDal
             JourneyProjectionVersions.Release1);
     }
 
-    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
-        conn.ExecuteScalar<bool>(
+    private static async Task<bool> QueryHasBillingItemsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        await conn.ExecuteScalarAsync<bool>(
             new CommandDefinition(
                 RegistrationCancellationEligibilityDal.HasBillingItemsSql,
                 new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
-    private JourneyFactBag? LoadFactBag(IDbConnection conn, string journeyId)
+    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
+        QueryHasBillingItemsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadFactBagAsync(
+        IDbConnection conn,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
         if (!JourneyIdFactory.TryParse(journeyId, out var prefix, out var domainId))
             return null;
 
         return prefix switch
         {
-            JourneyIdFactory.OpnamePrefix => LoadOpnameJourney(conn, domainId, journeyId),
-            JourneyIdFactory.ReservationPrefix => LoadReservationJourney(conn, domainId, journeyId),
-            JourneyIdFactory.RegPrefix => LoadRegJourney(conn, domainId, journeyId),
+            JourneyIdFactory.OpnamePrefix => await LoadOpnameJourneyAsync(conn, domainId, journeyId, cancellationToken),
+            JourneyIdFactory.ReservationPrefix => await LoadReservationJourneyAsync(conn, domainId, journeyId, cancellationToken),
+            JourneyIdFactory.RegPrefix => await LoadRegJourneyAsync(conn, domainId, journeyId, cancellationToken),
             _ => null
         };
     }
 
-    private JourneyFactBag? LoadOpnameJourney(IDbConnection conn, string opnameRequestId, string journeyId)
+    private JourneyFactBag? LoadFactBag(IDbConnection conn, string journeyId) =>
+        LoadFactBagAsync(conn, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadOpnameJourneyAsync(
+        IDbConnection conn,
+        string opnameRequestId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var opn = conn.QueryFirstOrDefault<OpnameRowDto>(
+        var opn = await conn.QueryFirstOrDefaultAsync<OpnameRowDto>(
             new CommandDefinition(
                 """
-                SELECT o.OpnameRequestId, o.OpnameRequestStatus, o.FulfilledRegId, o.PasienId,
-                       o.DokterId, o.DokterName, o.ClinicalNotes, o.PlannedDate, o.CrtDate, o.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmOpnameRequest o
-                LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
-                WHERE o.VodDate = @VodDate AND o.OpnameRequestId = @Id
+                SELECT ord.InpatientOrderId AS OpnameRequestId,
+                       CASE WHEN ord.OrderStatus = 2 THEN 1 WHEN ord.OrderStatus = 3 THEN 2 ELSE 0 END AS OpnameRequestStatus,
+                       ord.FulfilledRegId, ord.PasienId,
+                       ord.DokterId, ord.DokterName, ord.ClinicalNotes, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+                       ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+                       ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+                       CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+                FROM BILRG_AdmInpatientOrder ord
+                LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = opnameRequestId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (opn is null)
             return null;
 
         // Prefer registered episode when Admission links this source.
-        var admission = FindAdmissionByOpname(conn, opnameRequestId, opn.FulfilledRegId);
+        var admission = await FindAdmissionByOpnameAsync(conn, opnameRequestId, opn.FulfilledRegId, cancellationToken);
         if (admission is not null)
-            return LoadAdmissionBag(conn, admission, JourneyOriginKind.OpnameRequest, opn, reservation: null);
+            return await LoadAdmissionBagAsync(conn, admission, JourneyOriginKind.OpnameRequest, opn, reservation: null, cancellationToken);
 
         var patient = BuildPatient(opn.PasienId, opn.PasienName, opn.Gender, opn.TglLahir);
         var facts = new JourneyNormalizedFacts(
@@ -380,7 +427,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 opn.OpnameRequestId,
                 (OpnameRequestStatusEnum)opn.OpnameRequestStatus,
                 NullDash(opn.FulfilledRegId),
-                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate),
+                opn.UpdDate == VoidSentinel ? opn.CrtDate : opn.UpdDate,
+                opn.CrtDate),
             null,
             [],
             []);
@@ -401,25 +449,38 @@ public sealed partial class JourneyDal : IJourneyDal
             AddressSummary: null);
     }
 
-    private JourneyFactBag? LoadReservationJourney(IDbConnection conn, string reservationId, string journeyId)
+    private JourneyFactBag? LoadOpnameJourney(IDbConnection conn, string opnameRequestId, string journeyId) =>
+        LoadOpnameJourneyAsync(conn, opnameRequestId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadReservationJourneyAsync(
+        IDbConnection conn,
+        string reservationId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var rsv = conn.QueryFirstOrDefault<ReservationRowDto>(
+        var rsv = await conn.QueryFirstOrDefaultAsync<ReservationRowDto>(
             new CommandDefinition(
                 """
-                SELECT r.ReservationId, r.ReservationStatus, r.RealizedRegId, r.PasienId,
-                       ISNULL(r.PasienName,'') AS PasienName, ISNULL(r.Gender,'') AS Gender, r.TglLahir,
-                       r.KelasId, r.KelasName, r.BangsalId, r.BangsalName, r.PlannedDate, r.CrtDate, r.UpdDate
-                FROM BILRG_AdmReservation r
-                WHERE r.VodDate = @VodDate AND r.ReservationId = @Id
+                SELECT ord.InpatientOrderId AS ReservationId, ord.OrderStatus AS ReservationStatus,
+                       ord.FulfilledRegId AS RealizedRegId, ord.PasienId,
+                       ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+                       ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+                       CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE '3000-01-01' END AS TglLahir,
+                       ord.KelasId, ord.KelasName, ord.BangsalId, ord.BangsalName, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+                       ord.DokterId, ord.DokterName, ord.TipeJaminanId, ord.TipeJaminanName, ord.ClinicalNotes
+                FROM BILRG_AdmInpatientOrder ord
+                LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (3, 4) AND ord.InpatientOrderId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = reservationId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (rsv is null)
             return null;
 
-        var admission = FindAdmissionByReservation(conn, reservationId, rsv.RealizedRegId);
+        var admission = await FindAdmissionByReservationAsync(conn, reservationId, rsv.RealizedRegId, cancellationToken);
         if (admission is not null)
-            return LoadAdmissionBag(conn, admission, JourneyOriginKind.Reservation, opname: null, rsv);
+            return await LoadAdmissionBagAsync(conn, admission, JourneyOriginKind.Reservation, opname: null, rsv, cancellationToken);
 
         var patient = BuildPatient(rsv.PasienId, rsv.PasienName, rsv.Gender, rsv.TglLahir);
         var facts = new JourneyNormalizedFacts(
@@ -430,7 +491,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 rsv.ReservationId,
                 (ReservationStatusEnum)rsv.ReservationStatus,
                 NullDash(rsv.RealizedRegId),
-                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate),
+                rsv.UpdDate == VoidSentinel ? rsv.CrtDate : rsv.UpdDate,
+                rsv.CrtDate),
             [],
             []);
 
@@ -440,9 +502,9 @@ public sealed partial class JourneyDal : IJourneyDal
             Named(rsv.KelasId, rsv.KelasName),
             Named(rsv.BangsalId, rsv.BangsalName),
             Priority: null,
-            Doctor: null,
-            Guarantor: null,
-            ClinicalNotes: null,
+            Doctor: Named(rsv.DokterId, rsv.DokterName),
+            Guarantor: Named(rsv.TipeJaminanId, rsv.TipeJaminanName),
+            ClinicalNotes: string.IsNullOrWhiteSpace(rsv.ClinicalNotes) ? null : rsv.ClinicalNotes,
             ProcedureSummary: null,
             ReferringDoctor: null,
             ReferralOrSourceSummary: "Reservation",
@@ -450,22 +512,21 @@ public sealed partial class JourneyDal : IJourneyDal
             AddressSummary: null);
     }
 
-    private JourneyFactBag? LoadRegJourney(IDbConnection conn, string regId, string journeyId)
+    private JourneyFactBag? LoadReservationJourney(IDbConnection conn, string reservationId, string journeyId) =>
+        LoadReservationJourneyAsync(conn, reservationId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag?> LoadRegJourneyAsync(
+        IDbConnection conn,
+        string regId,
+        string journeyId,
+        CancellationToken cancellationToken = default)
     {
-        var admission = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var admission = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
-                """
-                SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
-                       a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmAdmission a
-                LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-                WHERE a.VodDate = @VodDate AND a.RegId = @Id
-                """,
+                BuildLoadRegJourneySql(),
                 new { VodDate = VoidSentinel, Id = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (admission is null)
             return null;
 
@@ -473,11 +534,27 @@ public sealed partial class JourneyDal : IJourneyDal
         OpnameRowDto? opn = null;
         ReservationRowDto? rsv = null;
         if (HasId(admission.OpnameRequestId))
-            opn = LoadOpnameRow(conn, admission.OpnameRequestId);
+            opn = await LoadOpnameRowAsync(conn, admission.OpnameRequestId, cancellationToken);
         if (HasId(admission.ReservationId))
-            rsv = LoadReservationRow(conn, admission.ReservationId);
+            rsv = await LoadReservationRowAsync(conn, admission.ReservationId, cancellationToken);
 
-        return LoadAdmissionBag(conn, admission, origin, opn, rsv);
+        return await LoadAdmissionBagAsync(conn, admission, origin, opn, rsv, cancellationToken);
+    }
+
+    private JourneyFactBag? LoadRegJourney(IDbConnection conn, string regId, string journeyId) =>
+        LoadRegJourneyAsync(conn, regId, journeyId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JourneyFactBag> LoadAdmissionBagAsync(
+        IDbConnection conn,
+        AdmissionRowDto admission,
+        JourneyOriginKind origin,
+        OpnameRowDto? opname,
+        ReservationRowDto? reservation,
+        CancellationToken cancellationToken = default)
+    {
+        var wlRows = await LoadWaitingListRowsAsync(conn, admission.RegId, cancellationToken);
+        var regExtras = await LoadRegistrationExtrasAsync(conn, admission.RegId, cancellationToken);
+        return AssembleAdmissionBag(admission, origin, opname, reservation, wlRows, regExtras);
     }
 
     private JourneyFactBag LoadAdmissionBag(
@@ -485,12 +562,8 @@ public sealed partial class JourneyDal : IJourneyDal
         AdmissionRowDto admission,
         JourneyOriginKind origin,
         OpnameRowDto? opname,
-        ReservationRowDto? reservation)
-    {
-        var wlRows = LoadWaitingListRows(conn, admission.RegId);
-        var regExtras = LoadRegistrationExtras(conn, admission.RegId);
-        return AssembleAdmissionBag(admission, origin, opname, reservation, wlRows, regExtras);
-    }
+        ReservationRowDto? reservation) =>
+        LoadAdmissionBagAsync(conn, admission, origin, opname, reservation, CancellationToken.None).GetAwaiter().GetResult();
 
     internal JourneyFactBag AssembleAdmissionBag(
         AdmissionRowDto admission,
@@ -522,7 +595,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 opname.OpnameRequestId,
                 (OpnameRequestStatusEnum)opname.OpnameRequestStatus,
                 NullDash(opname.FulfilledRegId),
-                opname.UpdDate == VoidSentinel ? opname.CrtDate : opname.UpdDate);
+                opname.UpdDate == VoidSentinel ? opname.CrtDate : opname.UpdDate,
+                opname.CrtDate);
 
         ReservationJourneyFact? rsvFact = reservation is null
             ? null
@@ -530,13 +604,15 @@ public sealed partial class JourneyDal : IJourneyDal
                 reservation.ReservationId,
                 (ReservationStatusEnum)reservation.ReservationStatus,
                 NullDash(reservation.RealizedRegId),
-                reservation.UpdDate == VoidSentinel ? reservation.CrtDate : reservation.UpdDate);
+                reservation.UpdDate == VoidSentinel ? reservation.CrtDate : reservation.UpdDate,
+                reservation.CrtDate);
 
         if (origin == JourneyOriginKind.OpnameRequest && opnFact is null && HasId(admission.OpnameRequestId))
             opnFact = new OpnameRequestJourneyFact(
                 admission.OpnameRequestId,
                 OpnameRequestStatusEnum.Fulfilled,
                 admission.RegId,
+                admission.AdmissionDate,
                 admission.AdmissionDate);
 
         if (origin == JourneyOriginKind.Reservation && rsvFact is null && HasId(admission.ReservationId))
@@ -544,6 +620,7 @@ public sealed partial class JourneyDal : IJourneyDal
                 admission.ReservationId,
                 ReservationStatusEnum.Realized,
                 admission.RegId,
+                admission.AdmissionDate,
                 admission.AdmissionDate);
 
         var facts = new JourneyNormalizedFacts(
@@ -559,7 +636,9 @@ public sealed partial class JourneyDal : IJourneyDal
                     NullDash(admission.ReservationId),
                     admission.AdmissionDate,
                     NullDash(admission.BangsalId),
-                    admission.BangsalName)
+                    admission.BangsalName,
+                    admission.CrtDate,
+                    admission.UpdDate == VoidSentinel ? null : admission.UpdDate)
             ],
             waitingLists,
             HasOrphanRegistration: false);
@@ -613,115 +692,119 @@ public sealed partial class JourneyDal : IJourneyDal
             regExtras.NamaIbu);
     }
 
-    private AdmissionRowDto? FindAdmissionByOpname(IDbConnection conn, string opnameRequestId, string? fulfilledRegId)
+    private async Task<AdmissionRowDto?> FindAdmissionByOpnameAsync(
+        IDbConnection conn,
+        string opnameRequestId,
+        string? fulfilledRegId,
+        CancellationToken cancellationToken = default)
     {
-        var bySource = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var bySource = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
-                """
-                SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
-                       a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmAdmission a
-                LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-                WHERE a.VodDate = @VodDate AND a.OpnameRequestId = @OpnameRequestId
-                ORDER BY a.AdmissionDate DESC
-                """,
+                BuildFindAdmissionByOpnameSql(),
                 new { VodDate = VoidSentinel, OpnameRequestId = opnameRequestId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (bySource is not null)
             return bySource;
 
         if (!HasId(fulfilledRegId))
             return null;
 
-        return conn.QueryFirstOrDefault<AdmissionRowDto>(
+        return await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
-                """
-                SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
-                       a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmAdmission a
-                LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-                WHERE a.VodDate = @VodDate AND a.RegId = @RegId
-                """,
+                BuildFindAdmissionByOpnameFallbackSql(),
                 new { VodDate = VoidSentinel, RegId = fulfilledRegId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
     }
 
-    private AdmissionRowDto? FindAdmissionByReservation(IDbConnection conn, string reservationId, string? realizedRegId)
+    private AdmissionRowDto? FindAdmissionByOpname(IDbConnection conn, string opnameRequestId, string? fulfilledRegId) =>
+        FindAdmissionByOpnameAsync(conn, opnameRequestId, fulfilledRegId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<AdmissionRowDto?> FindAdmissionByReservationAsync(
+        IDbConnection conn,
+        string reservationId,
+        string? realizedRegId,
+        CancellationToken cancellationToken = default)
     {
-        var bySource = conn.QueryFirstOrDefault<AdmissionRowDto>(
+        var bySource = await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
-                """
-                SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
-                       a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmAdmission a
-                LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-                WHERE a.VodDate = @VodDate AND a.ReservationId = @ReservationId
-                ORDER BY a.AdmissionDate DESC
-                """,
+                BuildFindAdmissionByReservationSql(),
                 new { VodDate = VoidSentinel, ReservationId = reservationId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
         if (bySource is not null)
             return bySource;
 
         if (!HasId(realizedRegId))
             return null;
 
-        return conn.QueryFirstOrDefault<AdmissionRowDto>(
+        return await conn.QueryFirstOrDefaultAsync<AdmissionRowDto>(
             new CommandDefinition(
-                """
-                SELECT a.RegId, a.AdmissionStatus, a.PasienId, a.OpnameRequestId, a.ReservationId,
-                       a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmAdmission a
-                LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-                WHERE a.VodDate = @VodDate AND a.RegId = @RegId
-                """,
+                BuildFindAdmissionByReservationFallbackSql(),
                 new { VodDate = VoidSentinel, RegId = realizedRegId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
     }
 
-    private OpnameRowDto? LoadOpnameRow(IDbConnection conn, string id) =>
-        conn.QueryFirstOrDefault<OpnameRowDto>(
+    private AdmissionRowDto? FindAdmissionByReservation(IDbConnection conn, string reservationId, string? realizedRegId) =>
+        FindAdmissionByReservationAsync(conn, reservationId, realizedRegId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<OpnameRowDto?> LoadOpnameRowAsync(
+        IDbConnection conn,
+        string id,
+        CancellationToken cancellationToken = default) =>
+        await conn.QueryFirstOrDefaultAsync<OpnameRowDto>(
             new CommandDefinition(
                 """
-                SELECT o.OpnameRequestId, o.OpnameRequestStatus, o.FulfilledRegId, o.PasienId,
-                       o.DokterId, o.DokterName, o.ClinicalNotes, o.PlannedDate, o.CrtDate, o.UpdDate,
-                       ISNULL(mr.fs_nm_pasien,'') AS PasienName,
-                       ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-                       CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
-                FROM BILRG_AdmOpnameRequest o
-                LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
-                WHERE o.VodDate = @VodDate AND o.OpnameRequestId = @Id
+                SELECT ord.InpatientOrderId AS OpnameRequestId,
+                       CASE WHEN ord.OrderStatus = 2 THEN 1 WHEN ord.OrderStatus = 3 THEN 2 ELSE 0 END AS OpnameRequestStatus,
+                       ord.FulfilledRegId, ord.PasienId,
+                       ord.DokterId, ord.DokterName, ord.ClinicalNotes, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+                       ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+                       ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+                       CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+                FROM BILRG_AdmInpatientOrder ord
+                LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = id },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
+
+    private OpnameRowDto? LoadOpnameRow(IDbConnection conn, string id) =>
+        LoadOpnameRowAsync(conn, id, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<ReservationRowDto?> LoadReservationRowAsync(
+        IDbConnection conn,
+        string id,
+        CancellationToken cancellationToken = default) =>
+        await conn.QueryFirstOrDefaultAsync<ReservationRowDto>(
+            new CommandDefinition(
+                """
+                SELECT ord.InpatientOrderId AS ReservationId, ord.OrderStatus AS ReservationStatus,
+                       ord.FulfilledRegId AS RealizedRegId, ord.PasienId,
+                       ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+                       ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
+                       CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE '3000-01-01' END AS TglLahir,
+                       ord.KelasId, ord.KelasName, ord.BangsalId, ord.BangsalName, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
+                       ord.DokterId, ord.DokterName, ord.TipeJaminanId, ord.TipeJaminanName, ord.ClinicalNotes
+                FROM BILRG_AdmInpatientOrder ord
+                LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (3, 4) AND ord.InpatientOrderId = @Id
+                """,
+                new { VodDate = VoidSentinel, Id = id },
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
     private ReservationRowDto? LoadReservationRow(IDbConnection conn, string id) =>
-        conn.QueryFirstOrDefault<ReservationRowDto>(
-            new CommandDefinition(
-                """
-                SELECT r.ReservationId, r.ReservationStatus, r.RealizedRegId, r.PasienId,
-                       ISNULL(r.PasienName,'') AS PasienName, ISNULL(r.Gender,'') AS Gender, r.TglLahir,
-                       r.KelasId, r.KelasName, r.BangsalId, r.BangsalName, r.PlannedDate, r.CrtDate, r.UpdDate
-                FROM BILRG_AdmReservation r
-                WHERE r.VodDate = @VodDate AND r.ReservationId = @Id
-                """,
-                new { VodDate = VoidSentinel, Id = id },
-                commandTimeout: CommandTimeoutSeconds));
+        LoadReservationRowAsync(conn, id, CancellationToken.None).GetAwaiter().GetResult();
 
-    private IReadOnlyList<WaitingListJourneyFact> LoadWaitingLists(IDbConnection conn, string regId) =>
-        LoadWaitingListRows(conn, regId)
+    private async Task<IReadOnlyList<WaitingListJourneyFact>> LoadWaitingListsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        (await LoadWaitingListRowsAsync(conn, regId, cancellationToken))
             .Select(r => new WaitingListJourneyFact(
                 r.WaitingListId,
                 r.RegId,
@@ -731,8 +814,14 @@ public sealed partial class JourneyDal : IJourneyDal
                 r.BangsalName))
             .ToList();
 
-    private IReadOnlyList<WaitingListRowDto> LoadWaitingListRows(IDbConnection conn, string regId) =>
-        (conn.Query<WaitingListRowDto>(
+    private IReadOnlyList<WaitingListJourneyFact> LoadWaitingLists(IDbConnection conn, string regId) =>
+        LoadWaitingListsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<IReadOnlyList<WaitingListRowDto>> LoadWaitingListRowsAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default) =>
+        ((await conn.QueryAsync<WaitingListRowDto>(
             new CommandDefinition(
                 """
                 SELECT WaitingListId, RegId, WaitingListStatus, BangsalId, BangsalName,
@@ -742,11 +831,18 @@ public sealed partial class JourneyDal : IJourneyDal
                 ORDER BY CASE WHEN UpdDate = @VodDate THEN CrtDate ELSE UpdDate END ASC, WaitingListId ASC
                 """,
                 new { VodDate = VoidSentinel, RegId = regId },
-                commandTimeout: CommandTimeoutSeconds)) ?? []).ToList();
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken))) ?? []).ToList();
 
-    private RegExtras LoadRegistrationExtras(IDbConnection conn, string regId)
+    private IReadOnlyList<WaitingListRowDto> LoadWaitingListRows(IDbConnection conn, string regId) =>
+        LoadWaitingListRowsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<RegExtras> LoadRegistrationExtrasAsync(
+        IDbConnection conn,
+        string regId,
+        CancellationToken cancellationToken = default)
     {
-        var row = conn.QueryFirstOrDefault<RegExtrasRowDto>(
+        var row = await conn.QueryFirstOrDefaultAsync<RegExtrasRowDto>(
             new CommandDefinition(
                 """
                 SELECT
@@ -785,7 +881,8 @@ public sealed partial class JourneyDal : IJourneyDal
                 LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
                 """,
                 new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds));
+                commandTimeout: CommandTimeoutSeconds,
+                cancellationToken: cancellationToken));
 
         if (row is null)
             return RegExtras.Empty;
@@ -807,12 +904,18 @@ public sealed partial class JourneyDal : IJourneyDal
             effectiveNamaIbu);
     }
 
-    private SqlConnection Open()
+    private RegExtras LoadRegistrationExtras(IDbConnection conn, string regId) =>
+        LoadRegistrationExtrasAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken = default)
     {
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Open();
+        await conn.OpenAsync(cancellationToken);
         return conn;
     }
+
+    private SqlConnection Open() =>
+        OpenAsync(CancellationToken.None).GetAwaiter().GetResult();
 
     private DynamicParameters BuildCommonParams(JourneyListFilter filter)
     {
@@ -871,6 +974,13 @@ public sealed partial class JourneyDal : IJourneyDal
 
         return dp;
     }
+
+    private static string BuildFacetAndPageSql(JourneyListFilter filter) =>
+        $"""
+        {BuildFacetSql(filter)};
+
+        {BuildPageSql(filter)};
+        """;
 
     private static string BuildFacetSql(JourneyListFilter filter) =>
         $"""
@@ -944,100 +1054,96 @@ public sealed partial class JourneyDal : IJourneyDal
             WHERE w.VodDate = @VodDate
             GROUP BY w.RegId
         ),
-        OpnameMulti AS (
-            SELECT OpnameRequestId
+        OrderMulti AS (
+            SELECT InpatientOrderId
             FROM BILRG_AdmAdmission
-            WHERE VodDate = @VodDate AND OpnameRequestId NOT IN ('','-')
-            GROUP BY OpnameRequestId
-            HAVING COUNT(*) > 1
-        ),
-        ReservationMulti AS (
-            SELECT ReservationId
-            FROM BILRG_AdmAdmission
-            WHERE VodDate = @VodDate AND ReservationId NOT IN ('','-')
-            GROUP BY ReservationId
+            WHERE VodDate = @VodDate AND InpatientOrderId NOT IN ('','-')
+            GROUP BY InpatientOrderId
             HAVING COUNT(*) > 1
         ),
         ProspectiveOpname AS (
             SELECT
-                CAST('opn:' + o.OpnameRequestId AS VARCHAR(64)) AS JourneyId,
+                CAST('opn:' + o.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
                 0 AS OriginKind,
                 CAST(NULL AS VARCHAR(10)) AS RegId,
-                o.OpnameRequestId AS SourceOpnameRequestId,
+                o.InpatientOrderId AS SourceOpnameRequestId,
                 CAST(NULL AS VARCHAR(12)) AS SourceReservationId,
                 o.PasienId,
-                ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+                ISNULL(NULLIF(o.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
                 o.DokterId,
                 o.DokterName,
-                CAST('' AS VARCHAR(15)) AS KelasId,
-                CAST('' AS VARCHAR(40)) AS KelasName,
-                CAST('' AS VARCHAR(5)) AS BangsalId,
-                CAST('' AS VARCHAR(40)) AS BangsalName,
-                CAST('' AS VARCHAR(15)) AS TipeJaminanId,
-                CAST('' AS VARCHAR(40)) AS TipeJaminanName,
+                o.KelasId,
+                o.KelasName,
+                o.BangsalId,
+                o.BangsalName,
+                o.TipeJaminanId,
+                o.TipeJaminanName,
                 CAST(NULL AS INT) AS Priority,
                 CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END AS SortAt,
                 CASE
-                    WHEN o.OpnameRequestStatus = 1 THEN 1
+                    WHEN o.OrderStatus = 2 THEN 1
                     ELSE 0
                 END AS HasBlockingIntegrity,
                 0 AS AdmissionCancelled,
-                CASE WHEN o.OpnameRequestStatus = 2 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
+                CASE WHEN o.OrderStatus = 3 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
                 0 AS AdmissionCompletedWithoutAuthority,
                 CAST(NULL AS INT) AS ActiveWaitingListStatus,
                 0 AS HasClosedHandover,
                 0 AS HasActiveAdmission,
-                CASE WHEN o.OpnameRequestStatus = 0 THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
+                CASE WHEN o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
                 0 AS ProspectiveReservationReady
-            FROM BILRG_AdmOpnameRequest o
+            FROM BILRG_AdmInpatientOrder o
             LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
             WHERE o.VodDate = @VodDate
+              AND o.OrderSource IN (1, 2)
               AND NOT EXISTS (
                     SELECT 1 FROM BILRG_AdmAdmission a
-                    WHERE a.VodDate = @VodDate AND a.OpnameRequestId = o.OpnameRequestId)
+                    WHERE a.VodDate = @VodDate 
+                      AND a.InpatientOrderId = o.InpatientOrderId)
         ),
         ProspectiveReservation AS (
             SELECT
-                CAST('rsv:' + r.ReservationId AS VARCHAR(64)) AS JourneyId,
+                CAST('rsv:' + r.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
                 1 AS OriginKind,
                 CAST(NULL AS VARCHAR(10)) AS RegId,
                 CAST(NULL AS VARCHAR(12)) AS SourceOpnameRequestId,
-                r.ReservationId AS SourceReservationId,
+                r.InpatientOrderId AS SourceReservationId,
                 r.PasienId,
-                ISNULL(r.PasienName,'') AS PasienName,
-                CAST('' AS VARCHAR(15)) AS DokterId,
-                CAST('' AS VARCHAR(40)) AS DokterName,
+                ISNULL(NULLIF(r.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
+                r.DokterId,
+                r.DokterName,
                 r.KelasId,
                 r.KelasName,
                 r.BangsalId,
                 r.BangsalName,
-                CAST('' AS VARCHAR(15)) AS TipeJaminanId,
-                CAST('' AS VARCHAR(40)) AS TipeJaminanName,
+                r.TipeJaminanId,
+                r.TipeJaminanName,
                 CAST(NULL AS INT) AS Priority,
                 CASE WHEN r.UpdDate = @VodDate THEN r.PlannedDate ELSE r.UpdDate END AS SortAt,
-                CASE WHEN r.ReservationStatus = 2 THEN 1 ELSE 0 END AS HasBlockingIntegrity,
+                CASE WHEN r.OrderStatus = 2 THEN 1 ELSE 0 END AS HasBlockingIntegrity,
                 0 AS AdmissionCancelled,
-                CASE WHEN r.ReservationStatus = 3 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
+                CASE WHEN r.OrderStatus = 3 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
                 0 AS AdmissionCompletedWithoutAuthority,
                 CAST(NULL AS INT) AS ActiveWaitingListStatus,
                 0 AS HasClosedHandover,
                 0 AS HasActiveAdmission,
                 0 AS ProspectiveOpnameRequested,
-                CASE WHEN r.ReservationStatus IN (0,1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
-            FROM BILRG_AdmReservation r
+                CASE WHEN r.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
+            FROM BILRG_AdmInpatientOrder r
+            LEFT JOIN tc_mr mr ON r.PasienId = mr.fs_mr
             WHERE r.VodDate = @VodDate
+              AND r.OrderSource IN (3, 4)
               AND NOT EXISTS (
                     SELECT 1 FROM BILRG_AdmAdmission a
-                    WHERE a.VodDate = @VodDate AND a.ReservationId = r.ReservationId)
+                    WHERE a.VodDate = @VodDate 
+                      AND a.InpatientOrderId = r.InpatientOrderId)
         ),
         AdmissionRoots AS (
             SELECT
                 CAST(
                     CASE
                         WHEN (
-                            (a.OpnameRequestId NOT IN ('','-') AND a.ReservationId NOT IN ('','-'))
-                            OR (a.OpnameRequestId NOT IN ('','-') AND om.OpnameRequestId IS NOT NULL)
-                            OR (a.ReservationId NOT IN ('','-') AND rm.ReservationId IS NOT NULL)
+                            (a.InpatientOrderId NOT IN ('','-') AND om.InpatientOrderId IS NOT NULL)
                             OR ISNULL(wl.ActiveCount,0) > 1
                             OR a.AdmissionStatus = 3
                             OR (a.AdmissionStatus = 4 AND ISNULL(wl.ActiveCount,0) > 0)
@@ -1052,34 +1158,34 @@ public sealed partial class JourneyDal : IJourneyDal
                                 o.OpnameRequestId IS NOT NULL AND o.OpnameRequestStatus = 1
                                 AND (
                                     ISNULL(NULLIF(LTRIM(RTRIM(o.FulfilledRegId)),''),'-') <> a.RegId
-                                    OR a.OpnameRequestId <> o.OpnameRequestId
+                                    OR a.InpatientOrderId <> o.OpnameRequestId
                                 )
                             )
                             OR (
                                 rs.ReservationId IS NOT NULL AND rs.ReservationStatus = 2
                                 AND (
                                     ISNULL(NULLIF(LTRIM(RTRIM(rs.RealizedRegId)),''),'-') <> a.RegId
-                                    OR a.ReservationId <> rs.ReservationId
+                                    OR a.InpatientOrderId <> rs.ReservationId
                                 )
                             )
                         ) THEN 'reg:' + a.RegId
-                        WHEN a.OpnameRequestId NOT IN ('','-') AND a.ReservationId IN ('','-')
-                            THEN 'opn:' + a.OpnameRequestId
-                        WHEN a.ReservationId NOT IN ('','-') AND a.OpnameRequestId IN ('','-')
-                            THEN 'rsv:' + a.ReservationId
+                        WHEN a.InpatientOrderId NOT IN ('','-') AND o.OpnameRequestId IS NOT NULL
+                            THEN 'opn:' + a.InpatientOrderId
+                        WHEN a.InpatientOrderId NOT IN ('','-') AND rs.ReservationId IS NOT NULL
+                            THEN 'rsv:' + a.InpatientOrderId
                         ELSE 'reg:' + a.RegId
                     END AS VARCHAR(64)
                 ) AS JourneyId,
                 CASE
-                    WHEN a.OpnameRequestId NOT IN ('','-') AND a.ReservationId IN ('','-') THEN 0
-                    WHEN a.ReservationId NOT IN ('','-') AND a.OpnameRequestId IN ('','-') THEN 1
+                    WHEN a.InpatientOrderId NOT IN ('','-') AND o.OpnameRequestId IS NOT NULL THEN 0
+                    WHEN a.InpatientOrderId NOT IN ('','-') AND rs.ReservationId IS NOT NULL THEN 1
                     ELSE 2
                 END AS OriginKind,
                 a.RegId,
-                NULLIF(a.OpnameRequestId,'-') AS SourceOpnameRequestId,
-                NULLIF(a.ReservationId,'-') AS SourceReservationId,
+                o.OpnameRequestId AS SourceOpnameRequestId,
+                rs.ReservationId AS SourceReservationId,
                 a.PasienId,
-                ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+                ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(mr.fs_nm_pasien)),''), NULLIF(LTRIM(RTRIM(a.PasienId)),'')), '') AS PasienName,
                 ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.DokterId)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),''), NULLIF(LTRIM(RTRIM(o.DokterId)),'')), '') AS DokterId,
                 ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.DokterName)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(o.DokterName)),'')), '') AS DokterName,
                 COALESCE(NULLIF(a.KelasDkId,'-'), NULLIF(wl.WlKelasId,'-'), NULLIF(rs.KelasId,'-'), ISNULL(reg.fs_kd_kelas,'')) AS KelasId,
@@ -1091,9 +1197,7 @@ public sealed partial class JourneyDal : IJourneyDal
                 wl.Priority,
                 COALESCE(wl.ActiveStatusAt, wl.LastWlAt, a.AdmissionDate, a.CrtDate) AS SortAt,
                 CASE
-                    WHEN (a.OpnameRequestId NOT IN ('','-') AND a.ReservationId NOT IN ('','-')) THEN 1
-                    WHEN (a.OpnameRequestId NOT IN ('','-') AND om.OpnameRequestId IS NOT NULL) THEN 1
-                    WHEN (a.ReservationId NOT IN ('','-') AND rm.ReservationId IS NOT NULL) THEN 1
+                    WHEN (a.InpatientOrderId NOT IN ('','-') AND om.InpatientOrderId IS NOT NULL) THEN 1
                     WHEN ISNULL(wl.ActiveCount,0) > 1 THEN 1
                     WHEN a.AdmissionStatus = 3 THEN 1
                     WHEN (a.AdmissionStatus = 4 AND ISNULL(wl.ActiveCount,0) > 0) THEN 1
@@ -1108,14 +1212,14 @@ public sealed partial class JourneyDal : IJourneyDal
                         o.OpnameRequestId IS NOT NULL AND o.OpnameRequestStatus = 1
                         AND (
                             ISNULL(NULLIF(LTRIM(RTRIM(o.FulfilledRegId)),''),'-') <> a.RegId
-                            OR a.OpnameRequestId <> o.OpnameRequestId
+                            OR a.InpatientOrderId <> o.OpnameRequestId
                         )
                     ) THEN 1
                     WHEN (
                         rs.ReservationId IS NOT NULL AND rs.ReservationStatus = 2
                         AND (
                             ISNULL(NULLIF(LTRIM(RTRIM(rs.RealizedRegId)),''),'-') <> a.RegId
-                            OR a.ReservationId <> rs.ReservationId
+                            OR a.InpatientOrderId <> rs.ReservationId
                         )
                     ) THEN 1
                     ELSE 0
@@ -1135,26 +1239,43 @@ public sealed partial class JourneyDal : IJourneyDal
                 0 AS ProspectiveReservationReady
             FROM BILRG_AdmAdmission a
             LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
-            LEFT JOIN BILRG_AdmOpnameRequest o
-                ON o.OpnameRequestId = a.OpnameRequestId AND o.VodDate = @VodDate AND a.OpnameRequestId NOT IN ('','-')
-            LEFT JOIN BILRG_AdmReservation rs
-                ON rs.ReservationId = a.ReservationId AND rs.VodDate = @VodDate AND a.ReservationId NOT IN ('','-')
+            LEFT JOIN (
+                SELECT 
+                    InpatientOrderId AS OpnameRequestId,
+                    CASE WHEN OrderStatus = 2 THEN 1 WHEN OrderStatus = 3 THEN 2 ELSE 0 END AS OpnameRequestStatus,
+                    FulfilledRegId,
+                    DokterId,
+                    DokterName
+                FROM BILRG_AdmInpatientOrder
+                WHERE VodDate = @VodDate AND OrderSource IN (1, 2)
+            ) o ON a.InpatientOrderId <> '-' AND a.InpatientOrderId = o.OpnameRequestId
+            LEFT JOIN (
+                SELECT 
+                    InpatientOrderId AS ReservationId,
+                    OrderStatus AS ReservationStatus,
+                    FulfilledRegId AS RealizedRegId,
+                    KelasId,
+                    KelasName,
+                    BangsalId,
+                    BangsalName
+                FROM BILRG_AdmInpatientOrder
+                WHERE VodDate = @VodDate AND OrderSource IN (3, 4)
+            ) rs ON a.InpatientOrderId <> '-' AND a.InpatientOrderId = rs.ReservationId
             LEFT JOIN WlAgg wl ON wl.RegId = a.RegId
-            LEFT JOIN OpnameMulti om ON om.OpnameRequestId = a.OpnameRequestId
-            LEFT JOIN ReservationMulti rm ON rm.ReservationId = a.ReservationId
+            LEFT JOIN OrderMulti om ON om.InpatientOrderId = a.InpatientOrderId
             LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = a.RegId
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
             LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
-            LEFT JOIN (
-                SELECT h.fs_kd_reg,
-                       MAX(h.fs_kd_dokter) AS DokterId,
-                       MAX(ISNULL(p.fs_nm_peg,'')) AS DokterName
+            OUTER APPLY (
+                SELECT TOP 1 h.fs_kd_dokter AS DokterId, ISNULL(p.fs_nm_peg, '') AS DokterName
                 FROM ta_reg_history_dokter h
                 LEFT JOIN td_peg p ON h.fs_kd_dokter = p.fs_kd_peg
-                WHERE ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
-                GROUP BY h.fs_kd_reg
-            ) hd ON hd.fs_kd_reg = a.RegId
+                WHERE h.fs_kd_reg = a.RegId
+                  AND ISNULL(LTRIM(RTRIM(h.fd_tgl_selesai)),'') = ''
+                ORDER BY h.fd_tgl_mulai DESC
+            ) hd
             WHERE a.VodDate = @VodDate
+              AND (@ScopeActive = 0 OR a.AdmissionStatus <> 4)
         ),
         JourneyUnion AS (
             SELECT * FROM ProspectiveOpname
@@ -1292,7 +1413,12 @@ public sealed partial class JourneyDal : IJourneyDal
         string BangsalName,
         DateTime PlannedDate,
         DateTime CrtDate,
-        DateTime UpdDate);
+        DateTime UpdDate,
+        string DokterId = "",
+        string DokterName = "",
+        string TipeJaminanId = "",
+        string TipeJaminanName = "",
+        string ClinicalNotes = "");
 
     internal sealed record AdmissionRowDto(
         string RegId,
@@ -1322,6 +1448,85 @@ public sealed partial class JourneyDal : IJourneyDal
         int Priority,
         DateTime CrtDate,
         DateTime UpdDate);
+
+    internal static string BuildFindAdmissionByOpnameSql() =>
+        """
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
+               a.InpatientOrderId AS OpnameRequestId,
+               '-' AS ReservationId,
+               a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
+               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmAdmission a
+        LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        WHERE a.VodDate = @VodDate AND a.InpatientOrderId = @OpnameRequestId
+        ORDER BY a.AdmissionDate DESC
+        """;
+
+    internal static string BuildFindAdmissionByOpnameFallbackSql() =>
+        """
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
+               a.InpatientOrderId AS OpnameRequestId,
+               '-' AS ReservationId,
+               a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
+               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmAdmission a
+        LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        WHERE a.VodDate = @VodDate AND a.RegId = @RegId
+        """;
+
+    internal static string BuildFindAdmissionByReservationSql() =>
+        """
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
+               '-' AS OpnameRequestId,
+               a.InpatientOrderId AS ReservationId,
+               a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
+               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmAdmission a
+        LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        WHERE a.VodDate = @VodDate AND a.InpatientOrderId = @ReservationId
+        ORDER BY a.AdmissionDate DESC
+        """;
+
+    internal static string BuildFindAdmissionByReservationFallbackSql() =>
+        """
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
+               '-' AS OpnameRequestId,
+               a.InpatientOrderId AS ReservationId,
+               a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
+               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmAdmission a
+        LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        WHERE a.VodDate = @VodDate AND a.RegId = @RegId
+        """;
+
+    internal static string BuildLoadRegJourneySql() =>
+        """
+        SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
+               CASE 
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId
+                   ELSE '-'
+               END AS OpnameRequestId,
+               CASE 
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (3, 4) THEN a.InpatientOrderId
+                   ELSE '-'
+               END AS ReservationId,
+               a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
+               ISNULL(mr.fs_nm_pasien,'') AS PasienName,
+               ISNULL(mr.fs_jns_kelamin,'') AS Gender,
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+        FROM BILRG_AdmAdmission a
+        LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
+        LEFT JOIN BILRG_AdmInpatientOrder io ON a.InpatientOrderId = io.InpatientOrderId AND io.VodDate = @VodDate
+        WHERE a.VodDate = @VodDate AND a.RegId = @Id
+        """;
 
     internal sealed record RegExtrasRowDto(
         string TipeJaminanId,

@@ -1,5 +1,6 @@
 using Bilreg.Api.Filters;
-using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
+using Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -19,8 +20,27 @@ public class OpnameRequestController : ControllerBase
     public OpnameRequestController(IMediator mediator) => _mediator = mediator;
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] AdmCreateOpnameRequestCmd cmd)
+    public async Task<IActionResult> Create([FromBody] AdmCreateOpnameRequestPostModel body)
     {
+        var extRef = !string.IsNullOrWhiteSpace(body.ExternalReferenceId)
+            ? body.ExternalReferenceId
+            : (!string.IsNullOrWhiteSpace(body.TrsOrderId) ? body.TrsOrderId : "-");
+
+        var orderSource = body.OrderSource ?? OrderSourceEnum.EmrRawatJalan;
+        var extSource = !string.IsNullOrWhiteSpace(body.ExternalSystemSource)
+            ? body.ExternalSystemSource
+            : (orderSource == OrderSourceEnum.EmrIgd ? "EMR_IGD" : "EMR_RJ");
+
+        var cmd = new AdmCreateOpnameRequestCmd(
+            body.PasienId,
+            body.DokterId,
+            body.PlannedDate,
+            body.ClinicalNotes ?? "",
+            extRef,
+            body.UserId,
+            extSource,
+            orderSource);
+
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -28,7 +48,7 @@ public class OpnameRequestController : ControllerBase
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(string id, [FromBody] AdmCancelOpnameRequestBody body)
     {
-        await _mediator.Send(new AdmCancelOpnameRequestCmd(id, body.UserId));
+        await _mediator.Send(new AdmCancelInpatientOrderCmd(id, body.UserId, body.Reason));
         return Ok(new JSendOk("Done"));
     }
 
@@ -47,9 +67,10 @@ public class OpnameRequestController : ControllerBase
     }
 
     [HttpPatch("{id}/setInsurance")]
+    [HttpPut("{id}/insurance")]
     public async Task<IActionResult> SetInsurance(string id, [FromBody] AdmSetInsuranceRequestBody body)
     {
-        await _mediator.Send(new AdmSetInsuranceOpnameRequestCmd(id, body.TipeJaminanId, body.ReffId, body.UserId));
+        await _mediator.Send(new AdmSetInpatientOrderInsuranceCmd(id, body.TipeJaminanId, body.ReffId, body.UserId));
         return Ok(new JSendOk("Done"));
     }
     
@@ -58,11 +79,20 @@ public class OpnameRequestController : ControllerBase
     {
         var result = await _mediator.Send(new AdmGetOpnameRequestByTrsOrderIdQry(trsOrderId));
         return Ok(new JSendOk(result));
-        
     }
 }
 
-public record AdmCancelOpnameRequestBody(string UserId);
+public record AdmCreateOpnameRequestPostModel(
+    string PasienId,
+    string DokterId,
+    string PlannedDate,
+    string ClinicalNotes,
+    string UserId,
+    string? ExternalReferenceId = null,
+    string? ExternalSystemSource = null,
+    string? TrsOrderId = null,
+    OrderSourceEnum? OrderSource = null);
 
-public record AdmSetInsuranceRequestBody(string TipeJaminanId,
-    string ReffId, string UserId);
+public record AdmCancelOpnameRequestBody(string UserId, string Reason);
+
+public record AdmSetInsuranceRequestBody(string TipeJaminanId, string ReffId, string UserId);

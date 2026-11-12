@@ -11,7 +11,7 @@ public interface IBrgRepo :
 {
 }
 
-public record BrgView(string BrgId, string BrgName, string KetBarang, string GroupRekDkId)
+public record BrgView(string BrgId, string BrgName, string KetBarang, string GroupRekDkId, bool IsAktif = true)
 {
     public static BrgView FromModel(IBrg model)
     {
@@ -19,6 +19,8 @@ public record BrgView(string BrgId, string BrgName, string KetBarang, string Gro
             model.BrgId,
             model.BrgName,
             model.KetBarang,
-            model.GroupRekDk.GroupRekDkId);
+            model.GroupRekDk.GroupRekDkId,
+            model.IsAktif);
     }
 };
+

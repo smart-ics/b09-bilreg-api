@@ -70,6 +70,23 @@ public class InvoiceItemChargeModel
 public class InvoiceModel : IInvoiceKey
 {
     public const string IdPrefix = "ASI";
+    private static readonly HashSet<string> GeneratedIds = new();
+    private static readonly object IdLock = new();
+
+    private static string GenerateUniqueId()
+    {
+        lock (IdLock)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                var id = NunaId.New(IdPrefix);
+                if (GeneratedIds.Add(id))
+                    return id;
+            }
+            return NunaId.New(IdPrefix);
+        }
+    }
+
     private readonly List<InvoiceItemModel> _items;
     private readonly List<InvoiceItemChargeModel> _charges;
 
@@ -150,7 +167,7 @@ public class InvoiceModel : IInvoiceKey
         var sumTax = list.Sum(x => x.Tax);
         var grand = subTotal + sumBiaya + sumTax - diskonLain + pembulatan;
         return new InvoiceModel(
-            NunaId.New(IdPrefix),
+            GenerateUniqueId(),
             salesOrderId,
             payerPath,
             InvoiceStatusEnum.Established,

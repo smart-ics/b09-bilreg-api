@@ -127,6 +127,91 @@ public class WardAccommodationGatewayTest
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void UT08_GivenValidKelasId_WhenResolveEntity_ThenReturnsKelasType()
+    {
+        var expectedKelas = KelasType.Default with
+        {
+            KelasId = "K1",
+            KelasName = "Kelas 1",
+            IsAktif = true,
+            KelasDk = new KelasDkType("1", "Kelas DK 1")
+        };
+        _kelasRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K1")))
+            .Returns(MayBe.From(expectedKelas));
+
+        var gateway = CreateGateway();
+        var result = gateway.ResolveKelasEntity("K1");
+
+        result.KelasId.Should().Be("K1");
+        result.KelasName.Should().Be("Kelas 1");
+        result.KelasDk.KelasDkId.Should().Be("1");
+    }
+
+    [Fact]
+    public void UT09_GivenEligibleBangsalAndActiveKelas_WhenResolveKelasForCareClass_ThenReturnsKelasReff()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns([new BangsalReff("B1", "Bangsal A")]);
+
+        var activeKelas = new KelasType("K1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"));
+        var inactiveKelas = new KelasType("K0", "Kelas Inactive", false, new KelasDkType("1", "Kelas DK 1"));
+        var otherKelas = new KelasType("K2", "Kelas 2", true, new KelasDkType("2", "Kelas DK 2"));
+        _kelasRepoMock
+            .Setup(x => x.ListData())
+            .Returns([inactiveKelas, activeKelas, otherKelas]);
+
+        var gateway = CreateGateway();
+        var result = gateway.ResolveKelasForCareClass("B1", "1");
+
+        result.KelasId.Should().Be("K1");
+        result.KelasName.Should().Be("Kelas 1");
+    }
+
+    [Fact]
+    public void UT10_GivenIneligibleBangsal_WhenResolveKelasForCareClass_ThenThrows()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns([new BangsalReff("B1", "Bangsal A")]);
+
+        var gateway = CreateGateway();
+        var act = () => gateway.ResolveKelasForCareClass("B9", "1");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak memenuhi syarat*");
+    }
+
+    [Fact]
+    public void UT11_GivenEligibleBangsalButNoActiveKelas_WhenResolveKelasForCareClass_ThenThrows()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns([new BangsalReff("B1", "Bangsal A")]);
+
+        var otherKelas = new KelasType("K2", "Kelas 2", true, new KelasDkType("2", "Kelas DK 2"));
+        _kelasRepoMock
+            .Setup(x => x.ListData())
+            .Returns([otherKelas]);
+
+        var gateway = CreateGateway();
+        var act = () => gateway.ResolveKelasForCareClass("B1", "1");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Kelas aktif untuk Care Class '1' tidak ditemukan*");
+    }
+
     private WardAccommodationGateway CreateGateway() =>
         new(
             _kelasRepoMock.Object,

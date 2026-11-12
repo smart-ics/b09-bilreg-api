@@ -24,8 +24,10 @@ public class PenjualanModelTest
         EtiketType.Create("3x1", "3x1 tablet", AppConst.DASH);
 
     private static LayananType LayananJual() =>
-        LayananType.Create("LYJ01", InstalasiType.Default, LayananDkType.Default.ToReff(),  
-            TipeLayananDkType.Default, new UnitReff("-","-"), 
+        new("LYJ01", "Apotek RJ", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),  
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            UnitType.Default.ToReff(), 
             new PoliBpjsReff("-","-"));
 
     private static TipeJaminanReff TipeJaminan() =>

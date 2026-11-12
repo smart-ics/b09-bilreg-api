@@ -8,5 +8,6 @@ public interface ITelaahResepRepo :
     ISaveChange<TelaahResepModel>,
     ILoadEntity<TelaahResepModel, ITelaahResepKey>
 {
+    MayBe<TelaahResepModel> LoadByResep(string resepId);
     MayBe<TelaahResepModel> LoadByResepKerja(string resepKerjaId);
 }
