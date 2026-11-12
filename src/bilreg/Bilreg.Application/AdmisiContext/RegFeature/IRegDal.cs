@@ -1,6 +1,7 @@
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
@@ -18,4 +19,5 @@ public interface IRegDal :
     IListData<RegDto, DateTime>
 {
     IEnumerable<RegDto> ListDataByName(Dictionary<string, string[]> listName);
+    BangsalReff? GetAssignedBangsal(string regId);
 }

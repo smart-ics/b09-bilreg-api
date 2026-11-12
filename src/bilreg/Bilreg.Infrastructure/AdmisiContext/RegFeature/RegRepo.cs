@@ -156,14 +156,17 @@ public class RegRepo : IRegRepo
         if (jenisReg != JenisRegEnum.RegInap)
             return new BangsalReff("-", "-");
 
+        // 1. Prioritas utama: Cocokkan bangsal dari alokasi aktual (Pakai Bed aktif -> Transaksi Bed -> Admisi Ranap -> Inpatient Order / Reservasi)
+        var assigned = _regDal.GetAssignedBangsal(regId);
+        if (assigned is not null && !string.IsNullOrWhiteSpace(assigned.BangsalId) && assigned.BangsalId != "-")
+            return assigned;
+
+        // 2. Fallback: Cocokkan dari master data ta_bangsal berdasarkan layanan registrasi
         var listBangsal = _bangsalRepo.ListData(layanan).ToList();
         return listBangsal.Count switch
         {
-            1 => listBangsal[0].ToReff(),
-            0 => throw new InvalidOperationException(
-                $"Bangsal untuk Layanan '{layanan.LayananId}' pada RegInap '{regId}' tidak ditemukan."),
-            _ => throw new InvalidOperationException(
-                $"Layanan '{layanan.LayananId}' pada RegInap '{regId}' terpetakan ke lebih dari satu Bangsal.")
+            > 0 => listBangsal[0].ToReff(),
+            _ => new BangsalReff("-", "-")
         };
     }
 }

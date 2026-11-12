@@ -63,10 +63,12 @@ public class RegRepoTest
     }
 
     [Fact]
-    public void GivenLegacyRegInapWithMultipleBangsalForLayanan_WhenLoadEntity_ThenThrows()
+    public void GivenLegacyRegInapWithAssignedBangsal_WhenLoadEntity_ThenPrefersAssignedBangsal()
     {
         var dto = CreateRegDto(JenisRegEnum.RegInap);
         _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+        _regDal.Setup(x => x.GetAssignedBangsal(dto.fs_kd_reg))
+            .Returns(new BangsalReff("B-ASSIGNED", "Bangsal Terpakai/Admisi"));
         _kelasRepo
             .Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
             .Returns(MayBe.From(new KelasType("KLS1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"))));
@@ -77,10 +79,44 @@ public class RegRepoTest
                 new BangsalType("B2", "Bangsal 2", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1"))
             ]);
 
-        var act = () => CreateSut().LoadEntity(RegModel.Key(dto.fs_kd_reg));
+        var result = CreateSut().LoadEntity(RegModel.Key(dto.fs_kd_reg));
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*lebih dari satu Bangsal*");
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg =>
+            {
+                reg.Bangsal.BangsalId.Should().Be("B-ASSIGNED");
+                reg.Bangsal.BangsalName.Should().Be("Bangsal Terpakai/Admisi");
+            },
+            onNone: () => Assert.Fail("Expected RegModel"));
+    }
+
+    [Fact]
+    public void GivenLegacyRegInapWithMultipleBangsalForLayananAndNoAssigned_WhenLoadEntity_ThenFallsBackToFirstBangsalWithoutThrowing()
+    {
+        var dto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(dto);
+        _regDal.Setup(x => x.GetAssignedBangsal(It.IsAny<string>())).Returns((BangsalReff?)null);
+        _kelasRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
+            .Returns(MayBe.From(new KelasType("KLS1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"))));
+        _bangsalRepo
+            .Setup(x => x.ListData(It.IsAny<ILayananKey>()))
+            .Returns([
+                new BangsalType("B1", "Bangsal 1", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1")),
+                new BangsalType("B2", "Bangsal 2", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1"))
+            ]);
+
+        var result = CreateSut().LoadEntity(RegModel.Key(dto.fs_kd_reg));
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: reg =>
+            {
+                reg.Bangsal.BangsalId.Should().Be("B1");
+                reg.Bangsal.BangsalName.Should().Be("Bangsal 1");
+            },
+            onNone: () => Assert.Fail("Expected RegModel"));
     }
 
     [Fact]
