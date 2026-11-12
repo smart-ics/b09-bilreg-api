@@ -1061,13 +1061,27 @@ public sealed partial class JourneyDal : IJourneyDal
             GROUP BY InpatientOrderId
             HAVING COUNT(*) > 1
         ),
-        ProspectiveOpname AS (
+        ProspectiveOrders AS (
             SELECT
-                CAST('opn:' + o.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
-                0 AS OriginKind,
+                CAST(
+                    CASE 
+                        WHEN o.OrderSource IN (1, 2) THEN 'opn:' + o.InpatientOrderId
+                        ELSE 'rsv:' + o.InpatientOrderId
+                    END AS VARCHAR(64)
+                ) AS JourneyId,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN 0
+                    ELSE 1
+                END AS OriginKind,
                 CAST(NULL AS VARCHAR(10)) AS RegId,
-                o.InpatientOrderId AS SourceOpnameRequestId,
-                CAST(NULL AS VARCHAR(12)) AS SourceReservationId,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN o.InpatientOrderId
+                    ELSE CAST(NULL AS VARCHAR(12))
+                END AS SourceOpnameRequestId,
+                CASE 
+                    WHEN o.OrderSource IN (3, 4) THEN o.InpatientOrderId
+                    ELSE CAST(NULL AS VARCHAR(12))
+                END AS SourceReservationId,
                 o.PasienId,
                 ISNULL(NULLIF(o.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
                 o.DokterId,
@@ -1079,7 +1093,12 @@ public sealed partial class JourneyDal : IJourneyDal
                 o.TipeJaminanId,
                 o.TipeJaminanName,
                 CAST(NULL AS INT) AS Priority,
-                CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END AS SortAt,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN 
+                        CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END
+                    ELSE 
+                        CASE WHEN o.UpdDate = @VodDate THEN o.PlannedDate ELSE o.UpdDate END
+                END AS SortAt,
                 CASE
                     WHEN o.OrderStatus = 2 THEN 1
                     ELSE 0
@@ -1090,53 +1109,16 @@ public sealed partial class JourneyDal : IJourneyDal
                 CAST(NULL AS INT) AS ActiveWaitingListStatus,
                 0 AS HasClosedHandover,
                 0 AS HasActiveAdmission,
-                CASE WHEN o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
-                0 AS ProspectiveReservationReady
+                CASE WHEN o.OrderSource IN (1, 2) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
+                CASE WHEN o.OrderSource IN (3, 4) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
             FROM BILRG_AdmInpatientOrder o
             LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
             WHERE o.VodDate = @VodDate
-              AND o.OrderSource IN (1, 2)
+              AND o.OrderSource IN (1, 2, 3, 4)
               AND NOT EXISTS (
                     SELECT 1 FROM BILRG_AdmAdmission a
                     WHERE a.VodDate = @VodDate 
                       AND a.InpatientOrderId = o.InpatientOrderId)
-        ),
-        ProspectiveReservation AS (
-            SELECT
-                CAST('rsv:' + r.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
-                1 AS OriginKind,
-                CAST(NULL AS VARCHAR(10)) AS RegId,
-                CAST(NULL AS VARCHAR(12)) AS SourceOpnameRequestId,
-                r.InpatientOrderId AS SourceReservationId,
-                r.PasienId,
-                ISNULL(NULLIF(r.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
-                r.DokterId,
-                r.DokterName,
-                r.KelasId,
-                r.KelasName,
-                r.BangsalId,
-                r.BangsalName,
-                r.TipeJaminanId,
-                r.TipeJaminanName,
-                CAST(NULL AS INT) AS Priority,
-                CASE WHEN r.UpdDate = @VodDate THEN r.PlannedDate ELSE r.UpdDate END AS SortAt,
-                CASE WHEN r.OrderStatus = 2 THEN 1 ELSE 0 END AS HasBlockingIntegrity,
-                0 AS AdmissionCancelled,
-                CASE WHEN r.OrderStatus = 3 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
-                0 AS AdmissionCompletedWithoutAuthority,
-                CAST(NULL AS INT) AS ActiveWaitingListStatus,
-                0 AS HasClosedHandover,
-                0 AS HasActiveAdmission,
-                0 AS ProspectiveOpnameRequested,
-                CASE WHEN r.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
-            FROM BILRG_AdmInpatientOrder r
-            LEFT JOIN tc_mr mr ON r.PasienId = mr.fs_mr
-            WHERE r.VodDate = @VodDate
-              AND r.OrderSource IN (3, 4)
-              AND NOT EXISTS (
-                    SELECT 1 FROM BILRG_AdmAdmission a
-                    WHERE a.VodDate = @VodDate 
-                      AND a.InpatientOrderId = r.InpatientOrderId)
         ),
         AdmissionRoots AS (
             SELECT
@@ -1278,9 +1260,7 @@ public sealed partial class JourneyDal : IJourneyDal
               AND (@ScopeActive = 0 OR a.AdmissionStatus <> 4)
         ),
         JourneyUnion AS (
-            SELECT * FROM ProspectiveOpname
-            UNION ALL
-            SELECT * FROM ProspectiveReservation
+            SELECT * FROM ProspectiveOrders
             UNION ALL
             SELECT * FROM AdmissionRoots
         ),
