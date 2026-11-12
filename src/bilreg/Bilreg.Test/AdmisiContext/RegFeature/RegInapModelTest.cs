@@ -323,4 +323,28 @@ public class RegInapModelTest
         historical.ReleaseDate.Should().Be(Day2);
         historical.IsActive.Should().BeFalse();
     }
+
+    [Fact]
+    public void ChangeProsedurMasuk_WhenValid_UpdatesProperty()
+    {
+        var model = CreateWithPrimary();
+        var newProsedur = new ProsedurMasukInapType("RJL", "Dari Rawat Jalan", ProsedurMasukInapDkType.Default);
+
+        model.ChangeProsedurMasuk(newProsedur);
+
+        model.ProsedurMasukInap.Should().Be(newProsedur);
+    }
+
+    [Fact]
+    public void ChangeProsedurMasuk_WhenTerminal_ThrowsInvalidOperationException()
+    {
+        var model = CreateWithPrimary();
+        model.EndAllDoctorAssignments(Day2);
+        var newProsedur = new ProsedurMasukInapType("RJL", "Dari Rawat Jalan", ProsedurMasukInapDkType.Default);
+
+        var act = () => model.ChangeProsedurMasuk(newProsedur);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*telah terminal*");
+    }
 }

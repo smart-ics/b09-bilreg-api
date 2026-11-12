@@ -22,7 +22,9 @@ public record AdmGetAdmissionResponse(
     DateTime CrtDate,
     string CaraMasukDkId = "",
     string DokterId = "",
-    string ProsedurMasukInapId = "");
+    string ProsedurMasukInapId = "",
+    string JenisInapId = "1",
+    string RegIbu = "");
 
 public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGetAdmissionResponse>
 {
@@ -66,6 +68,18 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             ri => Normalize(ri.ProsedurMasukInap?.ProsedurMasukInapId),
             () => string.Empty);
 
+        var jenisInapId = reg.Match(
+            r => Normalize(r.JenisInap?.JenisInapId),
+            () => "1");
+        if (string.IsNullOrEmpty(jenisInapId))
+        {
+            jenisInapId = "1";
+        }
+
+        var regIbu = reg.Match(
+            r => Normalize(r.RegIbu),
+            () => string.Empty);
+
         return Task.FromResult(new AdmGetAdmissionResponse(
             admission.RegId,
             admission.AdmissionStatus,
@@ -78,7 +92,9 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             admission.AuditTrail.Created.Timestamp,
             caraMasukDkId,
             dokterId,
-            prosedurMasukInapId));
+            prosedurMasukInapId,
+            jenisInapId,
+            regIbu));
     }
 
     private static string Normalize(string? value)

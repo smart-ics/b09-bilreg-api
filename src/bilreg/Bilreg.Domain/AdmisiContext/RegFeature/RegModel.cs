@@ -224,6 +224,16 @@ public class RegModel : IRegKey
         RegIbu = regIbu ?? string.Empty;
     }
 
+    public void SetCaraMasukDk(CaraMasukDkType caraMasukDk)
+    {
+        CaraMasukDk = caraMasukDk ?? CaraMasukDkType.Default;
+    }
+
+    public void ChangePrimaryDpjp(PpaReff dokter)
+    {
+        Dokter = dokter ?? PpaType.Default.ToReff();
+    }
+
     #endregion
 }
 

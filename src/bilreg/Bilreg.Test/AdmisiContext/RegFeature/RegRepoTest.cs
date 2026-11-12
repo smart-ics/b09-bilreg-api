@@ -230,6 +230,37 @@ public class RegRepoTest
             Times.Once);
     }
 
+    [Fact]
+    public void GivenExistingRegistration_WhenInpatientVisitFieldsUpdated_ThenPersistsUpdatedFieldsToDal()
+    {
+        var existingDto = CreateRegDto(JenisRegEnum.RegInap);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(existingDto);
+        _regJaminanDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(new RegJaminanDto(existingDto.fs_kd_reg, "-", "-", "-"));
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([]);
+        _kelasRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IKelasKey>()))
+            .Returns(MayBe.From(new KelasType("KLS1", "Kelas 1", true, new KelasDkType("1", "Kelas DK 1"))));
+        _bangsalRepo
+            .Setup(x => x.ListData(It.IsAny<ILayananKey>()))
+            .Returns([new BangsalType("B1", "Bangsal 1", RoomCatType.Default, new LayananReff("LYN1", "Layanan 1"))]);
+
+        var sut = CreateSut();
+        var model = sut.LoadEntity(RegModel.Key(existingDto.fs_kd_reg)).Value;
+
+        model.SetCaraMasukDk(new CaraMasukDkType("2", "Rujukan RS Lain"));
+        model.SetJenisInap(new JenisInapType("3", "Perinatal"), "REG-IBU-777");
+        model.ChangePrimaryDpjp(new PpaReff("DR-NEW", "Dr. Baru"));
+
+        sut.SaveChanges(model);
+
+        _regDal.Verify(x => x.Update(It.Is<RegDto>(dto =>
+            dto.fs_kd_reg == existingDto.fs_kd_reg
+            && dto.fs_kd_cara_masuk_dk == "2"
+            && dto.fs_kd_jenis_inap == "3"
+            && dto.fs_reg_ibu == "REG-IBU-777"
+            && dto.fs_kd_medis == "DR-NEW")), Times.Once);
+    }
+
     private static RegModel CreateRegModel(
         JenisRegEnum jenisReg,
         string regId,

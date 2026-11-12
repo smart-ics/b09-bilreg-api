@@ -208,7 +208,9 @@ public class AdmissionControllerTest
             DateTime.UtcNow,
             "8",
             "DOK01",
-            "1");
+            "1",
+            "3",
+            "REG_IBU_01");
 
         _mediatorMock
             .Setup(m => m.Send(It.Is<AdmGetAdmissionQry>(q => q.RegId == "ADM01"), It.IsAny<CancellationToken>()))
@@ -222,6 +224,9 @@ public class AdmissionControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.status.Should().Be("success");
         jsend.data.Should().Be(response);
+        var resData = jsend.data.Should().BeOfType<AdmGetAdmissionResponse>().Subject;
+        resData.JenisInapId.Should().Be("3");
+        resData.RegIbu.Should().Be("REG_IBU_01");
     }
 
     [Fact]
