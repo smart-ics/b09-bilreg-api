@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
@@ -77,16 +78,23 @@ public static class Release1JourneySqlStageExpression
         var hasActiveAdmission = admission is not null && IsActiveAdmission(admission.Status);
         var prospectiveOpnameRequested =
             admission is null
-            && facts.OpnameRequest is { Status: OpnameRequestStatusEnum.Requested };
+            && (facts.InpatientOrder is { Status: InpatientOrderStatusEnum.Requested, OrderSource: OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd }
+                || facts.OpnameRequest is { Status: OpnameRequestStatusEnum.Requested });
         var prospectiveReservationReady =
             admission is null
-            && facts.Reservation is
-            {
-                Status: ReservationStatusEnum.Reserved or ReservationStatusEnum.Maintained
-            };
+            && (facts.InpatientOrder is
+                {
+                    Status: InpatientOrderStatusEnum.Requested or InpatientOrderStatusEnum.Maintained,
+                    OrderSource: OrderSourceEnum.AdmisiBooking or OrderSourceEnum.ExternalChannel
+                }
+                || facts.Reservation is
+                {
+                    Status: ReservationStatusEnum.Reserved or ReservationStatusEnum.Maintained
+                });
         var prospectiveSourceCancelled =
             admission is null
-            && (facts.OpnameRequest?.Status == OpnameRequestStatusEnum.Cancelled
+            && (facts.InpatientOrder?.Status == InpatientOrderStatusEnum.Cancelled
+                || facts.OpnameRequest?.Status == OpnameRequestStatusEnum.Cancelled
                 || facts.Reservation?.Status == ReservationStatusEnum.Cancelled);
 
         // Completed is always a blocking integrity issue in Release 1.
