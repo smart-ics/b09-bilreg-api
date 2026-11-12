@@ -84,18 +84,22 @@ public record LabResultRecordRequest(
     public LabResultRecordRequest() : this("", "", 1) { }
 
     public LabResultRecordRequest(LabResultRecordCmd cmd)
-        : this(cmd.OrderId, cmd.UserId, cmd.ResultSource, cmd.Values, cmd.CriticalNote)
+        : this(cmd.OrderId, cmd.UserId, cmd.ResultSource, cmd.Values, cmd.CriticalNote, cmd.Items?.Select(i => new LabResultRecordItemRequestDto(
+            i.TestId, i.TestName, i.ComponentCode, i.ComponentName, i.ResultType, i.NumericValue, i.TextValue, i.OptionValue, i.NarrativeValue, i.Unit, i.ReferenceRangeText, i.Value)))
     {
     }
 
     public LabResultRecordCmd ToCommand()
     {
         var valuesList = Values?.ToList() ?? new List<LabResultRecordValueDto>();
-        if (!valuesList.Any() && Items != null)
+        var itemsList = Items?.Select(i => new LabResultRecordItemInputDto(
+            i.TestId, i.TestName, i.ComponentCode, i.ComponentName, i.ResultType, i.NumericValue, i.TextValue, i.OptionValue, i.NarrativeValue, i.Unit, i.ReferenceRangeText, i.Value)).ToList();
+
+        if (!valuesList.Any() && itemsList != null)
         {
-            valuesList = Items.Select(i => new LabResultRecordValueDto(
+            valuesList = itemsList.Select(i => new LabResultRecordValueDto(
                 !string.IsNullOrWhiteSpace(i.ComponentCode) ? i.ComponentCode : (i.TestId ?? string.Empty),
-                i.Value ?? i.NumericValue?.ToString() ?? i.TextValue ?? i.OptionValue ?? i.NarrativeValue ?? string.Empty
+                i.Value ?? i.OptionValue ?? i.NarrativeValue ?? i.TextValue ?? i.NumericValue?.ToString() ?? string.Empty
             )).ToList();
         }
 
@@ -104,7 +108,8 @@ public record LabResultRecordRequest(
             UserId,
             ResultSource,
             valuesList,
-            CriticalNote ?? string.Empty);
+            CriticalNote ?? string.Empty,
+            itemsList);
     }
 
     public static implicit operator LabResultRecordRequest(LabResultRecordCmd cmd) => new(cmd);
@@ -113,12 +118,17 @@ public record LabResultRecordRequest(
 
 public record LabResultRecordItemRequestDto(
     string? TestId = null,
+    string? TestName = null,
     string? ComponentCode = null,
-    string? Value = null,
+    string? ComponentName = null,
+    int? ResultType = null,
     decimal? NumericValue = null,
     string? TextValue = null,
     string? OptionValue = null,
-    string? NarrativeValue = null);
+    string? NarrativeValue = null,
+    string? Unit = null,
+    string? ReferenceRangeText = null,
+    string? Value = null);
 
 public record LabResultVerifyRequest(
     string OrderId,

@@ -16,6 +16,7 @@ Tujuan operasional implementasi:
 1. **Core Backend BILREG API (`b09-bilreg-api`)**:
    - Penegakan invarian alasan amandemen resmi minimal 10 karakter (**EX-03**) pada `LabResultDocumentModel.AmendVerifiedToNewVersion`.
    - Penyediaan generator nomor register fisik Patologi Anatomi adaptif menggunakan `ISequencer` (`H.{YY}.{NoUrut:D4}` untuk `DISC-PAH` vs `S.{YY}.{NoUrut:D4}` untuk `DISC-PAS`).
+   - Penyediaan sintesis scaffold terstruktur Patologi Anatomi adaptif (termasuk nomor registrasi PA `PA_REG_NO` dan parameter nomor sediaan/slide `PA_SLIDE_NO` untuk arsip fisik blok/kaset) serta Mikrobiologi pada `LabResultScaffoldService`, serta mapping explicit `items` terstruktur pada `LabResultRecordCmd` dan `LabResultController`.
    - Perluasan kontrak DTO baca `LabResultView` pada `LabResultGetQuery` untuk memetakan `ExpertiseNote`, `CriticalNote`, `AmendmentReason`, `PreviousVersionId`, `AmendedDate`, dan `AmendedUserId`.
    - Perluasan DTO `LabResultVerificationWorklistView` dan kueri DAL Dapper `LabResultVerificationWorklistDal` dengan field `IsCito`, `Gender`, `AgeAtOrder`, `LayananPerujukName`, `DokterPerujukName`, `TestNames`, `HasCriticalValue`, `VersionNo`, `ResultSource`, dengan pengurutan prioritas CITO di baris teratas (`ORDER BY o.Urgency DESC, d.RecordedDate DESC`).
 2. **Frontend LWF Web (`c012_myhospital_web`)**:
@@ -23,9 +24,9 @@ Tujuan operasional implementasi:
    - Pembaruan mutasi `useReleaseOrderMutation` pada `LabOrderService.ts` untuk mengonsumsi respon objek terstruktur `LabOrderReleaseResponse` (mengeliminasi crash validasi runtime).
    - Aktivasi navigasi persona terfokus: re-aktivasi rute tab `hasil_lab` pada `configs/tabs.ts` dan refaktor `views/HasilLab.vue` menjadi *route wrapper* terpadu yang memanggil `LabWorkflowView.vue` dengan initial query `activeQueue = 'verification'`.
    - Transformasi komponen entri PK `LabResultEntryPkTabular.vue` menjadi tabel grid spreadsheet berkecepatan tinggi dengan navigasi keyboard fluid (`Enter`/`Tab`), auto-flagging instan di sisi client, shortcut global `Ctrl+S`, penanda soft-warning nilai kritis, dan penegakan *inline mandatory guard* pada `CriticalNote` sebelum simpan.
-   - Penyesuaian formulir Patologi Anatomi `LabResultEntryPaForm.vue`: header nomor register fisik PA, adaptif menyajikan Makroskopis untuk Histologi vs Adekuasi Sediaan + Rekomendasi untuk Sitologi, serta chip template diagnosis PA.
+   - Penyesuaian formulir Patologi Anatomi `LabResultEntryPaForm.vue`: header nomor register fisik PA, layout grid 2-kolom responsif berdampingan untuk parameter nomor sediaan fisik `PA_SLIDE_NO` (free text multi-slide/blok `A1, A2, B1`) dan asal jaringan `PA_SPECIMEN_SITE`, adaptif menyajikan Makroskopis untuk Histologi vs Adekuasi Sediaan + Rekomendasi untuk Sitologi, serta chip template diagnosis PA.
    - Pengayaan kartu antrean verifikasi Sp.PK `LabVerificationWorklistRow.vue` dengan badge CITO mencolok, banner peringatan nilai kritis, dan badge LIS (`[🤖 LIS Bridge • Tervalidasi Otomatis]`).
-   - Transformasi stasiun telaah Sp.PK `LabVerificationPanel.vue` dengan ringkasan temuan kritis di baris atas, editor catatan ekspertise dengan chip template cepat, dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*).
+   - Transformasi layar telaah medis & validasi hasil Sp.PK `LabVerificationPanel.vue` dengan ringkasan temuan kritis di baris atas, editor catatan ekspertise dengan chip template cepat, dan tombol validasi 1-klik langsung (*Direct 1-Click Verification*).
    - Penyederhanaan alur rilis pada `LabReleaseQueuePanel.vue` dengan tombol single-click *"🖨️ Cetak & Rilis Hasil"*, penghapusan komponen approval kasir usang (`LabFinancialClearancePanel.vue`), dan penanganan status `CLEAR` vs `BLOCKED` yang ramah.
    - Pembangunan dialog modal pratinjau lembar hasil PDF resmi `LabResultPdfPreviewDialog.vue` dan dialog amandemen terproteksi `LabAmendResultDialog.vue` (validasi min 10 karakter alasan dan otorisasi Sp.PK / Supervisor).
 
@@ -62,7 +63,7 @@ Target repositories:
   4. Grid spreadsheet entri PK `LabResultEntryPkTabular.vue` dengan keyboard fluid navigation, auto-flagging instan, shortcut `Ctrl+S`, dan soft-warning inline critical note guard.
   5. Formulir adaptif PA `LabResultEntryPaForm.vue` (Histopatologi Makroskopis vs Sitopatologi Adekuasi + Rekomendasi).
   6. Kartu antrean verifikasi Sp.PK `LabVerificationWorklistRow.vue`.
-  7. Stasiun telaah & verifikasi 1-klik `LabVerificationPanel.vue`.
+  7. Layar telaah medis & validasi hasil 1-klik `LabVerificationPanel.vue`.
   8. Panel rilis single-click `LabReleaseQueuePanel.vue` (pembersihan UI approval kasir usang).
   9. Dialog modal pratinjau PDF `LabResultPdfPreviewDialog.vue`.
   10. Dialog amandemen terproteksi `LabAmendResultDialog.vue`.
@@ -367,31 +368,41 @@ Changed Files:
 
 ### P3-S09
 
-Title: Adaptive Pathology Anatomy Multi-Disciplinary Form & PA Register Numbering  
+Title: Adaptive Pathology Anatomy Multi-Disciplinary Form, PA Register Numbering & Slide/Block Numbering  
 Implementation Status: IMPLEMENTED  
 Review Status: GO  
-Objective: Menyesuaikan komponen formulir Patologi Anatomi `LabResultEntryPaForm.vue` agar adaptif menyajikan input Makroskopis (Gross Description) untuk Histopatologi (`DISC-PAH`) vs Kecukupan Sediaan (Specimen Adequacy) dan Rekomendasi Klinis untuk Sitopatologi (`DISC-PAS`), menampilkan nomor register fisik PA (`H.{YY}.{NoUrut}` vs `S.{YY}.{NoUrut}`), dan menyediakan chip pilihan cepat diagnosis PA.  
+Objective: Menyesuaikan komponen formulir Patologi Anatomi `LabResultEntryPaForm.vue` agar adaptif menyajikan input Makroskopis (Gross Description) untuk Histopatologi (`DISC-PAH`) vs Kecukupan Sediaan (Specimen Adequacy) dan Rekomendasi Klinis untuk Sitopatologi (`DISC-PAS`), menampilkan nomor register fisik PA (`H.{YY}.{NoUrut}` vs `S.{YY}.{NoUrut}`), menyediakan input parameter nomor sediaan/kaset/slide (`PA_SLIDE_NO`) dalam susunan grid 2-kolom bersama lokasi jaringan (`PA_SPECIMEN_SITE`), serta menyediakan chip pilihan cepat diagnosis PA.  
 Depends On: P2-S05  
-Repository: `c012_myhospital_web`  
+Repository: `c012_myhospital_web`, `b09-bilreg-api`  
 Completion Criteria:
 - Tampilan form PA beradaptasi otomatis sesuai jenis disiplin pemeriksaan order PA.
 - Nomor register PA tampil jelas pada header form.
+- Field 'Nomor Sediaan / Slide' (`PA_SLIDE_NO`) tersedia secara opsional dalam grid 2-kolom berdampingan dengan 'Asal / Lokasi Jaringan' (`PA_SPECIMEN_SITE`), menerima input free-text jamak (contoh: `A1, A2, B1` atau `Slide 1-3`).
+- Nilai `PA_SLIDE_NO` tersimpan aman pada database dokumen hasil laboratorium dan didukung oleh scaffold server di `LabResultScaffoldService`.
 - Tombol chip diagnosis cepat mengisikan teks kesimpulan diagnosis secara otomatis.  
 Notes: Realisasi GAP-BFF-10, OQ-BFF-01, TD-08, dan SCR-LAB-RES-03.  
 Target Files:
 - `c012_myhospital_web/src/modules/Laboratory/components/result/LabResultEntryPaForm.vue`
+- `c012_myhospital_web/src/modules/Laboratory/types/lab-result.schema.ts`
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultScaffoldService.cs`
 Implementation Notes:
 - Merefaktor komponen `LabResultEntryPaForm.vue` menjadi formulir adaptif multidisiplin Patologi Anatomi:
   - Header menampilkan nomor register fisik PA secara otomatis dengan format `H.{YY}.{NoUrut}` untuk Histopatologi vs `S.{YY}.{NoUrut}` untuk Sitopatologi (menggunakan prop `paRegNo`, komponen tersimpan `PA_REG_NO`, atau derivasi sequence order).
+  - Menyusun metadata spesimen dalam **grid 2-kolom responsif**:
+    - Kolom kiri: **Nomor Sediaan / Slide** (`slideNo` / `PA_SLIDE_NO`, opsional, placeholder: *"Contoh: A1, A2, B1 atau Slide 1-3 (pisahkan dengan koma)"*).
+    - Kolom kanan: **Asal / Lokasi Jaringan** (`specimenSite` / `PA_SPECIMEN_SITE`, wajib).
   - Adaptif menyajikan field: untuk Histopatologi (`DISC-PAH`/`PAH`) menyajikan input Makroskopis (Gross Description), Mikroskopis, dan Kesimpulan Diagnosis; untuk Sitopatologi (`DISC-PAS`/`PAS`) menyajikan Adekuasi Sediaan (Specimen Adequacy) beserta pilihan cepat seluler, Mikroskopis, Kesimpulan Diagnosis, dan Rekomendasi Klinis.
   - Menyediakan tombol chip template diagnosis cepat ("Radang Kronis Non-Spesifik", "Fibroadenoma Mammae", "Negatif Keganasan", "Infiltrating Ductal Carcinoma", dsb.) yang ketika diklik langsung mengisi teks kesimpulan diagnosis, kode SNOMED/ICD-O, dan rekomendasi klinis.
-  - Memperluas skema validasi `labResultPaFormSchema`, `buildInitialLabResultPaFormValues`, dan mapper `mapLabResultPaFormToRecordCmd` di `lab-result.schema.ts` untuk menangani `paRegNo`, `specimenAdequacy`, dan `recommendation` secara typesafe.
-- Menambahkan unit test terarah pada `src/modules/Laboratory/__tests__/LabResultEntryPaForm.spec.ts` (7 tests lulus 100%).
+  - Memperluas skema validasi `labResultPaFormSchema`, `buildInitialLabResultPaFormValues`, dan mapper `mapLabResultPaFormToRecordCmd` di `lab-result.schema.ts` untuk menangani `paRegNo`, `slideNo` (`PA_SLIDE_NO`), `specimenAdequacy`, dan `recommendation` secara typesafe.
+  - Memperbarui `LabResultScaffoldService.cs` pada `b09-bilreg-api` untuk mensintesis `PA_SLIDE_NO` (urutan ke-2 setelah `PA_REG_NO`) pada scaffold hasil PA dan mendukung persistensi explicit items.
+- Menambahkan unit test terarah pada `src/modules/Laboratory/__tests__/LabResultEntryPaForm.spec.ts` (12 tests lulus 100%) dan `LabResultScaffoldServiceTest.cs` (10 tests lulus 100%).
 - Verifikasi post-edit: Prettier terformat rapi, `pnpm tc:app` lulus (0 type error), targeted vitest specs (`LabResultEntryPaForm.spec.ts` & `lab-result.schema.spec.ts`) lulus 100%, serta oxlint dan eslint bersih (0 error, 0 warning) pada berkas yang dimodifikasi.
 Changed Files:
 - `c012_myhospital_web/src/modules/Laboratory/components/result/LabResultEntryPaForm.vue`
 - `c012_myhospital_web/src/modules/Laboratory/types/lab-result.schema.ts`
 - `c012_myhospital_web/src/modules/Laboratory/__tests__/LabResultEntryPaForm.spec.ts`
+- `b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultScaffoldService.cs`
+- `b09-bilreg-api/src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultScaffoldServiceTest.cs`
 
 ---
 
@@ -438,7 +449,7 @@ Changed Files:
 Title: Unified Sp.PK Verification Canvas & Direct 1-Click Action  
 Implementation Status: IMPLEMENTED  
 Review Status: GO  
-Objective: Mentransformasikan kanvas `LabVerificationPanel.vue` menjadi stasiun review medis Sp.PK terpadu yang menampilkan banner ringkasan temuan abnormal/kritis di baris paling atas, editor catatan ekspertise patolog dengan tombol chip template cepat (*Dalam Batas Normal*, *Anemia Mikrositik*, *Hiperglikemia*, *Reset*), dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*) tanpa memicu dialog popup modal berulang.  
+Objective: Mentransformasikan kanvas `LabVerificationPanel.vue` menjadi layar telaah medis & validasi hasil Sp.PK terpadu yang menampilkan banner ringkasan temuan abnormal/kritis di baris paling atas, editor catatan ekspertise patolog dengan tombol chip template cepat (*Dalam Batas Normal*, *Anemia Mikrositik*, *Hiperglikemia*, *Reset*), dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*) tanpa memicu dialog popup modal berulang.  
 Depends On: P2-S05, P2-S06  
 Repository: `c012_myhospital_web`  
 Completion Criteria:
@@ -449,7 +460,7 @@ Notes: Realisasi GAP-BFF-05, GAP-BFF-08, TD-01, dan SCR-LAB-RES-04, SCR-LAB-RES-
 Target Files:
 - `c012_myhospital_web/src/modules/Laboratory/components/verification/LabVerificationPanel.vue`
 Implementation Notes:
-- Mentransformasikan `LabVerificationPanel.vue` menjadi stasiun telaah medis & ekspertise Sp.PK terpadu:
+- Mentransformasikan `LabVerificationPanel.vue` menjadi layar telaah medis & validasi hasil Sp.PK terpadu:
   1. Menambahkan banner ringkasan temuan kritis (merah berkedip dengan catatan pelaporan readback kritis dan kartu analit) saat terdeteksi parameter `Critical` (`flagStatus === 4`).
   2. Menambahkan banner ringkasan temuan abnormal (amber/sky untuk `High` / `Low`) saat parameter uji berada di luar rentang rujukan.
   3. Menambahkan banner hijau saat seluruh parameter uji analitis berada dalam rentang rujukan normal.

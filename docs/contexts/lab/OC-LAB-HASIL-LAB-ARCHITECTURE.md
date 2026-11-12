@@ -28,7 +28,7 @@ Arsitektur ini mengorkestrasi 3 repositori utama:
    - Navigasi persona terfokus: re-aktivasi rute tab `hasil_lab` pada `configs/tabs.ts` dan refaktor `views/HasilLab.vue` menjadi *route wrapper* terpadu yang memanggil `LabWorkflowView.vue` dengan initial query `activeQueue = 'verification'`.
    - Grid entri hasil Patologi Klinik berkecepatan tinggi (*Spreadsheet-like Tabular Grid*) pada `LabResultEntryPkTabular.vue` dengan navigasi tombol keyboard fluid (`Enter`/`Tab`), kalkulasi instan status flag di sisi client (*Normal/Low/High/Critical*), dan shortcut global `Ctrl+S`.
    - Penegakan *Inline Mandatory Panic Value Guard* (SCR-LAB-RES-08): soft-warning visual merah berkedip pada analit kritis yang mewajibkan pengisian catatan readback telepon (`CriticalNote`) secara inline sebelum simpan diizinkan, tanpa modal popup pemblokir layar.
-   - Stasiun Telaah & Verifikasi Medis Sp.PK (`LabVerificationPanel.vue`): ringkasan temuan kritis di baris atas, chip template ekspertise klinis cepat, dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*) tanpa modal konfirmasi berulang.
+   - Telaah Medis & Validasi Hasil Sp.PK (`LabVerificationPanel.vue`): ringkasan temuan kritis di baris atas, chip template ekspertise klinis cepat, dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*) tanpa modal konfirmasi berulang.
    - Formulir Patologi Anatomi adaptif multidisiplin (`LabResultEntryPaForm.vue`): adaptif membedakan Histopatologi (`DISC-PAH` dengan Makroskopis/Gross) vs Sitopatologi (`DISC-PAS` dengan Adekuasi Sediaan + Rekomendasi Klinis), menampilkan nomor register fisik PA, dan chip template diagnosis.
    - Formulir Mikrobiologi (`LabResultEntryMicroForm.vue`): pewarnaan gram, isolat kultur, dan tabel dinamis antibiogram (AST).
    - Alur rilis instan (*Single-Click Release*): penghapusan alur approval finansial kasir usang (`LabFinancialClearancePanel.vue`), evaluasi kontrak terstruktur `LabOrderReleaseResponse`; jika `CLEAR` langsung buka dialog pratinjau cetak PDF resmi (`LabResultPdfPreviewDialog.vue`), jika `BLOCKED` sajikan notifikasi informatif ramah penundaan fisik tanpa melempar runtime exception crash (akses klinis EMR internal tetap aktif bagi dokter DPJP).
@@ -128,7 +128,7 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
     - Komponen bersama: Asal Bahan Spesimen, Mikroskopis, Kesimpulan PA, dan Kode Morfologi ICD-O (SNOMED).
     - Tombol chip template diagnosis PA cepat.
   - `LabResultEntryMicroForm.vue`: formulir mikrobiologi terstruktur (pewarnaan gram, isolat kultur, tabel dinamis antibiogram / AST).
-- **Stasiun Verifikasi Medis Sp.PK (`components/verification/`)**:
+- **Telaah Medis & Validasi Hasil Sp.PK (`components/verification/`)**:
   - `LabVerificationPanel.vue`: kanvas review Sp.PK dengan banner ringkasan temuan abnormal/kritis di baris paling atas, editor `ExpertiseNote`, chip template ekspertise klinis cepat, dan tombol eksekusi verifikasi 1-klik langsung (*Direct 1-Click Verification*).
   - `LabVerificationWorklistRow.vue`: kartu daftar kerja verifikasi dengan badge prioritas CITO merah menyala di baris teratas, banner peringatan nilai kritis, ringkasan nama tes, dan penanda hasil bridging LIS (`[🤖 LIS Bridge • Tervalidasi Otomatis]`).
 - **Alur Rilis & Billing Gate (`components/release/`, `components/dialogs/`)**:
@@ -209,7 +209,7 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
 - *Form PA Adaptif (`LabResultEntryPaForm.vue`)*:
   - Disiplin `DISC-PAH` (Histologi): Menampilkan kolom input *Pemeriksaan Sediaan Makroskopis (Gross Description)* (`PA_MACROSCOPIC`).
   - Disiplin `DISC-PAS` (Sitologi): Menyembunyikan makroskopis, dan menampilkan kolom *Kecukupan Sediaan / Adekuasi Sampel (Specimen Adequacy)* (`PA_SPECIMEN_ADEQUACY`) dengan tombol pilihan cepat (*Adekuat, Hiposeluler, Tercampur Darah*), serta kolom *Rekomendasi Klinis* (`PA_RECOMMENDATION`).
-  - Komponen bersama: Asal Bahan Spesimen (`PA_SPECIMEN_SITE`), Mikroskopis (`PA_MICROSCOPIC`), Kesimpulan / Diagnosis PA (`PA_CONCLUSION`), dan Kode Morfologi ICD-O (`PA_SNOMED`).
+  - Komponen bersama: Nomor Sediaan / Slide (`PA_SLIDE_NO` - free text untuk input beberapa nomor blok/slide arsip fisik seperti A1, A2, B1 atau Slide 1-3 dalam susunan grid 2-kolom berdampingan), Asal Bahan Spesimen (`PA_SPECIMEN_SITE`), Mikroskopis (`PA_MICROSCOPIC`), Kesimpulan / Diagnosis PA (`PA_CONCLUSION`), dan Kode Morfologi ICD-O (`PA_SNOMED`).
   - Tombol chip template diagnosis PA cepat (*Fibroadenoma Mammae, Adenokarsinoma Kolon, Papillary Thyroid Carcinoma, dll.*).
 
 ## TD-09: Immutability Audit Trail & Role-Restricted Version N+1 Amendment
@@ -251,7 +251,7 @@ Arsitektur ini merealisasikan secara langsung seluruh keputusan penutupan celah 
 | `LabResultEntryPkTabular.vue` | `c012_myhospital_web` (Components) | Grid spreadsheet input hasil PK dengan navigasi keyboard fluid (`Enter`/`Tab`), auto-flagging instan, shortcut `Ctrl+S`, dan soft-warning nilai kritis. |
 | `LabResultEntryPaForm.vue` | `c012_myhospital_web` (Components) | Formulir adaptif PA: Histopatologi (`H.{YY}.{NoUrut}`, Makroskopis) vs Sitopatologi (`S.{YY}.{NoUrut}`, Adekuasi Sediaan, Rekomendasi), nomor register PA, dan chip diagnosis. |
 | `LabResultEntryMicroForm.vue` | `c012_myhospital_web` (Components) | Formulir terstruktur mikrobiologi (pewarnaan gram, isolat kultur, tabel antibiogram dinamis AST). |
-| `LabVerificationPanel.vue` | `c012_myhospital_web` (Components) | Stasiun review & verifikasi Sp.PK: ringkasan temuan kritis di baris atas, editor `ExpertiseNote`, chip template ekspertise klinis cepat, dan tombol verifikasi 1-klik langsung. |
+| `LabVerificationPanel.vue` | `c012_myhospital_web` (Components) | Layar telaah medis & validasi Sp.PK: ringkasan temuan kritis di baris atas, editor `ExpertiseNote`, chip template ekspertise klinis cepat, dan tombol validasi 1-klik langsung. |
 | `LabVerificationWorklistRow.vue` | `c012_myhospital_web` (Components) | Kartu antrean verifikasi Sp.PK dengan badge CITO mencolok di baris atas, indikator nilai kritis, ringkasan nama tes, dan badge sumber LIS. |
 | `LabReleaseQueuePanel.vue` | `c012_myhospital_web` (Components) | Panel antrean siap rilis dengan tombol tunggal *"🖨️ Cetak & Rilis Hasil"* yang mengevaluasi respon `LabOrderReleaseResponse`. |
 | `LabResultPdfPreviewDialog.vue` | `c012_myhospital_web` (Components) | Dialog modal pratinjau lembar hasil PDF resmi dengan fitur streaming PDF viewer dan cetak ke printer fisik. |
@@ -349,7 +349,7 @@ GO
    - Kontrak mutasi rilis pada frontend client menangani status `BLOCKED` secara eksplisit dan ramah tanpa memicu unhandled runtime error crash.
 4. **Performance & UX Ergonomics**:
    - Grid entri hasil PK mengadopsi navigasi keyboard fluid (`Enter`/`Tab`) dan auto-flagging instan di sisi client untuk memaksimalkan throughput analis pada puluhan sampel per jam.
-   - Stasiun verifikasi Sp.PK menyediakan ringkasan temuan kritis di baris atas dan tombol verifikasi 1-klik langsung untuk memangkas kelelahan klik berulang pada verifikasi hasil normal volume tinggi.
+   - Layar telaah medis Sp.PK menyediakan ringkasan temuan kritis di baris atas dan tombol verifikasi 1-klik langsung untuk memangkas kelelahan klik berulang pada verifikasi hasil normal volume tinggi.
    - Kueri daftar kerja meja hasil membatasi rentang tanggal default (hari ini) dan dioptimalkan melalui indeks `OrderId` dan `ResultStatus`.
 
 ---

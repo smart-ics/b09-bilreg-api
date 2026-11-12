@@ -23,7 +23,7 @@ Tujuan utama pengujian ini adalah memastikan bahwa seluruh alur kerja operasiona
    - Otomatisasi sumber hasil (`ResultSource.Manual = 1` vs `ResultSource.ExternalLis = 3`) secara statis berupa badge informatif tanpa listbox dropdown pilihan manual.
 2. **Triase & Verifikasi Medis Dokter Spesialis Patologi Klinik (Sp.PK)**:
    - Rute terfokus persona `/app/laboratorium/hasil_lab` ([`HasilLab.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/views/HasilLab.vue)) langsung mengaktifkan antrean verifikasi dengan triase prioritas CITO di baris teratas.
-   - Stasiun telaah Sp.PK ([`LabVerificationPanel.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/verification/LabVerificationPanel.vue)) menyajikan ringkasan temuan kritis di baris atas, editor catatan ekspertise patolog (`ExpertiseNote`) dengan chip template cepat, dan tombol verifikasi 1-klik langsung (*Direct 1-Click Verification*) tanpa modal konfirmasi berulang.
+   - Layar telaah medis & validasi hasil Sp.PK ([`LabVerificationPanel.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/verification/LabVerificationPanel.vue)) menyajikan ringkasan temuan kritis di baris atas, editor catatan ekspertise patolog (`ExpertiseNote`) dengan chip template cepat, dan tombol validasi 1-klik langsung (*Direct 1-Click Verification*) tanpa modal konfirmasi berulang.
    - Penegakan otorisasi peran Dokter Sp.PK (`doktersppk` / `lab.result.verify`) (**EX-01**) dan kelengkapan komponen mandatori (**EX-02**).
 3. **Integrasi Realtime LIS via Oware (*Zero-Friction Ingestion*)**:
    - Ingesti data hasil dari LIS pihak ketiga melalui Oware (`POST /api/LabContext/LabResultFeature/ingest-lis`) mencocokkan tes 1:1, menetapkan validator LIS otomatis, menandai `ResultSource = ExternalLis`, dan mengalirkan hasil langsung ke antrean Siap Rilis tanpa membebani Sp.PK untuk verifikasi ulang hasil rutin instrumen.
@@ -50,7 +50,7 @@ Paket pengujian ini disusun agar **dapat dieksekusi secara mandiri oleh manusia 
   - Formulir Patologi Anatomi: header nomor register fisik adaptif (`H.YY.NoUrut` vs `S.YY.NoUrut`), input Makroskopis (Histologi) vs Adekuasi + Rekomendasi (Sitologi), chip template diagnosis cepat, dan tombol Reset / Simpan.
   - Formulir Mikrobiologi: sediaan mikroskopis langsung, biakan & koloni kuman, tabel antibiogram AST, dan tombol Reset / Simpan.
   - Penyajian statis badge sumber hasil (`Manual` vs `LIS Eksternal`).
-  - Stasiun verifikasi Sp.PK: ringkasan abnormalitas, chip ekspertise, tombol verifikasi 1-klik, dan penolakan jika akun non-Sp.PK.
+  - Layar telaah medis & validasi Sp.PK: ringkasan abnormalitas, chip ekspertise, tombol validasi 1-klik, dan penolakan jika akun non-Sp.PK.
   - Tombol rilis *"Cetak & Rilis Hasil"* pada gerbang billing `CLEAR` vs penanganan penundaan fisik saat billing `BLOCKED`.
   - Dialog modal pratinjau PDF lembar hasil resmi dan fungsi cetak browser.
   - Dialog amandemen: validasi alasan koreksi < 10 karakter vs $\ge$ 10 karakter, pembatasan otorisasi peran, dan pembentukan versi N+1.
@@ -128,7 +128,7 @@ flowchart TD
 
     subgraph Tahap 2: Triase & Verifikasi Medis Sp.PK
         TC08 --> TC09["TC-LWR-09: Navigasi Persona /hasil_lab & Triase CITO Teratas"]
-        TC09 --> TC10["TC-LWR-10: Stasiun Telaah & Verifikasi Medis 1-Klik Langsung"]
+        TC09 --> TC10["TC-LWR-10: Telaah Medis & Validasi Hasil 1-Klik Langsung"]
         TC10 --> TC11["TC-LWR-11: Penegakan Otorisasi Sp.PK (EX-01) & Guard Mandatori (EX-02)"]
     end
 
@@ -250,8 +250,8 @@ flowchart TD
 
 ---
 
-## TC-LWR-05: Formulir Adaptif Patologi Anatomi: Histopatologi Jaringan & Sequencer `H.YY.NoUrut`
-- **Objective**: Memverifikasi bahwa saat membuka order Patologi Anatomi sub-spesialisasi Histopatologi (`DISC-PAH`), formulir adaptif ([`LabResultEntryPaForm.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/result/LabResultEntryPaForm.vue)) menyajikan nomor register fisik dengan format `H.{YY}.{NoUrut}`, menampilkan input deskripsi Makroskopis, menyembunyikan field Sitologi, serta mendukung pengisian diagnosis cepat via chip template.
+## TC-LWR-05: Formulir Adaptif Patologi Anatomi: Histopatologi Jaringan, Nomor Sediaan & Sequencer `H.YY.NoUrut`
+- **Objective**: Memverifikasi bahwa saat membuka order Patologi Anatomi sub-spesialisasi Histopatologi (`DISC-PAH`), formulir adaptif ([`LabResultEntryPaForm.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/result/LabResultEntryPaForm.vue)) menyajikan nomor register fisik dengan format `H.{YY}.{NoUrut}`, menyajikan input parameter nomor sediaan arsip fisik (`PA_SLIDE_NO`) dalam grid 2-kolom bersama lokasi jaringan (`PA_SPECIMEN_SITE`), menampilkan input deskripsi Makroskopis, menyembunyikan field Sitologi, serta mendukung pengisian diagnosis cepat via chip template.
 - **Kategori**: Functional & Discipline Adaptability
 - **Pemetaan Kriteria Penerimaan**: `AC-ARCH-11`, `SCR-LAB-RES-02`
 - **Preconditions**:
@@ -260,24 +260,27 @@ flowchart TD
 - **Langkah Pengujian**:
   1. Buka formulir entri hasil Patologi Anatomi.
   2. Amati lencana disiplin dan nomor register fisik PA pada bagian header form.
-  3. Periksa keberadaan field input **Pemeriksaan Sediaan Makroskopis (Gross Description)**.
-  4. Periksa apakah field *Kecukupan Sediaan (Specimen Adequacy)* dan *Rekomendasi Klinis* muncul pada form ini.
-  5. Isi field Asal Jaringan (*Specimen Site*), Makroskopis, dan Mikroskopis.
-  6. Pada bagian *Template Diagnosis Cepat*, klik chip **`+ Infiltrating Ductal Carcinoma`**.
-  7. Amati perubahan pada kotak isian *Diagnosis Patologi Anatomi (Kesimpulan)* dan *Kode SNOMED / Morfologi ICD-O*.
-  8. Klik tombol **Simpan Nilai Hasil (Ctrl+S)** pada Bottom Action Bar.
+  3. Periksa keberadaan grid 2-kolom metadata spesimen: field input **Nomor Sediaan / Slide** (opsional) di kolom kiri dan **Asal / Lokasi Jaringan** (wajib) di kolom kanan.
+  4. Isikan nomor blok kaset sediaan pada field Nomor Sediaan: `A1, A2, B1`.
+  5. Periksa keberadaan field input **Pemeriksaan Sediaan Makroskopis (Gross Description)**.
+  6. Periksa apakah field *Kecukupan Sediaan (Specimen Adequacy)* dan *Rekomendasi Klinis* muncul pada form ini.
+  7. Isi field Asal Jaringan (*Specimen Site*), Makroskopis, dan Mikroskopis.
+  8. Pada bagian *Template Diagnosis Cepat*, klik chip **`+ Infiltrating Ductal Carcinoma`**.
+  9. Amati perubahan pada kotak isian *Diagnosis Patologi Anatomi (Kesimpulan)* dan *Kode SNOMED / Morfologi ICD-O*.
+  10. Klik tombol **Simpan Nilai Hasil (Ctrl+S)** pada Bottom Action Bar.
 - **Expected Result**:
   - Header formulir menampilkan lencana kuning bertuliskan **`HISTOPATOLOGI (DISC-PAH)`**.
   - Nomor register fisik PA otomatis terisi dan berformat **`H.{YY}.{NomorUrut}`** (misal: `H.26.0089`).
+  - Field input **Nomor Sediaan / Slide** tampil dalam susunan grid 2-kolom berdampingan dengan Asal Jaringan dan menerima input free-text jamak (`A1, A2, B1`).
   - Field input **Pemeriksaan Sediaan Makroskopis** tampil dan wajib diisi.
   - Field *Kecukupan Sediaan* dan *Rekomendasi Klinis* tidak ditampilkan pada mode Histopatologi.
   - Mengklik chip template langsung mengisi kesimpulan diagnosis: *"Infiltrating duct carcinoma (IDC) mammae, grade II-III..."* dan kode morfologi: *"M-8500/3"*.
-  - Notifikasi toast sukses muncul dan hasil tersimpan dengan status `Recorded`.
+  - Notifikasi toast sukses muncul dan hasil tersimpan dengan status `Recorded` (mencakup komponen `PA_SLIDE_NO`).
 
 ---
 
-## TC-LWR-06: Formulir Adaptif Patologi Anatomi: Sitopatologi Cairan & Sequencer `S.YY.NoUrut`
-- **Objective**: Memverifikasi bahwa saat membuka order Patologi Anatomi sub-spesialisasi Sitopatologi (`DISC-PAS`), formulir secara cerdas beradaptasi menampilkan format nomor register fisik `S.{YY}.{NoUrut}`, menampilkan input Kecukupan Sediaan (*Specimen Adequacy*) dan Rekomendasi Klinis, serta menyembunyikan field Makroskopis.
+## TC-LWR-06: Formulir Adaptif Patologi Anatomi: Sitopatologi Cairan, Nomor Slide & Sequencer `S.YY.NoUrut`
+- **Objective**: Memverifikasi bahwa saat membuka order Patologi Anatomi sub-spesialisasi Sitopatologi (`DISC-PAS`), formulir secara cerdas beradaptasi menampilkan format nomor register fisik `S.{YY}.{NoUrut}`, menampilkan input Nomor Sediaan / Slide (`PA_SLIDE_NO`), input Kecukupan Sediaan (*Specimen Adequacy*) dan Rekomendasi Klinis, serta menyembunyikan field Makroskopis.
 - **Kategori**: Functional & Discipline Adaptability
 - **Pemetaan Kriteria Penerimaan**: `AC-ARCH-11`, `SCR-LAB-RES-02`
 - **Preconditions**:
@@ -286,18 +289,20 @@ flowchart TD
 - **Langkah Pengujian**:
   1. Buka formulir entri hasil Patologi Anatomi.
   2. Amati lencana disiplin dan nomor register fisik PA pada header form.
-  3. Periksa keberadaan field input **Kecukupan Sediaan / Adekuasi Sampel (Specimen Adequacy)** dan **Catatan / Rekomendasi Klinis**.
-  4. Periksa apakah field *Pemeriksaan Sediaan Makroskopis* ditampilkan.
-  5. Klik tombol radio adekuasi **`Adekuat`**.
-  6. Isi deskripsi Mikroskopis dan Kesimpulan Diagnosis Sitologi.
-  7. Klik tombol **Simpan Nilai Hasil (Ctrl+S)** pada Bottom Action Bar.
+  3. Periksa field input **Nomor Sediaan / Slide** pada grid 2-kolom dan isikan: `Slide 1-3`.
+  4. Periksa keberadaan field input **Kecukupan Sediaan / Adekuasi Sampel (Specimen Adequacy)** dan **Catatan / Rekomendasi Klinis**.
+  5. Periksa apakah field *Pemeriksaan Sediaan Makroskopis* ditampilkan.
+  6. Klik tombol radio adekuasi **`Adekuat`**.
+  7. Isi deskripsi Mikroskopis dan Kesimpulan Diagnosis Sitologi.
+  8. Klik tombol **Simpan Nilai Hasil (Ctrl+S)** pada Bottom Action Bar.
 - **Expected Result**:
   - Header formulir menampilkan lencana ungu bertuliskan **`SITOPATOLOGI (DISC-PAS)`**.
   - Nomor register fisik PA otomatis terisi dan berformat **`S.{YY}.{NomorUrut}`** (misal: `S.26.0012`).
+  - Field input **Nomor Sediaan / Slide** terisi `Slide 1-3`.
   - Field input **Kecukupan Sediaan** dan **Rekomendasi Klinis** tampil aktif.
   - Field *Pemeriksaan Sediaan Makroskopis* tidak ditampilkan pada mode Sitopatologi.
   - Tombol radio `Adekuat` otomatis mengisi narasi: *"Sediaan adekuat untuk evaluasi diagnostik (jumlah sel epitel representatif mencukupi)."*.
-  - Hasil tersimpan sukses dengan status `Recorded`.
+  - Hasil tersimpan sukses dengan status `Recorded` (mencakup komponen `PA_SLIDE_NO`).
 
 ---
 
@@ -369,8 +374,8 @@ flowchart TD
 
 ---
 
-## TC-LWR-10: Stasiun Telaah Klinis Sp.PK & Verifikasi Medis 1-Klik Langsung (*Direct 1-Click Verification*)
-- **Objective**: Memverifikasi stasiun telaah Sp.PK ([`LabVerificationPanel.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/verification/LabVerificationPanel.vue)) menyajikan ringkasan temuan kritis di baris atas, chip template ekspertise klinis cepat, dan tombol verifikasi medis 1-klik langsung tanpa popup modal konfirmasi berulang demi efisiensi verifikasi volume tinggi.
+## TC-LWR-10: Telaah Medis Klinis Sp.PK & Validasi Hasil 1-Klik Langsung (*Direct 1-Click Verification*)
+- **Objective**: Memverifikasi layar telaah medis Sp.PK ([`LabVerificationPanel.vue`](file:///D:/Project.Aktif/_hospital_web/c012_myhospital_web/src/modules/Laboratory/components/verification/LabVerificationPanel.vue)) menyajikan ringkasan temuan kritis di baris atas, chip template ekspertise klinis cepat, dan tombol validasi & sahkan hasil medis 1-klik langsung tanpa popup modal konfirmasi berulang demi efisiensi verifikasi volume tinggi.
 - **Kategori**: Happy Path & High-Throughput Ergonomics
 - **Pemetaan Kriteria Penerimaan**: `AC-ARCH-02`, `AC-ARCH-10`, `SCR-LAB-RES-04`
 - **Preconditions**:
@@ -378,14 +383,14 @@ flowchart TD
   - Buka pasien data uji yang berada di antrean Verifikasi Medis (`DATA-VERIF-CITO` atau `DATA-PK-RUTIN` yang telah `Recorded`).
 - **Langkah Pengujian**:
   1. Pilih kartu pasien pada daftar antrean verifikasi.
-  2. Amati tampilan stasiun telaah pada kanvas tengah: periksa ringkasan hasil uji dan nilai rujukan.
+  2. Amati tampilan layar telaah medis pada kanvas tengah: periksa ringkasan hasil uji dan nilai rujukan.
   3. Pada panel *Catatan Ekspertise Patologi Klinik*, klik salah satu chip template cepat: **`+ Dalam Batas Normal`** atau **`+ Evaluasi Klinis Berkala`**.
   4. Amati apakah teks template otomatis mengisi kotak catatan ekspertise.
-  5. Klik tombol utama **`✓ Verifikasi Hasil Medis (1-Klik)`**.
+  5. Klik tombol utama **`✓ Validasi & Sahkan Hasil (1-Klik)`**.
   6. Periksa apakah sistem langsung memproses verifikasi tanpa memunculkan popup konfirmasi kedua.
   7. Amati notifikasi toast feedback dan pembaruan status dokumen.
 - **Expected Result**:
-  - Stasiun telaah menyajikan nilai hasil, rentang rujukan, dan flag secara komprehensif.
+  - Layar telaah medis menyajikan nilai hasil, rentang rujukan, dan flag secara komprehensif.
   - Mengklik chip template cepat langsung mengisi kotak `ExpertiseNote`.
   - Mengklik tombol verifikasi langsung mengeksekusi mutasi `verifyMutation` tanpa popup konfirmasi modal berulang (*zero redundant clicks*).
   - Muncul toast notifikasi sukses: *"Hasil lab berhasil diverifikasi oleh dr. Bambang Sudarmo, Sp.PK"*.

@@ -97,7 +97,8 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
             || normalized.Equals("dokter_sppk", StringComparison.OrdinalIgnoreCase)
             || normalized.Equals("sp.pk", StringComparison.OrdinalIgnoreCase)
             || normalized.Equals("sppk", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("lab.result.verify", StringComparison.OrdinalIgnoreCase);
+            || normalized.Equals("lab.result.verify", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("celestial", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record OrderIdKey(string OrderId) : ILabOrderKey;
