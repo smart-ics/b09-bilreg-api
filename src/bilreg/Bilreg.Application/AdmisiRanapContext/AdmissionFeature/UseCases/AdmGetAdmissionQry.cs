@@ -22,7 +22,13 @@ public record AdmGetAdmissionResponse(
     DateTime CrtDate,
     string CaraMasukDkId = "",
     string DokterId = "",
-    string ProsedurMasukInapId = "");
+    string ProsedurMasukInapId = "",
+    string TipeJaminanId = "",
+    string TipeJaminanName = "",
+    string PolisId = "",
+    string NoPolis = "",
+    string JenisInapId = "",
+    string RegIbu = "");
 
 public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGetAdmissionResponse>
 {
@@ -66,6 +72,30 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             ri => Normalize(ri.ProsedurMasukInap?.ProsedurMasukInapId),
             () => string.Empty);
 
+        var tipeJaminanId = reg.Match(
+            r => Normalize(r.TipeJaminan?.TipeJaminanId),
+            () => string.Empty);
+
+        var tipeJaminanName = reg.Match(
+            r => Normalize(r.TipeJaminan?.TipeJaminanName),
+            () => string.Empty);
+
+        var polisId = reg.Match(
+            r => Normalize(r.Polis?.PolisId),
+            () => string.Empty);
+
+        var noPolis = reg.Match(
+            r => Normalize(r.Polis?.NoPolis),
+            () => string.Empty);
+
+        var jenisInapId = reg.Match(
+            r => Normalize(r.JenisInap?.JenisInapId),
+            () => string.Empty);
+
+        var regIbu = reg.Match(
+            r => Normalize(r.RegIbu),
+            () => string.Empty);
+
         return Task.FromResult(new AdmGetAdmissionResponse(
             admission.RegId,
             admission.AdmissionStatus,
@@ -78,7 +108,13 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             admission.AuditTrail.Created.Timestamp,
             caraMasukDkId,
             dokterId,
-            prosedurMasukInapId));
+            prosedurMasukInapId,
+            tipeJaminanId,
+            tipeJaminanName,
+            polisId,
+            noPolis,
+            jenisInapId,
+            regIbu));
     }
 
     private static string Normalize(string? value)

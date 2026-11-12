@@ -62,6 +62,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -85,7 +86,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         IJurnalRepo jurnalRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -110,13 +112,16 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
-    public Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
+    public async Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         #region GUARD & LOAD
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
+        var oldLayananId = regOld.Layanan.LayananId;
+        var oldDokterId = regOld.Dokter.PpaId;
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId)).GetValueOrThrow("Dokter not found");
         var layanan = _layananRepo.LoadEntity(request).GetValueOrThrow("Layanan not found");
@@ -208,8 +213,14 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         trans.Complete();
         #endregion
 
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(layanan.LayananId, dokter.PpaId, cancellationToken);
+        if (oldLayananId != layanan.LayananId || oldDokterId != dokter.PpaId)
+        {
+            await _clinicQueueRefreshPublisher.PublishRefreshHint(oldLayananId, oldDokterId, cancellationToken);
+        }
+
         var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian);
-        return Task.FromResult(result);
+        return result;
     }
 
     #region PRIVATE-HELPER

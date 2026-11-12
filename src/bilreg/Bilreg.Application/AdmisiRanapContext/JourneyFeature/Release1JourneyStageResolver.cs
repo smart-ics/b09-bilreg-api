@@ -303,7 +303,10 @@ public static class Release1JourneyStageResolver
         if (admission is not null && IsActiveAdmission(admission.Status)
             && decision.Stage is not JourneyOperationalStage.NeedsReconciliation)
         {
-            if (decision.Stage == JourneyOperationalStage.HandoverRequired)
+            if (decision.Stage is JourneyOperationalStage.HandoverRequired
+                or JourneyOperationalStage.WardAcceptanceRequired
+                or JourneyOperationalStage.HandoverAccepted
+                or JourneyOperationalStage.PlacementStatusUnavailable)
             {
                 actions.Add(Executable(
                     JourneyActionCode.UpdateAdmission,

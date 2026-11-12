@@ -28,6 +28,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     public DeleteBookingWorkflow(
         IBookingRepo bookingRepo,
@@ -39,7 +40,8 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         IJadwalPraktekHarianRepo jadwalPraktekHarianRepo,
         IJadwalPraktekFeatureResolver featureResolver,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _bookingRepo = bookingRepo;
         _ppaRepo = ppaRepo;
@@ -51,14 +53,15 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         _featureResolver = featureResolver;
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
 
-    public Task Execute(IBookingKey key)
+    public async Task Execute(IBookingKey key)
     {
         var occurredAt = _tglJamProvider.Now;
         var booking = LoadBookingOrExit(key);
         if (booking is null)
-            return Task.CompletedTask;
+            return;
 
         EnsureBookingNotRegistered(booking);
 
@@ -93,7 +96,8 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         }
 
         trans.Complete();
-        return Task.CompletedTask;
+
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(booking.Layanan.LayananId, booking.Dokter.PpaId);
     }
 
     #region Helper
