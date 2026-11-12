@@ -19,6 +19,8 @@ public class JourneyExtrasProjectionTest
         sql.Should().Contain("LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap");
         sql.Should().Contain("LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap");
         sql.Should().Contain("LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk");
+        sql.Should().Contain("LEFT JOIN ta_registrasi ibuReg ON reg.fs_reg_ibu = ibuReg.fs_kd_reg");
+        sql.Should().Contain("LEFT JOIN tc_mr ibuMr ON ibuReg.fs_mr = ibuMr.fs_mr");
 
         sql.Should().Contain("ISNULL(reg.fs_kd_jenis_inap,'') AS JenisInapId");
         sql.Should().Contain("ISNULL(ji.fs_nm_jenis_inap,'') AS JenisInapName");
@@ -26,6 +28,8 @@ public class JourneyExtrasProjectionTest
         sql.Should().Contain("ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName");
         sql.Should().Contain("ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId");
         sql.Should().Contain("ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName");
+        sql.Should().Contain("ISNULL(reg.fs_reg_ibu,'') AS RegIbuId");
+        sql.Should().Contain("ISNULL(ibuMr.fs_nm_pasien,'') AS NamaIbu");
     }
 
     [Fact]
@@ -44,7 +48,9 @@ public class JourneyExtrasProjectionTest
             JenisInapId: "JI01",
             JenisInapName: "Rawat Inap Reguler",
             CaraMasukId: "CM01",
-            CaraMasukName: "Datang Sendiri");
+            CaraMasukName: "Datang Sendiri",
+            RegIbuId: "RGIBU001",
+            NamaIbu: "Ny. Siska Amalia");
 
         var mapped = JourneyDal.MapRegExtras(batchRow);
 
@@ -59,6 +65,9 @@ public class JourneyExtrasProjectionTest
         mapped.CaraMasuk.Should().NotBeNull();
         mapped.CaraMasuk!.Id.Should().Be("CM01");
         mapped.CaraMasuk.Name.Should().Be("Datang Sendiri");
+
+        mapped.RegIbuId.Should().Be("RGIBU001");
+        mapped.NamaIbu.Should().Be("Ny. Siska Amalia");
     }
 
     [Fact]
@@ -77,13 +86,17 @@ public class JourneyExtrasProjectionTest
             JenisInapId: "",
             JenisInapName: "",
             CaraMasukId: "-",
-            CaraMasukName: "");
+            CaraMasukName: "",
+            RegIbuId: "000000000",
+            NamaIbu: "");
 
         var mapped = JourneyDal.MapRegExtras(batchRow);
 
         mapped.JenisInap.Should().BeNull();
         mapped.ProsedurMasuk.Should().BeNull();
         mapped.CaraMasuk.Should().BeNull();
+        mapped.RegIbuId.Should().BeNull();
+        mapped.NamaIbu.Should().BeNull();
     }
 
     [Fact]
@@ -120,7 +133,9 @@ public class JourneyExtrasProjectionTest
             AddressSummary: null,
             JenisInap: jenisInap,
             ProsedurMasuk: prosedurMasuk,
-            CaraMasuk: caraMasuk);
+            CaraMasuk: caraMasuk,
+            RegIbuId: "RGIBU100",
+            NamaIbu: "Ny. Ibu Pasien");
 
         var bag = sut.AssembleAdmissionBag(
             admission,
@@ -134,6 +149,8 @@ public class JourneyExtrasProjectionTest
         bag.JenisInap.Should().Be(jenisInap);
         bag.ProsedurMasuk.Should().Be(prosedurMasuk);
         bag.CaraMasuk.Should().Be(caraMasuk);
+        bag.RegIbuId.Should().Be("RGIBU100");
+        bag.NamaIbu.Should().Be("Ny. Ibu Pasien");
     }
 
     [Fact]

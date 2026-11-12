@@ -270,7 +270,9 @@ public sealed partial class JourneyDal
             ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId,
             ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName,
             ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId,
-            ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName
+            ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName,
+            ISNULL(reg.fs_reg_ibu,'') AS RegIbuId,
+            ISNULL(ibuMr.fs_nm_pasien,'') AS NamaIbu
         FROM (SELECT DISTINCT LTRIM(RTRIM(value)) AS RegId FROM STRING_SPLIT(@RegIdCsv, ',') WHERE LTRIM(RTRIM(value)) <> '') x
         LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
@@ -279,6 +281,8 @@ public sealed partial class JourneyDal
         LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
         LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap
         LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk
+        LEFT JOIN ta_registrasi ibuReg ON reg.fs_reg_ibu = ibuReg.fs_kd_reg
+        LEFT JOIN tc_mr ibuMr ON ibuReg.fs_mr = ibuMr.fs_mr
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
@@ -440,8 +444,12 @@ public sealed partial class JourneyDal
             extras ?? RegExtras.Empty);
     }
 
-    internal static RegExtras MapRegExtras(RegExtrasBatchRowDto row) =>
-        new(
+    internal static RegExtras MapRegExtras(RegExtrasBatchRowDto row)
+    {
+        var effectiveRegIbu = (string.IsNullOrWhiteSpace(row.RegIbuId) || row.RegIbuId.All(c => c == '0' || c == '-')) ? null : row.RegIbuId.Trim();
+        var effectiveNamaIbu = string.IsNullOrWhiteSpace(row.NamaIbu) ? null : row.NamaIbu.Trim();
+
+        return new(
             Named(row.TipeJaminanId, row.TipeJaminanName),
             Named(row.KelasId, row.KelasName),
             Named(row.DokterId, row.DokterName),
@@ -450,7 +458,10 @@ public sealed partial class JourneyDal
             null,
             Named(row.JenisInapId, row.JenisInapName),
             Named(row.ProsedurMasukId, row.ProsedurMasukName),
-            Named(row.CaraMasukId, row.CaraMasukName));
+            Named(row.CaraMasukId, row.CaraMasukName),
+            effectiveRegIbu,
+            effectiveNamaIbu);
+    }
 
     private sealed record ExpandedFactBatch(
         IReadOnlyList<OpnameRowDto> Opnames,
@@ -467,10 +478,15 @@ public sealed partial class JourneyDal
         string KelasName,
         string DokterId,
         string DokterName,
-        string ProsedurMasukId,
-        string ProsedurMasukName,
         string JenisInapId,
         string JenisInapName,
+        string ProsedurMasukId,
+        string ProsedurMasukName,
         string CaraMasukId,
-        string CaraMasukName);
+        string CaraMasukName,
+        string RegIbuId = "",
+        string NamaIbu = "")
+    {
+        public RegExtrasBatchRowDto() : this("", "", "", "", "", "", "", "", "", "", "", "", "", "", "") { }
+    }
 }

@@ -73,7 +73,9 @@ public sealed record JourneyPatientContactInfo(
     DateOnly? BirthDate,
     string? AgeDisplay,
     string? ContactSummary,
-    string? AddressSummary);
+    string? AddressSummary,
+    string? RegIbuId = null,
+    string? NamaIbu = null);
 
 public sealed record JourneyGuarantorCareClassInfo(
     JourneyIdName? Guarantor,
