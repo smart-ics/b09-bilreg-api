@@ -31,7 +31,8 @@ public record ScheduleOpGetResponse(
     string AlasanBatal,
     int TurnoverBuffer,
     bool IsDraft,
-    IEnumerable<OkScheduleOpHistDto> History);
+    IEnumerable<OkScheduleOpHistDto> History,
+    IEnumerable<OrderOpResourceDto>? Resources = null);
 
 public record OkScheduleOpPpaDto(
     int NoUrut,
@@ -65,12 +66,15 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
 {
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
+    private readonly IOrderOpResourceRepo _resourceRepo;
 
     public OkScheduleOpGetHandler(IScheduleOpRepo scheduleOpRepo,
-        IOrderOpRepo orderOpRepo)
+        IOrderOpRepo orderOpRepo,
+        IOrderOpResourceRepo resourceRepo)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
+        _resourceRepo = resourceRepo;
     }
 
     public Task<ScheduleOpGetResponse> Handle(OkScheduleOpGetQuery request, CancellationToken cancellationToken)
@@ -123,6 +127,8 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             ? UrgencyLevelEnum.Cito.ToString()
             : UrgencyLevelEnum.Elective.ToString();
 
+        var resources = _resourceRepo.ListData(request.OrderOpId)?.ToList() ?? [];
+
         var response = new ScheduleOpGetResponse(
             scheduleOp.OrderOp.OrderOpId,
             scheduleOp.ScheduleOpId,
@@ -147,7 +153,8 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             scheduleOp.AlasanBatal,
             scheduleOp.TurnoverBuffer,
             scheduleOp.IsDraft,
-            historyList);
+            historyList,
+            Resources: resources);
 
         return Task.FromResult(response);
     }

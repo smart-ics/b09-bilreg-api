@@ -317,7 +317,8 @@ public class ScheduleOpControllerTest
             AlasanBatal: "",
             TurnoverBuffer: 30,
             IsDraft: false,
-            History: history);
+            History: history,
+            Resources: new List<OrderOpResourceDto>());
 
         _mediatorMock
             .Setup(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()))
@@ -366,7 +367,8 @@ public class ScheduleOpControllerTest
             AlasanBatal: "",
             TurnoverBuffer: 30,
             IsDraft: false,
-            History: new List<OkScheduleOpHistDto>());
+            History: new List<OkScheduleOpHistDto>(),
+            Resources: new List<OrderOpResourceDto>());
 
         _mediatorMock
             .Setup(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()))
@@ -414,7 +416,8 @@ public class ScheduleOpControllerTest
             AlasanBatal: "",
             TurnoverBuffer: 30,
             IsDraft: true,
-            History: new List<OkScheduleOpHistDto>());
+            History: new List<OkScheduleOpHistDto>(),
+            Resources: new List<OrderOpResourceDto>());
 
         _mediatorMock
             .Setup(x => x.Send(It.Is<OkScheduleOpGetQuery>(q => q.OrderOpId == orderOpId), It.IsAny<CancellationToken>()))

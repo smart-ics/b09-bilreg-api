@@ -19,10 +19,14 @@ public class OkScheduleOpGetQueryTest
 {
     private readonly Mock<IScheduleOpRepo> _scheduleOpRepoMock = new();
     private readonly Mock<IOrderOpRepo> _orderOpRepoMock = new();
+    private readonly Mock<IOrderOpResourceRepo> _resourceRepoMock = new();
 
     private OkScheduleOpGetHandler CreateSut()
     {
-        return new OkScheduleOpGetHandler(_scheduleOpRepoMock.Object, _orderOpRepoMock.Object);
+        return new OkScheduleOpGetHandler(
+            _scheduleOpRepoMock.Object,
+            _orderOpRepoMock.Object,
+            _resourceRepoMock.Object);
     }
 
     private static OrderOpModel CreateSampleOrderOp(
@@ -420,5 +424,91 @@ public class OkScheduleOpGetQueryTest
 
         // Assert
         result.Urgency.Should().Be(expectedUrgency);
+    }
+
+    [Fact]
+    public async Task Handle_WhenResourcesEmpty_ShouldCallResourceRepoAndReturnEmptyCollection()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp("ORD-001", "PAS-001");
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001", "PAS-001", OpCaseStateEnum.Scheduled);
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            new PasienReff("PAS-001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
+            new OrderOpReff("ORD-001", new DateTime(2026, 10, 16), "Herniotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 10, 0, 0),
+            90,
+            new PpaReff("DOC-02", "dr. Baru"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            45);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "PAS-001")))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(scheduleOp));
+        _resourceRepoMock.Setup(x => x.ListData("ORD-001"))
+            .Returns([]);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new OkScheduleOpGetQuery("ORD-001"), CancellationToken.None);
+
+        // Assert
+        result.Resources.Should().NotBeNull();
+        result.Resources.Should().BeEmpty();
+        _resourceRepoMock.Verify(x => x.ListData("ORD-001"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenResourcesExist_ShouldProjectPersistedAlkesAndBloodResources()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp("ORD-001", "PAS-001");
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001", "PAS-001", OpCaseStateEnum.Scheduled);
+        var scheduleView = new ScheduleOpView(
+            "SCH-001",
+            new PasienReff("PAS-001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
+            new OrderOpReff("ORD-001", new DateTime(2026, 10, 16), "Herniotomi"),
+            UrgencyLevelEnum.Elective,
+            new DateTime(2026, 10, 20, 10, 0, 0),
+            90,
+            new PpaReff("DOC-02", "dr. Baru"),
+            new KamarReff("KAMAR-2", "OK 2"),
+            OpCaseStateEnum.Scheduled,
+            false,
+            45);
+
+        var now = new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc);
+        var persistedResources = new List<OrderOpResourceDto>
+        {
+            OrderOpResourceDto.Create("RES-01", "ORD-001", "SCH-001", "EQUIPMENT", "C-Arm Image Intensifier", 1, "Unit", "Standby", "user-01", now),
+            OrderOpResourceDto.Create("RES-02", "ORD-001", "SCH-001", "BLOOD", "PRC Gol A", 2, "Kolf", "Crossmatch siap", "user-01", now)
+        };
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderOpKey>(k => k.OrderOpId == "ORD-001")))
+            .Returns(MayBe.From(orderOp));
+        _scheduleOpRepoMock.Setup(x => x.ListData(It.Is<IPasienKey>(k => k.PasienId == "PAS-001")))
+            .Returns(new List<ScheduleOpView> { scheduleView });
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001")))
+            .Returns(MayBe.From(scheduleOp));
+        _resourceRepoMock.Setup(x => x.ListData("ORD-001"))
+            .Returns(persistedResources);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.Handle(new OkScheduleOpGetQuery("ORD-001"), CancellationToken.None);
+
+        // Assert
+        result.Resources.Should().NotBeNull();
+        result.Resources.Should().HaveCount(2);
+        result.Resources.Should().BeEquivalentTo(persistedResources);
+        _resourceRepoMock.Verify(x => x.ListData("ORD-001"), Times.Once);
     }
 }
