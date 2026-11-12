@@ -170,14 +170,7 @@ public sealed partial class JourneyDal : IJourneyDal
             return null;
 
         var resolution = Release1JourneyStageResolver.Resolve(bag.Facts);
-        bool? hasBilling = null;
-        if (!string.IsNullOrWhiteSpace(resolution.Identity.RegId)
-            && resolution.CandidateAdmisiActions.Any(a => a.Code == JourneyActionCode.CancelAdmission))
-        {
-            hasBilling = await QueryHasBillingItemsAsync(conn, resolution.Identity.RegId!, cancellationToken);
-        }
-
-        var detail = MapDetail(bag, resolution, asOf, hasBilling);
+        var detail = MapDetail(bag, resolution, asOf, hasBillingItems: false);
         sw.Stop();
         _logger.LogInformation(
             "JourneyDal.GetByJourneyId journeyId={JourneyId} stage={Stage} ms={Ms} recon={Recon}",
@@ -297,7 +290,7 @@ public sealed partial class JourneyDal : IJourneyDal
         JourneyFactBag bag,
         Release1JourneyResolution resolution,
         DateTime asOf,
-        bool? hasBillingItems)
+        bool? hasBillingItems = false)
     {
         var patientContact = bag.Facts.Patient is null
             ? null
@@ -315,9 +308,7 @@ public sealed partial class JourneyDal : IJourneyDal
 
         Func<string, bool>? billingCheck = hasBillingItems.HasValue
             ? _ => hasBillingItems.Value
-            : _cancellationEligibility is null
-                ? null
-                : _cancellationEligibility.HasBillingItems;
+            : _ => false;
 
         var allowed = JourneyAllowedActionEvaluator.Evaluate(
             resolution.CandidateAdmisiActions,
@@ -353,20 +344,6 @@ public sealed partial class JourneyDal : IJourneyDal
             asOf,
             JourneyProjectionVersions.Release1);
     }
-
-    private static async Task<bool> QueryHasBillingItemsAsync(
-        IDbConnection conn,
-        string regId,
-        CancellationToken cancellationToken = default) =>
-        await conn.ExecuteScalarAsync<bool>(
-            new CommandDefinition(
-                RegistrationCancellationEligibilityDal.HasBillingItemsSql,
-                new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds,
-                cancellationToken: cancellationToken));
-
-    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
-        QueryHasBillingItemsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
 
     private async Task<JourneyFactBag?> LoadFactBagAsync(
         IDbConnection conn,

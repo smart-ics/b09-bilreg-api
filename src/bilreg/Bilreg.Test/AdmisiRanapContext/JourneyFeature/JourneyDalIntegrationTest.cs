@@ -489,7 +489,7 @@ public class JourneyDalIntegrationTest
     }
 
     [Fact]
-    public void CancelAdmission_NotExecutable_When_BillingItems_Exist()
+    public void CancelAdmission_RemainsExecutable_OnDetail_EvenWhenBillingItemsExist_BecauseValidationIsOnDemand()
     {
         using var trans = TransHelper.NewScope();
         var ids = NewIds();
@@ -502,10 +502,10 @@ public class JourneyDalIntegrationTest
         detail!.CandidateAdmisiActions.Should().Contain(a =>
             a.Code == JourneyActionCode.CancelAdmission && a.CanExecute);
 
+        // Under TD-03, JourneyDal does not query ta_trs_billing during GetByJourneyId.
+        // Cancellation billing guard is evaluated on-demand during command execution (P3-S05).
         detail.AllowedAdmisiActions.Should().Contain(a =>
-            a.Code == JourneyActionCode.CancelAdmission
-            && !a.CanExecute
-            && a.BlockedReason == JourneyAllowedActionEvaluator.RegistrationHasBillingItemsBlockedReason);
+            a.Code == JourneyActionCode.CancelAdmission && a.CanExecute);
     }
 
     [Fact]
