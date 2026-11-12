@@ -436,6 +436,21 @@ public class WaitingListModelTest
         rerouted.AuditTrail.Modified.Timestamp.Should().Be(occurredAt);
     }
 
+    [Fact]
+    public void Reroute_FromRejectedStatus_ShouldSucceed()
+    {
+        var entry = CreateWaiting().Reject("Kapasitas penuh", "nurse1", new DateTime(2026, 10, 17, 9, 30, 0));
+        var occurredAt = new DateTime(2026, 10, 17, 10, 0, 0);
+
+        var rerouted = entry.Reroute("Penempatan ulang ke bangsal alternatif", "admin1", occurredAt);
+
+        rerouted.WaitingListStatus.Should().Be(WaitingListStatusEnum.Rerouted);
+        rerouted.IsActive.Should().BeFalse();
+        rerouted.RerouteReason.Should().Be("Penempatan ulang ke bangsal alternatif");
+        rerouted.AuditTrail.Modified.UserId.Should().Be("admin1");
+        rerouted.AuditTrail.Modified.Timestamp.Should().Be(occurredAt);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -464,10 +479,19 @@ public class WaitingListModelTest
     public void GivenInactiveStatus_WhenReroute_ThenThrowsInvalidOperationException()
     {
         var cancelled = CreateWaiting().Cancel("Batal", "admin1");
+        var placed = CreateWaiting().Place("BED01", "PAK01", "nurse1");
+        var rerouted = CreateWaiting().Reroute("Reroute 1", "admin1");
 
-        var act = () => cancelled.Reroute("Reroute ke bangsal lain", "dr1");
+        var actCancelled = () => cancelled.Reroute("Reroute ke bangsal lain", "dr1");
+        var actPlaced = () => placed.Reroute("Reroute ke bangsal lain", "dr1");
+        var actRerouted = () => rerouted.Reroute("Reroute ke bangsal lain", "dr1");
 
-        act.Should().Throw<InvalidOperationException>();
+        actCancelled.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting, Reserved, atau Rejected*");
+        actPlaced.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting, Reserved, atau Rejected*");
+        actRerouted.Should().Throw<InvalidOperationException>()
+            .WithMessage("*harus Waiting, Reserved, atau Rejected*");
     }
 
     #endregion

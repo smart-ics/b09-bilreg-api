@@ -81,6 +81,7 @@ public class RegJalanByBookingHandlerTest
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IAdmissionServicePointResolver> _admissionServicePointResolver = new();
     private readonly Mock<IAdmisiEventPublisher> _publisher = new();
+    private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
 
     private readonly RegJalanByBookingHandler _sut;
 
@@ -122,7 +123,8 @@ public class RegJalanByBookingHandlerTest
             _featureResolver.Object,
             TestTglJamProvider.Instance,
             _admissionServicePointResolver.Object,
-            _publisher.Object);
+            _publisher.Object,
+            clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object);
     }
 
     [Fact]
@@ -139,6 +141,7 @@ public class RegJalanByBookingHandlerTest
         result.RegId.Should().Be("RG00000001");
         result.NoAntrian.Should().Be(1);
         _publisher.Verify(x => x.PublishRajalCreatedAsync("RG00000001", It.IsAny<CancellationToken>()), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

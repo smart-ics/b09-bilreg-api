@@ -1,5 +1,6 @@
 namespace Bilreg.Domain.SalesContext.PenjualanFeature;
 
+[Obsolete("Deprecated in favor of Bilreg.Domain.ApotekContext.PenjualanFeature")]
 public record NilaiItemType
 {
     public NilaiItemType(

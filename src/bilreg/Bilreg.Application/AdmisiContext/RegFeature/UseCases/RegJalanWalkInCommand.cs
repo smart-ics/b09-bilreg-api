@@ -102,6 +102,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IAdmisiEventPublisher _publisher;
     private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
     private readonly IAdmissionQueueRefreshPublisher? _admissionQueueRefreshPublisher;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -144,7 +145,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IAdmissionServicePointResolver admissionServicePointResolver,
         IAdmisiEventPublisher publisher,
         IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null,
-        IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null)
+        IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -187,6 +189,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _publisher = publisher;
         _registrationOutcomeRepo = registrationOutcomeRepo;
         _admissionQueueRefreshPublisher = admissionQueueRefreshPublisher;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
 
     public async Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -366,6 +369,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         if (admissionContext is not null && _admissionQueueRefreshPublisher is not null)
             await _admissionQueueRefreshPublisher.PublishAsync(admissionContext.LoketKey, cancellationToken);
+
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(layanan.LayananId, dokter.PpaId, cancellationToken);
 
         return response;
         
