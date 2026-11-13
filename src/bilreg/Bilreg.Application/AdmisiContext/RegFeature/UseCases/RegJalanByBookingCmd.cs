@@ -56,7 +56,7 @@ public record RegJalanByBookingCmd(
     public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
 }
 
-public record RegJalanByBookingResponse(string RegId, int NoAntrian);
+public record RegJalanByBookingResponse(string RegId, int NoAntrian, string QueueLabel = "", string PrefixAntrian = "");
 public class RegJalanByBookingHandler 
     : IRequestHandler<RegJalanByBookingCmd, RegJalanByBookingResponse>
 {
@@ -361,7 +361,11 @@ public class RegJalanByBookingHandler
             _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
 
             trans.Complete();
-            response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
+            response = new RegJalanByBookingResponse(
+                reg.RegId,
+                booking.NoAntrian,
+                antrian.FormatClinicQueueLabel(booking.NoAntrian),
+                antrian.QueuePrefixSnapshot);
         }
 
         await _publisher.PublishRajalCreatedAsync(reg.RegId, cancellationToken);

@@ -152,7 +152,7 @@ public class ClinicQueueGetDisplaySnapshotHandlerTest
         var activeCall = response.ActiveCalls[0];
         activeCall.AntrianId.Should().Be("QUE-100");
         activeCall.NoUrut.Should().Be(1);
-        activeCall.NomorAntrean.Should().Be("A0001");
+        activeCall.NomorAntrean.Should().Be("A1");
         activeCall.NamaPasien.Should().Be("Tn. Ahmad");
         activeCall.PoliId.Should().Be("POLI-INT");
         activeCall.PoliName.Should().Be("Poliklinik Penyakit Dalam");
@@ -167,7 +167,7 @@ public class ClinicQueueGetDisplaySnapshotHandlerTest
         response.WaitingItems.Should().HaveCount(2);
         var wait1 = response.WaitingItems[0];
         wait1.NoUrut.Should().Be(3);
-        wait1.NomorAntrean.Should().Be("A0003");
+        wait1.NomorAntrean.Should().Be("A3");
         wait1.NamaPasien.Should().Be("Tn. Joko");
         wait1.Priority.Should().BeTrue();
         wait1.PoliName.Should().Be("Poliklinik Penyakit Dalam");
@@ -175,7 +175,7 @@ public class ClinicQueueGetDisplaySnapshotHandlerTest
 
         var wait2 = response.WaitingItems[1];
         wait2.NoUrut.Should().Be(2);
-        wait2.NomorAntrean.Should().Be("A0002");
+        wait2.NomorAntrean.Should().Be("A2");
         wait2.NamaPasien.Should().Be("Ny. Siti");
         wait2.Priority.Should().BeFalse();
     }
@@ -270,7 +270,7 @@ public class ClinicQueueGetDisplaySnapshotHandlerTest
         // Ordered by Priority DESC, then NoUrut ASC: entry3 (priority), entry1, entry2
         var wait1 = response.WaitingItems[0];
         wait1.NoUrut.Should().Be(3);
-        wait1.NomorAntrean.Should().Be("A0003");
+        wait1.NomorAntrean.Should().Be("A3");
         wait1.NamaPasien.Should().Be("Tn. Joko");
         wait1.Priority.Should().BeTrue();
         wait1.PoliId.Should().Be("POLI-INT");
@@ -280,13 +280,13 @@ public class ClinicQueueGetDisplaySnapshotHandlerTest
 
         var wait2 = response.WaitingItems[1];
         wait2.NoUrut.Should().Be(1);
-        wait2.NomorAntrean.Should().Be("A0001");
+        wait2.NomorAntrean.Should().Be("A1");
         wait2.NamaPasien.Should().Be("Tn. Ahmad");
         wait2.Priority.Should().BeFalse();
 
         var wait3 = response.WaitingItems[2];
         wait3.NoUrut.Should().Be(2);
-        wait3.NomorAntrean.Should().Be("A0002");
+        wait3.NomorAntrean.Should().Be("A2");
         wait3.NamaPasien.Should().Be("Ny. Siti");
         wait3.Priority.Should().BeFalse();
     }

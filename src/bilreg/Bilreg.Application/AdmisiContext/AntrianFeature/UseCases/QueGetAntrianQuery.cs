@@ -24,7 +24,9 @@ public record QueGetAntrianResponse(
     int StatusAntrian,
     string StatusAntrianString,
     DateTime? ServedAt,
-    DateTime? DoneAt);
+    DateTime? DoneAt,
+    string QueueLabel = "",
+    string PrefixAntrian = "");
 public class QueGetAntrianHandler : IRequestHandler<QueGetAntrianQuery, IEnumerable<QueGetAntrianResponse>>
 {
     private readonly IAntrianRepo _queRepo;
@@ -73,7 +75,9 @@ public class QueGetAntrianHandler : IRequestHandler<QueGetAntrianQuery, IEnumera
                          (int)c.AntrianStatus,
                          c.AntrianStatus.ToString(),
                          ToNullableBusinessTime(c.ServedAt),
-                         ToNullableBusinessTime(c.DoneAt)
+                         ToNullableBusinessTime(c.DoneAt),
+                         que.FormatClinicQueueLabel(c.NoUrut),
+                         que.QueuePrefixSnapshot
                      ))?.ToList() ?? [];
         return result;
     }

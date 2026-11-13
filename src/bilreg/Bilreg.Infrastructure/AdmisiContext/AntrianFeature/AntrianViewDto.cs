@@ -4,7 +4,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public record AntrianViewDto(string AntrianId, int AntrianStatus, int NoUrut, string PersonName,
     string ReffId, string ReffDesc, DateTime AntrianDate, string SequenceTag, string AntrianDescription,
-    string StartTime, string EndTime)
+    string StartTime, string EndTime, string QueuePrefixSnapshot = "")
 {
     public AntrianView ToView()
     {
@@ -21,7 +21,8 @@ public record AntrianViewDto(string AntrianId, int AntrianStatus, int NoUrut, st
             part[1],
             AntrianDescription,
             TimeOnly.Parse(StartTime),
-            TimeOnly.Parse(EndTime)); 
+            TimeOnly.Parse(EndTime),
+            QueuePrefixSnapshot); 
         return result;
     }
 }

@@ -54,7 +54,7 @@ public record RegJalanWalkInCommand(string PasienId, string UserId,
     public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
 }
  
-public record RegJalanCreateResponse(string RegId, int NoAntrian);
+public record RegJalanCreateResponse(string RegId, int NoAntrian, string QueueLabel = "", string PrefixAntrian = "");
 
 public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJalanCreateResponse>
 {
@@ -325,6 +325,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
             var antEntry = _queueNumberAdapter.ProjectIntoQueueSession(
                 antrian, reserved, tracker, reg.RegId, "REG", occurredAt);
+
+            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            TryUpdateAntrianPrefix(antrian, rawPrefix);
+
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
@@ -349,8 +353,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 _jurnalRepo.SaveChanges(jurnalTindakan);
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
-            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
-            var prefix = NormalizePrefix(rawPrefix);
+            var emrRawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            var prefix = NormalizePrefix(emrRawPrefix);
 
             var emrPayload = new AddAntrianEmrByRegCommand(
                 reg.RegId, "-", reg.Pasien.PasienId,
@@ -362,7 +366,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
 
             trans.Complete();
-            response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
+            response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut,
+                antrian.FormatClinicQueueLabel(antEntry.NoUrut), antrian.QueuePrefixSnapshot);
         }
 
         await _publisher.PublishRajalCreatedAsync(reg.RegId, cancellationToken);
@@ -383,6 +388,25 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if (prefix.Length > 2)
             prefix = prefix.Substring(0, 2);
         return prefix;
+    }
+
+    private static void TryUpdateAntrianPrefix(AntrianModel antrian, string? rawPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(rawPrefix) || rawPrefix.Trim() == "-")
+            return;
+
+        var normalized = rawPrefix.Trim();
+        if (normalized.Length > 2)
+            normalized = normalized.Substring(0, 2);
+
+        try
+        {
+            antrian.TryUpdatePrefix(AntrianModel.NormalizeClinicPrefix(normalized));
+        }
+        catch
+        {
+            // Defensive: ignore invalid prefixes for clinic snapshot.
+        }
     }
 
     private bool IsPasienAktifReg(IPasienKey pasien)
