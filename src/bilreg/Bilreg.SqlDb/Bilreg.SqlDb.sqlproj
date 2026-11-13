@@ -75,6 +75,7 @@
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
+    <Folder Include="ChargeContext\TindakanFeature\" />
     <Folder Include="PaymentContext\RekapCatakFeature\" />
     <Folder Include="PaymentContext\RekeningFeature\" />
     <Folder Include="AccountingContext" />
@@ -111,6 +112,7 @@
     <Folder Include="BedUsageContext\WaitingListFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
     <Folder Include="InventoryContext\StockLedgerFeature\" />
+    <Folder Include="InventoryContext\PakaiBrgFeature\" />
     <Folder Include="InventoryContext\" />
     <Folder Include="SalesContext\" />
     <Folder Include="BrgContext\" />
@@ -405,6 +407,8 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
+    <Build Include="ChargeContext\TindakanFeature\BILRG_TindakanBarang.sql" />
+    <Build Include="InventoryContext\PakaiBrgFeature\BILRG_TindakanStokPending.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
   </ItemGroup>
   <ItemGroup>

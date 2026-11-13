@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -27,8 +28,18 @@ public record TindakanGetResponse(
     IEnumerable<TindakanGetKomponenResponse> ListKomponen,
     string PakaiBedId = "",
     bool IsDiskonDokter = false,
-    decimal DiskonDokter = 0
-);
+    decimal DiskonDokter = 0,
+    bool IsChargeBarang = false,
+    IEnumerable<TindakanGetBrgResponse>? ListBarang = null
+)
+{
+    private readonly IEnumerable<TindakanGetBrgResponse>? _listBarang = ListBarang;
+    public IEnumerable<TindakanGetBrgResponse> ListBarang
+    {
+        get => _listBarang ?? [];
+        init => _listBarang = value;
+    }
+}
 
 public record TindakanGetKomponenResponse(
     string KomponenId,
@@ -41,13 +52,30 @@ public record TindakanGetKomponenResponse(
     decimal Diskon = 0
 );
 
+public record TindakanGetBrgResponse(
+    string BrgId,
+    string BrgName,
+    string SatuanBomId,
+    decimal QtyBom,
+    decimal QtyKecilDeducted,
+    decimal QtyPending,
+    string PakaiBrgId,
+    string TrsBillingId
+);
+
 public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetResponse>
 {
     private readonly ITindakanRepo _tdkRepo;
+    private readonly ITindakanBarangRepo? _tdkBarangRepo;
 
-    public TindakanGetHandler(ITindakanRepo tdkRepo)
+    public TindakanGetHandler(ITindakanRepo tdkRepo) : this(tdkRepo, null!)
+    {
+    }
+
+    public TindakanGetHandler(ITindakanRepo tdkRepo, ITindakanBarangRepo tdkBarangRepo)
     {
         _tdkRepo = tdkRepo;
+        _tdkBarangRepo = tdkBarangRepo;
     }
 
     public Task<TindakanGetResponse> Handle(TindakanGetQuery request, CancellationToken cancellationToken)
@@ -78,6 +106,19 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
             );
         }).ToList();
 
+        var rawBarang = _tdkBarangRepo?.ListByTindakanId(request.TindakanId)?.Where(b => !b.IsVoid).ToList() ?? [];
+        var isChargeBarang = rawBarang.Any(b => b.IsChargeBarang);
+        var listBarang = rawBarang.Select(b => new TindakanGetBrgResponse(
+            b.BrgId,
+            b.BrgName,
+            b.SatuanBomId,
+            b.QtyBom,
+            b.QtyKecilDeducted,
+            b.QtyPending,
+            b.PakaiBrgId,
+            b.TrsBillingId
+        )).ToList();
+
         var result = new TindakanGetResponse(
             tdk.TindakanId,
             tdk.TindakanDate,
@@ -94,7 +135,9 @@ public class TindakanGetHandler : IRequestHandler<TindakanGetQuery, TindakanGetR
             listKomponen,
             tdk.PakaiBedId,
             tdk.IsDiskonDokter,
-            tdk.DiskonDokter
+            tdk.DiskonDokter,
+            isChargeBarang,
+            listBarang
         );
 
         return Task.FromResult(result);

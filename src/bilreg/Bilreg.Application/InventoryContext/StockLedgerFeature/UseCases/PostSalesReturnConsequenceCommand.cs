@@ -1,3 +1,5 @@
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
+using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
@@ -57,6 +59,8 @@ public class PostSalesReturnConsequenceHandler
     private readonly IStockLegacyBindingRepo _bindingRepo;
     private readonly IStockLegacyScopeRepo _scopeRepo;
     private readonly IStockConsequenceUnitOfWork _uow;
+    private readonly ISender? _sender;
+    private readonly ILogger<PostSalesReturnConsequenceHandler>? _logger;
 
     public PostSalesReturnConsequenceHandler(
         LegacyFreshnessGate freshnessGate,
@@ -64,7 +68,9 @@ public class PostSalesReturnConsequenceHandler
         IStockMutasiRepo mutasiRepo,
         IStockLegacyBindingRepo bindingRepo,
         IStockLegacyScopeRepo scopeRepo,
-        IStockConsequenceUnitOfWork uow)
+        IStockConsequenceUnitOfWork uow,
+        ISender? sender = null,
+        ILogger<PostSalesReturnConsequenceHandler>? logger = null)
     {
         _freshnessGate = freshnessGate;
         _batchRepo = batchRepo;
@@ -72,6 +78,8 @@ public class PostSalesReturnConsequenceHandler
         _bindingRepo = bindingRepo;
         _scopeRepo = scopeRepo;
         _uow = uow;
+        _sender = sender;
+        _logger = logger;
     }
 
     public async Task<PostSalesReturnConsequenceResult> Handle(
@@ -240,6 +248,8 @@ public class PostSalesReturnConsequenceHandler
             UserId: request.UserId);
 
         _uow.Commit(draft);
+
+        await PendingSettleTrigger.TryDrain(_sender, _logger, request.UserId, [(request.BrgId, request.LayananId)], cancellationToken);
 
         return new PostSalesReturnConsequenceResult(
             PostSalesReturnOutcomeEnum.Success,

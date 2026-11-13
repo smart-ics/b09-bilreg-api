@@ -49,6 +49,15 @@ public interface ICreateBillDomService
         JaminanType jaminan,
         GroupRekType groupRek,
         DateTime createdAt = default);
+
+    TrsBillType FromTindakanBarang(
+        TataRekeningModel tataRekening,
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -69,6 +78,19 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp, createdAt);
+    }
+
+    public TrsBillType FromTindakanBarang(
+        TataRekeningModel tataRekening,
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromTindakanBarang(tindakan, barang, reg, jaminan, groupRek, createdAt);
     }
 
     public TrsBillType FromLabOrderItem(TataRekeningModel tataRekening, LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,

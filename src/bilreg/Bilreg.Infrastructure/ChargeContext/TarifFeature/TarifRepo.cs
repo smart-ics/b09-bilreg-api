@@ -3,7 +3,7 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.BillContext.TindakanSub.TarifAgg;
+namespace Bilreg.Infrastructure.ChargeContext.TarifFeature;
 
 public class TarifRepo : ITarifRepo
 {

@@ -1,3 +1,5 @@
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
+using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
@@ -67,6 +69,8 @@ public class PostSaleVoidConsequenceHandler
     private readonly IStockLegacyScopeRepo _scopeRepo;
     private readonly ILegacyStockReadPort _legacyRead;
     private readonly IStockConsequenceUnitOfWork _uow;
+    private readonly ISender? _sender;
+    private readonly ILogger<PostSaleVoidConsequenceHandler>? _logger;
 
     public PostSaleVoidConsequenceHandler(
         LegacyFreshnessGate freshnessGate,
@@ -75,7 +79,9 @@ public class PostSaleVoidConsequenceHandler
         IStockLegacyBindingRepo bindingRepo,
         IStockLegacyScopeRepo scopeRepo,
         ILegacyStockReadPort legacyRead,
-        IStockConsequenceUnitOfWork uow)
+        IStockConsequenceUnitOfWork uow,
+        ISender? sender = null,
+        ILogger<PostSaleVoidConsequenceHandler>? logger = null)
     {
         _freshnessGate = freshnessGate;
         _batchRepo = batchRepo;
@@ -84,6 +90,8 @@ public class PostSaleVoidConsequenceHandler
         _scopeRepo = scopeRepo;
         _legacyRead = legacyRead;
         _uow = uow;
+        _sender = sender;
+        _logger = logger;
     }
 
     public async Task<PostSaleVoidConsequenceResult> Handle(
@@ -189,6 +197,7 @@ public class PostSaleVoidConsequenceHandler
         var bindingInserts = new List<StockLegacyBindingModel>();
         var legacyOps = new List<LegacyStockWriteOperation>();
         var lineResults = new List<PostSaleVoidLineResult>();
+        var touchedScopes = new List<(string BrgId, string LayananId)>();
         var usedBukuIds = new HashSet<string>(StringComparer.Ordinal);
         var usedMutasiIds = new HashSet<string>(StringComparer.Ordinal);
         var usedBindingIds = new HashSet<string>(StringComparer.Ordinal);
@@ -334,6 +343,7 @@ public class PostSaleVoidConsequenceHandler
                 voidLegacyBukuId,
                 syncedAt);
 
+            touchedScopes.Add((original.BrgId, original.LayananId));
             lineResults.Add(new PostSaleVoidLineResult(
                 voidMutasi.StokMutasiId,
                 original.StokMutasiId,
@@ -354,6 +364,8 @@ public class PostSaleVoidConsequenceHandler
             UserId: request.UserId);
 
         _uow.Commit(draft);
+
+        await PendingSettleTrigger.TryDrain(_sender, _logger, request.UserId, touchedScopes, cancellationToken);
 
         return new PostSaleVoidConsequenceResult(
             PostSaleVoidOutcomeEnum.Success,
