@@ -204,6 +204,20 @@ public class OperationalWorklistDalTest
         activeOnly.Should().NotContain(x => x.ItemId == cancelledId);
     }
 
+    [Fact]
+    public void UT08_BuildAdmissionBranch_ContainsInpatientOrderJoinWithoutOpnameRequestIdFallback()
+    {
+        var sql = typeof(OperationalWorklistDal)
+            .GetMethod("BuildAdmissionBranch", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(null, [false])!.ToString()!;
+
+        sql.Should().Contain("LEFT JOIN BILRG_AdmInpatientOrder op");
+        sql.Should().Contain("aa.InpatientOrderId = op.InpatientOrderId");
+        sql.Should().NotContain("aa.OpnameRequestId");
+        sql.Should().NotContain("BILRG_AdmOpnameRequest");
+        sql.Should().NotContain("BILRG_AdmReservation");
+    }
+
     private static string GenerateOrderId() =>
         $"OPN{DateTime.Now:yy}{Random.Shared.Next(10000000, 99999999)}"[..12];
 

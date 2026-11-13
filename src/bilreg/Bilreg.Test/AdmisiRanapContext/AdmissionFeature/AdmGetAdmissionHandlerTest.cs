@@ -195,6 +195,36 @@ public class AdmGetAdmissionHandlerTest
         result.RegIbu.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_WhenRegHasJenisInapAndRegIbu_MapsBothProperties()
+    {
+        // Arrange
+        var admission = CreateSampleAdmission("ADM005");
+        _admissionRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM005")))
+            .Returns(MayBe.From(admission));
+
+        var reg = CreateSampleReg("ADM005", "8", "REG_DOK", jenisInapId: "3", regIbu: "REG_IBU_123");
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM005")))
+            .Returns(MayBe.From(reg));
+
+        var regInap = CreateSampleRegInap("ADM005", "1", "DPJP_AKTIF");
+        _regInapRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM005")))
+            .Returns(MayBe.From(regInap));
+
+        var query = new AdmGetAdmissionQry("ADM005");
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.JenisInapId.Should().Be("3");
+        result.RegIbu.Should().Be("REG_IBU_123");
+    }
+
     private static AdmissionModel CreateSampleAdmission(string regId) =>
         new(
             regId,
@@ -236,7 +266,7 @@ public class AdmGetAdmissionHandlerTest
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
             [],
-            jenisInap: new JenisInapType(jenisInapId, "Jenis Inap Test"),
+            jenisInap: string.IsNullOrEmpty(jenisInapId) ? null : new JenisInapType(jenisInapId, "Jenis Inap Test"),
             regIbu: regIbu);
 
     private static RegInapModel CreateSampleRegInap(string regId, string prosedurMasukInapId, string dpjpId) =>
