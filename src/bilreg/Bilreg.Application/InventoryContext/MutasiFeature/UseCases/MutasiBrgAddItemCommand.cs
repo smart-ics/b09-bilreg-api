@@ -75,9 +75,6 @@ public class MutasiBrgAddItemHandler : IRequestHandler<MutasiBrgAddItemCommand>
 
         if (isPharmacy)
         {
-            if (string.IsNullOrWhiteSpace(request.BatchNo))
-                throw new ArgumentException($"BatchNo wajib diisi untuk barang farmasi ({groupRekDkId})", nameof(request.BatchNo));
-
             if (string.IsNullOrWhiteSpace(request.ExpiredDate) || !DateTime.TryParse(request.ExpiredDate, out _))
                 throw new ArgumentException($"ExpiredDate wajib diisi dengan format tanggal yang valid untuk barang farmasi ({groupRekDkId})", nameof(request.ExpiredDate));
         }

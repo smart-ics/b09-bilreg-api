@@ -89,12 +89,8 @@ public class MutasiBrgQueriesTest
         result.State.Should().Be("Draft");
         result.LayananAsal.LayananId.Should().Be("L01");
         result.LayananAsal.LayananName.Should().Be("Gudang Farmasi Sentral");
-        result.LayananAsalId.Should().Be("L01");
-        result.LayananAsalName.Should().Be("Gudang Farmasi Sentral");
         result.LayananTujuan.LayananId.Should().Be("L02");
         result.LayananTujuan.LayananName.Should().Be("Depo Farmasi Rawat Inap");
-        result.LayananTujuanId.Should().Be("L02");
-        result.LayananTujuanName.Should().Be("Depo Farmasi Rawat Inap");
         result.OrderMutasiId.Should().Be("OM202611001");
         result.DispatchNote.Should().Be("Pengiriman darurat");
         result.IssuerUserId.Should().Be("USR01");

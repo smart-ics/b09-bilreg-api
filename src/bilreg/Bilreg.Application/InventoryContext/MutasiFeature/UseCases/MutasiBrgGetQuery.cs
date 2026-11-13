@@ -17,13 +17,7 @@ public record MutasiBrgGetResponse(
     string OrderMutasiId,
     string DispatchNote,
     string IssuerUserId,
-    IEnumerable<MutasiBrgGetItemResponse> ListItem)
-{
-    public string LayananAsalId => LayananAsal?.LayananId ?? string.Empty;
-    public string LayananAsalName => LayananAsal?.LayananName ?? string.Empty;
-    public string LayananTujuanId => LayananTujuan?.LayananId ?? string.Empty;
-    public string LayananTujuanName => LayananTujuan?.LayananName ?? string.Empty;
-}
+    IEnumerable<MutasiBrgGetItemResponse> ListItem);
 
 public record MutasiBrgGetItemResponse(
     int NoUrut,

@@ -462,7 +462,7 @@ public class MutasiBrgDraftCommandsTest
     }
 
     [Fact]
-    public async Task AddItem_PharmacyItem_MissingBatchNo_ThrowsArgumentException()
+    public async Task AddItem_PharmacyItem_WithEmptyBatchNo_AndValidExpiredDate_AddsItemSuccessfully()
     {
         // Arrange
         var draft = CreateSampleDraft("MT1000007A");
@@ -481,11 +481,16 @@ public class MutasiBrgDraftCommandsTest
         var command = new MutasiBrgAddItemCommand("MT1000007A", "MED02", BatchNo: "", ExpiredDate: "2027-01-01", QtyKirim: 10m, SatuanId: "BOX");
 
         // Act
-        var act = () => handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        var ex = await act.Should().ThrowAsync<ArgumentException>();
-        ex.WithMessage("*BatchNo wajib diisi untuk barang farmasi*");
+        _mutasiBrgRepoMock.Verify(x => x.SaveChanges(It.Is<MutasiBrgModel>(m =>
+            m.ListItem.Count == 1 &&
+            m.ListItem[0].Brg.BrgId == "MED02" &&
+            m.ListItem[0].BatchNo == "" &&
+            m.ListItem[0].ExpiredDate == "2027-01-01" &&
+            m.ListItem[0].QtyKirim == 10m
+        )), Times.Once);
     }
 
     [Fact]
