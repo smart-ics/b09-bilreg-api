@@ -59,7 +59,10 @@ public class AdmGetAdmissionHandlerTest
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM001")))
             .Returns(MayBe.From(admission));
 
-        var reg = CreateSampleReg("ADM001", caraMasukDkId: "8", dokterId: "REG_DOK");
+        var reg = CreateSampleReg("ADM001", caraMasukDkId: "8", dokterId: "REG_DOK",
+            tipeJaminanId: "TJ01", tipeJaminanName: "BPJS Kesehatan",
+            polisId: "POL01", noPolis: "000123456",
+            jenisInapId: "1", regIbu: "REG-IBU-001");
         _regRepoMock
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM001")))
             .Returns(MayBe.From(reg));
@@ -82,6 +85,12 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().Be("8");
         result.DokterId.Should().Be("DPJP_AKTIF");
         result.ProsedurMasukInapId.Should().Be("1");
+        result.TipeJaminanId.Should().Be("TJ01");
+        result.TipeJaminanName.Should().Be("BPJS Kesehatan");
+        result.PolisId.Should().Be("POL01");
+        result.NoPolis.Should().Be("000123456");
+        result.JenisInapId.Should().Be("1");
+        result.RegIbu.Should().Be("REG-IBU-001");
     }
 
     [Fact]
@@ -140,6 +149,12 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().BeEmpty();
         result.DokterId.Should().BeEmpty();
         result.ProsedurMasukInapId.Should().BeEmpty();
+        result.TipeJaminanId.Should().BeEmpty();
+        result.TipeJaminanName.Should().BeEmpty();
+        result.PolisId.Should().BeEmpty();
+        result.NoPolis.Should().BeEmpty();
+        result.JenisInapId.Should().BeEmpty();
+        result.RegIbu.Should().BeEmpty();
     }
 
     [Fact]
@@ -151,7 +166,9 @@ public class AdmGetAdmissionHandlerTest
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM004")))
             .Returns(MayBe.From(admission));
 
-        var reg = CreateSampleReg("ADM004", caraMasukDkId: "-", dokterId: "-");
+        var reg = CreateSampleReg("ADM004", caraMasukDkId: "-", dokterId: "-",
+            tipeJaminanId: "-", tipeJaminanName: "-", polisId: "-", noPolis: "-",
+            jenisInapId: "-", regIbu: "-");
         _regRepoMock
             .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM004")))
             .Returns(MayBe.From(reg));
@@ -170,7 +187,11 @@ public class AdmGetAdmissionHandlerTest
         result.CaraMasukDkId.Should().BeEmpty();
         result.DokterId.Should().BeEmpty();
         result.ProsedurMasukInapId.Should().BeEmpty();
-        result.JenisInapId.Should().Be("1");
+        result.TipeJaminanId.Should().BeEmpty();
+        result.TipeJaminanName.Should().BeEmpty();
+        result.PolisId.Should().BeEmpty();
+        result.NoPolis.Should().BeEmpty();
+        result.JenisInapId.Should().BeEmpty();
         result.RegIbu.Should().BeEmpty();
     }
 
@@ -204,35 +225,6 @@ public class AdmGetAdmissionHandlerTest
         result.RegIbu.Should().Be("REG_IBU_123");
     }
 
-    [Fact]
-    public async Task Handle_WhenRegJenisInapIsEmptyOrDash_DefaultsToOne()
-    {
-        // Arrange
-        var admission = CreateSampleAdmission("ADM006");
-        _admissionRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM006")))
-            .Returns(MayBe.From(admission));
-
-        var reg = CreateSampleReg("ADM006", "8", "REG_DOK", jenisInapId: "-", regIbu: "-");
-        _regRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM006")))
-            .Returns(MayBe.From(reg));
-
-        _regInapRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "ADM006")))
-            .Returns(MayBe<RegInapModel>.None);
-
-        var query = new AdmGetAdmissionQry("ADM006");
-
-        // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.JenisInapId.Should().Be("1");
-        result.RegIbu.Should().BeEmpty();
-    }
-
     private static AdmissionModel CreateSampleAdmission(string regId) =>
         new(
             regId,
@@ -249,8 +241,12 @@ public class AdmGetAdmissionHandlerTest
         string regId,
         string caraMasukDkId,
         string dokterId,
-        string? jenisInapId = null,
-        string? regIbu = null) =>
+        string tipeJaminanId = "-",
+        string tipeJaminanName = "-",
+        string polisId = "-",
+        string noPolis = "-",
+        string jenisInapId = "-",
+        string regIbu = "") =>
         new(
             regId,
             new DateOnly(2026, 7, 7),
@@ -260,8 +256,8 @@ public class AdmGetAdmissionHandlerTest
             AuditInfoType.Default,
             JenisRegEnum.RegInap,
             new PasienReff("PAS001", "Pasien A", new DateOnly(1990, 1, 1), "L"),
-            TipeJaminanType.Default.ToReff(),
-            PolisModel.Default.ToReff(),
+            new TipeJaminanReff(tipeJaminanId, tipeJaminanName),
+            new PolisReff(polisId, noPolis, "Pemegang Polis Test"),
             KelasType.Default.ToReff(),
             new CaraMasukDkType(caraMasukDkId, "Cara Masuk Test"),
             RujukanType.Default.ToReff(),
@@ -270,7 +266,7 @@ public class AdmGetAdmissionHandlerTest
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
             [],
-            jenisInap: jenisInapId is null ? null : new JenisInapType(jenisInapId, "Test"),
+            jenisInap: string.IsNullOrEmpty(jenisInapId) ? null : new JenisInapType(jenisInapId, "Jenis Inap Test"),
             regIbu: regIbu);
 
     private static RegInapModel CreateSampleRegInap(string regId, string prosedurMasukInapId, string dpjpId) =>

@@ -48,6 +48,7 @@ public class RegJalanBatalHandlerTest
     private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
     private readonly Mock<IEmrAntrianOutboundQueueRepo> _EmrAntrianOutboundQueueRepo = new();
     private readonly Mock<IIgdVisitRepo> _igdVisitRepo = new();
+    private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
     private readonly RegJalanBatalHandler _sut;
 
     public RegJalanBatalHandlerTest()
@@ -67,7 +68,8 @@ public class RegJalanBatalHandlerTest
             _queueAdapter.Object,
             TestTglJamProvider.Instance,
             _EmrAntrianOutboundQueueRepo.Object,
-            _igdVisitRepo.Object);
+            _igdVisitRepo.Object,
+            clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object);
     }
 
     [Fact]
@@ -119,6 +121,7 @@ public class RegJalanBatalHandlerTest
         saved.ListEvent.Should().Contain(x =>
             x.EventName == "REGISTER_CANCELLED" && x.ReffId == reg.RegId);
         _auditRepo.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
+        _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static RegModel CreateReg(DateOnly regDate)
@@ -137,8 +140,8 @@ public class RegJalanBatalHandlerTest
             KelasType.Default.ToReff(),
             CaraMasukDkType.Default,
             RujukanType.Default.ToReff(),
-            PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(),
+            (PpaType.Default with { PpaId = "DR01", PpaName = "dr. Budi" }).ToReff(),
+            (LayananType.Default with { LayananId = "LAY01", LayananName = "Poli Umum" }).ToReff(),
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
             []);

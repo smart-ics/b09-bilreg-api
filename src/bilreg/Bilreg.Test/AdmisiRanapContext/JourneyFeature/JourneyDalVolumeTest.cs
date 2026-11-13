@@ -3,12 +3,12 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -173,7 +173,7 @@ public class JourneyDalVolumeTest
             {
                 SeedWaitingList(NextId("W", 12), reg, pasienId, (int)WaitingListStatusEnum.Waiting,
                     at: DateTime.Now.AddHours(-2));
-                SeedWaitingList(NextId("W", 12), reg, pasienId, (int)WaitingListStatusEnum.Closed,
+                SeedWaitingList(NextId("W", 12), reg, pasienId, (int)WaitingListStatusEnum.Placed,
                     at: DateTime.Now.AddHours(-1));
             }
         }
@@ -199,7 +199,7 @@ public class JourneyDalVolumeTest
         {
             var reg = NextId("R", 10);
             SeedAdmission(reg, pasienId, "-", "-");
-            SeedWaitingList(NextId("W", 12), reg, pasienId, (int)WaitingListStatusEnum.Accepted);
+            SeedWaitingList(NextId("W", 12), reg, pasienId, (int)WaitingListStatusEnum.Reserved);
             ids.Add($"reg:{reg}");
         }
 
@@ -258,9 +258,38 @@ public class JourneyDalVolumeTest
     {
         var stamp = at ?? DateTime.Now;
         new WaitingListDal(_opt).Insert(new WaitingListDto(
-            wlId, status, regId, pasienId, "", "3000-01-01", "",
-            "1", "Kelas 1", "B001", "Bangsal A", 5,
-            "journey-vol", stamp, "journey-vol", stamp, "", VoidSentinel));
+            WaitingListId: wlId,
+            WaitingListStatus: status,
+            RegId: regId,
+            PasienId: pasienId,
+            PasienName: "",
+            TglLahir: "3000-01-01",
+            Gender: "",
+            KelasId: "1",
+            KelasName: "Kelas 1",
+            BangsalId: "B001",
+            BangsalName: "Bangsal A",
+            ArrivalSourceType: 0,
+            ReferringUnitId: "",
+            ReferringUnitName: "",
+            ReferringDoctorId: "",
+            ReferringDoctorName: "",
+            ClinicalUrgency: 0,
+            SpecialRequirements: "",
+            PlannedBedId: "",
+            PlannedBedName: "",
+            PlacedBedId: "",
+            PlacedPakaiBedId: "",
+            CancellationReason: "",
+            RerouteReason: "",
+            PreviousWaitListId: "",
+            Priority: 5,
+            CrtUser: "journey-vol",
+            CrtDate: stamp,
+            UpdUser: "journey-vol",
+            UpdDate: stamp,
+            VodUser: "",
+            VodDate: VoidSentinel));
     }
 
     private static string NextId(string prefix, int len)

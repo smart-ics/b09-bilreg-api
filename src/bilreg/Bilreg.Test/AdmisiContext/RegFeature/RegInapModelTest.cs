@@ -347,4 +347,29 @@ public class RegInapModelTest
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*telah terminal*");
     }
+
+    [Fact]
+    public void SetProsedurMasukInap_WhenValid_UpdatesProsedur()
+    {
+        var model = CreateWithPrimary();
+        var newProsedur = new ProsedurMasukInapType("P2", "Rujukan Luar", ProsedurMasukInapDkType.Default);
+
+        model.SetProsedurMasukInap(newProsedur);
+
+        model.ProsedurMasukInap.ProsedurMasukInapId.Should().Be("P2");
+        model.ProsedurMasukInap.ProsedurMasukInapName.Should().Be("Rujukan Luar");
+    }
+
+    [Fact]
+    public void SetProsedurMasukInap_WhenTerminal_Throws()
+    {
+        var model = CreateWithPrimary();
+        model.EndAllDoctorAssignments(Day2);
+        var newProsedur = new ProsedurMasukInapType("P2", "Rujukan Luar", ProsedurMasukInapDkType.Default);
+
+        var act = () => model.SetProsedurMasukInap(newProsedur);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*telah terminal*");
+    }
 }

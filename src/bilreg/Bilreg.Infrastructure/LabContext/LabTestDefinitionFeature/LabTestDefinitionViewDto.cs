@@ -11,11 +11,15 @@ public record LabTestDefinitionViewDto(
     int VacutainerType,
     bool IsActive,
     int ComponentCount,
-    decimal TarifPrice)
+    decimal TarifPrice,
+    int ServiceType = 1,
+    string DisciplineId = "",
+    string TestGroupId = "")
 {
     public LabTestDefinitionViewDto() : this(
         string.Empty, string.Empty, string.Empty, string.Empty,
-        string.Empty, string.Empty, string.Empty, 1, false, 0, 0)
+        string.Empty, string.Empty, string.Empty, 1, false, 0, 0,
+        1, string.Empty, string.Empty)
     {
     }
 }

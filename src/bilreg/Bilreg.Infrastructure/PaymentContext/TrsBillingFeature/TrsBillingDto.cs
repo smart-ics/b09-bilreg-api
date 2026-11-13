@@ -42,8 +42,64 @@ public record TrsBillingDto(
     string fs_nm_pasien,
     string fs_nm_layanan,
     string fs_nm_kelas,
-    string fs_nm_rekap_cetak)
+    string fs_nm_rekap_cetak,
+
+    // NEW FIELDS FOR TRACEABILITY (TD-003 / P3-S05)
+    string SourceRegId = "",
+    string SourceRegType = "",
+    string ServiceUnitName = "",
+    string BedCode = "",
+    string CategoryCode = "",
+    decimal? DifferentialAmount = null
+)
 {
+    public TrsBillingDto() : this(
+        string.Empty, 0, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+        0, 0, 0, 0, 0,
+        string.Empty, string.Empty, string.Empty, 0, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, null
+    )
+    {
+    }
+
+    public TrsBillingDto(
+        string fs_kd_trs,
+        decimal fn_modul,
+        string fd_tgl_trs,
+        string fs_jam_trs,
+        string fd_tgl_jam_trs,
+        string fs_kd_reg,
+        string fs_kd_layanan,
+        string fs_kd_kelas,
+        string fs_kd_rekap_cetak,
+        string fs_kd_petugas,
+        decimal fn_sub_total,
+        decimal fn_diskon,
+        decimal fn_biaya,
+        decimal fn_tax,
+        decimal fn_total,
+        string fs_keterangan,
+        string fs_keterangan2,
+        string fs_kd_ref_biaya,
+        decimal fn_qty,
+        string fs_kd_trs_main,
+        string fs_mr,
+        string fs_nm_pasien,
+        string fs_nm_layanan,
+        string fs_nm_kelas,
+        string fs_nm_rekap_cetak
+    ) : this(
+        fs_kd_trs, fn_modul, fd_tgl_trs, fs_jam_trs, fd_tgl_jam_trs,
+        fs_kd_reg, fs_kd_layanan, fs_kd_kelas, fs_kd_rekap_cetak, fs_kd_petugas,
+        fn_sub_total, fn_diskon, fn_biaya, fn_tax, fn_total,
+        fs_keterangan, fs_keterangan2, fs_kd_ref_biaya, fn_qty, fs_kd_trs_main,
+        fs_mr, fs_nm_pasien, fs_nm_layanan, fs_nm_kelas, fs_nm_rekap_cetak,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, null
+    )
+    {
+    }
     public static TrsBillingDto FromModel(TrsBillType model)
     {
         var ket = model.Keterangan.Keterangan ?? string.Empty;
@@ -64,24 +120,25 @@ public record TrsBillingDto(
             model.Kelas.KelasId,
             model.RekapCetak.RekapCetakId,
             model.AuditInfo.UserId,
-            
+
             model.Nilai.SubTotal,
             model.Nilai.Diskon,
             model.Nilai.Biaya,
             model.Nilai.Tax,
             model.Nilai.Total,
-            
+
             keterangan,
             keterangan2,
             model.Keterangan.RefBiaya,
             model.Keterangan.Qty,
             model.Keterangan.TrsMainId,
-            
+
             model.Reg.PasienId,
             model.Reg.PasienName,
             model.Layanan.LayananName,
             model.Kelas.KelasName,
             model.RekapCetak.RekapCetakName
+            // NEW FIELDS: initialized to empty/default via record default values (lines 48-53)
         );
     }
 
@@ -129,4 +186,36 @@ public record TrsBillingDto(
         return result;
     }
     
+    // Mapping to the traceability DTO for P3-S05 / P4-S06
+    public TrsBillingItemDto ToTrsBillingItemDto(
+        string itemName,
+        string categoryCode,
+        string categoryName,
+        string serviceUnitId,
+        string sourceRegId,
+        string sourceRegType,
+        string bedCode,
+        decimal? differentialAmount)
+    {
+        return new TrsBillingItemDto(
+            BillingId: fs_kd_trs,
+            ItemName: itemName,
+            CategoryCode: categoryCode,
+            CategoryName: categoryName,
+            SourceRegId: sourceRegId,
+            SourceRegType: sourceRegType,
+            ServiceUnitId: serviceUnitId,
+            ServiceUnitName: ServiceUnitName,
+            BedCode: bedCode,
+            TransactionDate: DateTime.ParseExact(fd_tgl_trs, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+            Qty: fn_qty,
+            Tarif: fn_biaya / fn_qty,
+            Diskon: fn_diskon,
+            Total: fn_total,
+            PhysicalClass: fs_nm_kelas,
+            PayerClass: null,
+            BillingClass: null,
+            DifferentialAmount: differentialAmount
+        );
+    }
 }

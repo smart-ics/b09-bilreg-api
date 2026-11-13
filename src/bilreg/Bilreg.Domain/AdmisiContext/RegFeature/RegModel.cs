@@ -77,8 +77,8 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
-        && RegVoidAudit == AuditInfoType.Default;
+    public bool IsAktif => (RegKeluarAudit == AuditInfoType.Default || RegKeluarAudit.Timestamp == new DateTime(3000, 1, 1))
+        && (RegVoidAudit == AuditInfoType.Default || RegVoidAudit.Timestamp == new DateTime(3000, 1, 1));
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }
@@ -212,6 +212,31 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, timestamp);
     }
 
+    public void SetKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah tercatat keluar.");
+
+        RegKeluarAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    public void CancelKeluar(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+        if (RegKeluarAudit == AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} belum berstatus keluar.");
+
+        RegCancelOutAudit = new AuditInfoType(userId, timestamp);
+        RegKeluarAudit = AuditInfoType.Default;
+    }
+
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
@@ -246,7 +271,7 @@ public record RegKomponenType(
 public record RegReff(
     string RegId,
     string PasienId,
-    string PasienName);
+    string PasienName) : IRegKey;
 public record RegEligibilityType(
     string SjpId,
     string SjpNo,

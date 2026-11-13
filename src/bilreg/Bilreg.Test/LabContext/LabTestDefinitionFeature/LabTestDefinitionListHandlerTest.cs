@@ -9,7 +9,14 @@ public class LabTestDefinitionListHandlerTest
 {
     private readonly Mock<ILabTestDefinitionRepo> _definitionRepoMock = new();
 
-    private static LabTestDefinitionListResponse CreateResponse(string id, string tarifId, string tarifName = "Tes", decimal price = 50000m) =>
+    private static LabTestDefinitionListResponse CreateResponse(
+        string id,
+        string tarifId,
+        string tarifName = "Tes",
+        decimal price = 50000m,
+        int serviceType = 1,
+        string disciplineId = "DISC-HEM",
+        string testGroupId = "GRP-RUT") =>
         new(
             id,
             tarifId,
@@ -21,7 +28,10 @@ public class LabTestDefinitionListHandlerTest
             1,
             true,
             2,
-            price);
+            price,
+            serviceType,
+            disciplineId,
+            testGroupId);
 
     [Fact]
     public async Task Handle_CallsRepoListProjectedWithExpectedFilter()
@@ -30,7 +40,7 @@ public class LabTestDefinitionListHandlerTest
         var expectedFilter = new LabTestDefinitionListFilter(true, "hemo", "TR-001");
         var expectedResponses = new List<LabTestDefinitionListResponse>
         {
-            CreateResponse("LTD0001", "TR-001", "Hemoglobin", 75000m)
+            CreateResponse("LTD0001", "TR-001", "Hemoglobin", 75000m, 1, "DISC-HEM", "GRP-RUT")
         };
 
         _definitionRepoMock
@@ -52,6 +62,9 @@ public class LabTestDefinitionListHandlerTest
         result[0].TestDefinitionId.Should().Be("LTD0001");
         result[0].TarifPrice.Should().Be(75000m);
         result[0].ComponentCount.Should().Be(2);
+        result[0].ServiceType.Should().Be(1);
+        result[0].DisciplineId.Should().Be("DISC-HEM");
+        result[0].TestGroupId.Should().Be("GRP-RUT");
 
         _definitionRepoMock.Verify(
             r => r.ListProjected(It.Is<LabTestDefinitionListFilter>(f =>

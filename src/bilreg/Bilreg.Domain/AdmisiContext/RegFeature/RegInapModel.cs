@@ -279,12 +279,14 @@ public class RegInapModel : IRegKey
         ValidateInvariants();
     }
 
-    public void ChangeProsedurMasuk(ProsedurMasukInapType prosedurMasukInap)
+    public void SetProsedurMasukInap(ProsedurMasukInapType prosedurMasukInap)
     {
         Guard.Against.Null(prosedurMasukInap);
         EnsureNotTerminal();
         ProsedurMasukInap = prosedurMasukInap;
     }
+
+    public void ChangeProsedurMasuk(ProsedurMasukInapType prosedurMasukInap) => SetProsedurMasukInap(prosedurMasukInap);
 
     #endregion
 

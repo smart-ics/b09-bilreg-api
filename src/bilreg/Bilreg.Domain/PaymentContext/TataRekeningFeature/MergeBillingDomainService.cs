@@ -5,10 +5,14 @@ namespace Bilreg.Domain.PaymentContext.TataRekeningFeature;
 public sealed class MergeBillingDomainService : IMergeBillingDomainService
 {
     private readonly IProjectionRegenerationDomainService _projectionService;
+    private readonly IRegRelationPolicy _regRelationPolicy;
 
-    public MergeBillingDomainService(IProjectionRegenerationDomainService projectionService)
+    public MergeBillingDomainService(
+        IProjectionRegenerationDomainService projectionService,
+        IRegRelationPolicy regRelationPolicy)
     {
         _projectionService = projectionService ?? throw new ArgumentNullException(nameof(projectionService));
+        _regRelationPolicy = regRelationPolicy ?? throw new ArgumentNullException(nameof(regRelationPolicy));
     }
 
     public MergeBillingResult Execute(
@@ -21,6 +25,7 @@ public sealed class MergeBillingDomainService : IMergeBillingDomainService
         ArgumentNullException.ThrowIfNull(targetTataRekening);
 
         ValidateMergeRequest(mergeRequest, sourceTataRekening, targetTataRekening);
+        ValidateRelation(mergeRequest.SourceRegId, mergeRequest.TargetRegId!);
         ValidateSource(sourceTataRekening);
         ValidateTarget(targetTataRekening);
 
@@ -33,6 +38,85 @@ public sealed class MergeBillingDomainService : IMergeBillingDomainService
         mergeRequest.Execute();
 
         return new MergeBillingResult(mergeRequest, sourceTataRekening, targetTataRekening);
+    }
+
+    public MergeBillingResult Execute(
+        MergeRequestModel mergeRequest,
+        TataRekeningModel sourceTataRekening,
+        TataRekeningModel targetTataRekening,
+        RegModel sourceReg,
+        RegModel targetReg)
+    {
+        ArgumentNullException.ThrowIfNull(mergeRequest);
+        ArgumentNullException.ThrowIfNull(sourceTataRekening);
+        ArgumentNullException.ThrowIfNull(targetTataRekening);
+        ArgumentNullException.ThrowIfNull(sourceReg);
+        ArgumentNullException.ThrowIfNull(targetReg);
+
+        ValidatePatientIdentity(sourceReg, targetReg);
+        ValidateMergeRequest(mergeRequest, sourceTataRekening, targetTataRekening);
+        ValidateSource(sourceTataRekening);
+        ValidateTarget(targetTataRekening);
+
+        var releasedBills = sourceTataRekening.ReleaseBillingSetForMerge();
+        var targetRegReff = new RegReff(targetTataRekening.RegId, "-", "-");
+        targetTataRekening.AcceptMergedBillingSet(releasedBills, targetRegReff);
+
+        _projectionService.ClearProjection(targetTataRekening);
+
+        mergeRequest.Execute();
+
+        return new MergeBillingResult(mergeRequest, sourceTataRekening, targetTataRekening);
+    }
+
+    public void ValidatePatientIdentity(RegModel sourceReg, RegModel targetReg)
+    {
+        ArgumentNullException.ThrowIfNull(sourceReg);
+        ArgumentNullException.ThrowIfNull(targetReg);
+
+        var sourceNoRm = sourceReg.Pasien?.PasienId;
+        var targetNoRm = targetReg.Pasien?.PasienId;
+
+        ValidatePatientIdentity(sourceNoRm, targetNoRm);
+    }
+
+    public void ValidatePatientIdentity(string? sourceNoRm, string? targetNoRm)
+    {
+        if (string.IsNullOrWhiteSpace(sourceNoRm) ||
+            string.IsNullOrWhiteSpace(targetNoRm) ||
+            !string.Equals(targetNoRm.Trim(), sourceNoRm.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DomainViolationException(
+                $"Inkonsistensi integritas pasien: Target NoRM '{targetNoRm}' " +
+                $"tidak cocok dengan Source NoRM '{sourceNoRm}'. Auto-Merge dibatalkan.");
+        }
+    }
+
+    public void ValidateAutoMergeIntegrity(
+        RegModel sourceReg,
+        RegModel targetReg,
+        TataRekeningModel? sourceTataRekening = null,
+        TataRekeningModel? targetTataRekening = null)
+    {
+        ValidatePatientIdentity(sourceReg, targetReg);
+
+        if (sourceTataRekening is not null)
+        {
+            if (sourceTataRekening.Status == TataRekeningStatusEnum.Lunas)
+                throw new DomainViolationException("Registrasi sumber tidak boleh berstatus LUNAS.");
+
+            if (sourceTataRekening.Status == TataRekeningStatusEnum.Finalized)
+                throw new DomainViolationException("Registrasi sumber tidak dapat di-merge karena sudah FINALIZED.");
+        }
+
+        if (targetTataRekening is not null)
+        {
+            if (targetTataRekening.Status == TataRekeningStatusEnum.Finalized)
+                throw new DomainViolationException("Registrasi tujuan telah berstatus FINALIZED.");
+
+            if (targetTataRekening.Status == TataRekeningStatusEnum.Lunas)
+                throw new DomainViolationException("Registrasi tujuan tidak boleh berstatus LUNAS.");
+        }
     }
 
     private static void ValidateMergeRequest(
@@ -55,6 +139,13 @@ public sealed class MergeBillingDomainService : IMergeBillingDomainService
         if (!string.Equals(mergeRequest.TargetRegId, targetTataRekening.RegId, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 "Target Registrasi pada Merge Request tidak sesuai dengan Tata Rekening tujuan.");
+    }
+
+    private void ValidateRelation(string sourceRegId, string targetRegId)
+    {
+        if (!_regRelationPolicy.IsRelated(sourceRegId, targetRegId))
+            throw new InvalidOperationException(
+                "Registrasi sumber dan tujuan tidak memiliki keterkaitan relasi yang sah.");
     }
 
     private static void ValidateSource(TataRekeningModel sourceTataRekening)

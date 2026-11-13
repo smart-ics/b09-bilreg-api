@@ -72,6 +72,6 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
             dp.AddParam("@SearchTerm", $"%{filter.SearchTerm.Trim()}%", SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabReleaseView>(sql, dp);
+        return conn.Read<LabReleaseView>(sql, dp) ?? Enumerable.Empty<LabReleaseView>();
     }
 }

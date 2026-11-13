@@ -179,4 +179,127 @@ public class LabOrderRepoTest
             },
             onNone: () => Assert.Fail("Expected Some"));
     }
+
+    [Fact]
+    public void SaveChanges_MapsServiceTypeAndItemClassificationSnapshotToDto()
+    {
+        var item = LabOrderItemModel.Create(
+            testDefinitionId: "LTD-BIOPSI",
+            labTestCode: "PA-01",
+            labTestName: "Biopsi Jaringan Kecil",
+            tarifId: "TR-PA",
+            tarifCode: "T-PA",
+            tarifName: "Tarif Biopsi PA",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Jaringan Kulit",
+            requiredTubeCount: 0,
+            urgency: LabOrderUrgencyEnum.Rutin,
+            serviceType: LaboratoryServiceType.AnatomicalPathology,
+            disciplineId: "DISC-PAH",
+            disciplineName: "Histopatologi",
+            testGroupId: "GRP-BIOPSI",
+            testGroupName: "Biopsi Jaringan");
+
+        var line = new LabOrderModel.ResolvedOrderLine(item, []);
+        var model = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-PA-001",
+            snapshot: LabOrderTestSupport.EmrSnapshot(),
+            lines: [line],
+            orderNo: "LAB-PA-001",
+            audit: new AuditInfoType("U1", DateTime.Now),
+            serviceType: LaboratoryServiceType.AnatomicalPathology);
+
+        _orderDal.Setup(x => x.GetData(model)).Returns((LabOrderDto)null!);
+
+        LabOrderDto? capturedOrder = null;
+        _orderDal.Setup(x => x.Insert(It.IsAny<LabOrderDto>()))
+            .Callback<LabOrderDto>(d => capturedOrder = d);
+
+        IEnumerable<LabOrderItemDto>? capturedItems = null;
+        _itemDal.Setup(x => x.Insert(It.IsAny<IEnumerable<LabOrderItemDto>>()))
+            .Callback<IEnumerable<LabOrderItemDto>>(items => capturedItems = items);
+
+        _sut.SaveChanges(model);
+
+        capturedOrder.Should().NotBeNull();
+        capturedOrder!.ServiceType.Should().Be((int)LaboratoryServiceType.AnatomicalPathology);
+
+        capturedItems.Should().NotBeNull();
+        var capturedItem = capturedItems!.Single();
+        capturedItem.ServiceType.Should().Be((int)LaboratoryServiceType.AnatomicalPathology);
+        capturedItem.DisciplineId.Should().Be("DISC-PAH");
+        capturedItem.DisciplineName.Should().Be("Histopatologi");
+        capturedItem.TestGroupId.Should().Be("GRP-BIOPSI");
+        capturedItem.TestGroupName.Should().Be("Biopsi Jaringan");
+    }
+
+    [Fact]
+    public void LoadEntity_MapsServiceTypeAndItemClassificationSnapshotToModel()
+    {
+        var item = LabOrderItemModel.Create(
+            testDefinitionId: "LTD-MIC-01",
+            labTestCode: "MIC-01",
+            labTestName: "Kultur Darah",
+            tarifId: "TR-MIC",
+            tarifCode: "T-MIC",
+            tarifName: "Tarif Kultur Darah",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Darah Lengkap",
+            requiredTubeCount: 0,
+            urgency: LabOrderUrgencyEnum.Cito,
+            serviceType: LaboratoryServiceType.Microbiology,
+            disciplineId: "DISC-MIK",
+            disciplineName: "Mikrobiologi Klinik",
+            testGroupId: "GRP-KULTUR",
+            testGroupName: "Kultur Darah");
+
+        var line = new LabOrderModel.ResolvedOrderLine(item, []);
+        var model = LabOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-MIC-001",
+            snapshot: LabOrderTestSupport.EmrSnapshot(),
+            lines: [line],
+            orderNo: "LAB-MIC-001",
+            audit: new AuditInfoType("U1", DateTime.Now),
+            serviceType: LaboratoryServiceType.Microbiology);
+
+        var dto = LabOrderDto.FromModel(model);
+        var itemDto = LabOrderItemDto.FromModel(model.OrderId, model.Items.First());
+
+        _orderDal.Setup(x => x.GetData(It.IsAny<ILabOrderKey>())).Returns(dto);
+        _itemDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([itemDto]);
+        _itemComponentDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([]);
+
+        var result = _sut.LoadEntity(model);
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: m =>
+            {
+                m.ServiceType.Should().Be(LaboratoryServiceType.Microbiology);
+                m.Items.Should().HaveCount(1);
+                var loadedItem = m.Items.First();
+                loadedItem.ServiceType.Should().Be(LaboratoryServiceType.Microbiology);
+                loadedItem.DisciplineId.Should().Be("DISC-MIK");
+                loadedItem.DisciplineName.Should().Be("Mikrobiologi Klinik");
+                loadedItem.TestGroupId.Should().Be("GRP-KULTUR");
+                loadedItem.TestGroupName.Should().Be("Kultur Darah");
+            },
+            onNone: () => Assert.Fail("Expected Some"));
+    }
+
+    [Fact]
+    public void ListByEmrOrderIdPrefix_CallsDal_ReturnsModels()
+    {
+        var model = CreateTestModel();
+        var dto = CreateTestDto(model);
+        _orderDal.Setup(x => x.ListByEmrOrderIdPrefix("EMR-001")).Returns([dto]);
+        _itemDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([]);
+        _itemComponentDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([]);
+
+        var result = _sut.ListByEmrOrderIdPrefix("EMR-001").ToList();
+
+        result.Should().HaveCount(1);
+        result.First().OrderId.Should().Be(model.OrderId);
+        _orderDal.Verify(x => x.ListByEmrOrderIdPrefix("EMR-001"), Times.Once);
+    }
 }

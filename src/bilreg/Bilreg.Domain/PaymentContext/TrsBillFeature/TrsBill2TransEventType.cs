@@ -57,14 +57,13 @@ public record TrsBill2TransEventType : ITrsBill2Event
     {
         var (isValid, message) = true switch
         {
-            // PPDP, PDPT required | PERSEDIAAN optional | rest must be empty
+            // PPDP, PDPT required | PERSEDIAAN, DISC optional | rest must be empty
             _ when jenisBayar == TrsBillJenisBayarType.Pdp => (
                 coa.Ppdp     != CoaType.Default && 
                 coa.Pdpt     != CoaType.Default &&
                 coa.PdptLain == CoaType.Default &&
-                coa.Tax      == CoaType.Default &&
-                coa.Disc     == CoaType.Default,
-                "For PDP, Coa PPDP and PDPT are required; PERSEDIAAN is optional; PDPTLAIN, TAX, and DISC must be empty"),
+                coa.Tax      == CoaType.Default,
+                "For PDP, Coa PPDP and PDPT are required; PERSEDIAAN and DISC are optional; PDPTLAIN and TAX must be empty"),
 
             // PPDP, PDPT, PDPT-LAIN required | rest must be empty
             _ when jenisBayar == TrsBillJenisBayarType.Byl => (

@@ -29,7 +29,7 @@ public class JwtAuthenticationRegressionTest : IClassFixture<JwtAuthWebApplicati
 {
     private const string ExpectedIssuer = "BilregApiServer";
     private const string ExpectedAudience = "BilregApiClient";
-    private const string ExpectedSubject = "BilregApiAccessToken";
+    private const string ExpectedSubject = "PEG-001";
     private const string SigningKey = "ErF7Zq0praAgc4pV7ajVG4h2rAmP99bvgLMyCVWGkq0=";
 
     private readonly JwtAuthWebApplicationFactory _factory;
@@ -157,6 +157,7 @@ public class JwtAuthenticationRegressionTest : IClassFixture<JwtAuthWebApplicati
         root.GetProperty("iss").GetString().Should().Be(ExpectedIssuer);
         root.GetProperty("aud").GetString().Should().Be(ExpectedAudience);
         root.GetProperty("sub").GetString().Should().Be(ExpectedSubject);
+        root.GetProperty("pegId").GetString().Should().Be(ExpectedSubject);
 
         // The core fix: iat must be an integer NumericDate, not a string date.
         var iat = root.GetProperty("iat");

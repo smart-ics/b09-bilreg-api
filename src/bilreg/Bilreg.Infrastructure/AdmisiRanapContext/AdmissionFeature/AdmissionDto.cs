@@ -57,7 +57,12 @@ public record AdmissionDto(
         var pasienName = string.IsNullOrWhiteSpace(PasienName) ? "-" : PasienName;
         var gender = string.IsNullOrWhiteSpace(Gender) ? "-" : Gender;
         var tglLahirRaw = string.IsNullOrWhiteSpace(TglLahir) ? "3000-01-01" : TglLahir;
-        var pasien = new PasienReff(PasienId, pasienName, DateOnly.Parse(tglLahirRaw), gender);
+        DateOnly parsedTglLahir;
+        if (DateTime.TryParse(tglLahirRaw, out var dt))
+            parsedTglLahir = DateOnly.FromDateTime(dt);
+        else if (!DateOnly.TryParse(tglLahirRaw, out parsedTglLahir))
+            parsedTglLahir = new DateOnly(3000, 1, 1);
+        var pasien = new PasienReff(PasienId, pasienName, parsedTglLahir, gender);
         var kelasDk = new KelasDkType(KelasDkId, KelasDkName);
         var bangsal = new BangsalReff(BangsalId, BangsalName);
         return new AdmissionModel(

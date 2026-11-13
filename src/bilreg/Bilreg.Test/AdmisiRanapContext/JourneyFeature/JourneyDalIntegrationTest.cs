@@ -5,12 +5,12 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -115,7 +115,7 @@ public class JourneyDalIntegrationTest
         using var trans = TransHelper.NewScope();
         var ids = NewIds();
         SeedAdmission(ids.RegId, ids.PasienId, "-", "-");
-        SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Closed,
+        SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Placed,
             at: DateTime.Now.AddHours(-2));
         SeedWaitingList(ids.WlId2, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Waiting,
             at: DateTime.Now.AddHours(-1));
@@ -269,7 +269,7 @@ public class JourneyDalIntegrationTest
         using var trans = TransHelper.NewScope();
         var ids = NewIds();
         SeedAdmission(ids.RegId, ids.PasienId, "-", "-");
-        SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Closed);
+        SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Placed);
 
         var detail = _sut.GetByJourneyId($"reg:{ids.RegId}");
         detail.Should().NotBeNull();
@@ -392,7 +392,7 @@ public class JourneyDalIntegrationTest
         // HandoverAccepted
         var regAccepted = NextId("R", 10);
         SeedAdmission(regAccepted, ids.PasienId, "-", "-");
-        SeedWaitingList(NextId("W", 12), regAccepted, ids.PasienId, (int)WaitingListStatusEnum.Accepted);
+        SeedWaitingList(NextId("W", 12), regAccepted, ids.PasienId, (int)WaitingListStatusEnum.Reserved);
         // Cancelled prospective
         var opnCancel = NextId("O", 12);
         SeedOpname(opnCancel, ids.PasienId, (int)OpnameRequestStatusEnum.Cancelled);
@@ -425,7 +425,7 @@ public class JourneyDalIntegrationTest
         SeedAdmission(ids.RegId, ids.PasienId, "-", "-");
         SeedWaitingList(ids.WlId1, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Waiting,
             at: DateTime.Now.AddHours(-2));
-        SeedWaitingList(ids.WlId2, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Closed,
+        SeedWaitingList(ids.WlId2, ids.RegId, ids.PasienId, (int)WaitingListStatusEnum.Placed,
             at: DateTime.Now.AddHours(-1));
 
         var listItem = _sut.List(new JourneyListFilter(SearchTerm: ids.RegId, PageSize: 10))
@@ -640,9 +640,38 @@ public class JourneyDalIntegrationTest
         var dal = new WaitingListDal(_opt);
         var stamp = at ?? DateTime.Now;
         dal.Insert(new WaitingListDto(
-            wlId, status, regId, pasienId, "", "3000-01-01", "",
-            "1", "Kelas 1", "B001", "Bangsal A", 5,
-            "journey-it", stamp, "journey-it", stamp, "", VoidSentinel));
+            WaitingListId: wlId,
+            WaitingListStatus: status,
+            RegId: regId,
+            PasienId: pasienId,
+            PasienName: "",
+            TglLahir: "3000-01-01",
+            Gender: "",
+            KelasId: "1",
+            KelasName: "Kelas 1",
+            BangsalId: "B001",
+            BangsalName: "Bangsal A",
+            ArrivalSourceType: 0,
+            ReferringUnitId: "",
+            ReferringUnitName: "",
+            ReferringDoctorId: "",
+            ReferringDoctorName: "",
+            ClinicalUrgency: 0,
+            SpecialRequirements: "",
+            PlannedBedId: "",
+            PlannedBedName: "",
+            PlacedBedId: "",
+            PlacedPakaiBedId: "",
+            CancellationReason: "",
+            RerouteReason: "",
+            PreviousWaitListId: "",
+            Priority: 5,
+            CrtUser: "journey-it",
+            CrtDate: stamp,
+            UpdUser: "journey-it",
+            UpdDate: stamp,
+            VodUser: "",
+            VodDate: VoidSentinel));
     }
 
     private static string NextId(string prefix, int len)

@@ -2,7 +2,7 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
@@ -47,7 +47,7 @@ public static class Release1JourneySqlStageExpression
         if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Waiting)
             return JourneyOperationalStage.WardAcceptanceRequired;
 
-        if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Accepted)
+        if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Reserved)
             return JourneyOperationalStage.HandoverAccepted;
 
         if (i.HasClosedHandover && i.HasActiveAdmission)
@@ -107,7 +107,7 @@ public static class Release1JourneySqlStageExpression
             ProspectiveSourceCancelled: prospectiveSourceCancelled,
             AdmissionCompletedWithoutAuthority: completedWithoutAuthority,
             ActiveWaitingListStatus: activeWl?.Status,
-            HasClosedHandover: facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Closed),
+            HasClosedHandover: facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Placed),
             HasActiveAdmission: hasActiveAdmission,
             ProspectiveOpnameRequested: prospectiveOpnameRequested,
             ProspectiveReservationReady: prospectiveReservationReady);

@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
@@ -42,21 +43,29 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
         Guard.Against.NullOrEmpty(request.NoTelp);
         Guard.Against.NullOrWhiteSpace(request.IbuKandung);
-        GuardNoKtp(request.NoKtp);
+
+        var tglLahir = DateOnly.Parse(request.TglLahir);
+        GuardNoKtp(request.NoKtp, tglLahir);
         GuardAgainstDuplicate(request);
 
         //  BUILD
-        var tglLahir = DateOnly.Parse(request.TglLahir);
         var alamat = new AlamatType(
             [request.Alamat1, request.Alamat2, request.Alamat3],
             request.Kota, request.KodePos);
         var contactPhone = new ContactType(JenisContactEnum.Phone, request.NoTelp);
-        var identitasKtp = IdentitasType.Ktp(request.NoKtp);
+        var identitasKtp = !string.IsNullOrWhiteSpace(request.NoKtp)
+            ? IdentitasType.Ktp(request.NoKtp)
+            : IdentitasType.Default;
         var person = new PersonInfoType(request.PasienName, tglLahir, request.Gender,
-            alamat, contactPhone, IdentitasType.Default);
+            alamat, contactPhone, identitasKtp);
         var golDarah = new GolDarahType(request.GolDarah);
         var pasien = _pasienFactory.CreateFromPerson(person, request.NickName, request.TempatLahir,
             golDarah, request.IbuKandung, _tglJamProvider.Now);
+        if (!string.IsNullOrWhiteSpace(request.NoKtp))
+        {
+            var ktp = new KtpType(request.NoKtp, alamat, "-", "-", KelurahanType.Default);
+            pasien.SetDataKtp(ktp);
+        }
 
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);
@@ -64,7 +73,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     }
     private void GuardAgainstDuplicate(PasienCreateCommand request)
     {
-        if (_pasienRepo.GetDataByNik(request.NoKtp).HasValue)
+        if (!string.IsNullOrWhiteSpace(request.NoKtp) && _pasienRepo.GetDataByNik(request.NoKtp).HasValue)
             throw new InvalidOperationException("Patient with the supplied NIK already exists.");
 
         var demographicMatches = _pasienRepo.SearchPasien(
@@ -87,13 +96,38 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     private static string NormalizePhone(string? value) =>
         new((value ?? string.Empty).Where(char.IsDigit).ToArray());
 
-    private void GuardNoKtp(string noKtp)
+    private void GuardNoKtp(string noKtp, DateOnly tglLahir)
     {
-        if (string.IsNullOrWhiteSpace(noKtp) ||
-            noKtp.Length != 16 ||
-            !noKtp.All(char.IsDigit))
+        var now = _tglJamProvider?.Now ?? default;
+        var today = (now == default || now == DateTime.MinValue)
+            ? DateOnly.FromDateTime(DateTime.Today)
+            : DateOnly.FromDateTime(now);
+
+        var usia = CalculateAge(tglLahir, today);
+
+        if (usia >= 17)
         {
-            throw new ArgumentException("NoKtp harus 16 digit angka.");
+            if (string.IsNullOrWhiteSpace(noKtp))
+                throw new ArgumentException("Pasien berusia 17 tahun ke atas wajib memiliki NoKtp. NoKtp harus 16 digit angka.");
+
+            if (noKtp.Length != 16 || !noKtp.All(char.IsDigit))
+                throw new ArgumentException("NoKtp harus 16 digit angka.");
         }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(noKtp))
+            {
+                if (noKtp.Length != 16 || !noKtp.All(char.IsDigit))
+                    throw new ArgumentException("NoKtp harus 16 digit angka.");
+            }
+        }
+    }
+
+    private static int CalculateAge(DateOnly birthDate, DateOnly referenceDate)
+    {
+        var age = referenceDate.Year - birthDate.Year;
+        if (referenceDate < birthDate.AddYears(age))
+            age--;
+        return Math.Max(0, age);
     }
 }

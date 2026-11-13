@@ -26,8 +26,9 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nuna.Lib.PatternHelper;
@@ -97,6 +98,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IAdmisiEventPublisher _publisher;
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly IPasienTrackerInpatientCoordinator _trackerCoordinator;
+    private readonly IWardCockpitEventPublisher _wardCockpitEventPublisher;
     private readonly ILogger<AdmissionRegistrationOrchestrator> _logger;
 
     public AdmissionRegistrationOrchestrator(
@@ -124,7 +126,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IPasienTrackerInpatientCoordinator trackerCoordinator,
         IRegDal? regDal = null,
         ILogger<AdmissionRegistrationOrchestrator>? logger = null,
-        IInpatientOrderRepo? inpatientOrderRepo = null)
+        IInpatientOrderRepo? inpatientOrderRepo = null,
+        IWardCockpitEventPublisher? wardCockpitEventPublisher = null)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
@@ -151,6 +154,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _regDal = regDal!;
         _logger = logger ?? NullLogger<AdmissionRegistrationOrchestrator>.Instance;
         _inpatientOrderRepo = inpatientOrderRepo;
+        _wardCockpitEventPublisher = wardCockpitEventPublisher ?? new NullWardCockpitEventPublisher();
     }
 
     public async Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
@@ -192,7 +196,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
             await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-            var waitingListId = PlaceWaitingListGracefully(
+            var waitingListId = await PlaceWaitingListGracefully(
                 admission, request.KelasId, request.BangsalId, request.KelasDkId,
                 request.Priority, request.UserId, occurredAt, order.KelasRawat);
 
@@ -227,7 +231,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(legacyAdmission.RegId, cancellationToken);
 
-        var legacyWaitingListId = PlaceWaitingListGracefully(
+        var legacyWaitingListId = await PlaceWaitingListGracefully(
             legacyAdmission, request.KelasId, request.BangsalId, request.KelasDkId,
             request.Priority, request.UserId, occurredAt);
 
@@ -280,7 +284,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
             await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-            var waitingListId = PlaceWaitingListGracefully(
+            var waitingListId = await PlaceWaitingListGracefully(
                 admission, request.KelasId, request.BangsalId, request.KelasDkId,
                 request.Priority, request.UserId, occurredAt, order.KelasRawat);
 
@@ -321,7 +325,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(legacyAdmission.RegId, cancellationToken);
 
-        var legacyWaitingListId = PlaceWaitingListGracefully(
+        var legacyWaitingListId = await PlaceWaitingListGracefully(
             legacyAdmission, request.KelasId, request.BangsalId, request.KelasDkId,
             request.Priority, request.UserId, occurredAt, reservation.KelasRawat);
 
@@ -353,7 +357,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-        var waitingListId = PlaceWaitingListGracefully(
+        var waitingListId = await PlaceWaitingListGracefully(
             admission, request.KelasId, request.BangsalId, request.KelasDkId,
             request.Priority, request.UserId, occurredAt);
 
@@ -406,14 +410,14 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         await _publisher.PublishRanapCreatedAsync(admission.RegId, cancellationToken);
 
-        var waitingListId = PlaceWaitingListGracefully(
+        var waitingListId = await PlaceWaitingListGracefully(
             admission, request.KelasId, request.BangsalId, request.KelasDkId,
             request.Priority, request.UserId, occurredAt, order.KelasRawat);
 
         return ToResponse(admission, waitingListId);
     }
 
-    private string? PlaceWaitingListGracefully(
+    private async Task<string?> PlaceWaitingListGracefully(
         AdmissionModel admission,
         string? kelasId,
         string bangsalId,
@@ -430,7 +434,6 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
             var waitingList = WaitingListModel.Create(
                 admission.RegId,
-                admission.AdmissionStatus,
                 admission.Pasien,
                 kelasRawat,
                 bangsal,
@@ -452,6 +455,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 waitingList.Bangsal.BangsalId,
                 waitingList.KelasRawat.KelasId,
                 waitingList.WaitingListStatus));
+
+            await _wardCockpitEventPublisher.PublishWaitingListUpdatedAsync(bangsalId);
 
             return waitingList.WaitingListId;
         }
@@ -574,16 +579,15 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 var mrIbu = pasien.MrIbu;
                 if (!string.IsNullOrWhiteSpace(mrIbu))
                 {
-                    var regsIbu = _regDal?.ListData(PasienModel.Key(mrIbu)) ?? [];
+                    var regsIbu = _regAktifRepo?.ListData(PasienModel.Key(mrIbu)) ?? [];
                     var activeMotherReg = regsIbu
-                        .Where(r => r.fd_tgl_void == "3000-01-01" && r.fd_tgl_keluar == "3000-01-01")
-                        .OrderByDescending(r => r.fd_tgl_masuk)
-                        .ThenByDescending(r => r.fs_jam_masuk)
+                        .Where(r => r.JenisReg == JenisRegEnum.RegInap)
+                        .OrderByDescending(r => r.RegDate)
                         .FirstOrDefault();
 
                     if (activeMotherReg is not null)
                     {
-                        regIbuId = activeMotherReg.fs_kd_reg;
+                        regIbuId = activeMotherReg.RegId;
                     }
                 }
             }
@@ -591,17 +595,13 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             if (string.IsNullOrWhiteSpace(regIbuId))
                 return (JenisInapType.Perinatal, string.Empty);
 
-            var motherReg = _regDal?.GetData(RegModel.Key(regIbuId))
-                ?? throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak ditemukan.");
+            var activeMotherOpt = _regAktifRepo.LoadEntity(RegModel.Key(regIbuId));
+            if (!activeMotherOpt.HasValue)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' tidak aktif di rawat inap.");
 
-            if (motherReg.fd_tgl_void != "3000-01-01")
-                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah dibatalkan (void).");
-
-            if (motherReg.fd_tgl_keluar != "3000-01-01")
-                throw new InvalidOperationException($"Register Ibu '{regIbuId}' sudah keluar/pulang.");
-
-            if (motherReg.fs_kd_jenis_inap != InpatientAgePolicy.JENIS_INAP_OBSTETRI)
-                throw new InvalidOperationException("JENIS INAP IBU invalid");
+            var activeMother = activeMotherOpt.Value;
+            if (activeMother.JenisReg != JenisRegEnum.RegInap)
+                throw new InvalidOperationException($"Register Ibu '{regIbuId}' bukan registrasi rawat inap.");
 
             return (JenisInapType.Perinatal, regIbuId);
         }

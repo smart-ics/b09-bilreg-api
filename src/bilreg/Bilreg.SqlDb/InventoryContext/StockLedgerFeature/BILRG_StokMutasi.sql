@@ -38,7 +38,8 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID('BILRG_StokMutasi'))
 BEGIN
     CREATE UNIQUE INDEX UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId
-        ON BILRG_StokMutasi (TrsReffId, MovementKind, StokLokasiId);
+        ON BILRG_StokMutasi (TrsReffId, MovementKind, StokLokasiId)
+        WHERE MovementKind IN (1, 2, 3, 8, 9, 10);
 END
 GO
 

@@ -27,11 +27,11 @@ public class LabComponentMasterRepo : ILabComponentMasterRepo
 
     public IEnumerable<LabComponentMasterModel> ListData()
     {
-        return _dal.ListData().Select(x => x.ToModel());
+        return (_dal.ListData() ?? Enumerable.Empty<LabComponentMasterDto>()).Select(x => x.ToModel());
     }
 
     public IEnumerable<LabComponentMasterModel> ListData(LabComponentMasterListFilter filter)
     {
-        return _dal.ListData(filter).Select(x => x.ToModel());
+        return (_dal.ListData(filter) ?? Enumerable.Empty<LabComponentMasterDto>()).Select(x => x.ToModel());
     }
 }

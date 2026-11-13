@@ -10,6 +10,7 @@ namespace Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 public interface IRegistrationCancellationEligibilityDal
 {
     bool HasBillingItems(string regId);
+    bool HasActiveBedPlacement(string regId);
 }
 
 public sealed class RegistrationCancellationEligibilityDal : IRegistrationCancellationEligibilityDal
@@ -20,6 +21,17 @@ public sealed class RegistrationCancellationEligibilityDal : IRegistrationCancel
                 SELECT 1
                 FROM ta_trs_billing aa
                 WHERE aa.fs_kd_reg = @RegId
+            ) THEN 1 ELSE 0 END AS bit)
+        """;
+
+    internal const string HasActiveBedPlacementSql = """
+        SELECT
+            CAST(CASE WHEN EXISTS (
+                SELECT 1
+                FROM ta_trs_bed aa
+                WHERE aa.fs_kd_reg = @RegId
+                  AND (aa.fd_tgl_void IS NULL OR aa.fd_tgl_void = '' OR aa.fd_tgl_void = '3000-01-01')
+                  AND (aa.fd_tgl_out IS NULL OR aa.fd_tgl_out = '' OR aa.fd_tgl_out = '3000-01-01')
             ) THEN 1 ELSE 0 END AS bit)
         """;
 
@@ -36,5 +48,16 @@ public sealed class RegistrationCancellationEligibilityDal : IRegistrationCancel
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<bool>(HasBillingItemsSql, dp);
+    }
+
+    public bool HasActiveBedPlacement(string regId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(regId);
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<bool>(HasActiveBedPlacementSql, dp);
     }
 }

@@ -1097,5 +1097,85 @@ public class LabOrderModelTest
         act.Should().Throw<ArgumentException>();
     }
 
+    [Fact]
+    public void CreateFromEmr_DefaultsToClinicalPathologyServiceType()
+    {
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB000020", audit: TestAudit());
+
+        order.ServiceType.Should().Be(LaboratoryServiceType.ClinicalPathology);
+    }
+
+    [Fact]
+    public void CreateFromEmr_WithExplicitServiceType_SetsServiceType()
+    {
+        var order = LabOrderModel.CreateFromEmr(
+            "EMR001",
+            EmrSnapshot(),
+            [LabOrderTestSupport.ResolvedLine()],
+            "LAB000021",
+            TestAudit(),
+            serviceType: LaboratoryServiceType.AnatomicalPathology);
+
+        order.ServiceType.Should().Be(LaboratoryServiceType.AnatomicalPathology);
+    }
+
+    [Fact]
+    public void CreateExternal_WithExplicitServiceType_SetsServiceType()
+    {
+        var order = LabOrderModel.CreateExternal(
+            "EMR-EXT-01",
+            ExternalSnapshot(),
+            [LabOrderTestSupport.ResolvedLine()],
+            "LAB000022",
+            TestAudit(),
+            serviceType: LaboratoryServiceType.Microbiology);
+
+        order.ServiceType.Should().Be(LaboratoryServiceType.Microbiology);
+    }
+
+    [Fact]
+    public void CreateFromEmr_RejectsInvalidServiceType()
+    {
+        var act = () => LabOrderModel.CreateFromEmr(
+            "EMR002",
+            EmrSnapshot(),
+            [LabOrderTestSupport.ResolvedLine()],
+            "LAB000023",
+            TestAudit(),
+            serviceType: (LaboratoryServiceType)999);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*ServiceType is not valid*");
+    }
+
+    [Fact]
+    public void LabOrderItemModel_Create_WithClassificationSnapshot_SetsProperties()
+    {
+        var item = LabOrderItemModel.Create(
+            testDefinitionId: "LTD0001",
+            labTestCode: "BIO-01",
+            labTestName: "Biopsi Jaringan",
+            tarifId: "TR100",
+            tarifCode: "T-BIO",
+            tarifName: "Tarif Biopsi",
+            tubeType: VacutainerTypeEnum.None,
+            specimenType: "Jaringan Biopsi",
+            requiredTubeCount: 0,
+            urgency: LabOrderUrgencyEnum.Rutin,
+            serviceType: LaboratoryServiceType.AnatomicalPathology,
+            disciplineId: "DISC-PAH",
+            disciplineName: "Patologi Anatomi - Histopatologi",
+            testGroupId: "GRP-BIO",
+            testGroupName: "Biopsi Histopatologi");
+
+        item.ServiceType.Should().Be(LaboratoryServiceType.AnatomicalPathology);
+        item.DisciplineId.Should().Be("DISC-PAH");
+        item.DisciplineName.Should().Be("Patologi Anatomi - Histopatologi");
+        item.TestGroupId.Should().Be("GRP-BIO");
+        item.TestGroupName.Should().Be("Biopsi Histopatologi");
+        item.TubeType.Should().Be(VacutainerTypeEnum.None);
+        item.RequiredTubeCount.Should().Be(0);
+    }
+
     #endregion
 }

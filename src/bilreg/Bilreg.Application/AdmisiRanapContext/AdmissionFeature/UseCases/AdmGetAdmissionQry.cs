@@ -23,7 +23,11 @@ public record AdmGetAdmissionResponse(
     string CaraMasukDkId = "",
     string DokterId = "",
     string ProsedurMasukInapId = "",
-    string JenisInapId = "1",
+    string TipeJaminanId = "",
+    string TipeJaminanName = "",
+    string PolisId = "",
+    string NoPolis = "",
+    string JenisInapId = "",
     string RegIbu = "");
 
 public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGetAdmissionResponse>
@@ -68,13 +72,25 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             ri => Normalize(ri.ProsedurMasukInap?.ProsedurMasukInapId),
             () => string.Empty);
 
+        var tipeJaminanId = reg.Match(
+            r => Normalize(r.TipeJaminan?.TipeJaminanId),
+            () => string.Empty);
+
+        var tipeJaminanName = reg.Match(
+            r => Normalize(r.TipeJaminan?.TipeJaminanName),
+            () => string.Empty);
+
+        var polisId = reg.Match(
+            r => Normalize(r.Polis?.PolisId),
+            () => string.Empty);
+
+        var noPolis = reg.Match(
+            r => Normalize(r.Polis?.NoPolis),
+            () => string.Empty);
+
         var jenisInapId = reg.Match(
             r => Normalize(r.JenisInap?.JenisInapId),
-            () => "1");
-        if (string.IsNullOrEmpty(jenisInapId))
-        {
-            jenisInapId = "1";
-        }
+            () => string.Empty);
 
         var regIbu = reg.Match(
             r => Normalize(r.RegIbu),
@@ -93,6 +109,10 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             caraMasukDkId,
             dokterId,
             prosedurMasukInapId,
+            tipeJaminanId,
+            tipeJaminanName,
+            polisId,
+            noPolis,
             jenisInapId,
             regIbu));
     }

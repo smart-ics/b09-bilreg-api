@@ -50,6 +50,16 @@ public class AdmissionCancellationApiIntegrationTest : IClassFixture<AdmissionCa
     }
 
     [Fact]
+    public async Task Cancel_ActiveBedPlacement_ReturnsFrozen409Failure()
+    {
+        _factory.Harness.Eligibility.Setup(x => x.HasActiveBedPlacement("RG00000001")).Returns(true);
+        var response = await Post("REQ-BED");
+        await AssertFailure(response, HttpStatusCode.Conflict, CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement, "REQ-BED");
+        (await Data(response)).GetProperty("blockers")[0].GetString().Should().Be("RegistrationHasActiveBedPlacement");
+        (await Data(response)).GetProperty("message").GetString().Should().Be("Registrasi tidak dapat dibatalkan karena pasien telah menempati bed aktif.");
+    }
+
+    [Fact]
     public async Task Cancel_MalformedBody_Returns422AndEchoesParseableRequestId()
     {
         var response = await Post("REQ-INVALID", new { reason = "", userId = "user1", expectedAdmissionStatus = AdmissionStatusEnum.Admitted, requestId = "REQ-INVALID" });

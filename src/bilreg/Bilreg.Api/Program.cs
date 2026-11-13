@@ -1,4 +1,5 @@
 using Bilreg.Api.Configurations;
+using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
 using Scalar.AspNetCore;
 using Serilog;
@@ -25,15 +26,23 @@ BusinessDateStartup.LogBusinessDateStatus(app);
 
 app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)
-    .UseMiddleware<ErrorHandlerMiddleware>()
-    .UseHttpsRedirection()
+    .UseMiddleware<ErrorHandlerMiddleware>();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app
     .UseRouting()
     .UseCors("corsapp")
     .UseAuthentication()
     .UseAuthorization();
 
 app.MapControllers();
-app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath);
+app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath).RequireCors("corsapp");
+app.MapHub<WardCockpitHub>(WardCockpitContracts.HubPath).RequireCors("corsapp");
+app.MapHub<PharmacyQueueHub>(PharmacyQueueContracts.HubPath).RequireCors("corsapp");
 
 app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 
@@ -49,4 +58,3 @@ app
 app.Run();
 
 public partial class Program { }
-

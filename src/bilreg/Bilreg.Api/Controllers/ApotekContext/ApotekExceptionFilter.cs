@@ -31,6 +31,16 @@ public class ApotekExceptionFilter : IExceptionFilter
                 { StatusCode = StatusCodes.Status401Unauthorized };
                 context.ExceptionHandled = true;
                 break;
+            case ArgumentException ex:
+                context.Result = new ObjectResult(new { status = "fail", message = ex.Message, code = "ARGUMENT" })
+                { StatusCode = StatusCodes.Status400BadRequest };
+                context.ExceptionHandled = true;
+                break;
+            case InvalidOperationException ex:
+                context.Result = new ObjectResult(new { status = "fail", message = ex.Message, code = "INVALID_OPERATION" })
+                { StatusCode = StatusCodes.Status400BadRequest };
+                context.ExceptionHandled = true;
+                break;
         }
     }
 }

@@ -6,6 +6,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
+[Collection(StockLedgerSqlCollection.Name)]
 public class StokLokasiDalTest
 {
     private readonly StokLokasiDal _sut = new(ConnStringHelper.GetTestEnv());
