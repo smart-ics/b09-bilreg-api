@@ -340,9 +340,10 @@
     <None Include="LabContext\LabOrderFeature\BILRG_LabOrder_M8_Alter.sql" />
     <None Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_Alter.sql" />
     <Content Include="LabContext\LabOwareFeature\BILRG_LabOwareOutboundQueue.sql" />
-    <None Include="LabContext\LabResultFeature\BILRG_LabResultDocument.sql" />
-    <None Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
-    <None Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M12_Alter.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceOutstanding.sql" />
     <None Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql" />

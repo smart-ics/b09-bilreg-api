@@ -15,7 +15,9 @@ public record LabResultRecordCmd(
     string OrderId,
     string UserId,
     int ResultSource,
-    IEnumerable<LabResultRecordValueDto> Values)
+    IEnumerable<LabResultRecordValueDto> Values,
+    string CriticalNote = "",
+    IEnumerable<LabResultRecordItemInputDto>? Items = null)
     : IRequest;
 
 public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
@@ -57,7 +59,7 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
             throw new ArgumentException("ResultSource tidak valid.", nameof(request.ResultSource));
 
         var scaffold = _scaffoldService.BuildFromOrder(order);
-        var captures = _scaffoldService.BuildCaptures(scaffold, request.Values);
+        var captures = _scaffoldService.BuildCaptures(scaffold, request.Values, request.Items);
 
         var occurredAt = _tglJamProvider.Now;
         var result = _labResultDocumentRepo.LoadByOrderId(request.OrderId)
@@ -68,6 +70,7 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
                     new AuditInfoType(request.UserId, occurredAt)));
 
         result.RecordResult(source, captures, request.UserId, occurredAt);
+        result.SetCriticalNote(request.CriticalNote);
         result.MarkRecorded(request.UserId, occurredAt);
         order.MarkRecorded(request.UserId, occurredAt);
 

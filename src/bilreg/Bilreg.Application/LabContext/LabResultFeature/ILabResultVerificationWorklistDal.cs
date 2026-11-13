@@ -17,4 +17,13 @@ public record LabResultVerificationWorklistView(
     string PatientName,
     DateTime RecordedDate,
     int ResultStatus,
-    string RecordedUserId);
+    string RecordedUserId,
+    bool IsCito = false,
+    string Gender = "",
+    int AgeAtOrder = 0,
+    string LayananPerujukName = "",
+    string DokterPerujukName = "",
+    string TestNames = "",
+    bool HasCriticalValue = false,
+    int VersionNo = 1,
+    int ResultSource = 0);
