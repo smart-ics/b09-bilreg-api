@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
@@ -16,4 +16,5 @@ public interface IRegAktifRepo :
     IListData<RegSearchRegView, string>
 {
     bool IsPasienAktif(IPasienKey pasien);
+    IEnumerable<RegAktifModel> ListDataRajalIgd();
 }

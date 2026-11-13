@@ -1,4 +1,4 @@
-﻿//TODO: Refactor AntrianMap Model
+//TODO: Refactor AntrianMap Model
 
 using Bilreg.Api.Helpers;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
@@ -169,6 +169,15 @@ public class RegController : Controller
         var query = new RegRegAktifListQuery();
         var resutl = await _mediator.Send(query);
         return Ok(new JSendOk(resutl));
+    }
+
+    [HttpGet]
+    [Route("aktif/rajal-igd")]
+    public async Task<IActionResult> ListAktifRajalIgd()
+    {
+        var query = new RegAktifRajalIgdListQuery();
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
     }
 
     private RegJalanWalkInCommand WithAdmissionQueueBehavior(RegJalanWalkInCommand cmd, bool isDirect)

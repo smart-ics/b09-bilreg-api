@@ -17,6 +17,7 @@ namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature;
 [Authorize]
 public class TataRekeningController : ControllerBase
 {
+    private const string DefaultSystemTokenSubject = "BilregApiAccessToken";
     private readonly IMediator _mediator;
 
     public TataRekeningController(IMediator mediator)
@@ -24,13 +25,34 @@ public class TataRekeningController : ControllerBase
         _mediator = mediator;
     }
 
-    private string ResolveUserId(string? userId) =>
-        !string.IsNullOrWhiteSpace(userId)
-            ? userId
-            : (User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-               ?? User.FindFirst("sub")?.Value
-               ?? User.Identity?.Name
-               ?? "admin");
+    internal string ResolveUserId(string? userId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId) &&
+            !string.Equals(userId.Trim(), DefaultSystemTokenSubject, StringComparison.OrdinalIgnoreCase))
+        {
+            return userId.Trim();
+        }
+
+        var candidates = new[]
+        {
+            User.FindFirst("pegId")?.Value,
+            User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            User.FindFirst(ClaimTypes.Name)?.Value,
+            User.FindFirst("sub")?.Value,
+            User.Identity?.Name
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) &&
+                !string.Equals(candidate.Trim(), DefaultSystemTokenSubject, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate.Trim();
+            }
+        }
+
+        return "admin";
+    }
 
     /// <summary>SOP-TR-01 — Open Tata Rekening workspace for a registration.</summary>
     [HttpGet("{regId}")]

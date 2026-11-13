@@ -178,7 +178,7 @@ public class RoomChargeDal : IRoomChargeDal
     private static string SelectSql() => """
         SELECT 
             aa.fs_kd_trs AS RoomChargeId,
-            aa.fs_kd_pakai_bed AS PakaiBedId,
+            COALESCE(NULLIF(aa.fs_kd_pakai_bed, ''), LEFT(aa.fs_kd_trs, 10)) AS PakaiBedId,
             aa.fs_kd_reg AS RegId,
             ISNULL(reg.fs_mr, '') AS PasienId,
             aa.fs_kd_layanan AS BangsalId,
@@ -218,7 +218,10 @@ public class RoomChargeDal : IRoomChargeDal
             ISNULL(lg.fs_kd_upd, '') AS UpdatedBy,
             ISNULL(TRY_CONVERT(DATETIME, lg.fd_tgl_upd + ' ' + CASE WHEN lg.fs_jam_upd = '' THEN '00:00:00' ELSE lg.fs_jam_upd END, 120), '1900-01-01') AS UpdatedAt
         FROM ta_trs_roomcharge aa
-        LEFT JOIN ta_trs_bed tb ON aa.fs_kd_pakai_bed = tb.fs_kd_trs
+        LEFT JOIN ta_trs_bed tb ON (
+            aa.fs_kd_pakai_bed = tb.fs_kd_trs 
+            OR (ISNULL(aa.fs_kd_pakai_bed, '') = '' AND LEFT(aa.fs_kd_trs, 10) = tb.fs_kd_trs)
+        )
         LEFT JOIN ta_registrasi reg ON aa.fs_kd_reg = reg.fs_kd_reg
         LEFT JOIN ta_bed bed ON aa.fs_kd_bed = bed.fs_kd_bed
         LEFT JOIN ta_kamar kmr ON bed.fs_kd_kamar = kmr.fs_kd_kamar

@@ -1,7 +1,8 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
@@ -46,7 +47,7 @@ public static class Release1JourneySqlStageExpression
         if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Waiting)
             return JourneyOperationalStage.WardAcceptanceRequired;
 
-        if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Accepted)
+        if (i.ActiveWaitingListStatus == WaitingListStatusEnum.Reserved)
             return JourneyOperationalStage.HandoverAccepted;
 
         if (i.HasClosedHandover && i.HasActiveAdmission)
@@ -77,16 +78,23 @@ public static class Release1JourneySqlStageExpression
         var hasActiveAdmission = admission is not null && IsActiveAdmission(admission.Status);
         var prospectiveOpnameRequested =
             admission is null
-            && facts.OpnameRequest is { Status: OpnameRequestStatusEnum.Requested };
+            && (facts.InpatientOrder is { Status: InpatientOrderStatusEnum.Requested, OrderSource: OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd }
+                || facts.OpnameRequest is { Status: OpnameRequestStatusEnum.Requested });
         var prospectiveReservationReady =
             admission is null
-            && facts.Reservation is
-            {
-                Status: ReservationStatusEnum.Reserved or ReservationStatusEnum.Maintained
-            };
+            && (facts.InpatientOrder is
+                {
+                    Status: InpatientOrderStatusEnum.Requested or InpatientOrderStatusEnum.Maintained,
+                    OrderSource: OrderSourceEnum.AdmisiBooking or OrderSourceEnum.ExternalChannel
+                }
+                || facts.Reservation is
+                {
+                    Status: ReservationStatusEnum.Reserved or ReservationStatusEnum.Maintained
+                });
         var prospectiveSourceCancelled =
             admission is null
-            && (facts.OpnameRequest?.Status == OpnameRequestStatusEnum.Cancelled
+            && (facts.InpatientOrder?.Status == InpatientOrderStatusEnum.Cancelled
+                || facts.OpnameRequest?.Status == OpnameRequestStatusEnum.Cancelled
                 || facts.Reservation?.Status == ReservationStatusEnum.Cancelled);
 
         // Completed is always a blocking integrity issue in Release 1.
@@ -99,7 +107,7 @@ public static class Release1JourneySqlStageExpression
             ProspectiveSourceCancelled: prospectiveSourceCancelled,
             AdmissionCompletedWithoutAuthority: completedWithoutAuthority,
             ActiveWaitingListStatus: activeWl?.Status,
-            HasClosedHandover: facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Closed),
+            HasClosedHandover: facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Placed),
             HasActiveAdmission: hasActiveAdmission,
             ProspectiveOpnameRequested: prospectiveOpnameRequested,
             ProspectiveReservationReady: prospectiveReservationReady);

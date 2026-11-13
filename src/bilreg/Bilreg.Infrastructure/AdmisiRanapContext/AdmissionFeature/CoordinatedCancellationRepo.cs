@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

@@ -32,6 +32,7 @@ public class RegistrationCancellationEligibilityTest
 
         hasBillingItems.Should().BeTrue();
         RegistrationCancellationBlockerCode.HasBillingItems.Should().Be("REGISTRATION_HAS_BILLING_ITEMS");
+        RegistrationCancellationBlockerCode.HasActiveBedPlacement.Should().Be("RegistrationHasActiveBedPlacement");
     }
 
     [Fact]
@@ -62,6 +63,37 @@ public class RegistrationCancellationEligibilityTest
     {
         typeof(IRegistrationCancellationEligibilityRepo).GetMethods()
             .Select(x => x.Name)
-            .Should().Equal(nameof(IRegistrationCancellationEligibilityRepo.HasBillingItems));
+            .Should().BeEquivalentTo(new[]
+            {
+                nameof(IRegistrationCancellationEligibilityRepo.HasBillingItems),
+                nameof(IRegistrationCancellationEligibilityRepo.HasActiveBedPlacement)
+            });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UT_RCE_06_ActiveBedPlacement_ReturnsTheAuthoritativeResult(bool hasActiveBedPlacement)
+    {
+        var dal = new Mock<IRegistrationCancellationEligibilityDal>();
+        dal.Setup(x => x.HasActiveBedPlacement("RG00000001")).Returns(hasActiveBedPlacement);
+        var sut = new RegistrationCancellationEligibilityRepo(dal.Object);
+
+        sut.HasActiveBedPlacement("RG00000001").Should().Be(hasActiveBedPlacement);
+        dal.Verify(x => x.HasActiveBedPlacement("RG00000001"), Times.Once);
+    }
+
+    [Fact]
+    public void UT_RCE_07_Query_IsScopedToTheRequestedRegId_AndReadsActiveBedPlacementOnly()
+    {
+        var query = typeof(RegistrationCancellationEligibilityDal)
+            .GetField("HasActiveBedPlacementSql", BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetRawConstantValue()!.ToString();
+
+        query.Should().Contain("ta_trs_bed");
+        query.Should().Contain("aa.fs_kd_reg = @RegId");
+        query.Should().Contain("aa.fd_tgl_void");
+        query.Should().Contain("aa.fd_tgl_out");
+        query.Should().Contain("3000-01-01");
     }
 }

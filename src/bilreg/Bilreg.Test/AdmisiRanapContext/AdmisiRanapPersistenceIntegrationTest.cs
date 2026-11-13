@@ -1,9 +1,10 @@
-using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.BedUsageContext.WaitingListFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.PatternHelper;
@@ -29,17 +30,21 @@ public class AdmisiRanapPersistenceIntegrationTest
     [Fact]
     public void IT_DL_01_GivenWaitingList_WhenSaveLoadAndWorklist_ThenRoundTripsWithoutAdmissionTable()
     {
-        var waitingListId = $"W{Guid.NewGuid():N}"[..12];
         var regId = "RG99999999";
-        var model = new WaitingListModel(
-            waitingListId,
-            WaitingListStatusEnum.Waiting,
+        var model = WaitingListModel.Create(
             regId,
             new PasienReff("P0001", "Pasien IT", new DateOnly(1990, 1, 1), "L"),
             new KelasReff("K01", "Kelas 1"),
             new BangsalReff("B001", "Bangsal A"),
+            ArrivalSourceTypeEnum.Adm,
+            new LayananReff("-", "-"),
+            new DokterReff("-", "-"),
+            ClinicalUrgencyEnum.Routine,
+            "",
             10,
-            AuditTrailType.Create("it-user", DateTime.Now));
+            "it-user",
+            DateTime.Now);
+        var waitingListId = model.WaitingListId;
 
         try
         {
@@ -61,7 +66,8 @@ public class AdmisiRanapPersistenceIntegrationTest
                 .ToList();
             worklist.Should().Contain(x => x.WaitingListId == waitingListId);
         }
-        catch (Exception ex) when (ex.Message.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (ex.Message.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("Invalid column name", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

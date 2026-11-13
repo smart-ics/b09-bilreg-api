@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
@@ -40,6 +41,7 @@ public class PakaiBedVoidCommandTest
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
     private readonly Mock<IBedOperationalRepo> _bedOperationalRepoMock = new();
     private readonly Mock<IWardCockpitEventPublisher> _eventPublisherMock = new();
+    private readonly Mock<IEmr20AntrianRanapGateway> _emr20GatewayMock = new();
     private readonly PakaiBedDeleteCommandHandler _sut;
 
     public PakaiBedVoidCommandTest()
@@ -61,7 +63,8 @@ public class PakaiBedVoidCommandTest
             _tindakanRepoMock.Object,
             _waitingListRepoMock.Object,
             bedOperationalRepo: _bedOperationalRepoMock.Object,
-            eventPublisher: _eventPublisherMock.Object);
+            eventPublisher: _eventPublisherMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
     }
 
     private static PakaiBedModel CreateTestBed(string pakaiBedId = "PKB001", string regId = "REG001", string layananId = "LAY01")
@@ -496,7 +499,8 @@ public class PakaiBedVoidCommandTest
             _waitingListRepoMock.Object,
             bedRepo: bedRepoMock.Object,
             bedOperationalRepo: _bedOperationalRepoMock.Object,
-            eventPublisher: _eventPublisherMock.Object);
+            eventPublisher: _eventPublisherMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
 
         var cmd = new PakaiBedVoidCommand("PKB002", "nurse_anna", "Batal check-in", "Mozilla/5.0", "127.0.0.1");
 
@@ -587,7 +591,8 @@ public class PakaiBedVoidCommandTest
             _waitingListRepoMock.Object,
             regRepo: regRepoMock.Object,
             bedOperationalRepo: _bedOperationalRepoMock.Object,
-            eventPublisher: _eventPublisherMock.Object);
+            eventPublisher: _eventPublisherMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
 
         var cmd = new PakaiBedVoidCommand("PKB_MOTHER01", "nurse_v", "Batal check-in ibu & bayi", "Mozilla/5.0", "127.0.0.1");
 
@@ -738,7 +743,8 @@ public class PakaiBedVoidCommandTest
             _waitingListRepoMock.Object,
             regRepo: regRepoMock.Object,
             bedOperationalRepo: _bedOperationalRepoMock.Object,
-            eventPublisher: _eventPublisherMock.Object);
+            eventPublisher: _eventPublisherMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
 
         var cmd = new PakaiBedVoidCommand("PKB_BABY03", "nurse_v", "Batal gabung", "Mozilla/5.0", "127.0.0.1");
 
@@ -752,5 +758,23 @@ public class PakaiBedVoidCommandTest
             w.SpecialRequirements == "Batal Check-in Rawat Gabung" &&
             w.Bangsal.BangsalId == "LAY01"
         )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBedVoided_CallsEmr20GatewayDischargeRegRanapAsyncWithIsGabungFalse()
+    {
+        // Arrange
+        var bed = CreateTestBed("PKB001", "REG-VOID-001");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(bed));
+
+        var cmd = new PakaiBedVoidCommand("PKB001", "nurse_v", "Batal check-in", "Mozilla/5.0", "127.0.0.1");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-VOID-001", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

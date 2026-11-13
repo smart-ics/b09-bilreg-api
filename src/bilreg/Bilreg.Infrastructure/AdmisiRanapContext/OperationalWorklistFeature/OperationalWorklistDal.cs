@@ -4,7 +4,7 @@ using System.Text;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -83,7 +83,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
         dp.AddParam("@OrderFulfilled", (int)InpatientOrderStatusEnum.Fulfilled, SqlDbType.Int);
         dp.AddParam("@AdmissionCompleted", (int)AdmissionStatusEnum.Completed, SqlDbType.Int);
         dp.AddParam("@AdmissionCancelled", (int)AdmissionStatusEnum.Cancelled, SqlDbType.Int);
-        dp.AddParam("@WaitingListClosed", (int)WaitingListStatusEnum.Closed, SqlDbType.Int);
+        dp.AddParam("@WaitingListClosed", (int)WaitingListStatusEnum.Placed, SqlDbType.Int);
 
         if (!string.IsNullOrWhiteSpace(filter.DokterId))
             dp.AddParam("@DokterId", filter.DokterId.Trim(), SqlDbType.VarChar);
@@ -180,8 +180,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
             LEFT JOIN BILRG_AdmInpatientOrder op
-                ON (aa.InpatientOrderId <> '-' AND aa.InpatientOrderId = op.InpatientOrderId)
-                OR (aa.InpatientOrderId = '-' AND aa.OpnameRequestId <> '-' AND aa.OpnameRequestId = op.InpatientOrderId)
+                ON aa.InpatientOrderId <> '-' AND aa.InpatientOrderId = op.InpatientOrderId
             LEFT JOIN ta_registrasi reg ON aa.RegId = reg.fs_kd_reg
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
             WHERE aa.VodDate = @VodDate{terminalFilter}

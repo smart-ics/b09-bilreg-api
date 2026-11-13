@@ -192,6 +192,20 @@ public class RegModelTest
         reg.RegIbu.Should().Be("REG-IBU-888");
     }
 
+    [Fact]
+    public void GivenRegistration_WhenSetCaraMasukDkAndChangePrimaryDpjp_ThenPropertiesUpdated()
+    {
+        var reg = CreateReg();
+        var newCaraMasuk = new CaraMasukDkType("2", "Rujukan RS Lain");
+        var newDokter = new PpaReff("DR-NEW", "Dr. Baru");
+
+        reg.SetCaraMasukDk(newCaraMasuk);
+        reg.ChangePrimaryDpjp(newDokter);
+
+        reg.CaraMasukDk.Should().Be(newCaraMasuk);
+        reg.Dokter.Should().Be(newDokter);
+    }
+
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")
     {
         var layanan = LayananType.Default with
