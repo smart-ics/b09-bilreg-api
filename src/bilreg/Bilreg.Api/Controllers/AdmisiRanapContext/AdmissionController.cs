@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -68,6 +69,45 @@ public class AdmissionController : ControllerBase
         var cmd = new AdmUpdateAdmissionCmd(id, body.KelasDkId, body.BangsalId, body.UserId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPut("{id}/inpatient-visit")]
+    public async Task<IActionResult> UpdateInpatientVisit(string id, [FromBody] AdmUpdateInpatientVisitBody body)
+    {
+        var userId = !string.IsNullOrWhiteSpace(body.UserId)
+            ? body.UserId
+            : (User?.FindFirst(ClaimTypes.Name)?.Value ?? User?.Identity?.Name ?? string.Empty);
+
+        try
+        {
+            var cmd = new AdmUpdateInpatientVisitCmd(
+                id,
+                body.DokterId,
+                body.ProsedurMasukInapId,
+                body.CaraMasukDkId,
+                body.JenisInapId,
+                body.RegIbu,
+                userId);
+
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (KeyNotFoundException ex) when (ex.Message.Contains("ibu", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(ex));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
     }
 
     [HttpPost("{regId}/cancel")]

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Bilreg.Api.Controllers.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -6,6 +7,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Nuna.Lib.ActionResultHelper;
@@ -190,6 +192,145 @@ public class AdmissionControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.status.Should().Be("success");
         jsend.data.Should().Be("Done");
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenValidPayload_SendsCmdAndReturnsJSendOkDone()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "3", "REG_IBU_01", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+                cmd.RegId == "ADM01" &&
+                cmd.DokterId == "DOK01" &&
+                cmd.ProsedurMasukInapId == "1" &&
+                cmd.CaraMasukDkId == "8" &&
+                cmd.JenisInapId == "3" &&
+                cmd.RegIbu == "REG_IBU_01" &&
+                cmd.UserId == "USER01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+            cmd.RegId == "ADM01" &&
+            cmd.DokterId == "DOK01" &&
+            cmd.ProsedurMasukInapId == "1" &&
+            cmd.CaraMasukDkId == "8" &&
+            cmd.JenisInapId == "3" &&
+            cmd.RegIbu == "REG_IBU_01" &&
+            cmd.UserId == "USER01"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenUserIdEmpty_UsesClaimNameIfPresent()
+    {
+        // Arrange
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "NURSE_01")], "TestAuth"));
+        _sut.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = user } };
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "1", "", "");
+
+        _mediatorMock
+            .Setup(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+                cmd.RegId == "ADM01" &&
+                cmd.UserId == "NURSE_01"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be("Done");
+
+        _mediatorMock.Verify(m => m.Send(It.Is<AdmUpdateInpatientVisitCmd>(cmd =>
+            cmd.RegId == "ADM01" &&
+            cmd.UserId == "NURSE_01"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenTargetRegistrationNotFound_Returns404NotFound()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "1", "", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmUpdateInpatientVisitCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException("Registrasi 'ADM99' tidak ditemukan."));
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM99", body);
+
+        // Assert
+        var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
+        notFoundResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+        var jsend = notFoundResult.Value.Should().BeOfType<JSendFailed>().Subject;
+        jsend.status.Should().Be("failed");
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenMotherRegistrationNotFound_Returns422UnprocessableEntity()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "3", "REG_IBU_99", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmUpdateInpatientVisitCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KeyNotFoundException("Registrasi ibu 'REG_IBU_99' tidak ditemukan."));
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var objResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = objResult.Value.Should().BeOfType<JSendFailed>().Subject;
+        jsend.status.Should().Be("failed");
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenArgumentExceptionThrown_Returns422UnprocessableEntity()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "3", "", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmUpdateInpatientVisitCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ArgumentException("Nomor registrasi ibu wajib diisi untuk jenis inap Perinatal."));
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var objResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = objResult.Value.Should().BeOfType<JSendFailed>().Subject;
+        jsend.status.Should().Be("failed");
+    }
+
+    [Fact]
+    public async Task UpdateInpatientVisit_WhenInvalidOperationExceptionThrown_Returns422UnprocessableEntity()
+    {
+        // Arrange
+        var body = new AdmUpdateInpatientVisitBody("DOK01", "1", "8", "3", "REG_IBU_01", "USER01");
+        _mediatorMock
+            .Setup(m => m.Send(It.IsAny<AdmUpdateInpatientVisitCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("JENIS INAP IBU invalid: Registrasi ibu harus berjenis inap Obstetri."));
+
+        // Act
+        var result = await _sut.UpdateInpatientVisit("ADM01", body);
+
+        // Assert
+        var objResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        var jsend = objResult.Value.Should().BeOfType<JSendFailed>().Subject;
+        jsend.status.Should().Be("failed");
     }
 
     [Fact]
