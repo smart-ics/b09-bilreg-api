@@ -55,23 +55,67 @@ public class LabResultDocumentRepoTest
     }
 
     [Fact]
-    public void SaveChanges_AfterVerify_PassesVerifiedStatusToUpdate()
+    public void SaveChanges_AfterVerify_PassesVerifiedStatusAndExpertiseNoteToUpdate()
     {
         var model = CreateDoc();
-        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0));
+        model.SetCriticalNote("Nilai kritis trombosit rendah");
+        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0), "Kesan klinis: Trombositopenia berat");
         _docDal.Setup(x => x.GetData(It.IsAny<ILabResultDocumentKey>())).Returns(LabResultDocumentDto.FromModel(CreateDoc()));
 
         _sut.SaveChanges(model);
 
         _docDal.Verify(x => x.Update(It.Is<LabResultDocumentDto>(d =>
             d.ResultStatus == (int)LabResultStatusEnum.Verified
-            && d.VerifiedUserId == "PATH1")), Times.Once);
+            && d.VerifiedUserId == "PATH1"
+            && d.ExpertiseNote == "Kesan klinis: Trombositopenia berat"
+            && d.CriticalNote == "Nilai kritis trombosit rendah")), Times.Once);
     }
 
     [Fact]
-    public void LoadByOrderId_WhenFound_ReturnsAggregateWithItems()
+    public void SaveChanges_NewEntity_MapsExpertiseAndCriticalNoteToInsertDto()
     {
         var model = CreateDoc();
+        model.SetCriticalNote("Catatan kritis segera hubungi DPJP");
+        _docDal.Setup(x => x.GetData(It.IsAny<ILabResultDocumentKey>())).Returns((LabResultDocumentDto)null!);
+
+        _sut.SaveChanges(model);
+
+        _docDal.Verify(x => x.Insert(It.Is<LabResultDocumentDto>(d =>
+            d.CriticalNote == "Catatan kritis segera hubungi DPJP"
+            && d.ExpertiseNote == string.Empty)), Times.Once);
+    }
+
+    [Fact]
+    public void LoadEntity_WhenFound_ReturnsAggregateWithNotes()
+    {
+        var model = CreateDoc();
+        model.SetCriticalNote("Catatan kritis");
+        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0), "Ekspertise patolog");
+        var dto = LabResultDocumentDto.FromModel(model);
+        var itemDto = LabResultItemDto.FromModel(model.ResultDocumentId, model.Items.First());
+
+        _docDal.Setup(x => x.GetData(It.IsAny<ILabResultDocumentKey>())).Returns(dto);
+        _itemDal.Setup(x => x.ListData(It.IsAny<ILabResultDocumentKey>())).Returns([itemDto]);
+
+        var result = _sut.LoadEntity(model);
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: m =>
+            {
+                m.Items.Should().HaveCount(1);
+                m.ExpertiseNote.Should().Be("Ekspertise patolog");
+                m.CriticalNote.Should().Be("Catatan kritis");
+            },
+            onNone: () => Assert.Fail("Expected Some"));
+    }
+
+    [Fact]
+    public void LoadByOrderId_WhenFound_ReturnsAggregateWithItemsAndNotes()
+    {
+        var model = CreateDoc();
+        model.SetCriticalNote("Catatan kritis");
+        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0), "Ekspertise patolog");
         var dto = LabResultDocumentDto.FromModel(model);
         var itemDto = LabResultItemDto.FromModel(model.ResultDocumentId, model.Items.First());
 
@@ -86,6 +130,8 @@ public class LabResultDocumentRepoTest
             {
                 m.Items.Should().HaveCount(1);
                 m.OrderId.Should().Be("LBO111111111");
+                m.ExpertiseNote.Should().Be("Ekspertise patolog");
+                m.CriticalNote.Should().Be("Catatan kritis");
             },
             onNone: () => Assert.Fail("Expected Some"));
     }
@@ -98,5 +144,25 @@ public class LabResultDocumentRepoTest
         var result = _sut.LoadByOrderId("MISSING");
 
         result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DtoMapping_FromModelAndToModel_PreservesExpertiseAndCriticalNote()
+    {
+        var model = CreateDoc();
+        model.SetCriticalNote("Catatan nilai kritis");
+        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0), "Catatan ekspertise patolog");
+
+        var dto = LabResultDocumentDto.FromModel(model);
+
+        dto.ExpertiseNote.Should().Be("Catatan ekspertise patolog");
+        dto.CriticalNote.Should().Be("Catatan nilai kritis");
+
+        var restored = dto.ToModel(model.Items);
+
+        restored.ExpertiseNote.Should().Be("Catatan ekspertise patolog");
+        restored.CriticalNote.Should().Be("Catatan nilai kritis");
+        restored.ResultStatus.Should().Be(LabResultStatusEnum.Verified);
+        restored.VerifiedUserId.Should().Be("PATH1");
     }
 }

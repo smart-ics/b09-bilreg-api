@@ -1,7 +1,9 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Infrastructure.LabContext.Integration;
 using FluentAssertions;
@@ -167,5 +169,60 @@ public class LabOrderReleaseHandlerTest
         _repo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o =>
             o.LabOrderStatus == LabOrderStatusEnum.Released
             && o.LastBillingReleaseCheckUserId == "REL2")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Release_WhenBilClearAndVerifiedResultDocumentExists_MarksDocumentReleasedAndSavesAtomically()
+    {
+        var order = VerifiedOrder();
+        var doc = LabResultDocumentModel.CreateInitial(order.OrderId, new AuditInfoType("U1", DateTime.Now));
+        var cap = new LabResultItemCapture(
+            "C1", "T1", "Test", "HB", "Hemoglobin", 1,
+            LabResultTypeEnum.Numeric, 13.5m, "", "", "", "g/dL", "12-16", false);
+        doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U1");
+        doc.MarkRecorded("U1");
+        doc.Verify("PATH1", new DateTime(2026, 5, 18, 10, 0, 0));
+
+        var resultRepo = new Mock<ILabResultDocumentRepo>();
+
+        _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(doc));
+
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance, resultRepo.Object);
+        var response = await handler.Handle(
+            new LabOrderReleaseCmd(order.OrderId, "REL1", "Catatan rilis"),
+            CancellationToken.None);
+
+        response.Released.Should().BeTrue();
+        response.BillingStatus.Should().Be("CLEAR");
+        _repo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o => o.LabOrderStatus == LabOrderStatusEnum.Released)), Times.Once);
+        resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
+            r.ResultStatus == LabResultStatusEnum.Released
+            && r.AuditTrail.Modified.UserId == "REL1")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Release_WhenBilClearAndDocumentNotVerified_DoesNotMarkDocumentReleased()
+    {
+        var order = VerifiedOrder();
+        var doc = LabResultDocumentModel.CreateInitial(order.OrderId, new AuditInfoType("U1", DateTime.Now));
+        var cap = new LabResultItemCapture(
+            "C1", "T1", "Test", "HB", "Hemoglobin", 1,
+            LabResultTypeEnum.Numeric, 13.5m, "", "", "", "g/dL", "12-16", false);
+        doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U1");
+        doc.MarkRecorded("U1"); // Still Recorded, not Verified
+        var resultRepo = new Mock<ILabResultDocumentRepo>();
+
+        _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(doc));
+
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance, resultRepo.Object);
+        var response = await handler.Handle(
+            new LabOrderReleaseCmd(order.OrderId, "REL1", "Catatan rilis"),
+            CancellationToken.None);
+
+        response.Released.Should().BeTrue();
+        _repo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o => o.LabOrderStatus == LabOrderStatusEnum.Released)), Times.Once);
+        resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
     }
 }

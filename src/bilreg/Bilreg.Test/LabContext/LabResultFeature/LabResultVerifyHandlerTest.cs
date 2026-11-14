@@ -1,6 +1,7 @@
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.LabContext.LabResultFeature.UseCases;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
@@ -16,11 +17,13 @@ public class LabResultVerifyHandlerTest
 {
     private readonly Mock<ILabOrderRepo> _orderRepo = new();
     private readonly Mock<ILabResultDocumentRepo> _resultRepo = new();
+    private readonly Mock<ICurrentUserContext> _currentUserMock = new();
     private readonly LabResultVerifyHandler _sut;
 
     public LabResultVerifyHandlerTest()
     {
-        _sut = new LabResultVerifyHandler(_orderRepo.Object, _resultRepo.Object);
+        _currentUserMock.Setup(x => x.GetRoles()).Returns(["doktersppk"]);
+        _sut = new LabResultVerifyHandler(_orderRepo.Object, _resultRepo.Object, _currentUserMock.Object);
     }
 
     private static LabOrderModel RecordedLabOrder()
@@ -44,6 +47,17 @@ public class LabResultVerifyHandlerTest
         return doc;
     }
 
+    private static LabResultDocumentModel RecordedResultDocumentWithMissingMandatory(string orderId)
+    {
+        var doc = LabResultDocumentModel.CreateInitial(orderId, new AuditInfoType("U1", DateTime.Now));
+        var cap = new LabResultItemCapture(
+            "C1", "T1", "Darah Lengkap", "HB", "Hemoglobin", 1,
+            LabResultTypeEnum.Numeric, 0m, "", "", "", "g/dL", "12-16", IsMandatory: true);
+        doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U1");
+        doc.MarkRecorded("U2");
+        return doc;
+    }
+
     [Fact]
     public async Task Handle_Success_SavesOrderVerifiedAndDocumentVerified()
     {
@@ -61,6 +75,77 @@ public class LabResultVerifyHandlerTest
             r.ResultStatus == LabResultStatusEnum.Verified
             && r.VerifiedUserId == "PATH1"
             && r.VerifiedDate == verifiedAt)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_Success_SavesExpertiseNoteWhenProvided()
+    {
+        var order = RecordedLabOrder();
+        var doc = RecordedResultDocument(order.OrderId);
+        var verifiedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+        const string expertise = "Kesan: Anemia ringan normositik normokromik.";
+
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(doc));
+
+        await _sut.Handle(new LabResultVerifyCmd(order.OrderId, "PATH1", verifiedAt, expertise), CancellationToken.None);
+
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
+            r.ResultStatus == LabResultStatusEnum.Verified
+            && r.ExpertiseNote == expertise)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserNotAuthorized_ThrowsUnauthorizedAccessException()
+    {
+        var order = RecordedLabOrder();
+        _currentUserMock.Setup(x => x.GetRoles()).Returns(["analis"]);
+
+        var act = async () => await _sut.Handle(
+            new LabResultVerifyCmd(order.OrderId, "PATH1", new DateTime(2026, 5, 18, 12, 0, 0)),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*doktersppk*");
+        _orderRepo.Verify(x => x.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+        _resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserHasPermissionClaim_Succeeds()
+    {
+        var order = RecordedLabOrder();
+        var doc = RecordedResultDocument(order.OrderId);
+        var verifiedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+
+        _currentUserMock.Setup(x => x.GetRoles()).Returns(["lab.result.verify"]);
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(doc));
+
+        await _sut.Handle(new LabResultVerifyCmd(order.OrderId, "PATH1", verifiedAt), CancellationToken.None);
+
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
+            r.ResultStatus == LabResultStatusEnum.Verified)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenMandatoryComponentNotFilled_ThrowsAndDoesNotSave()
+    {
+        var order = RecordedLabOrder();
+        var doc = RecordedResultDocumentWithMissingMandatory(order.OrderId);
+        var verifiedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId)).Returns(MayBe.From(doc));
+
+        var act = async () => await _sut.Handle(
+            new LabResultVerifyCmd(order.OrderId, "PATH1", verifiedAt),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Komponen mandatori belum terisi*");
+        _orderRepo.Verify(x => x.SaveChanges(It.IsAny<LabOrderModel>()), Times.Never);
+        _resultRepo.Verify(x => x.SaveChanges(It.IsAny<LabResultDocumentModel>()), Times.Never);
     }
 
     [Fact]

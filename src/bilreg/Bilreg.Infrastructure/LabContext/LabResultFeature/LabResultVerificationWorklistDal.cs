@@ -25,6 +25,7 @@ public class LabResultVerificationWorklistDal : ILabResultVerificationWorklistDa
     {
         const int orderStatusRecorded = (int)LabOrderStatusEnum.Recorded;
         const int resultStatusRecorded = (int)LabResultStatusEnum.Recorded;
+        const int flagCritical = (int)LabResultFlagEnum.Critical;
 
         var sql = """
             SELECT
@@ -34,7 +35,27 @@ public class LabResultVerificationWorklistDal : ILabResultVerificationWorklistDa
                 o.PatientName,
                 d.RecordedDate,
                 d.ResultStatus,
-                d.RecordedUserId
+                d.RecordedUserId,
+                CAST(CASE WHEN o.Urgency = 1 THEN 1 ELSE 0 END AS BIT) AS IsCito,
+                ISNULL(o.Gender, '') AS Gender,
+                ISNULL(o.AgeAtOrder, 0) AS AgeAtOrder,
+                ISNULL(o.LayananPerujukName, '') AS LayananPerujukName,
+                ISNULL(o.DokterPerujukName, '') AS DokterPerujukName,
+                ISNULL(STUFF((
+                    SELECT ', ' + bb.LabTestName
+                    FROM BILRG_LabOrderItem bb
+                    WHERE bb.OrderId = o.OrderId
+                    ORDER BY bb.ItemNo
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'NVARCHAR(MAX)'), 1, 2, ''), '') AS TestNames,
+                CAST(CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM BILRG_LabResultItem i
+                    WHERE i.ResultDocumentId = d.ResultDocumentId
+                      AND i.FlagStatus = @FlagCritical
+                ) THEN 1 ELSE 0 END AS BIT) AS HasCriticalValue,
+                d.VersionNo,
+                d.ResultSource
             FROM BILRG_LabOrder o
             INNER JOIN BILRG_LabResultDocument d ON d.OrderId = o.OrderId
             WHERE o.VodDate = @VodDate
@@ -56,12 +77,13 @@ public class LabResultVerificationWorklistDal : ILabResultVerificationWorklistDa
                  )
                 """;
 
-        sql += " ORDER BY d.RecordedDate DESC";
+        sql += " ORDER BY o.Urgency DESC, d.RecordedDate DESC";
 
         var dp = new DynamicParameters();
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
         dp.AddParam("@OrderStatusRecorded", orderStatusRecorded, SqlDbType.Int);
         dp.AddParam("@ResultStatusRecorded", resultStatusRecorded, SqlDbType.Int);
+        dp.AddParam("@FlagCritical", flagCritical, SqlDbType.Int);
 
         if (filter.Date1.HasValue && filter.Date2.HasValue)
         {
