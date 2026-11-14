@@ -18,7 +18,8 @@ public interface IWardCockpitDal
         DateTime occurredAt,
         string? catatan = null,
         CancellationToken cancellationToken = default);
-    Task<IEnumerable<WardCockpitBabyLookupDto>> LookupBabyAsync(string keyword, CancellationToken cancellationToken = default);
+    Task<IEnumerable<WardCockpitBabyLookupDto>> LookupBabyAsync(string keyword, string? bangsalId = null, CancellationToken cancellationToken = default);
+    Task<string?> GetKamarTipeByRegIdAsync(string regId, CancellationToken cancellationToken = default);
 }
 
 public record WardCockpitBangsalListItemDto(string BangsalId, string BangsalName, string KelasName);
