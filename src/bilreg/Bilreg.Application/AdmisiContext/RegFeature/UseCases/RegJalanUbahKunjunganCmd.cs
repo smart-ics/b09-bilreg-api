@@ -32,7 +32,7 @@ public record RegJalanUbahKunjunganCmd(string RegId,
     string LayananId, string DokterId, string JamPraktek, string KarcisId,
     string UserId) : IRequest<RegJalanUbahKunjunganResponse>, IRegKey, ILayananKey, IKarcisKey;
 
-public record RegJalanUbahKunjunganResponse(string RegId, int NoAntrian);
+public record RegJalanUbahKunjunganResponse(string RegId, int NoAntrian, string QueueLabel = "", string PrefixAntrian = "");
 public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjunganCmd, RegJalanUbahKunjunganResponse>
 {
     private readonly IRegRepo _regRepo;
@@ -166,6 +166,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             reserved = _queueNumberAdapter.ReserveForRegistration(
                 schedule.LegacyJadwal, tglBerobat, reg).Value;
             antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            TryUpdateAntrianPrefix(antrian, rawPrefix);
             noAntrian = reserved.NoUrut;
         }
 
@@ -219,7 +221,14 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             await _clinicQueueRefreshPublisher.PublishRefreshHint(oldLayananId, oldDokterId, cancellationToken);
         }
 
-        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian);
+        AntrianModel responseQueue;
+        if (isSameSchedule)
+            responseQueue = queOldContext.Que;
+        else
+            responseQueue = antrian ?? AntrianModel.Default;
+
+        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian,
+            responseQueue.FormatClinicQueueLabel(noAntrian), responseQueue.QueuePrefixSnapshot);
         return result;
     }
 
@@ -352,6 +361,24 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
         return PasienTrackerStableIdentity.ForVisitChange(existing, reg, occurredAt);
     }
+    private static void TryUpdateAntrianPrefix(AntrianModel antrian, string? rawPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(rawPrefix) || rawPrefix.Trim() == "-")
+            return;
+
+        var normalized = rawPrefix.Trim();
+        if (normalized.Length > 2)
+            normalized = normalized.Substring(0, 2);
+
+        try
+        {
+            antrian.TryUpdatePrefix(AntrianModel.NormalizeClinicPrefix(normalized));
+        }
+        catch
+        {
+        }
+    }
+
     private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
     {
         var map = _mapJaminanJkRepo.LoadEntity(key).GetValueOrDefault(MapJaminanJkType.Default);

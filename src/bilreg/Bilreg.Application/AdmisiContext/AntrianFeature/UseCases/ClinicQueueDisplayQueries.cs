@@ -126,7 +126,7 @@ public sealed class ClinicQueueGetDisplaySnapshotHandler
             }
 
             var entry = queue?.ListEntry.FirstOrDefault(e => e.NoUrut == call.NoUrut);
-            var nomorAntrean = queue?.FormatQueueLabel(call.NoUrut) ?? call.NoUrut.ToString();
+            var nomorAntrean = queue?.FormatClinicQueueLabel(call.NoUrut) ?? call.NoUrut.ToString();
             var namaPasien = entry?.Visitor.PersonName ?? string.Empty;
             var poliName = ResolvePoliName(call.PoliId);
             var dokterName = ResolveDokterName(call.DokterId);
@@ -293,7 +293,7 @@ public sealed class ClinicQueueGetDisplaySnapshotHandler
                 if (!seenWaiting.Add((queue.AntrianId, e.NoUrut)))
                     continue;
 
-                var waitNomor = queue.FormatQueueLabel(e.NoUrut) ?? e.NoUrut.ToString();
+                var waitNomor = queue.FormatClinicQueueLabel(e.NoUrut);
                 waitingItems.Add(new ClinicQueueWaitingItem(
                     AntrianId: queue.AntrianId,
                     NoUrut: e.NoUrut,

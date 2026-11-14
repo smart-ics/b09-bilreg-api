@@ -25,9 +25,7 @@ public class AntrianModel : IAntrianKey
         SequenceTag = sequenceTag;
         AntrianDescription = antrianDesc;
         ServicePoint = servicePoint ?? ServicePointType.Default;
-        QueuePrefixSnapshot = string.IsNullOrWhiteSpace(queuePrefixSnapshot)
-            ? string.Empty
-            : AdmissionServicePointModel.NormalizePrefix(queuePrefixSnapshot);
+        QueuePrefixSnapshot = NormalizeClinicPrefix(queuePrefixSnapshot);
         _listEntry = listEntry.ToList();
 
         _sequencer = sequencer;
@@ -55,7 +53,7 @@ public class AntrianModel : IAntrianKey
     public string SequenceTag { get; init; }
     public string AntrianDescription { get; init; }
     public ServicePointType ServicePoint { get; init; }
-    public string QueuePrefixSnapshot { get; init; }
+    public string QueuePrefixSnapshot { get; private set; }
     public IEnumerable<AntrianEntryModel> ListEntry => _listEntry;
     #endregion
 
@@ -140,6 +138,40 @@ public class AntrianModel : IAntrianKey
         return string.IsNullOrEmpty(QueuePrefixSnapshot) ? null : $"{QueuePrefixSnapshot}{noUrut:D4}";
     }
 
+    public static string NormalizeClinicPrefix(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || raw.Trim() == "-")
+            return string.Empty;
+
+        var normalized = raw.Trim().ToUpperInvariant();
+        if (normalized.Length > 2 || !normalized.All(char.IsAsciiLetterUpper))
+            throw new ArgumentException(
+                $"Clinic queue prefix must be 1 to 2 uppercase ASCII letters (A-Z), got '{raw}'.",
+                nameof(raw));
+
+        return normalized;
+    }
+
+    public string FormatClinicQueueLabel(int noUrut)
+    {
+        return string.IsNullOrEmpty(QueuePrefixSnapshot)
+            ? noUrut.ToString()
+            : $"{QueuePrefixSnapshot}{noUrut}";
+    }
+
+    public bool TryUpdatePrefix(string? newPrefix)
+    {
+        if (!string.IsNullOrEmpty(QueuePrefixSnapshot))
+            return false;
+
+        var normalized = NormalizeClinicPrefix(newPrefix);
+        if (string.IsNullOrEmpty(normalized))
+            return false;
+
+        QueuePrefixSnapshot = normalized;
+        return true;
+    }
+
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekEffective effective)
     {
         Guard.Against.Null(effective, nameof(effective));
@@ -201,6 +233,24 @@ public record AntrianHeaderView(
     string SequenceTag) : IAntrianKey;
 
 
-public record AntrianView(string AntrianId, int AntrianStatus, int NoUrut, string PersonName,
-    string ReffId, string ReffDesc, DateTime AntrianDate, string SquenceTag, string DokterId,
-    string AntrianDescription, TimeOnly StartTime, TimeOnly EndTime);
+public record AntrianView(
+    string AntrianId,
+    int AntrianStatus,
+    int NoUrut,
+    string PersonName,
+    string ReffId,
+    string ReffDesc,
+    DateTime AntrianDate,
+    string SquenceTag,
+    string DokterId,
+    string AntrianDescription,
+    TimeOnly StartTime,
+    TimeOnly EndTime,
+    string QueuePrefixSnapshot = "")
+{
+    public string QueueLabel => NoUrut <= 0
+        ? ""
+        : string.IsNullOrEmpty(QueuePrefixSnapshot)
+            ? NoUrut.ToString()
+            : $"{QueuePrefixSnapshot}{NoUrut}";
+}

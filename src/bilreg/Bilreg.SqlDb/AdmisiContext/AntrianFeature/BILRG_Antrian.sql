@@ -7,7 +7,7 @@
     SequenceTag        VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_SequenceTag DEFAULT(''),
     AntrianDescription VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_Antrian_AntrianDescription DEFAULT(''),
     ServicePointCode   VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_ServicePointCode DEFAULT(''),
-    QueuePrefixSnapshot CHAR(1)     NOT NULL CONSTRAINT DF_BILRG_Antrian_QueuePrefixSnapshot DEFAULT(''),
+    QueuePrefixSnapshot VARCHAR(5)   NOT NULL CONSTRAINT DF_BILRG_Antrian_QueuePrefixSnapshot DEFAULT(''),
     CrtUser            VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_CrtUser DEFAULT(''),
     CrtDate            DATETIME     NOT NULL CONSTRAINT DF_BILRG_Antrian_CrtDate DEFAULT('3000-01-01'),
     UpdUser            VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_UpdUser DEFAULT(''),
