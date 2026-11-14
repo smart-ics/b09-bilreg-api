@@ -22,7 +22,9 @@ public record PenjualanCreateFromTelaahRequest(
     string? KelasId = null,
     DateTime? TransactionDate = null,
     bool? IsRanap = null,
-    IReadOnlyList<string>? NonFornasBrgIds = null);
+    IReadOnlyList<string>? NonFornasBrgIds = null,
+    string AntrianId = "",
+    int NoUrut = 0);
 
 /// <summary>
 /// HTTP Request body untuk endpoint penerbitan tagihan penjualan Jenis 2 (langsung registrasi).
@@ -41,7 +43,9 @@ public record PenjualanCreateDirectRequest(
     decimal BiayaLain = 0,
     decimal Pembulatan = 0,
     bool? IsRanap = null,
-    string? PenjualanId = null);
+    string? PenjualanId = null,
+    string AntrianId = "",
+    int NoUrut = 0);
 
 /// <summary>
 /// HTTP Request body untuk endpoint penerbitan tagihan penjualan Jenis 3 (bebas walk-in OTC).
@@ -58,7 +62,9 @@ public record PenjualanCreateWalkInRequest(
     decimal DiskonLain = 0,
     decimal BiayaLain = 0,
     decimal Pembulatan = 0,
-    string? PenjualanId = null);
+    string? PenjualanId = null,
+    string AntrianId = "",
+    int NoUrut = 0);
 
 /// <summary>
 /// HTTP Request body untuk endpoint pembatalan tagihan penjualan (Soft-Void).
@@ -113,7 +119,9 @@ public class PenjualanController : ControllerBase
             KelasId: request.KelasId,
             TransactionDate: request.TransactionDate ?? _tglJamProvider.Now,
             IsRanap: request.IsRanap,
-            NonFornasBrgIds: request.NonFornasBrgIds);
+            NonFornasBrgIds: request.NonFornasBrgIds,
+            AntrianId: request.AntrianId ?? string.Empty,
+            NoUrut: request.NoUrut);
 
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
@@ -150,7 +158,9 @@ public class PenjualanController : ControllerBase
             BiayaLain: request.BiayaLain,
             Pembulatan: request.Pembulatan,
             IsRanap: request.IsRanap,
-            PenjualanId: request.PenjualanId);
+            PenjualanId: request.PenjualanId,
+            AntrianId: request.AntrianId ?? string.Empty,
+            NoUrut: request.NoUrut);
 
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
@@ -183,7 +193,9 @@ public class PenjualanController : ControllerBase
             DiskonLain: request.DiskonLain,
             BiayaLain: request.BiayaLain,
             Pembulatan: request.Pembulatan,
-            PenjualanId: request.PenjualanId);
+            PenjualanId: request.PenjualanId,
+            AntrianId: request.AntrianId ?? string.Empty,
+            NoUrut: request.NoUrut);
 
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));

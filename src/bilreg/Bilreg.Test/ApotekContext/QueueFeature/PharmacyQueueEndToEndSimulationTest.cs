@@ -156,9 +156,7 @@ public class PharmacyQueueEndToEndSimulationTest
             _publisher.Object,
             _clock.Object,
             _auth,
-            _regRepo.Object,
-            _resepRepo.Object,
-            _mappingRepo.Object);
+            _regRepo.Object);
 
         var ticketBpjs = await intakeHandler.Handle(
             new PharmacyQueueIntakeCmd(RegId: "REG-BPJS-2026-001"),
@@ -170,9 +168,10 @@ public class PharmacyQueueEndToEndSimulationTest
         ticketBpjs.NoUrut.Should().Be(1);
         ticketBpjs.PatientName.Should().Be("Budi Santoso");
         ticketBpjs.Penjamin.Should().Be("BPJS Kesehatan");
+        ticketBpjs.RegId.Should().Be("REG-BPJS-2026-001");
 
-        inMemoryMappings.Should().HaveCount(2);
-        inMemoryMappings.Select(m => m.DemandId).Should().Contain(["KP-BPJS-991", "KP-BPJS-992"]);
+        // SOP-APT-RJ-001 §4.1: Kiosk intake does NOT auto-map prescriptions
+        inMemoryMappings.Should().BeEmpty();
 
         // =========================================================================
         // STEP 2: Pasien tekan tombol "Antrean Umum" di Kiosk
@@ -190,9 +189,10 @@ public class PharmacyQueueEndToEndSimulationTest
         ticketUmum.NoUrut.Should().Be(2);
         ticketUmum.ServicePointId.Should().Be("SP-FAR-UMUM");
         ticketUmum.PatientName.Should().BeEmpty();
+        ticketUmum.RegId.Should().BeEmpty();
 
-        // Mappings count remains 2 (no mapping added for Umum OTC)
-        inMemoryMappings.Should().HaveCount(2);
+        // Mappings count remains empty (no mapping added at Kiosk)
+        inMemoryMappings.Should().BeEmpty();
 
         // =========================================================================
         // STEP 3: Admin mengubah setting Loket 1 menjadi "Hanya BPJS" di LoketActiveCallBar
@@ -244,8 +244,11 @@ public class PharmacyQueueEndToEndSimulationTest
 
         // =========================================================================
         // STEP 4: Tiket dipanggil di Loket 1 -> Loket 1 hanya memanggil tiket Prefix A,
-        // e-resep langsung terbuka di Workbench, dan layar TV display memanggil nomor
+        // e-resep langsung terbuka di Workbench, dipetakan ke tiket, dan layar TV display memanggil nomor
         // =========================================================================
+        inMemoryMappings.Add(QueueMappingModel.Create(QueueDemandKindEnum.ResepKerja, "KP-BPJS-991", "ANT-BPJS-01", 1, "", QueueMappingMethodEnum.Manual, "petugas-loket1", _now));
+        inMemoryMappings.Add(QueueMappingModel.Create(QueueDemandKindEnum.ResepKerja, "KP-BPJS-992", "ANT-BPJS-01", 1, "", QueueMappingMethodEnum.Manual, "petugas-loket1", _now));
+
         _operations.Setup(x => x.TryCallLoket("APT-RCV-01", "ANT-BPJS-01", 1, _tokenV1, "petugas-loket1", _now))
             .Returns(true);
 

@@ -26,7 +26,9 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
         string withdrawalUserId,
         bool isPaymentOverridden,
         string paymentOverrideReason,
-        string paymentOverridePharmacistId)
+        string paymentOverridePharmacistId,
+        string regId = "",
+        string pasienId = "")
     {
         AntrianId = antrianId;
         NoUrut = noUrut;
@@ -49,12 +51,16 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
         IsPaymentOverridden = isPaymentOverridden;
         PaymentOverrideReason = paymentOverrideReason;
         PaymentOverridePharmacistId = paymentOverridePharmacistId;
+        RegId = regId ?? "";
+        PasienId = pasienId ?? "";
     }
 
     public string AntrianId { get; }
     public int NoUrut { get; }
     public string ServicePointId { get; private set; }
     public string QueueLabel { get; private set; }
+    public string RegId { get; private set; } = "";
+    public string PasienId { get; private set; } = "";
     public ApotekPhaseEnum ApotekPhase { get; private set; }
     public int CallCountPenerimaan { get; private set; }
     public DateTime LastCalledPenerimaanAt { get; private set; }
@@ -82,9 +88,11 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
         string antrianId,
         int noUrut,
         string servicePointId,
-        string queuePrefix)
+        string queuePrefix,
+        string regId = "",
+        string pasienId = "")
     {
-        return Create(antrianId, noUrut, servicePointId, queuePrefix, DateTime.Now);
+        return Create(antrianId, noUrut, servicePointId, queuePrefix, DateTime.Now, regId, pasienId);
     }
 
     public static ApotekQueueEntryModel Create(
@@ -92,7 +100,9 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
         int noUrut,
         string servicePointId,
         string queuePrefix,
-        DateTime takenAt)
+        DateTime takenAt,
+        string regId = "",
+        string pasienId = "")
     {
         Guard.Against.NullOrWhiteSpace(antrianId, nameof(antrianId));
         Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
@@ -124,7 +134,21 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
             withdrawalUserId: "",
             isPaymentOverridden: false,
             paymentOverrideReason: "",
-            paymentOverridePharmacistId: "");
+            paymentOverridePharmacistId: "",
+            regId: (regId ?? "").Trim(),
+            pasienId: (pasienId ?? "").Trim());
+    }
+
+    public static ApotekQueueEntryModel CreateFromTaken(
+        string antrianId,
+        int noUrut,
+        string servicePointId,
+        string queuePrefix,
+        DateTime takenAt,
+        string regId = "",
+        string pasienId = "")
+    {
+        return Create(antrianId, noUrut, servicePointId, queuePrefix, takenAt, regId, pasienId);
     }
 
     public static ApotekQueueEntryModel Rehydrate(
@@ -148,7 +172,9 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
         string withdrawalUserId,
         bool isPaymentOverridden,
         string paymentOverrideReason,
-        string paymentOverridePharmacistId)
+        string paymentOverridePharmacistId,
+        string regId = "",
+        string pasienId = "")
     {
         return new ApotekQueueEntryModel(
             antrianId,
@@ -171,7 +197,18 @@ public class ApotekQueueEntryModel : IApotekQueueEntryKey
             withdrawalUserId ?? "",
             isPaymentOverridden,
             paymentOverrideReason ?? "",
-            paymentOverridePharmacistId ?? "");
+            paymentOverridePharmacistId ?? "",
+            (regId ?? "").Trim(),
+            (pasienId ?? "").Trim());
+    }
+
+    public void AssignRegistration(string regId, string pasienId)
+    {
+        EnsureNotTerminal("assign registration");
+        if (!string.IsNullOrWhiteSpace(regId))
+            RegId = regId.Trim();
+        if (!string.IsNullOrWhiteSpace(pasienId))
+            PasienId = pasienId.Trim();
     }
 
     public void RecordCallPenerimaan(DateTime now)

@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.PenjualanFeature;
 using Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
+using Bilreg.Application.ApotekContext.QueueFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
@@ -10,6 +11,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ApotekContext.PenjualanFeature;
+using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -21,6 +23,8 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
 using MediatR;
+using Moq;
+using Nuna.Lib.PatternHelper;
 using TipeBrgType = Bilreg.Domain.BrgContext.PricingPolicyFeature.TipeBrgType;
 
 namespace Bilreg.Test.ApotekContext.PenjualanFeature;
@@ -36,6 +40,11 @@ public class PenjualanCommandTest
     private readonly FakeTataRekeningPermissionPort _permissionPort = new();
     private readonly FakeFornasCheckPort _fornasCheckPort = new();
     private readonly AllowAllAuth _auth = new();
+    private readonly InMemoryQueueMappingRepo _mappingRepo = new();
+    private readonly Mock<IApotekQueueEntryRepo> _queueEntryRepo = new();
+    private readonly Mock<IPharmacyQueuePublisher> _publisher = new();
+    private readonly Mock<ITrackerPharmacyPort> _trackerPort = new();
+    private readonly Mock<IPharmacyServicePointRepo> _servicePointRepo = new();
 
     #region Helpers
 
@@ -349,6 +358,56 @@ public class PenjualanCommandTest
             .WithMessage("*telaah belum Approved atau PartiallyApproved*");
     }
 
+    [Fact]
+    public async Task CreateFromTelaah_WithAntrianContext_CreatesMapping_BackfillsRegistration_TransitionsToPenyiapan_AndPublishesSignalR()
+    {
+        // Arrange
+        var reg = SeedReg("REG_Q01", "00000", isRanap: false);
+        var resep = SeedResep("RSP_Q01", reg, ("BRG01", "Paracetamol 500mg", 10m));
+        SeedTelaah("RSP_Q01", reg.RegId, TelaahStatusEnum.Approved,
+            ("BRG01", "Paracetamol 500mg", 10m, TelaahDispositionEnum.AcceptedAsPrescribed));
+
+        var entry = ApotekQueueEntryModel.Create("ANT_Q01", 1, "SP01", "B");
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
+        _queueEntryRepo.Setup(x => x.Get("ANT_Q01", 1)).Returns(MayBe.From(entry));
+
+        var sp = PharmacyServicePointModel.Create("SP01", "DEP01", "Umum", "B");
+        _servicePointRepo.Setup(x => x.Get("SP01")).Returns(MayBe.From(sp));
+
+        var sut = new PenjualanCreateFromTelaahHandler(
+            _penjualanRepo, _telaahRepo, _resepRepo, _regRepo, _pricingPort, _billingChargePort, _auth, _fornasCheckPort,
+            pasienRepo: null,
+            mappingRepo: _mappingRepo,
+            queueEntryRepo: _queueEntryRepo.Object,
+            publisher: _publisher.Object,
+            trackerPort: _trackerPort.Object,
+            servicePointRepo: _servicePointRepo.Object);
+
+        var cmd = new PenjualanCreateFromTelaahCmd(
+            UserId: "USER01",
+            ResepId: "RSP_Q01",
+            AntrianId: "ANT_Q01",
+            NoUrut: 1);
+
+        // Act
+        var createdIds = await sut.Handle(cmd, default);
+
+        // Assert
+        createdIds.Should().NotBeEmpty();
+        var mapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.ResepKerja, "RSP_Q01");
+        mapping.HasValue.Should().BeTrue();
+        mapping.Value.PasienHadir.Should().BeTrue();
+        mapping.Value.AntrianId.Should().Be("ANT_Q01");
+        mapping.Value.NoUrut.Should().Be(1);
+
+        entry.RegId.Should().Be(reg.RegId);
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.PENYIAPAN);
+
+        _trackerPort.Verify(x => x.ServeOnce("ANT_Q01", 1, "-", "RSP_Q01", It.IsAny<DateTime>()), Times.Once);
+        _queueEntryRepo.Verify(x => x.SaveChanges(entry), Times.Once);
+        _publisher.Verify(x => x.PublishWorklistRefresh("DEP01", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region 2. PenjualanCreateDirectCmd Tests
@@ -441,6 +500,60 @@ public class PenjualanCommandTest
             .WithMessage("*tidak aktif atau sudah keluar/batal*");
     }
 
+    [Fact]
+    public async Task CreateDirect_WithAntrianContext_CreatesMapping_BackfillsRegistration_TransitionsToPenyiapan_AndPublishesSignalR()
+    {
+        // Arrange
+        var reg = SeedReg("REG_Q02", "00000", isRanap: false);
+        var entry = ApotekQueueEntryModel.Create("ANT_Q02", 2, "SP01", "B");
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
+        _queueEntryRepo.Setup(x => x.Get("ANT_Q02", 2)).Returns(MayBe.From(entry));
+
+        var sp = PharmacyServicePointModel.Create("SP01", "DEP01", "Umum", "B");
+        _servicePointRepo.Setup(x => x.Get("SP01")).Returns(MayBe.From(sp));
+
+        var sut = new PenjualanCreateDirectHandler(
+            _penjualanRepo, _regRepo, _pricingPort, _billingChargePort, _auth,
+            pasienRepo: null,
+            mappingRepo: _mappingRepo,
+            queueEntryRepo: _queueEntryRepo.Object,
+            publisher: _publisher.Object,
+            trackerPort: _trackerPort.Object,
+            servicePointRepo: _servicePointRepo.Object);
+
+        var items = new List<PenjualanDirectItemInput>
+        {
+            new("BRG01", "Infus RL 500ml", "BTL", "Botol", 2m)
+        };
+
+        var cmd = new PenjualanCreateDirectCmd(
+            UserId: "USER01",
+            RegId: "REG_Q02",
+            DokterId: "DOK001",
+            LayananId: "POLI01",
+            Items: items,
+            AntrianId: "ANT_Q02",
+            NoUrut: 2);
+
+        // Act
+        var penjualanId = await sut.Handle(cmd, default);
+
+        // Assert
+        penjualanId.Should().StartWith("DU");
+        var mapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.JualBebas, penjualanId);
+        mapping.HasValue.Should().BeTrue();
+        mapping.Value.PasienHadir.Should().BeTrue();
+        mapping.Value.AntrianId.Should().Be("ANT_Q02");
+        mapping.Value.NoUrut.Should().Be(2);
+
+        entry.RegId.Should().Be("REG_Q02");
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.PENYIAPAN);
+
+        _trackerPort.Verify(x => x.ServeOnce("ANT_Q02", 2, "-", penjualanId, It.IsAny<DateTime>()), Times.Once);
+        _queueEntryRepo.Verify(x => x.SaveChanges(entry), Times.Once);
+        _publisher.Verify(x => x.PublishWorklistRefresh("DEP01", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region 3. PenjualanCreateWalkInCmd Tests
@@ -480,6 +593,56 @@ public class PenjualanCommandTest
         stored.TipeJaminanId.Should().Be("00000");
         stored.Items.Should().HaveCount(2);
         stored.Items.All(x => x.IsBeliBebas).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateWalkIn_WithAntrianContext_CreatesMapping_TransitionsToPenyiapan_AndPublishesSignalR()
+    {
+        // Arrange
+        var entry = ApotekQueueEntryModel.Create("ANT_Q03", 3, "SP01", "B");
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
+        _queueEntryRepo.Setup(x => x.Get("ANT_Q03", 3)).Returns(MayBe.From(entry));
+
+        var sp = PharmacyServicePointModel.Create("SP01", "DEP01", "Umum", "B");
+        _servicePointRepo.Setup(x => x.Get("SP01")).Returns(MayBe.From(sp));
+
+        var sut = new PenjualanCreateWalkInHandler(
+            _penjualanRepo, _pricingPort, _auth,
+            mappingRepo: _mappingRepo,
+            queueEntryRepo: _queueEntryRepo.Object,
+            publisher: _publisher.Object,
+            trackerPort: _trackerPort.Object,
+            servicePointRepo: _servicePointRepo.Object);
+
+        var items = new List<PenjualanWalkInItemInput>
+        {
+            new("BRG01", "Minyak Kayu Putih 60ml", "BTL", "Botol", 1m)
+        };
+
+        var cmd = new PenjualanCreateWalkInCmd(
+            UserId: "KASIR01",
+            PembeliName: "Ny. Siska Handayani",
+            LayananId: "APT_OTC",
+            Items: items,
+            AntrianId: "ANT_Q03",
+            NoUrut: 3);
+
+        // Act
+        var penjualanId = await sut.Handle(cmd, default);
+
+        // Assert
+        penjualanId.Should().StartWith("DU");
+        var mapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.JualBebas, penjualanId);
+        mapping.HasValue.Should().BeTrue();
+        mapping.Value.PasienHadir.Should().BeTrue();
+        mapping.Value.AntrianId.Should().Be("ANT_Q03");
+        mapping.Value.NoUrut.Should().Be(3);
+
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.PENYIAPAN);
+
+        _trackerPort.Verify(x => x.ServeOnce("ANT_Q03", 3, "-", penjualanId, It.IsAny<DateTime>()), Times.Once);
+        _queueEntryRepo.Verify(x => x.SaveChanges(entry), Times.Once);
+        _publisher.Verify(x => x.PublishWorklistRefresh("DEP01", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

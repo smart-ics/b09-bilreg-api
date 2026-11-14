@@ -95,8 +95,8 @@ public class PharmacyQueueWorklistHandler : IRequestHandler<PharmacyQueueWorklis
                 .ToList();
 
             var patientName = "";
-            var medicalRecordNo = "";
-            var registrationId = "";
+            var medicalRecordNo = entry.PasienId ?? "";
+            var registrationId = entry.RegId ?? "";
             var dokterName = "";
             var poliName = "";
             var penjamin = "";
@@ -141,20 +141,20 @@ public class PharmacyQueueWorklistHandler : IRequestHandler<PharmacyQueueWorklis
                         }
                     }
                 }
+            }
 
-                if (_regRepo is not null && !string.IsNullOrWhiteSpace(registrationId))
+            if (_regRepo is not null && !string.IsNullOrWhiteSpace(registrationId))
+            {
+                var regOpt = _regRepo.LoadEntity(RegModel.Key(registrationId));
+                if (regOpt.HasValue)
                 {
-                    var regOpt = _regRepo.LoadEntity(RegModel.Key(registrationId));
-                    if (regOpt.HasValue)
-                    {
-                        var reg = regOpt.Value;
-                        if (reg.TipeJaminan is not null && !string.IsNullOrWhiteSpace(reg.TipeJaminan.TipeJaminanName))
-                            penjamin = reg.TipeJaminan.TipeJaminanName;
-                        if (reg.Pasien is not null && !string.IsNullOrWhiteSpace(reg.Pasien.PasienId))
-                            medicalRecordNo = reg.Pasien.PasienId;
-                        if (reg.Pasien is not null && !string.IsNullOrWhiteSpace(reg.Pasien.PasienName) && string.IsNullOrWhiteSpace(patientName))
-                            patientName = reg.Pasien.PasienName;
-                    }
+                    var reg = regOpt.Value;
+                    if (reg.TipeJaminan is not null && !string.IsNullOrWhiteSpace(reg.TipeJaminan.TipeJaminanName))
+                        penjamin = reg.TipeJaminan.TipeJaminanName;
+                    if (reg.Pasien is not null && !string.IsNullOrWhiteSpace(reg.Pasien.PasienId))
+                        medicalRecordNo = reg.Pasien.PasienId;
+                    if (reg.Pasien is not null && !string.IsNullOrWhiteSpace(reg.Pasien.PasienName) && string.IsNullOrWhiteSpace(patientName))
+                        patientName = reg.Pasien.PasienName;
                 }
             }
 

@@ -90,6 +90,10 @@ public class ApotekSchemaSmokeTest
 
             ExecuteScript(conn, Path.Combine(sqlRoot, script));
         }
+
+        var alterQueueEntryPath = Path.Combine(sqlRoot, "BILRG_AptQueueEntry_Alter_RegId.sql");
+        if (File.Exists(alterQueueEntryPath))
+            ExecuteScript(conn, alterQueueEntryPath);
     }
 
     [Fact]
@@ -114,6 +118,35 @@ public class ApotekSchemaSmokeTest
             var colAtExists = conn.ExecuteScalar<int>(
                 "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueMapping') AND name = 'PasienHadirAt'");
             colAtExists.Should().Be(1, "PasienHadirAt column should exist in BILRG_AptQueueMapping");
+        }
+    }
+
+    [Fact]
+    public void AptQueueEntry_alter_reg_id_deploys_to_test_database()
+    {
+        lock (SchemaLock)
+        {
+            var opt = ConnStringHelper.GetTestEnv();
+            using var conn = new SqlConnection(ConnStringHelper.Get(opt.Value));
+            conn.Open();
+            var sqlRoot = FindSqlRoot();
+
+            var alterPath = Path.Combine(sqlRoot, "BILRG_AptQueueEntry_Alter_RegId.sql");
+            File.Exists(alterPath).Should().BeTrue("BILRG_AptQueueEntry_Alter_RegId.sql should exist");
+
+            ExecuteScript(conn, alterPath);
+
+            var colRegId = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'RegId'");
+            colRegId.Should().Be(1, "RegId column should exist in BILRG_AptQueueEntry");
+
+            var colPasienId = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'PasienId'");
+            colPasienId.Should().Be(1, "PasienId column should exist in BILRG_AptQueueEntry");
+
+            var idxRegId = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.indexes WHERE name = 'IX_BILRG_AptQueueEntry_RegId' AND object_id = OBJECT_ID('BILRG_AptQueueEntry')");
+            idxRegId.Should().Be(1, "IX_BILRG_AptQueueEntry_RegId index should exist in BILRG_AptQueueEntry");
         }
     }
 
@@ -156,6 +189,18 @@ public class ApotekSchemaSmokeTest
             var aptPhaseCount = conn.ExecuteScalar<int>(
                 "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'ApotekPhase'");
             aptPhaseCount.Should().Be(1, "BILRG_AptQueueEntry must have ApotekPhase column");
+
+            var regIdCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'RegId'");
+            regIdCount.Should().Be(1, "BILRG_AptQueueEntry must have RegId column");
+
+            var pasienIdCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.columns WHERE object_id = OBJECT_ID('BILRG_AptQueueEntry') AND name = 'PasienId'");
+            pasienIdCount.Should().Be(1, "BILRG_AptQueueEntry must have PasienId column");
+
+            var indexCount = conn.ExecuteScalar<int>(
+                "SELECT COUNT(1) FROM sys.indexes WHERE name = 'IX_BILRG_AptQueueEntry_RegId' AND object_id = OBJECT_ID('BILRG_AptQueueEntry')");
+            indexCount.Should().Be(1, "IX_BILRG_AptQueueEntry_RegId must exist on BILRG_AptQueueEntry");
 
             var rowVersionType = conn.ExecuteScalar<string>(
                 """

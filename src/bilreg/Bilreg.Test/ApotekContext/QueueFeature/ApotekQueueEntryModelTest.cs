@@ -22,6 +22,8 @@ public class ApotekQueueEntryModelTest
         entry.NoUrut.Should().Be(5);
         entry.ServicePointId.Should().Be("SP01");
         entry.QueueLabel.Should().Be("A005");
+        entry.RegId.Should().BeEmpty();
+        entry.PasienId.Should().BeEmpty();
         entry.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
         entry.TakenAt.Should().Be(BaseTime);
         entry.CallCountPenerimaan.Should().Be(0);
@@ -359,10 +361,52 @@ public class ApotekQueueEntryModelTest
 
         Action noShow = () => entry.MarkNoShow(testTime);
         noShow.Should().Throw<ApotekDomainException>().WithMessage("*terminal state*");
+
+        Action assignReg = () => entry.AssignRegistration("REG01", "PAS01");
+        assignReg.Should().Throw<ApotekDomainException>().WithMessage("*terminal state*");
     }
 
     [Fact]
-    public void Rehydrate_restores_all_21_properties_accurately()
+    public void Create_with_registration_initializes_RegId_and_PasienId()
+    {
+        var entry = ApotekQueueEntryModel.Create("Q01", 1, "SP01", "A", BaseTime, " REG-123 ", " PAS-456 ");
+        entry.RegId.Should().Be("REG-123");
+        entry.PasienId.Should().Be("PAS-456");
+    }
+
+    [Fact]
+    public void CreateFromTaken_initializes_entry_consistently()
+    {
+        var entry = ApotekQueueEntryModel.CreateFromTaken("Q01", 2, "SP02", "B", BaseTime, "REG-999", "PAS-999");
+        entry.AntrianId.Should().Be("Q01");
+        entry.NoUrut.Should().Be(2);
+        entry.ServicePointId.Should().Be("SP02");
+        entry.QueueLabel.Should().Be("B002");
+        entry.RegId.Should().Be("REG-999");
+        entry.PasienId.Should().Be("PAS-999");
+        entry.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
+        entry.TakenAt.Should().Be(BaseTime);
+    }
+
+    [Fact]
+    public void AssignRegistration_trims_and_updates_identifiers_when_non_empty()
+    {
+        var entry = CreateSampleEntry();
+        entry.RegId.Should().BeEmpty();
+        entry.PasienId.Should().BeEmpty();
+
+        entry.AssignRegistration("  REG-001  ", "  PAS-002  ");
+        entry.RegId.Should().Be("REG-001");
+        entry.PasienId.Should().Be("PAS-002");
+
+        // Calling with empty or whitespace values preserves existing values
+        entry.AssignRegistration("", "   ");
+        entry.RegId.Should().Be("REG-001");
+        entry.PasienId.Should().Be("PAS-002");
+    }
+
+    [Fact]
+    public void Rehydrate_restores_all_23_properties_accurately()
     {
         var now = new DateTime(2026, 10, 18, 9, 30, 0);
         var entry = ApotekQueueEntryModel.Rehydrate(
@@ -386,12 +430,16 @@ public class ApotekQueueEntryModelTest
             withdrawalUserId: "",
             isPaymentOverridden: true,
             paymentOverrideReason: "Override by Doctor",
-            paymentOverridePharmacistId: "PHARM-99");
+            paymentOverridePharmacistId: "PHARM-99",
+            regId: "REG-99",
+            pasienId: "PAS-99");
 
         entry.AntrianId.Should().Be("Q01");
         entry.NoUrut.Should().Be(12);
         entry.ServicePointId.Should().Be("SP02");
         entry.QueueLabel.Should().Be("B012");
+        entry.RegId.Should().Be("REG-99");
+        entry.PasienId.Should().Be("PAS-99");
         entry.ApotekPhase.Should().Be(ApotekPhaseEnum.SERAH_OBAT);
         entry.CallCountPenerimaan.Should().Be(2);
         entry.LastCalledPenerimaanAt.Should().Be(now.AddMinutes(-20));

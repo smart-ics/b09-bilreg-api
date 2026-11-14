@@ -29,7 +29,8 @@ public record PharmacyQueueIntakeResponse(
     int WaitingAheadCount,
     string PatientName = "",
     string MedicalRecordNo = "",
-    string Penjamin = "");
+    string Penjamin = "",
+    string RegId = "");
 
 #endregion
 
@@ -182,7 +183,8 @@ public record PharmacyQueueMapDemandReq(
     string DemandId,
     string PasienTrackerId = "",
     QueueMappingMethodEnum MappingMethod = QueueMappingMethodEnum.Manual,
-    string UserId = "");
+    string UserId = "",
+    IReadOnlyList<string>? DemandIds = null);
 
 /// <summary>
 /// Data hasil pengaitan tiket antrean ke dokumen permintaan obat.

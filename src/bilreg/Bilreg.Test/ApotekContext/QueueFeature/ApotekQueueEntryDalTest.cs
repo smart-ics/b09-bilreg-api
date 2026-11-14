@@ -40,6 +40,8 @@ public class ApotekQueueEntryDalTest
                 NoUrut: noUrut,
                 ServicePointId: spId,
                 QueueLabel: "A001",
+                RegId: "REG-001",
+                PasienId: "PAS-002",
                 ApotekPhase: (int)ApotekPhaseEnum.TAKEN,
                 CallCountPenerimaan: 1,
                 LastCalledPenerimaanAt: now.AddMinutes(2),
@@ -72,6 +74,8 @@ public class ApotekQueueEntryDalTest
             actual.NoUrut.Should().Be(noUrut);
             actual.ServicePointId.Should().Be(spId);
             actual.QueueLabel.Should().Be("A001");
+            actual.RegId.Should().Be("REG-001");
+            actual.PasienId.Should().Be("PAS-002");
             actual.ApotekPhase.Should().Be((int)ApotekPhaseEnum.TAKEN);
             actual.CallCountPenerimaan.Should().Be(1);
             actual.LastCalledPenerimaanAt.Should().BeCloseTo(now.AddMinutes(2), TimeSpan.FromSeconds(1));
@@ -102,7 +106,7 @@ public class ApotekQueueEntryDalTest
         try
         {
             var dto = new ApotekQueueEntryDto(
-                antrianId, noUrut, spId, "A002", (int)ApotekPhaseEnum.TAKEN,
+                antrianId, noUrut, spId, "A002", "REG-INIT", "PAS-INIT", (int)ApotekPhaseEnum.TAKEN,
                 0, new DateTime(3000, 1, 1), 0, new DateTime(3000, 1, 1),
                 now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
                 new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), 0, "", "", false, "", "",
@@ -112,6 +116,8 @@ public class ApotekQueueEntryDalTest
             var servedAt = now.AddMinutes(5);
             var updated = dto with
             {
+                RegId = "REG-UPDATED",
+                PasienId = "PAS-UPDATED",
                 ApotekPhase = (int)ApotekPhaseEnum.PENERIMAAN,
                 CallCountPenerimaan = 2,
                 LastCalledPenerimaanAt = servedAt,
@@ -122,6 +128,8 @@ public class ApotekQueueEntryDalTest
             _dal.Update(updated);
 
             var actual = _dal.GetData(ApotekQueueEntryModel.Key(antrianId, noUrut));
+            actual.RegId.Should().Be("REG-UPDATED");
+            actual.PasienId.Should().Be("PAS-UPDATED");
             actual.ApotekPhase.Should().Be((int)ApotekPhaseEnum.PENERIMAAN);
             actual.CallCountPenerimaan.Should().Be(2);
             actual.ServedAt.Should().BeCloseTo(servedAt, TimeSpan.FromSeconds(1));
@@ -154,7 +162,7 @@ public class ApotekQueueEntryDalTest
         {
             // Entry 1: TAKEN (Active)
             _dal.Insert(new ApotekQueueEntryDto(
-                antrianId, 1, spId, "A001", (int)ApotekPhaseEnum.TAKEN,
+                antrianId, 1, spId, "A001", "", "", (int)ApotekPhaseEnum.TAKEN,
                 0, new DateTime(3000, 1, 1), 0, new DateTime(3000, 1, 1),
                 now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
                 new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), 0, "", "", false, "", "",
@@ -162,7 +170,7 @@ public class ApotekQueueEntryDalTest
 
             // Entry 2: SIAP_SERAH (Active)
             _dal.Insert(new ApotekQueueEntryDto(
-                antrianId, 2, spId, "A002", (int)ApotekPhaseEnum.SIAP_SERAH,
+                antrianId, 2, spId, "A002", "", "", (int)ApotekPhaseEnum.SIAP_SERAH,
                 1, now, 0, new DateTime(3000, 1, 1),
                 now, now, now, new DateTime(3000, 1, 1),
                 new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), 0, "", "", false, "", "",
@@ -170,7 +178,7 @@ public class ApotekQueueEntryDalTest
 
             // Entry 3: SELESAI (Terminal / Inactive)
             _dal.Insert(new ApotekQueueEntryDto(
-                antrianId, 3, spId, "A003", (int)ApotekPhaseEnum.SELESAI,
+                antrianId, 3, spId, "A003", "", "", (int)ApotekPhaseEnum.SELESAI,
                 1, now, 1, now,
                 now, now, now, now,
                 new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), 0, "", "", false, "", "",
@@ -212,17 +220,27 @@ public class ApotekQueueEntryDalTest
         try
         {
             // 1. Create and Save (TAKEN)
-            var model = ApotekQueueEntryModel.Create(antrianId, noUrut, spId, "A", now);
+            var model = ApotekQueueEntryModel.Create(antrianId, noUrut, spId, "A", now, "REG-01", "PAS-01");
             _repo.SaveChanges(model);
 
             var step1 = _repo.LoadEntity(ApotekQueueEntryModel.Key(antrianId, noUrut)).Value;
             step1.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
             step1.QueueLabel.Should().Be("A001");
+            step1.RegId.Should().Be("REG-01");
+            step1.PasienId.Should().Be("PAS-01");
             step1.CallCountPenerimaan.Should().Be(0);
 
-            // 2. Call Loket 1
-            step1.RecordCallPenerimaan(now.AddMinutes(1));
+            // 1b. Assign Registration backfill
+            step1.AssignRegistration("REG-UPDATED", "PAS-UPDATED");
             _repo.SaveChanges(step1);
+
+            var step1b = _repo.LoadEntity(ApotekQueueEntryModel.Key(antrianId, noUrut)).Value;
+            step1b.RegId.Should().Be("REG-UPDATED");
+            step1b.PasienId.Should().Be("PAS-UPDATED");
+
+            // 2. Call Loket 1
+            step1b.RecordCallPenerimaan(now.AddMinutes(1));
+            _repo.SaveChanges(step1b);
 
             var step2 = _repo.LoadEntity(ApotekQueueEntryModel.Key(antrianId, noUrut)).Value;
             step2.CallCountPenerimaan.Should().Be(1);

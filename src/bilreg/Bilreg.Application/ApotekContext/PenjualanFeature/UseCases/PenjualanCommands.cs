@@ -1,11 +1,13 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.ApotekContext.QueueFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ApotekContext.PenjualanFeature;
+using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -13,6 +15,7 @@ using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
 
@@ -30,7 +33,9 @@ public record PenjualanCreateFromTelaahCmd(
     string? KelasId = null,
     DateTime? TransactionDate = null,
     bool? IsRanap = null,
-    IReadOnlyList<string>? NonFornasBrgIds = null
+    IReadOnlyList<string>? NonFornasBrgIds = null,
+    string AntrianId = "",
+    int NoUrut = 0
 ) : IRequest<IReadOnlyList<string>>;
 
 /// <summary>
@@ -73,7 +78,9 @@ public record PenjualanCreateDirectCmd(
     decimal BiayaLain = 0,
     decimal Pembulatan = 0,
     bool? IsRanap = null,
-    string? PenjualanId = null
+    string? PenjualanId = null,
+    string AntrianId = "",
+    int NoUrut = 0
 ) : IRequest<string>;
 
 /// <summary>
@@ -114,7 +121,9 @@ public record PenjualanCreateWalkInCmd(
     decimal DiskonLain = 0,
     decimal BiayaLain = 0,
     decimal Pembulatan = 0,
-    string? PenjualanId = null
+    string? PenjualanId = null,
+    string AntrianId = "",
+    int NoUrut = 0
 ) : IRequest<string>;
 
 /// <summary>
@@ -157,6 +166,11 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
     private readonly IAptAuthorizationPolicy _auth;
     private readonly IFornasCheckPort _fornasCheckPort;
     private readonly IPasienRepo? _pasienRepo;
+    private readonly IPharmacyQueueMappingRepo? _mappingRepo;
+    private readonly IApotekQueueEntryRepo? _queueEntryRepo;
+    private readonly IPharmacyQueuePublisher? _publisher;
+    private readonly ITrackerPharmacyPort? _trackerPort;
+    private readonly IPharmacyServicePointRepo? _servicePointRepo;
 
     public PenjualanCreateFromTelaahHandler(
         IPenjualanRepo penjualanRepo,
@@ -167,7 +181,12 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
         ITrkBillingChargePort billingChargePort,
         IAptAuthorizationPolicy auth,
         IFornasCheckPort? fornasCheckPort = null,
-        IPasienRepo? pasienRepo = null)
+        IPasienRepo? pasienRepo = null,
+        IPharmacyQueueMappingRepo? mappingRepo = null,
+        IApotekQueueEntryRepo? queueEntryRepo = null,
+        IPharmacyQueuePublisher? publisher = null,
+        ITrackerPharmacyPort? trackerPort = null,
+        IPharmacyServicePointRepo? servicePointRepo = null)
     {
         _penjualanRepo = penjualanRepo;
         _telaahRepo = telaahRepo;
@@ -178,9 +197,14 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
         _auth = auth;
         _fornasCheckPort = fornasCheckPort ?? new DefaultFornasCheckPort();
         _pasienRepo = pasienRepo;
+        _mappingRepo = mappingRepo;
+        _queueEntryRepo = queueEntryRepo;
+        _publisher = publisher;
+        _trackerPort = trackerPort;
+        _servicePointRepo = servicePointRepo;
     }
 
-    public Task<IReadOnlyList<string>> Handle(PenjualanCreateFromTelaahCmd request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> Handle(PenjualanCreateFromTelaahCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(PenjualanCreateFromTelaahCmd), request.UserId);
         Guard.Against.NullOrWhiteSpace(request.ResepId, nameof(request.ResepId));
@@ -191,7 +215,79 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
             .ToList();
         if (existingSales.Count > 0)
         {
-            return Task.FromResult<IReadOnlyList<string>>(existingSales.Select(x => x.PenjualanId).ToList());
+            if (!string.IsNullOrWhiteSpace(request.AntrianId) && request.NoUrut > 0 && _queueEntryRepo != null)
+            {
+                var entryOpt = _queueEntryRepo.Get(request.AntrianId, request.NoUrut);
+                if (entryOpt.HasValue)
+                {
+                    var entry = entryOpt.Value;
+                    var now = DateTime.Now;
+
+                    if (_mappingRepo != null)
+                    {
+                        var existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.ResepKerja, request.ResepId);
+                        if (!existingMapping.HasValue)
+                            existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.Resep, request.ResepId);
+
+                        if (existingMapping.HasValue)
+                        {
+                            var m = existingMapping.Value;
+                            m.MarkPasienHadir(now);
+                            _mappingRepo.Save(m);
+                        }
+                        else
+                        {
+                            var m = QueueMappingModel.Create(
+                                demandKind: QueueDemandKindEnum.ResepKerja,
+                                demandId: request.ResepId,
+                                antrianId: request.AntrianId,
+                                noUrut: request.NoUrut,
+                                pasienTrackerId: "",
+                                mappingMethod: QueueMappingMethodEnum.Manual,
+                                mappedBy: request.UserId,
+                                mappedAt: now,
+                                pasienHadir: true,
+                                pasienHadirAt: now);
+                            m.MarkPasienHadir(now);
+                            _mappingRepo.Save(m);
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(entry.RegId))
+                    {
+                        var resepOpt = _resepRepo.LoadEntity(ResepModel.Key(request.ResepId));
+                        if (resepOpt.HasValue)
+                        {
+                            var r = resepOpt.Value;
+                            var bRegId = r.Register?.RegId ?? "";
+                            var bPasienId = r.Register?.PasienId ?? "";
+                            if (!string.IsNullOrWhiteSpace(bRegId) || !string.IsNullOrWhiteSpace(bPasienId))
+                                entry.AssignRegistration(bRegId, bPasienId);
+                        }
+                    }
+
+                    if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.DILEWATI)
+                    {
+                        entry.StartServicePenerimaan(now);
+                        _trackerPort?.ServeOnce(entry.AntrianId, entry.NoUrut, "-", request.ResepId, now);
+                    }
+
+                    if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.PENERIMAAN or ApotekPhaseEnum.DILEWATI)
+                    {
+                        entry.TransitionToPenyiapan();
+                    }
+
+                    _queueEntryRepo.SaveChanges(entry);
+
+                    if (_publisher != null)
+                    {
+                        var spOpt = _servicePointRepo?.Get(entry.ServicePointId);
+                        var depoId = spOpt?.HasValue == true ? spOpt.Value.Value.DepoFarmasiId : "";
+                        await _publisher.PublishWorklistRefresh(depoId, cancellationToken);
+                    }
+                }
+            }
+            return existingSales.Select(x => x.PenjualanId).ToList();
         }
 
         // 1. Memuat telaah resep
@@ -298,6 +394,9 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
 
         var createdIds = new List<string>();
 
+        string depoIdToRefresh = string.Empty;
+        using var trans = TransHelper.NewScope();
+
         if (isBpjs && fornasItems.Count > 0 && nonFornasItems.Count > 0)
         {
             // Pemisahan otomatis menjadi 2 DU dokumen terpisah
@@ -332,7 +431,81 @@ public class PenjualanCreateFromTelaahHandler : IRequestHandler<PenjualanCreateF
             createdIds.Add(model.PenjualanId);
         }
 
-        return Task.FromResult<IReadOnlyList<string>>(createdIds);
+        if (!string.IsNullOrWhiteSpace(request.AntrianId) && request.NoUrut > 0 && _queueEntryRepo != null)
+        {
+            var entryOpt = _queueEntryRepo.Get(request.AntrianId, request.NoUrut);
+            if (entryOpt.HasValue)
+            {
+                var entry = entryOpt.Value;
+                var now = trsDate;
+
+                if (_mappingRepo != null)
+                {
+                    var existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.ResepKerja, request.ResepId);
+                    if (!existingMapping.HasValue)
+                        existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.Resep, request.ResepId);
+
+                    if (existingMapping.HasValue)
+                    {
+                        var m = existingMapping.Value;
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                    else
+                    {
+                        var m = QueueMappingModel.Create(
+                            demandKind: QueueDemandKindEnum.ResepKerja,
+                            demandId: request.ResepId,
+                            antrianId: request.AntrianId,
+                            noUrut: request.NoUrut,
+                            pasienTrackerId: "",
+                            mappingMethod: QueueMappingMethodEnum.Manual,
+                            mappedBy: request.UserId,
+                            mappedAt: now,
+                            pasienHadir: true,
+                            pasienHadirAt: now);
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.RegId))
+                {
+                    var bRegId = !string.IsNullOrWhiteSpace(resep.Register?.RegId) ? resep.Register.RegId : (reg?.RegId ?? "");
+                    var bPasienId = !string.IsNullOrWhiteSpace(resep.Register?.PasienId) ? resep.Register.PasienId : (reg?.Pasien?.PasienId ?? "");
+                    if (!string.IsNullOrWhiteSpace(bRegId) || !string.IsNullOrWhiteSpace(bPasienId))
+                    {
+                        entry.AssignRegistration(bRegId, bPasienId);
+                    }
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.StartServicePenerimaan(now);
+                    _trackerPort?.ServeOnce(entry.AntrianId, entry.NoUrut, "-", request.ResepId, now);
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.PENERIMAAN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.TransitionToPenyiapan();
+                }
+
+                _queueEntryRepo.SaveChanges(entry);
+
+                var spOpt = _servicePointRepo?.Get(entry.ServicePointId);
+                if (spOpt?.HasValue == true)
+                    depoIdToRefresh = spOpt.Value.Value.DepoFarmasiId;
+            }
+        }
+
+        trans.Complete();
+
+        if (_publisher != null && !string.IsNullOrWhiteSpace(request.AntrianId))
+        {
+            await _publisher.PublishWorklistRefresh(depoIdToRefresh, cancellationToken);
+        }
+
+        return createdIds;
     }
 
     private PenjualanModel CreateDUFromItems(
@@ -528,6 +701,11 @@ public class PenjualanCreateDirectHandler : IRequestHandler<PenjualanCreateDirec
     private readonly ITrkBillingChargePort _billingChargePort;
     private readonly IAptAuthorizationPolicy _auth;
     private readonly IPasienRepo? _pasienRepo;
+    private readonly IPharmacyQueueMappingRepo? _mappingRepo;
+    private readonly IApotekQueueEntryRepo? _queueEntryRepo;
+    private readonly IPharmacyQueuePublisher? _publisher;
+    private readonly ITrackerPharmacyPort? _trackerPort;
+    private readonly IPharmacyServicePointRepo? _servicePointRepo;
 
     public PenjualanCreateDirectHandler(
         IPenjualanRepo penjualanRepo,
@@ -535,7 +713,12 @@ public class PenjualanCreateDirectHandler : IRequestHandler<PenjualanCreateDirec
         ITrkTarifPricingPort pricingPort,
         ITrkBillingChargePort billingChargePort,
         IAptAuthorizationPolicy auth,
-        IPasienRepo? pasienRepo = null)
+        IPasienRepo? pasienRepo = null,
+        IPharmacyQueueMappingRepo? mappingRepo = null,
+        IApotekQueueEntryRepo? queueEntryRepo = null,
+        IPharmacyQueuePublisher? publisher = null,
+        ITrackerPharmacyPort? trackerPort = null,
+        IPharmacyServicePointRepo? servicePointRepo = null)
     {
         _penjualanRepo = penjualanRepo;
         _regRepo = regRepo;
@@ -543,9 +726,14 @@ public class PenjualanCreateDirectHandler : IRequestHandler<PenjualanCreateDirec
         _billingChargePort = billingChargePort;
         _auth = auth;
         _pasienRepo = pasienRepo;
+        _mappingRepo = mappingRepo;
+        _queueEntryRepo = queueEntryRepo;
+        _publisher = publisher;
+        _trackerPort = trackerPort;
+        _servicePointRepo = servicePointRepo;
     }
 
-    public Task<string> Handle(PenjualanCreateDirectCmd request, CancellationToken cancellationToken)
+    public async Task<string> Handle(PenjualanCreateDirectCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(PenjualanCreateDirectCmd), request.UserId);
         Guard.Against.NullOrWhiteSpace(request.RegId, nameof(request.RegId));
@@ -675,6 +863,8 @@ public class PenjualanCreateDirectHandler : IRequestHandler<PenjualanCreateDirec
             pembulatan: pembulatan,
             penjualanId: penjualanId);
 
+        using var trans = TransHelper.NewScope();
+
         var isRanap = request.IsRanap ?? (reg.JenisReg == JenisRegEnum.RegInap);
         if (isRanap)
         {
@@ -697,7 +887,80 @@ public class PenjualanCreateDirectHandler : IRequestHandler<PenjualanCreateDirec
         }
 
         _penjualanRepo.SaveChanges(model);
-        return Task.FromResult(model.PenjualanId);
+
+        string depoIdToRefresh = string.Empty;
+        if (!string.IsNullOrWhiteSpace(request.AntrianId) && request.NoUrut > 0 && _queueEntryRepo != null)
+        {
+            var entryOpt = _queueEntryRepo.Get(request.AntrianId, request.NoUrut);
+            if (entryOpt.HasValue)
+            {
+                var entry = entryOpt.Value;
+                var now = trsDate;
+
+                if (_mappingRepo != null)
+                {
+                    var existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.JualBebas, model.PenjualanId);
+                    if (existingMapping.HasValue)
+                    {
+                        var m = existingMapping.Value;
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                    else
+                    {
+                        var m = QueueMappingModel.Create(
+                            demandKind: QueueDemandKindEnum.JualBebas,
+                            demandId: model.PenjualanId,
+                            antrianId: request.AntrianId,
+                            noUrut: request.NoUrut,
+                            pasienTrackerId: "",
+                            mappingMethod: QueueMappingMethodEnum.Manual,
+                            mappedBy: request.UserId,
+                            mappedAt: now,
+                            pasienHadir: true,
+                            pasienHadirAt: now);
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.RegId))
+                {
+                    var bRegId = request.RegId ?? reg.RegId ?? "";
+                    var bPasienId = reg.Pasien?.PasienId ?? "";
+                    if (!string.IsNullOrWhiteSpace(bRegId) || !string.IsNullOrWhiteSpace(bPasienId))
+                    {
+                        entry.AssignRegistration(bRegId, bPasienId);
+                    }
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.StartServicePenerimaan(now);
+                    _trackerPort?.ServeOnce(entry.AntrianId, entry.NoUrut, "-", model.PenjualanId, now);
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.PENERIMAAN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.TransitionToPenyiapan();
+                }
+
+                _queueEntryRepo.SaveChanges(entry);
+
+                var spOpt = _servicePointRepo?.Get(entry.ServicePointId);
+                if (spOpt?.HasValue == true)
+                    depoIdToRefresh = spOpt.Value.Value.DepoFarmasiId;
+            }
+        }
+
+        trans.Complete();
+
+        if (_publisher != null && !string.IsNullOrWhiteSpace(request.AntrianId))
+        {
+            await _publisher.PublishWorklistRefresh(depoIdToRefresh, cancellationToken);
+        }
+
+        return model.PenjualanId;
     }
 }
 
@@ -709,18 +972,33 @@ public class PenjualanCreateWalkInHandler : IRequestHandler<PenjualanCreateWalkI
     private readonly IPenjualanRepo _penjualanRepo;
     private readonly ITrkTarifPricingPort _pricingPort;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IPharmacyQueueMappingRepo? _mappingRepo;
+    private readonly IApotekQueueEntryRepo? _queueEntryRepo;
+    private readonly IPharmacyQueuePublisher? _publisher;
+    private readonly ITrackerPharmacyPort? _trackerPort;
+    private readonly IPharmacyServicePointRepo? _servicePointRepo;
 
     public PenjualanCreateWalkInHandler(
         IPenjualanRepo penjualanRepo,
         ITrkTarifPricingPort pricingPort,
-        IAptAuthorizationPolicy auth)
+        IAptAuthorizationPolicy auth,
+        IPharmacyQueueMappingRepo? mappingRepo = null,
+        IApotekQueueEntryRepo? queueEntryRepo = null,
+        IPharmacyQueuePublisher? publisher = null,
+        ITrackerPharmacyPort? trackerPort = null,
+        IPharmacyServicePointRepo? servicePointRepo = null)
     {
         _penjualanRepo = penjualanRepo;
         _pricingPort = pricingPort;
         _auth = auth;
+        _mappingRepo = mappingRepo;
+        _queueEntryRepo = queueEntryRepo;
+        _publisher = publisher;
+        _trackerPort = trackerPort;
+        _servicePointRepo = servicePointRepo;
     }
 
-    public Task<string> Handle(PenjualanCreateWalkInCmd request, CancellationToken cancellationToken)
+    public async Task<string> Handle(PenjualanCreateWalkInCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(PenjualanCreateWalkInCmd), request.UserId);
         Guard.Against.NullOrWhiteSpace(request.PembeliName, nameof(request.PembeliName));
@@ -802,8 +1080,73 @@ public class PenjualanCreateWalkInHandler : IRequestHandler<PenjualanCreateWalkI
             pembulatan: pembulatan,
             penjualanId: penjualanId);
 
+        using var trans = TransHelper.NewScope();
+
         _penjualanRepo.SaveChanges(model);
-        return Task.FromResult(model.PenjualanId);
+
+        string depoIdToRefresh = string.Empty;
+        if (!string.IsNullOrWhiteSpace(request.AntrianId) && request.NoUrut > 0 && _queueEntryRepo != null)
+        {
+            var entryOpt = _queueEntryRepo.Get(request.AntrianId, request.NoUrut);
+            if (entryOpt.HasValue)
+            {
+                var entry = entryOpt.Value;
+                var now = trsDate;
+
+                if (_mappingRepo != null)
+                {
+                    var existingMapping = _mappingRepo.GetByDemand(QueueDemandKindEnum.JualBebas, model.PenjualanId);
+                    if (existingMapping.HasValue)
+                    {
+                        var m = existingMapping.Value;
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                    else
+                    {
+                        var m = QueueMappingModel.Create(
+                            demandKind: QueueDemandKindEnum.JualBebas,
+                            demandId: model.PenjualanId,
+                            antrianId: request.AntrianId,
+                            noUrut: request.NoUrut,
+                            pasienTrackerId: "",
+                            mappingMethod: QueueMappingMethodEnum.Manual,
+                            mappedBy: request.UserId,
+                            mappedAt: now,
+                            pasienHadir: true,
+                            pasienHadirAt: now);
+                        m.MarkPasienHadir(now);
+                        _mappingRepo.Save(m);
+                    }
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.StartServicePenerimaan(now);
+                    _trackerPort?.ServeOnce(entry.AntrianId, entry.NoUrut, "-", model.PenjualanId, now);
+                }
+
+                if (entry.ApotekPhase is ApotekPhaseEnum.TAKEN or ApotekPhaseEnum.PENERIMAAN or ApotekPhaseEnum.DILEWATI)
+                {
+                    entry.TransitionToPenyiapan();
+                }
+
+                _queueEntryRepo.SaveChanges(entry);
+
+                var spOpt = _servicePointRepo?.Get(entry.ServicePointId);
+                if (spOpt?.HasValue == true)
+                    depoIdToRefresh = spOpt.Value.Value.DepoFarmasiId;
+            }
+        }
+
+        trans.Complete();
+
+        if (_publisher != null && !string.IsNullOrWhiteSpace(request.AntrianId))
+        {
+            await _publisher.PublishWorklistRefresh(depoIdToRefresh, cancellationToken);
+        }
+
+        return model.PenjualanId;
     }
 }
 

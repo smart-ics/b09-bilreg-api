@@ -3,6 +3,8 @@ CREATE TABLE BILRG_AptQueueEntry (
     NoUrut INT NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_NoUrut DEFAULT(0),
     ServicePointId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_ServicePointId DEFAULT(''),
     QueueLabel VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_QueueLabel DEFAULT(''),
+    RegId VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_RegId DEFAULT(''),
+    PasienId VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_PasienId DEFAULT(''),
     ApotekPhase INT NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_ApotekPhase DEFAULT(1),
     CallCountPenerimaan INT NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_CallCountPenerimaan DEFAULT(0),
     LastCalledPenerimaanAt DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueEntry_LastCalledPenerimaanAt DEFAULT('3000-01-01'),
@@ -32,4 +34,6 @@ GO
 CREATE INDEX IX_BILRG_AptQueueEntry_ServicePoint_Phase ON BILRG_AptQueueEntry(ServicePointId, ApotekPhase);
 GO
 CREATE INDEX IX_BILRG_AptQueueEntry_Phase ON BILRG_AptQueueEntry(ApotekPhase);
+GO
+CREATE INDEX IX_BILRG_AptQueueEntry_RegId ON BILRG_AptQueueEntry(RegId, TakenAt);
 GO

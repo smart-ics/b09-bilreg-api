@@ -54,9 +54,7 @@ public class PharmacyQueueIntakeHandlerTest
             _publisher.Object,
             _clock.Object,
             _auth,
-            _regRepo.Object,
-            _resepRepo.Object,
-            _mappingRepo.Object);
+            _regRepo.Object);
 
     [Fact]
     public async Task Handle_Throws_When_RegId_NotFound()
@@ -261,7 +259,7 @@ public class PharmacyQueueIntakeHandlerTest
     }
 
     [Fact]
-    public async Task Handle_RegId_Bpjs_Issues_PrefixA_And_Maps_Active_Prescriptions()
+    public async Task Handle_RegId_Bpjs_Issues_PrefixA_Stores_RegId_Without_Auto_Mapping()
     {
         // Arrange
         var servicePointBpjs = PharmacyServicePointModel.Create("SP-FAR-BPJS", "DEPO-FAR-01", "Antrean Resep BPJS", "A");
@@ -285,41 +283,6 @@ public class PharmacyQueueIntakeHandlerTest
         _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-BPJS-01")))
             .Returns(MayBe.From(regBpjs));
 
-        var resep1 = new ResepModel(
-            "KP001",
-            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
-            null!,
-            dokterReff,
-            layananReff,
-            UrgenitasType.Load("1", "CITO"),
-            new TipeBrgReff("TB01", "BPJS Fornas"),
-            0, "Resep 1", null!, []);
-
-        var resep2 = new ResepModel(
-            "KP002",
-            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
-            null!,
-            dokterReff,
-            layananReff,
-            UrgenitasType.Load("0", "Normal"),
-            new TipeBrgReff("TB01", "BPJS Fornas"),
-            0, "Resep 2", null!, []);
-
-        // voided resep should be excluded
-        var resepVoid = new ResepModel(
-            "KP003",
-            new RegReff("REG-BPJS-01", "RM-001", "Budi Santoso"),
-            null!,
-            dokterReff,
-            layananReff,
-            UrgenitasType.Load("0", "Normal"),
-            new TipeBrgReff("TB01", "BPJS Fornas"),
-            0, "Resep 3", null!, []);
-        resepVoid.Void("petugas1", "Salah input", _now);
-
-        _resepRepo.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BPJS-01")))
-            .Returns([resep1, resep2, resepVoid]);
-
         var businessDate = DateOnly.FromDateTime(_now);
         _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
 
@@ -335,8 +298,9 @@ public class PharmacyQueueIntakeHandlerTest
         _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        _mappingRepo.Setup(x => x.GetByDemand(It.IsAny<QueueDemandKindEnum>(), It.IsAny<string>()))
-            .Returns(MayBe<QueueMappingModel>.None);
+        ApotekQueueEntryModel? savedApotek = null;
+        _queueEntries.Setup(x => x.Save(It.IsAny<ApotekQueueEntryModel>()))
+            .Callback<ApotekQueueEntryModel>(e => savedApotek = e);
 
         var sut = CreateSut();
 
@@ -352,23 +316,18 @@ public class PharmacyQueueIntakeHandlerTest
         result.PatientName.Should().Be("Budi Santoso");
         result.MedicalRecordNo.Should().Be("RM-001");
         result.Penjamin.Should().Be("BPJS Kesehatan");
+        result.RegId.Should().Be("REG-BPJS-01");
 
-        // Verify auto-mapping for KP001 and KP002, but not for voided KP003
-        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m =>
-            m.DemandId == "KP001" &&
-            m.DemandKind == QueueDemandKindEnum.ResepKerja &&
-            m.MappingMethod == QueueMappingMethodEnum.Tracker &&
-            m.AntrianId == "ANT-BPJS-01" &&
-            m.NoUrut == 1)), Times.Once);
+        // Verify RegId & PasienId saved to ApotekQueueEntryModel
+        savedApotek.Should().NotBeNull();
+        savedApotek!.AntrianId.Should().Be("ANT-BPJS-01");
+        savedApotek.NoUrut.Should().Be(1);
+        savedApotek.RegId.Should().Be("REG-BPJS-01");
+        savedApotek.PasienId.Should().Be("RM-001");
+        savedApotek.ApotekPhase.Should().Be(ApotekPhaseEnum.TAKEN);
 
-        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m =>
-            m.DemandId == "KP002" &&
-            m.DemandKind == QueueDemandKindEnum.ResepKerja &&
-            m.MappingMethod == QueueMappingMethodEnum.Tracker &&
-            m.AntrianId == "ANT-BPJS-01" &&
-            m.NoUrut == 1)), Times.Once);
-
-        _mappingRepo.Verify(x => x.Save(It.Is<QueueMappingModel>(m => m.DemandId == "KP003")), Times.Never);
+        // Verify NO auto-mapping was performed (SOP-APT-RJ-001 §4.1, GAP-012)
+        _mappingRepo.Verify(x => x.Save(It.IsAny<QueueMappingModel>()), Times.Never);
     }
 
     [Fact]
@@ -393,9 +352,6 @@ public class PharmacyQueueIntakeHandlerTest
         _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-UMUM-01")))
             .Returns(MayBe.From(regUmum));
 
-        _resepRepo.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-UMUM-01")))
-            .Returns([]);
-
         var businessDate = DateOnly.FromDateTime(_now);
         _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
 
@@ -411,6 +367,10 @@ public class PharmacyQueueIntakeHandlerTest
         _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ApotekQueueEntryModel? savedApotek = null;
+        _queueEntries.Setup(x => x.Save(It.IsAny<ApotekQueueEntryModel>()))
+            .Callback<ApotekQueueEntryModel>(e => savedApotek = e);
+
         var sut = CreateSut();
 
         // Act
@@ -425,6 +385,12 @@ public class PharmacyQueueIntakeHandlerTest
         result.PatientName.Should().Be("Siti Aminah");
         result.MedicalRecordNo.Should().Be("RM-002");
         result.Penjamin.Should().Be("Bayar Sendiri");
+        result.RegId.Should().Be("REG-UMUM-01");
+
+        savedApotek.Should().NotBeNull();
+        savedApotek!.RegId.Should().Be("REG-UMUM-01");
+        savedApotek.PasienId.Should().Be("RM-002");
+
         _mappingRepo.Verify(x => x.Save(It.IsAny<QueueMappingModel>()), Times.Never);
     }
 
@@ -450,6 +416,10 @@ public class PharmacyQueueIntakeHandlerTest
         _publisher.Setup(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        ApotekQueueEntryModel? savedApotek = null;
+        _queueEntries.Setup(x => x.Save(It.IsAny<ApotekQueueEntryModel>()))
+            .Callback<ApotekQueueEntryModel>(e => savedApotek = e);
+
         var sut = CreateSut();
 
         // Act - Intake without RegId and without ServicePointId
@@ -462,6 +432,12 @@ public class PharmacyQueueIntakeHandlerTest
         result.QueueLabel.Should().Be("B003");
         result.NoUrut.Should().Be(3);
         result.PatientName.Should().BeEmpty();
+        result.RegId.Should().BeEmpty();
+
+        savedApotek.Should().NotBeNull();
+        savedApotek!.RegId.Should().BeEmpty();
+        savedApotek.PasienId.Should().BeEmpty();
+
         _mappingRepo.Verify(x => x.Save(It.IsAny<QueueMappingModel>()), Times.Never);
     }
 }

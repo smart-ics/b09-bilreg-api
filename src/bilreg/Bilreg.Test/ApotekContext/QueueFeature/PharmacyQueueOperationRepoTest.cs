@@ -52,6 +52,8 @@ public class PharmacyQueueOperationRepoTest
             NoUrut: noUrut,
             ServicePointId: spId,
             QueueLabel: $"{prefix}{noUrut:D3}",
+            RegId: "",
+            PasienId: "",
             ApotekPhase: (int)phase,
             CallCountPenerimaan: 0,
             LastCalledPenerimaanAt: ApotekDate.Empty,

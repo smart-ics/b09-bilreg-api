@@ -387,4 +387,57 @@ public class PharmacyQueueWorklistHandlerTest
         result.Items.Should().HaveCount(2);
         result.Items.Select(x => x.QueueLabel).Should().BeEquivalentTo(["A001", "B002"]);
     }
+
+    [Fact]
+    public async Task Handle_Resolves_Patient_Identity_From_Entry_RegId_When_DemandIds_Empty()
+    {
+        // Arrange: Ticket intake from kiosk with RegId & PasienId, but no demand mapping yet (GAP-011, GAP-012)
+        var sp = PharmacyServicePointModel.Create("SP-FAR-BPJS", "DEPO-RJ", "Resep BPJS", "A");
+        _servicePointRepo.Setup(x => x.ListByDepo("DEPO-RJ")).Returns([sp]);
+
+        var item = ApotekQueueEntryModel.Create(
+            "ANT-BPJS-01", 1, "SP-FAR-BPJS", "A", _testTime,
+            regId: "REG-BPJS-2026-001", pasienId: "RM-001");
+        _queueEntryRepo.Setup(x => x.ListActiveByDepo("DEPO-RJ")).Returns([item]);
+
+        // Demand mappings is empty!
+        _mappingRepo.Setup(x => x.ListByQueue("ANT-BPJS-01", 1)).Returns([]);
+
+        var poliAnak = new LayananReff("L01", "Poli Anak");
+        var regBpjs = new RegModel(
+            "REG-BPJS-2026-001",
+            DateOnly.FromDateTime(_testTime),
+            null!, null!, null!, null!,
+            JenisRegEnum.RegJalan,
+            new PasienReff("RM-001", "Budi Santoso", new DateOnly(1985, 5, 20), "L"),
+            new TipeJaminanReff("1", "BPJS Kesehatan"),
+            null!, null!, null!, null!,
+            new PpaReff("D01", "dr. Budi, Sp.A"),
+            poliAnak,
+            null!, null!, []);
+
+        _regRepo.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-BPJS-2026-001")))
+            .Returns(MayBe.From(regBpjs));
+
+        var sut = CreateSut(includeEnrichment: true);
+
+        // Act
+        var result = await sut.Handle(new PharmacyQueueWorklistQry("DEPO-RJ"), CancellationToken.None);
+
+        // Assert: Patient identity is resolved from entry.RegId even though demandIds is empty
+        result.Items.Should().ContainSingle();
+        var row = result.Items[0];
+        row.AntrianId.Should().Be("ANT-BPJS-01");
+        row.NoUrut.Should().Be(1);
+        row.QueueLabel.Should().Be("A001");
+        row.RegistrationId.Should().Be("REG-BPJS-2026-001");
+        row.PatientName.Should().Be("Budi Santoso");
+        row.MedicalRecordNo.Should().Be("RM-001");
+        row.Penjamin.Should().Be("BPJS Kesehatan");
+        row.DemandIds.Should().BeEmpty();
+        row.DokterName.Should().BeEmpty();
+        row.PoliName.Should().BeEmpty();
+        row.IsCito.Should().BeFalse();
+        row.PasienHadir.Should().BeFalse();
+    }
 }

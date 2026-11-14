@@ -14,6 +14,8 @@ public record ApotekQueueEntryDto(
     int NoUrut,
     string ServicePointId,
     string QueueLabel,
+    string RegId,
+    string PasienId,
     int ApotekPhase,
     int CallCountPenerimaan,
     DateTime LastCalledPenerimaanAt,
@@ -51,6 +53,14 @@ public interface IApotekQueueEntryDal :
 
 public class ApotekQueueEntryDal : IApotekQueueEntryDal
 {
+    private const string SelectColumns = """
+        AntrianId, NoUrut, ServicePointId, QueueLabel, RegId, PasienId, ApotekPhase,
+        CallCountPenerimaan, LastCalledPenerimaanAt, CallCountSerah, LastCalledSerahAt,
+        TakenAt, ServedAt, PreparedAt, DoneAt, WithdrawnAt, LastSkippedAt, LastSkippedLoketType,
+        WithdrawalReason, WithdrawalUserId, IsPaymentOverridden, PaymentOverrideReason, PaymentOverridePharmacistId,
+        CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
+        """;
+
     private readonly DatabaseOptions _opt;
 
     public ApotekQueueEntryDal(IOptions<DatabaseOptions> opt)
@@ -63,13 +73,13 @@ public class ApotekQueueEntryDal : IApotekQueueEntryDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute("""
             INSERT INTO BILRG_AptQueueEntry (
-                AntrianId, NoUrut, ServicePointId, QueueLabel, ApotekPhase,
+                AntrianId, NoUrut, ServicePointId, QueueLabel, RegId, PasienId, ApotekPhase,
                 CallCountPenerimaan, LastCalledPenerimaanAt, CallCountSerah, LastCalledSerahAt,
                 TakenAt, ServedAt, PreparedAt, DoneAt, WithdrawnAt, LastSkippedAt, LastSkippedLoketType,
                 WithdrawalReason, WithdrawalUserId, IsPaymentOverridden, PaymentOverrideReason, PaymentOverridePharmacistId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @AntrianId, @NoUrut, @ServicePointId, @QueueLabel, @ApotekPhase,
+                @AntrianId, @NoUrut, @ServicePointId, @QueueLabel, @RegId, @PasienId, @ApotekPhase,
                 @CallCountPenerimaan, @LastCalledPenerimaanAt, @CallCountSerah, @LastCalledSerahAt,
                 @TakenAt, @ServedAt, @PreparedAt, @DoneAt, @WithdrawnAt, @LastSkippedAt, @LastSkippedLoketType,
                 @WithdrawalReason, @WithdrawalUserId, @IsPaymentOverridden, @PaymentOverrideReason, @PaymentOverridePharmacistId,
@@ -84,6 +94,8 @@ public class ApotekQueueEntryDal : IApotekQueueEntryDal
             UPDATE BILRG_AptQueueEntry
             SET ServicePointId = @ServicePointId,
                 QueueLabel = @QueueLabel,
+                RegId = @RegId,
+                PasienId = @PasienId,
                 ApotekPhase = @ApotekPhase,
                 CallCountPenerimaan = @CallCountPenerimaan,
                 LastCalledPenerimaanAt = @LastCalledPenerimaanAt,
@@ -120,24 +132,28 @@ public class ApotekQueueEntryDal : IApotekQueueEntryDal
     public ApotekQueueEntryDto GetData(IApotekQueueEntryKey key)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.QueryFirstOrDefault<ApotekQueueEntryDto>(
-            "SELECT * FROM BILRG_AptQueueEntry WHERE AntrianId = @AntrianId AND NoUrut = @NoUrut AND VodDate = '3000-01-01'",
-            new { key.AntrianId, key.NoUrut })!;
+        return conn.QueryFirstOrDefault<ApotekQueueEntryDto>($"""
+            SELECT {SelectColumns}
+            FROM BILRG_AptQueueEntry
+            WHERE AntrianId = @AntrianId AND NoUrut = @NoUrut AND VodDate = '3000-01-01'
+            """, new { key.AntrianId, key.NoUrut })!;
     }
 
     public ApotekQueueEntryDto? Get(string antrianId, int noUrut)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.QueryFirstOrDefault<ApotekQueueEntryDto>(
-            "SELECT * FROM BILRG_AptQueueEntry WHERE AntrianId = @antrianId AND NoUrut = @noUrut AND VodDate = '3000-01-01'",
-            new { antrianId, noUrut });
+        return conn.QueryFirstOrDefault<ApotekQueueEntryDto>($"""
+            SELECT {SelectColumns}
+            FROM BILRG_AptQueueEntry
+            WHERE AntrianId = @antrianId AND NoUrut = @noUrut AND VodDate = '3000-01-01'
+            """, new { antrianId, noUrut });
     }
 
     public IEnumerable<ApotekQueueEntryDto> ListActiveByDepo(string depoId)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<ApotekQueueEntryDto>("""
-            SELECT q.*
+        return conn.Query<ApotekQueueEntryDto>($"""
+            SELECT {SelectColumnsPrefix("q")}
             FROM BILRG_AptQueueEntry q
             INNER JOIN BILRG_AptServicePoint sp ON q.ServicePointId = sp.ServicePointId
             WHERE sp.DepoFarmasiId = @depoId
@@ -150,8 +166,8 @@ public class ApotekQueueEntryDal : IApotekQueueEntryDal
     public IEnumerable<ApotekQueueEntryDto> ListByPhase(string depoId, int phase)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<ApotekQueueEntryDto>("""
-            SELECT q.*
+        return conn.Query<ApotekQueueEntryDto>($"""
+            SELECT {SelectColumnsPrefix("q")}
             FROM BILRG_AptQueueEntry q
             INNER JOIN BILRG_AptServicePoint sp ON q.ServicePointId = sp.ServicePointId
             WHERE sp.DepoFarmasiId = @depoId
@@ -160,6 +176,15 @@ public class ApotekQueueEntryDal : IApotekQueueEntryDal
             ORDER BY q.NoUrut ASC
             """, new { depoId, phase });
     }
+
+    private static string SelectColumnsPrefix(string prefix) => $"""
+        {prefix}.AntrianId, {prefix}.NoUrut, {prefix}.ServicePointId, {prefix}.QueueLabel,
+        {prefix}.RegId, {prefix}.PasienId, {prefix}.ApotekPhase,
+        {prefix}.CallCountPenerimaan, {prefix}.LastCalledPenerimaanAt, {prefix}.CallCountSerah, {prefix}.LastCalledSerahAt,
+        {prefix}.TakenAt, {prefix}.ServedAt, {prefix}.PreparedAt, {prefix}.DoneAt, {prefix}.WithdrawnAt, {prefix}.LastSkippedAt, {prefix}.LastSkippedLoketType,
+        {prefix}.WithdrawalReason, {prefix}.WithdrawalUserId, {prefix}.IsPaymentOverridden, {prefix}.PaymentOverrideReason, {prefix}.PaymentOverridePharmacistId,
+        {prefix}.CrtUser, {prefix}.CrtDate, {prefix}.UpdUser, {prefix}.UpdDate, {prefix}.VodUser, {prefix}.VodDate
+        """;
 }
 
 public class ApotekQueueEntryRepo : IApotekQueueEntryRepo
@@ -176,71 +201,12 @@ public class ApotekQueueEntryRepo : IApotekQueueEntryRepo
         var existing = _dal.GetData(model);
         var now = DateTime.Now;
         var user = string.IsNullOrWhiteSpace(model.WithdrawalUserId) ? "SYSTEM" : model.WithdrawalUserId;
+        var dto = FromModel(model, existing, now, user);
 
         if (existing is null)
-        {
-            var dto = new ApotekQueueEntryDto(
-                model.AntrianId,
-                model.NoUrut,
-                model.ServicePointId,
-                model.QueueLabel,
-                (int)model.ApotekPhase,
-                model.CallCountPenerimaan,
-                model.LastCalledPenerimaanAt,
-                model.CallCountSerah,
-                model.LastCalledSerahAt,
-                model.TakenAt,
-                model.ServedAt,
-                model.PreparedAt,
-                model.DoneAt,
-                model.WithdrawnAt,
-                model.LastSkippedAt,
-                (int)model.LastSkippedLoketType,
-                model.WithdrawalReason,
-                model.WithdrawalUserId,
-                model.IsPaymentOverridden,
-                model.PaymentOverrideReason,
-                model.PaymentOverridePharmacistId,
-                CrtUser: user,
-                CrtDate: now,
-                UpdUser: user,
-                UpdDate: now,
-                VodUser: "",
-                VodDate: new DateTime(3000, 1, 1));
             _dal.Insert(dto);
-        }
         else
-        {
-            var dto = new ApotekQueueEntryDto(
-                model.AntrianId,
-                model.NoUrut,
-                model.ServicePointId,
-                model.QueueLabel,
-                (int)model.ApotekPhase,
-                model.CallCountPenerimaan,
-                model.LastCalledPenerimaanAt,
-                model.CallCountSerah,
-                model.LastCalledSerahAt,
-                model.TakenAt,
-                model.ServedAt,
-                model.PreparedAt,
-                model.DoneAt,
-                model.WithdrawnAt,
-                model.LastSkippedAt,
-                (int)model.LastSkippedLoketType,
-                model.WithdrawalReason,
-                model.WithdrawalUserId,
-                model.IsPaymentOverridden,
-                model.PaymentOverrideReason,
-                model.PaymentOverridePharmacistId,
-                CrtUser: existing.CrtUser,
-                CrtDate: existing.CrtDate,
-                UpdUser: user,
-                UpdDate: now,
-                VodUser: existing.VodUser,
-                VodDate: existing.VodDate);
             _dal.Update(dto);
-        }
     }
 
     public MayBe<ApotekQueueEntryModel> LoadEntity(IApotekQueueEntryKey key)
@@ -254,6 +220,40 @@ public class ApotekQueueEntryRepo : IApotekQueueEntryRepo
 
     public IReadOnlyList<ApotekQueueEntryModel> ListByPhase(string depoId, ApotekPhaseEnum phase)
         => _dal.ListByPhase(depoId, (int)phase).Select(ToModel).ToList();
+
+    private static ApotekQueueEntryDto FromModel(ApotekQueueEntryModel model, ApotekQueueEntryDto? existing, DateTime now, string user)
+    {
+        return new ApotekQueueEntryDto(
+            model.AntrianId,
+            model.NoUrut,
+            model.ServicePointId,
+            model.QueueLabel,
+            model.RegId,
+            model.PasienId,
+            (int)model.ApotekPhase,
+            model.CallCountPenerimaan,
+            model.LastCalledPenerimaanAt,
+            model.CallCountSerah,
+            model.LastCalledSerahAt,
+            model.TakenAt,
+            model.ServedAt,
+            model.PreparedAt,
+            model.DoneAt,
+            model.WithdrawnAt,
+            model.LastSkippedAt,
+            (int)model.LastSkippedLoketType,
+            model.WithdrawalReason,
+            model.WithdrawalUserId,
+            model.IsPaymentOverridden,
+            model.PaymentOverrideReason,
+            model.PaymentOverridePharmacistId,
+            existing?.CrtUser ?? user,
+            existing?.CrtDate ?? now,
+            user,
+            now,
+            existing?.VodUser ?? "",
+            existing?.VodDate ?? new DateTime(3000, 1, 1));
+    }
 
     private static ApotekQueueEntryModel ToModel(ApotekQueueEntryDto dto)
     {
@@ -278,6 +278,8 @@ public class ApotekQueueEntryRepo : IApotekQueueEntryRepo
             dto.WithdrawalUserId,
             dto.IsPaymentOverridden,
             dto.PaymentOverrideReason,
-            dto.PaymentOverridePharmacistId);
+            dto.PaymentOverridePharmacistId,
+            dto.RegId,
+            dto.PasienId);
     }
 }
