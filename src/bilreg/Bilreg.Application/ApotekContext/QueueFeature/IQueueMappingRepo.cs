@@ -4,11 +4,8 @@ using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.ApotekContext.QueueFeature;
 
-public interface IQueueMappingRepo :
-    ISaveChange<QueueMappingModel>,
-    ILoadEntity<QueueMappingModel, IQueueMappingKey>
+public interface IQueueMappingRepo : IPharmacyQueueMappingRepo
 {
-    IReadOnlyList<QueueMappingModel> ListByQueue(string antrianId, int noUrut);
 }
 
 public interface IQueueCloseRepo :

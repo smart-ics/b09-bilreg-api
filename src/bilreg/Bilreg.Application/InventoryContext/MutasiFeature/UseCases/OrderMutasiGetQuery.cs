@@ -11,13 +11,13 @@ public record OrderMutasiGetQuery(string OrderMutasiId)
     : IRequest<OrderMutasiGetResponse>, IOrderMutasiKey;
 
 public record OrderMutasiGetResponse(string OrderMutasiId, string OrderMutasiDate, 
-    string State, LayananReff LayananOrder, LayananReff LayananTujuan,
+    string State, string Priority, LayananReff LayananOrder, LayananReff LayananTujuan,
     OrderMutasiApprovalGetResponse Approval, OrderMutasiApprovalGetResponse Rejection, string OrderNote, 
     IEnumerable<OrderMutasiItemGetResponse> ListItem);
 
 public record OrderMutasiApprovalGetResponse(string UserId, string Date);
 
-public record OrderMutasiItemGetResponse(int NoUrut, BrgReff Brg, decimal Qty, SatuanType Satuan);
+public record OrderMutasiItemGetResponse(int NoUrut, BrgReff Brg, decimal StokCurrent, decimal Qty, decimal QtyTerpenuhi, decimal SisaBackorder, SatuanType Satuan);
 
 public class OrderMutasiGetHandler : IRequestHandler<OrderMutasiGetQuery, OrderMutasiGetResponse>
 {
@@ -44,14 +44,15 @@ public class OrderMutasiGetHandler : IRequestHandler<OrderMutasiGetQuery, OrderM
     private static OrderMutasiGetResponse GenResponse(OrderMutasiModel order)
     {
         var items = order.ListItem
-            .Select(x => new OrderMutasiItemGetResponse(x.NoUrut, x.Brg, x.Qty, x.Satuan))
-            ?.ToList() ?? [];
+            .Select(x => new OrderMutasiItemGetResponse(x.NoUrut, x.Brg, x.StokCurrent, x.Qty, x.QtyTerpenuhi, x.SisaBackorder, x.Satuan))
+            .ToList();
 
         var approval = new OrderMutasiApprovalGetResponse(order.Approval.UserId, order.Approval.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
         var rejection = new OrderMutasiApprovalGetResponse(order.Rejection.UserId, order.Rejection.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
 
         var result = new OrderMutasiGetResponse(order.OrderMutasiId, 
             order.OrderMutasiDate.ToString("yyyy-MM-dd HH:mm:ss"), order.State.ToString(), 
+            order.Priority.ToString(),
             order.LayananOrder, order.LayananTujuan, approval, rejection, order.OrderNote, items);
         return result;
     }

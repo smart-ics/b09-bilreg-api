@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -27,7 +28,8 @@ public class AdmissionController : ControllerBase
             body.KelasDkId,
             body.BangsalId,
             body.UserId,
-            body.Registration);
+            body.Registration,
+            body.IsBbl);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -40,7 +42,8 @@ public class AdmissionController : ControllerBase
             body.KelasDkId,
             body.BangsalId,
             body.UserId,
-            body.Registration);
+            body.Registration,
+            body.IsBbl);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -64,6 +67,60 @@ public class AdmissionController : ControllerBase
     public async Task<IActionResult> Update(string id, [FromBody] AdmUpdateAdmissionBody body)
     {
         var cmd = new AdmUpdateAdmissionCmd(id, body.KelasDkId, body.BangsalId, body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPut("{id}/inpatient-visit")]
+    public async Task<IActionResult> UpdateInpatientVisit(string id, [FromBody] AdmUpdateInpatientVisitBody body)
+    {
+        var userId = !string.IsNullOrWhiteSpace(body.UserId)
+            ? body.UserId
+            : (User?.FindFirst(ClaimTypes.Name)?.Value ?? User?.Identity?.Name ?? string.Empty);
+
+        try
+        {
+            var cmd = new AdmUpdateInpatientVisitCmd(
+                id,
+                body.DokterId,
+                body.ProsedurMasukInapId,
+                body.JenisInapId,
+                body.RegIbu,
+                userId,
+                body.CaraMasukDkId);
+
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (KeyNotFoundException ex) when (ex.Message.Contains("ibu", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(ex));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+    }
+
+    [HttpPut("{id}/jaminan")]
+    public async Task<IActionResult> UpdateJaminan(string id, [FromBody] AdmUpdateInpatientJaminanBody body)
+    {
+        var cmd = new AdmUpdateInpatientJaminanCmd(
+            id,
+            body.TipeJaminanId,
+            body.PolisId,
+            body.SjpNo,
+            body.PesertaJaminanId,
+            body.SjpId,
+            body.UserId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -173,14 +230,16 @@ public record AdmProcessOpnameRequestBody(
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration);
+    AdmissionRegistrationData Registration,
+    bool IsBbl = false);
 
 public record AdmProcessReservationBody(
     string ReservationId,
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration);
+    AdmissionRegistrationData Registration,
+    bool IsBbl = false);
 
 public record AdmProcessDirectAdmissionBody(
     string PasienId,
@@ -194,6 +253,22 @@ public record AdmProcessDirectAdmissionBody(
 public record AdmUpdateAdmissionBody(
     string KelasDkId,
     string BangsalId,
+    string UserId);
+
+public record AdmUpdateInpatientVisitBody(
+    string DokterId,
+    string ProsedurMasukInapId,
+    string JenisInapId,
+    string RegIbu,
+    string UserId = "",
+    string? CaraMasukDkId = null);
+
+public record AdmUpdateInpatientJaminanBody(
+    string TipeJaminanId,
+    string PolisId,
+    string? SjpNo,
+    string? PesertaJaminanId,
+    string? SjpId,
     string UserId);
 
 public record AdmCoordinatedCancelBody(

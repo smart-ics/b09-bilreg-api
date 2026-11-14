@@ -14,7 +14,8 @@ public class OrderMutasiModel : IOrderMutasiKey
     public OrderMutasiModel(string orderMutasiId, DateTime orderMutasiDate, OrderMutasiStateEnum state,
         LayananReff layananOrder, LayananReff layananTujuan, 
         ApprovalType approval, ApprovalType rejection, string orderNote, 
-        AuditTrailType auditTrail, IEnumerable<OrderMutasiItemModel> listItem)
+        AuditTrailType auditTrail, IEnumerable<OrderMutasiItemModel> listItem,
+        OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin)
     {
         OrderMutasiId = orderMutasiId;
         OrderMutasiDate = orderMutasiDate;
@@ -25,6 +26,7 @@ public class OrderMutasiModel : IOrderMutasiKey
         Rejection = rejection;
         OrderNote = orderNote;
         AuditTrail = auditTrail;
+        Priority = priority;
 
         _listItem = listItem?.ToList() ?? [];
     }
@@ -32,19 +34,22 @@ public class OrderMutasiModel : IOrderMutasiKey
     public static OrderMutasiModel Default
         => new("-", new DateTime(3000, 1, 1), OrderMutasiStateEnum.Draft,
             LayananType.Default.ToReff(), LayananType.Default.ToReff(), 
-            ApprovalType.Default, ApprovalType.Default,"-", AuditTrailType.Default, []);
+            ApprovalType.Default, ApprovalType.Default, "-", AuditTrailType.Default, [],
+            OrderMutasiPriorityEnum.Rutin);
 
     public static IOrderMutasiKey Key(string id)
         => new OrderMutasiModel(id, new DateTime(3000, 1, 1), OrderMutasiStateEnum.Draft,
             LayananType.Default.ToReff(), LayananType.Default.ToReff(),
-            ApprovalType.Default, ApprovalType.Default, "-", AuditTrailType.Default, []);
+            ApprovalType.Default, ApprovalType.Default, "-", AuditTrailType.Default, [],
+            OrderMutasiPriorityEnum.Rutin);
 
     public static OrderMutasiModel Create(
         LayananType layananOrder,
         LayananType layananTujuan,
         string orderNote,
         string userId,
-        IEnumerable<OrderMutasiItemModel> listItem)
+        IEnumerable<OrderMutasiItemModel> listItem,
+        OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin)
     {
         Guard.Against.Null(layananOrder, nameof(layananOrder));
         Guard.Against.Null(layananTujuan, nameof(layananTujuan));
@@ -55,7 +60,7 @@ public class OrderMutasiModel : IOrderMutasiKey
 
         var result = new OrderMutasiModel(id, auditTrail.Created.Timestamp, OrderMutasiStateEnum.Draft,
             layananOrder.ToReff(), layananTujuan.ToReff(), 
-            ApprovalType.Default, ApprovalType.Default, orderNote, auditTrail, listItem);
+            ApprovalType.Default, ApprovalType.Default, orderNote, auditTrail, listItem, priority);
         return result;
     }
     #endregion
@@ -64,6 +69,7 @@ public class OrderMutasiModel : IOrderMutasiKey
     public string OrderMutasiId { get; init; }
     public DateTime OrderMutasiDate { get; private set; }
     public OrderMutasiStateEnum State { get; private set; }
+    public OrderMutasiPriorityEnum Priority { get; private set; }
 
     public LayananReff LayananOrder { get; init; }
     public LayananReff LayananTujuan { get; private set; }
@@ -83,12 +89,13 @@ public class OrderMutasiModel : IOrderMutasiKey
     {
         GuardDraft();
         if (item.Qty <= 0)
-            throw new ArgumentException($"Qty invalid");
+            throw new ArgumentException("Qty invalid");
 
         var existing = _listItem.FirstOrDefault(x => x.Brg.BrgId == item.Brg.BrgId);
         if (existing is not null)
         {
             existing.AddQty(item.Qty);
+            existing.SetStokCurrent(item.StokCurrent);
             return;
         }
 
@@ -97,15 +104,62 @@ public class OrderMutasiModel : IOrderMutasiKey
         _listItem.Add(item);
     }
 
-    public void Submit(LayananReff layananTujuan, string userId)
+    public void SetItemQty(IBrgKey key, decimal qty, string userId, decimal? stokCurrent = null)
+    {
+        GuardStatus(OrderMutasiStateEnum.Draft, OrderMutasiStateEnum.Submitted);
+        if (qty < 0)
+            throw new ArgumentException("Qty tidak boleh negatif");
+
+        if (qty == 0)
+        {
+            RemoveItem(key, userId);
+            return;
+        }
+
+        var item = _listItem.FirstOrDefault(x => x.Brg.BrgId == key.BrgId)
+            ?? throw new ArgumentException("Item tidak ditemukan");
+
+        item.SetQty(qty);
+        if (stokCurrent.HasValue)
+        {
+            item.SetStokCurrent(stokCurrent.Value);
+        }
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void RemoveItem(IBrgKey key, string? userId = null)
+    {
+        GuardStatus(OrderMutasiStateEnum.Draft, OrderMutasiStateEnum.Submitted);
+        _listItem.RemoveAll(x => x.Brg.BrgId == key.BrgId);
+        Reorder();
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            AuditTrail.Modif(userId, DateTime.Now);
+        }
+    }
+
+    public void Submit(LayananReff layananTujuan, string userId, OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin, string? orderNote = null, bool autoApprove = false)
     {
         GuardDraft();
         GuardHasItem();
 
-        State = OrderMutasiStateEnum.Submitted;
+        if (string.Equals(LayananOrder.LayananId, layananTujuan.LayananId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Unit layanan peminta dan unit layanan tujuan tidak boleh sama");
+
         LayananTujuan = layananTujuan;
+        Priority = priority;
+        if (!string.IsNullOrWhiteSpace(orderNote))
+        {
+            OrderNote = orderNote;
+        }
         OrderMutasiDate = DateTime.Now;
+        State = OrderMutasiStateEnum.Submitted;
         AuditTrail.Modif(userId, DateTime.Now);
+
+        if (autoApprove)
+        {
+            Approve(userId);
+        }
     }
 
     public void Approve(string userId)
@@ -113,6 +167,7 @@ public class OrderMutasiModel : IOrderMutasiKey
         GuardStatus(OrderMutasiStateEnum.Submitted);
         State = OrderMutasiStateEnum.Approved;
         Approval = new ApprovalType(userId, DateTime.Now);
+        AuditTrail.Modif(userId, DateTime.Now);
     }
 
     public void Reject(string note, string userId)
@@ -121,11 +176,60 @@ public class OrderMutasiModel : IOrderMutasiKey
         State = OrderMutasiStateEnum.Rejected;
         Rejection = new ApprovalType(userId, DateTime.Now);
         UpdateNote(note);
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void RecordFulfillment(IBrgKey brgKey, decimal fulfilledQty, string userId)
+    {
+        GuardStatus(OrderMutasiStateEnum.Approved, OrderMutasiStateEnum.PartiallyFulfilled);
+        var item = _listItem.FirstOrDefault(x => x.Brg.BrgId == brgKey.BrgId)
+            ?? throw new ArgumentException("Item tidak ditemukan");
+
+        item.AddFulfilledQty(fulfilledQty);
+
+        if (_listItem.All(x => x.SisaBackorder == 0))
+        {
+            State = OrderMutasiStateEnum.Completed;
+        }
+        else
+        {
+            State = OrderMutasiStateEnum.PartiallyFulfilled;
+        }
+
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void ForceClose(string reason, string userId)
+    {
+        GuardStatus(OrderMutasiStateEnum.Approved, OrderMutasiStateEnum.PartiallyFulfilled);
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Alasan force close wajib diisi", nameof(reason));
+
+        State = OrderMutasiStateEnum.ForceClosed;
+        UpdateNote(reason);
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void Cancel(string reason, string userId)
+    {
+        if (State == OrderMutasiStateEnum.PartiallyFulfilled || _listItem.Any(x => x.QtyTerpenuhi > 0))
+        {
+            throw new InvalidOperationException("Permintaan mutasi yang telah dipenuhi sebagian tidak dapat dibatalkan, gunakan ForceClose");
+        }
+
+        GuardStatus(OrderMutasiStateEnum.Draft, OrderMutasiStateEnum.Submitted, OrderMutasiStateEnum.Approved);
+
+        State = OrderMutasiStateEnum.Cancelled;
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            UpdateNote(reason);
+        }
+        AuditTrail.Batal(userId, DateTime.Now);
     }
 
     public void Complete()
     {
-        GuardStatus(OrderMutasiStateEnum.Approved);
+        GuardStatus(OrderMutasiStateEnum.Approved, OrderMutasiStateEnum.PartiallyFulfilled);
         State = OrderMutasiStateEnum.Completed;
     }
 
@@ -138,13 +242,6 @@ public class OrderMutasiModel : IOrderMutasiKey
     {
         GuardDraft();
         LayananTujuan = tujuan;
-    }
-
-    public void RemoveItem(IBrgKey key)
-    {
-        GuardDraft();
-        _listItem.RemoveAll(x => x.Brg.BrgId == key.BrgId);
-        Reorder();
     }
 
     public void MoveItem(IBrgKey key, int targetNoUrut)
@@ -203,4 +300,6 @@ public interface IOrderMutasiKey
 
 public record OrderMutasiHeaderView(string OrderMutasiId,
     DateTime OrderMutasiDate, OrderMutasiStateEnum State,
-    LayananReff LayananOrder, LayananReff LayananTujuan) : IOrderMutasiKey;
+    LayananReff LayananOrder, LayananReff LayananTujuan,
+    OrderMutasiPriorityEnum Priority = OrderMutasiPriorityEnum.Rutin,
+    string OrderNote = "-") : IOrderMutasiKey;

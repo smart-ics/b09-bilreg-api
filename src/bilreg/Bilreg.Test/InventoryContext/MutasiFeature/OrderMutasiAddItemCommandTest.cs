@@ -18,12 +18,14 @@ public class OrderMutasiAddItemCommandTest
     private readonly Mock<IBrgRepo> _brgRepoMock = new();
     private readonly Mock<ISatuanRepo> _satuanRepoMock = new();
     private readonly Mock<ILayananRepo> _layananRepoMock = new();
+    private readonly Mock<IStokLokasiDal> _stokLokasiDalMock = new();
 
-    private OrderMutasiAddItemHandler CreateSut() =>
+    private OrderMutasiAddItemHandler CreateSut(bool includeStokDal = false) =>
         new(_orderMutasiRepoMock.Object,
             _brgRepoMock.Object,
             _satuanRepoMock.Object,
-            _layananRepoMock.Object);
+            _layananRepoMock.Object,
+            includeStokDal ? _stokLokasiDalMock.Object : null);
 
     private static IBrg CreateMockBrg(string id, string name, bool isAktif)
     {
@@ -58,7 +60,78 @@ public class OrderMutasiAddItemCommandTest
         _orderMutasiRepoMock.Verify(x => x.SaveChanges(It.Is<OrderMutasiModel>(m =>
             m.ListItem.Count() == 1 &&
             m.ListItem.First().Brg.BrgId == "B001" &&
-            m.ListItem.First().Qty == 10
+            m.ListItem.First().Qty == 10 &&
+            m.ListItem.First().StokCurrent == 0m
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithStokLokasiDal_RecordsStokCurrentSnapshotSuccessfully()
+    {
+        // Arrange
+        var activeBrg = CreateMockBrg("B001", "Amoxicillin 500mg", isAktif: true);
+        var satuan = new SatuanType("S001", "Strip");
+        var layanan = LayananType.Default with { LayananId = "L001", LayananName = "Farmasi Rawat Jalan" };
+
+        _orderMutasiRepoMock.Setup(x => x.ListDraftState()).Returns(new List<OrderMutasiHeaderView>());
+        _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
+        _brgRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBrgKey>())).Returns(MayBe.From(activeBrg));
+        _satuanRepoMock.Setup(x => x.LoadEntity(It.IsAny<ISatuanKey>())).Returns(MayBe.From(satuan));
+        _stokLokasiDalMock.Setup(x => x.ListAllocationCandidates("B001", "L001"))
+            .Returns(new IStokLokasiCandidate[]
+            {
+                new StokLokasiCandidate(25m),
+                new StokLokasiCandidate(15m)
+            });
+
+        var sut = CreateSut(includeStokDal: true);
+        var command = new OrderMutasiAddItemCommand("B001", 10m, "S001", "L001", "USER01");
+
+        // Act
+        await sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        _orderMutasiRepoMock.Verify(x => x.SaveChanges(It.Is<OrderMutasiModel>(m =>
+            m.ListItem.Count() == 1 &&
+            m.ListItem.First().Brg.BrgId == "B001" &&
+            m.ListItem.First().Qty == 10m &&
+            m.ListItem.First().StokCurrent == 40m
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenExistingDraftSpecifiedByOrderMutasiId_LoadsAndAddsItem()
+    {
+        // Arrange
+        var activeBrg = CreateMockBrg("B001", "Amoxicillin 500mg", isAktif: true);
+        var satuan = new SatuanType("S001", "Strip");
+        var layanan = LayananType.Default with { LayananId = "L001", LayananName = "Farmasi Rawat Jalan" };
+        var existingOrder = OrderMutasiModel.Create(layanan, LayananType.Default, "-", "USER01", []);
+
+        _orderMutasiRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderMutasiKey>(k => k.OrderMutasiId == "OM123")))
+            .Returns(MayBe.From(existingOrder));
+        _brgRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBrgKey>())).Returns(MayBe.From(activeBrg));
+        _satuanRepoMock.Setup(x => x.LoadEntity(It.IsAny<ISatuanKey>())).Returns(MayBe.From(satuan));
+        _stokLokasiDalMock.Setup(x => x.ListAllocationCandidates("B001", "L001"))
+            .Returns(new IStokLokasiCandidate[] { new StokLokasiCandidate(5m) });
+
+        var sut = CreateSut(includeStokDal: true);
+        var command = new OrderMutasiAddItemCommand(
+            orderMutasiId: "OM123",
+            layananOrderId: "L001",
+            brgId: "B001",
+            qty: 8m,
+            satuanId: "S001",
+            userId: "USER01");
+
+        // Act
+        await sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        _orderMutasiRepoMock.Verify(x => x.SaveChanges(It.Is<OrderMutasiModel>(m =>
+            m.ListItem.Count() == 1 &&
+            m.ListItem.First().Qty == 8m &&
+            m.ListItem.First().StokCurrent == 5m
         )), Times.Once);
     }
 

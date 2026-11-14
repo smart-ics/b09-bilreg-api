@@ -92,7 +92,9 @@ public sealed record JourneyPatientContactInfo(
     DateOnly? BirthDate,
     string? AgeDisplay,
     string? ContactSummary,
-    string? AddressSummary);
+    string? AddressSummary,
+    string? RegIbuId = null,
+    string? NamaIbu = null);
 
 public sealed record JourneyGuarantorCareClassInfo(
     JourneyIdName? Guarantor,
@@ -104,7 +106,10 @@ public sealed record JourneyClinicalInfo(
     string? ProcedureSummary,
     JourneyIdName? Dpjp,
     JourneyIdName? ReferringDoctor,
-    string? ReferralOrSourceSummary);
+    string? ReferralOrSourceSummary,
+    JourneyIdName? JenisInap = null,
+    JourneyIdName? ProsedurMasuk = null,
+    JourneyIdName? CaraMasuk = null);
 
 public sealed record JourneyHandoverInfo(
     JourneyAccommodationHandoverSummary Summary,

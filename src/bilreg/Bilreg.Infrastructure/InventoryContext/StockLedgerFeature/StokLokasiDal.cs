@@ -17,8 +17,12 @@ public interface IStokLokasiDal :
     IEnumerable<StokLokasiDto> ListAllocationCandidates(string brgId, string layananId);
 }
 
-public class StokLokasiDal : IStokLokasiDal
+public class StokLokasiDal : IStokLokasiDal, Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiDal
 {
+    IEnumerable<Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiCandidate>
+        Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiDal.ListAllocationCandidates(string brgId, string layananId)
+        => ListAllocationCandidates(brgId, layananId);
+
     private const string SelectFrom = """
         SELECT
             aa.StokLokasiId, aa.StokBatchId, aa.BrgId, aa.BrgMasukReffId,

@@ -11,7 +11,8 @@ public record WardCockpitBangsalDto(
     string BangsalId,
     string BangsalName,
     string KelasId,
-    string KelasName
+    string KelasName,
+    string LayananId = ""
 );
 
 public record WardCockpitKpiDto(
@@ -57,7 +58,12 @@ public record WardCockpitOccupancyDto(
     string? BabyName = null,
     string? BabyRegId = null,
     string? BabyMrNo = null,
-    string? KdJenisInap = null
+    string? KdJenisInap = null,
+    string? BabyDpjpName = null,
+    string? BabyDpjpId = null,
+    string LayananId = "",
+    string KelasId = "",
+    string TipeTarifId = "UM"
 );
 
 public record WardCockpitOperationalStateDto(

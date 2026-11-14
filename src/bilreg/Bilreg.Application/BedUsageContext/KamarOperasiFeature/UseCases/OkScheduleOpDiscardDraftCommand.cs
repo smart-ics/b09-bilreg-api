@@ -1,0 +1,75 @@
+using Ardalis.GuardClauses;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using MediatR;
+using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
+
+namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+
+public record OkScheduleOpDiscardDraftCommand(string OrderOpId, string UserId) : IRequest, IOrderOpKey;
+
+public class OkScheduleOpDiscardDraftHandler : IRequestHandler<OkScheduleOpDiscardDraftCommand>
+{
+    private readonly IScheduleOpRepo _scheduleOpRepo;
+    private readonly IOrderOpRepo _orderOpRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
+    private readonly ITglJamProvider _tglJamProvider;
+
+    public OkScheduleOpDiscardDraftHandler(
+        IScheduleOpRepo scheduleOpRepo,
+        IOrderOpRepo orderOpRepo,
+        IOpCaseRepo opCaseRepo,
+        ITglJamProvider tglJamProvider)
+    {
+        _scheduleOpRepo = scheduleOpRepo;
+        _orderOpRepo = orderOpRepo;
+        _opCaseRepo = opCaseRepo;
+        _tglJamProvider = tglJamProvider;
+    }
+
+    public Task Handle(OkScheduleOpDiscardDraftCommand request, CancellationToken cancellationToken)
+    {
+        Guard.Against.NullOrWhiteSpace(request.OrderOpId, nameof(request.OrderOpId));
+        Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+
+        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
+            .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
+
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
+        ScheduleOpModel? scheduleOp = null;
+        if (opCase.ScheduleOp != null && !string.IsNullOrWhiteSpace(opCase.ScheduleOp.ScheduleOpId) && opCase.ScheduleOp.ScheduleOpId != "-")
+        {
+            scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(opCase.ScheduleOp.ScheduleOpId)).GetValueOrDefault();
+        }
+
+        if (scheduleOp == null)
+        {
+            var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList() ?? [];
+            var scheduleWithOrderOpId = listSchedule
+                .Where(x => !x.IsVoid)
+                .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
+            if (scheduleWithOrderOpId != null)
+            {
+                scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId)).GetValueOrDefault();
+            }
+        }
+
+        if (scheduleOp == null || scheduleOp.AuditTrail.IsVoided)
+            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
+
+        if (!scheduleOp.IsDraft)
+            throw new InvalidOperationException("Pelepasan draf hanya diizinkan untuk jadwal berstatus DRAFT. Jadwal resmi wajib dibatalkan via pembatalan jadwal operasi.");
+
+        opCase.CancelSchedule();
+
+        using var trans = TransHelper.NewScope();
+        _scheduleOpRepo.DeleteEntity(scheduleOp);
+        _opCaseRepo.SaveChanges(opCase);
+        trans.Complete();
+
+        return Task.CompletedTask;
+    }
+}

@@ -1,4 +1,5 @@
-using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AktivasiBerkasFeature.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
@@ -26,8 +27,11 @@ using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Application.ApotekContext.StockPlanningFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Application.ApotekContext.WorklistFeature;
+using Bilreg.Api.Hubs;
+using Bilreg.Infrastructure.ApotekContext.QueueFeature;
 using Bilreg.Infrastructure.ApotekContext.TelaahResepFeature;
 using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
+using Bilreg.Infrastructure.ApotekContext.PenjualanFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
@@ -40,6 +44,7 @@ using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.AdmisiContext.AktivasiBerkasFeature.Integration;
 using Bilreg.Infrastructure.InventoryContext.PakaiBrgFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
@@ -51,6 +56,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
+using Bilreg.Infrastructure.ChargeContext.PricingBarangFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext;
@@ -67,10 +73,12 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 using Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Infrastructure.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
+
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
 using Bilreg.Infrastructure.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
@@ -137,8 +145,9 @@ public static class InfrastructureService
             .AddScoped<IResepCreateDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<Bilreg.Infrastructure.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
             .AddScoped<Bilreg.Application.SalesContext.ResepFeature.IResepDal, Bilreg.Infrastructure.SalesContext.ResepFeature.ResepDal>()
-            .AddScoped<IResepRepo, ResepRepo>()
-            .AddScoped<IPaymentClearancePort, FailClosedPaymentClearancePort>()
+            .AddScoped<Bilreg.Application.ApotekContext.InvoiceFeature.IPaymentClearancePort, Bilreg.Application.ApotekContext.Shared.FailClosedPaymentClearancePort>()
+            .AddScoped<Bilreg.Application.ApotekContext.QueueFeature.IPaymentClearancePort, FailClosedPharmacyPaymentClearancePort>()
+            .AddScoped<IPharmacyQueuePublisher, SignalRPharmacyQueuePublisher>()
             .AddScoped<ITataRekeningChargePort, FailClosedTataRekeningChargePort>()
             .AddScoped<ITataRekeningInvoicePermissionPort, DenyTataRekeningInvoicePermissionPort>()
             .AddScoped<ISepFornasPort, FailClosedSepFornasPort>()
@@ -204,6 +213,7 @@ public static class InfrastructureService
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
             .AddScoped<IEmr20AntrianRanapGateway, Emr20AntrianRanapGateway>()
+            .AddScoped<IAktivasiBerkasEmrGateway, AktivasiBerkasEmrGateway>()
             .AddScoped<IPasienSasetDal, PasienSasetDal>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeRepo, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeRepo>()
             .AddScoped<Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.IRoomChargeDal, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeDal>()
@@ -220,6 +230,10 @@ public static class InfrastructureService
             .AddScoped<Bilreg.Application.BedUsageContext.PakaiBedFeature.IPakaiBedBillingLockChecker, Bilreg.Infrastructure.BedUsageContext.PakaiBedFeature.PakaiBedBillingLockChecker>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBedOccupancyQuery, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BedOccupancyQuery>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeTarifService, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeTarifService>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IOrderOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IOrderOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -300,6 +314,8 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+        services.AddScoped<IOrderOpResourceDal, OrderOpResourceDal>();
+        services.AddScoped<IScheduleOpHistDal, ScheduleOpHistDal>();
         services.AddScoped<ILabExternalDal, LabExternalDal>();
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
         services.AddScoped<ILabDisciplineDal, LabDisciplineDal>();
@@ -331,6 +347,9 @@ public static class InfrastructureService
         services.AddScoped<IPoDeliveryTrackingDal, PoDeliveryTrackingDal>();
         services.AddScoped<IDeliveryValidationDal, DeliveryValidationDal>();
         services.AddScoped<IDeliveryOrderRepo, DeliveryOrderRepo>();
+        services.AddPricingBarangFeature();
+        services.AddApotekPenjualanFeature();
+        services.AddApotekQueueFeature();
 
         services
             .Scan(selector => selector

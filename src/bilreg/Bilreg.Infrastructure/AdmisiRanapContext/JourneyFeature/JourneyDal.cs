@@ -170,14 +170,7 @@ public sealed partial class JourneyDal : IJourneyDal
             return null;
 
         var resolution = Release1JourneyStageResolver.Resolve(bag.Facts);
-        bool? hasBilling = null;
-        if (!string.IsNullOrWhiteSpace(resolution.Identity.RegId)
-            && resolution.CandidateAdmisiActions.Any(a => a.Code == JourneyActionCode.CancelAdmission))
-        {
-            hasBilling = await QueryHasBillingItemsAsync(conn, resolution.Identity.RegId!, cancellationToken);
-        }
-
-        var detail = MapDetail(bag, resolution, asOf, hasBilling);
+        var detail = MapDetail(bag, resolution, asOf, hasBillingItems: false);
         sw.Stop();
         _logger.LogInformation(
             "JourneyDal.GetByJourneyId journeyId={JourneyId} stage={Stage} ms={Ms} recon={Recon}",
@@ -297,7 +290,7 @@ public sealed partial class JourneyDal : IJourneyDal
         JourneyFactBag bag,
         Release1JourneyResolution resolution,
         DateTime asOf,
-        bool? hasBillingItems)
+        bool? hasBillingItems = false)
     {
         var patientContact = bag.Facts.Patient is null
             ? null
@@ -309,13 +302,13 @@ public sealed partial class JourneyDal : IJourneyDal
                 bag.Facts.Patient.BirthDate,
                 bag.Facts.Patient.AgeDisplay,
                 bag.Facts.Patient.ContactSummary,
-                bag.AddressSummary);
+                bag.AddressSummary,
+                bag.RegIbuId,
+                bag.NamaIbu);
 
         Func<string, bool>? billingCheck = hasBillingItems.HasValue
             ? _ => hasBillingItems.Value
-            : _cancellationEligibility is null
-                ? null
-                : _cancellationEligibility.HasBillingItems;
+            : _ => false;
 
         var allowed = JourneyAllowedActionEvaluator.Evaluate(
             resolution.CandidateAdmisiActions,
@@ -340,7 +333,10 @@ public sealed partial class JourneyDal : IJourneyDal
                     bag.ProcedureSummary,
                     bag.Doctor,
                     bag.ReferringDoctor,
-                    bag.ReferralOrSourceSummary),
+                    bag.ReferralOrSourceSummary,
+                    bag.JenisInap,
+                    bag.ProsedurMasuk,
+                    bag.CaraMasuk),
                 resolution.PlacementAvailability,
                 new JourneyHandoverInfo(resolution.HandoverSummary, bag.TargetBangsal, bag.Priority)),
             resolution.SystemAudit,
@@ -348,20 +344,6 @@ public sealed partial class JourneyDal : IJourneyDal
             asOf,
             JourneyProjectionVersions.Release1);
     }
-
-    private static async Task<bool> QueryHasBillingItemsAsync(
-        IDbConnection conn,
-        string regId,
-        CancellationToken cancellationToken = default) =>
-        await conn.ExecuteScalarAsync<bool>(
-            new CommandDefinition(
-                RegistrationCancellationEligibilityDal.HasBillingItemsSql,
-                new { RegId = regId },
-                commandTimeout: CommandTimeoutSeconds,
-                cancellationToken: cancellationToken));
-
-    private static bool QueryHasBillingItems(IDbConnection conn, string regId) =>
-        QueryHasBillingItemsAsync(conn, regId, CancellationToken.None).GetAwaiter().GetResult();
 
     private async Task<JourneyFactBag?> LoadFactBagAsync(
         IDbConnection conn,
@@ -560,7 +542,7 @@ public sealed partial class JourneyDal : IJourneyDal
         ReservationRowDto? reservation) =>
         LoadAdmissionBagAsync(conn, admission, origin, opname, reservation, CancellationToken.None).GetAwaiter().GetResult();
 
-    private JourneyFactBag AssembleAdmissionBag(
+    internal JourneyFactBag AssembleAdmissionBag(
         AdmissionRowDto admission,
         JourneyOriginKind origin,
         OpnameRowDto? opname,
@@ -679,7 +661,12 @@ public sealed partial class JourneyDal : IJourneyDal
                 _ => "Direct/Legacy Admission"
             },
             regExtras.PolicySummary,
-            regExtras.AddressSummary);
+            regExtras.AddressSummary,
+            regExtras.JenisInap,
+            regExtras.ProsedurMasuk,
+            regExtras.CaraMasuk,
+            regExtras.RegIbuId,
+            regExtras.NamaIbu);
     }
 
     private async Task<AdmissionRowDto?> FindAdmissionByOpnameAsync(
@@ -842,12 +829,24 @@ public sealed partial class JourneyDal : IJourneyDal
                     ISNULL(kl.fs_nm_kelas,'') AS KelasName,
                     ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
                     ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
-                    ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
+                    ISNULL(reg.fs_kd_jenis_inap,'') AS JenisInapId,
+                    ISNULL(ji.fs_nm_jenis_inap,'') AS JenisInapName,
+                    ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId,
+                    ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName,
+                    ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId,
+                    ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName,
+                    ISNULL(reg.fs_reg_ibu,'') AS RegIbuId,
+                    ISNULL(ibuMr.fs_nm_pasien,'') AS NamaIbu
                 FROM (SELECT @RegId AS RegId) x
                 LEFT JOIN ta_registrasi reg ON reg.fs_kd_reg = x.RegId
                 LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
                 LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
                 LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = x.RegId
+                LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
+                LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap
+                LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk
+                LEFT JOIN ta_registrasi ibuReg ON reg.fs_reg_ibu = ibuReg.fs_kd_reg
+                LEFT JOIN tc_mr ibuMr ON ibuReg.fs_mr = ibuMr.fs_mr
                 LEFT JOIN (
                     SELECT TOP 1 h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg
                     FROM ta_reg_history_dokter h
@@ -865,13 +864,21 @@ public sealed partial class JourneyDal : IJourneyDal
         if (row is null)
             return RegExtras.Empty;
 
+        var effectiveRegIbu = (string.IsNullOrWhiteSpace(row.RegIbuId) || row.RegIbuId.All(c => c == '0' || c == '-')) ? null : row.RegIbuId.Trim();
+        var effectiveNamaIbu = string.IsNullOrWhiteSpace(row.NamaIbu) ? null : row.NamaIbu.Trim();
+
         return new RegExtras(
             Named(row.TipeJaminanId, row.TipeJaminanName),
             Named(row.KelasId, row.KelasName),
             Named(row.DokterId, row.DokterName),
             string.IsNullOrWhiteSpace(row.ProsedurMasukId) ? null : $"Prosedur masuk: {row.ProsedurMasukId}",
             null,
-            null);
+            null,
+            Named(row.JenisInapId, row.JenisInapName),
+            Named(row.ProsedurMasukId, row.ProsedurMasukName),
+            Named(row.CaraMasukId, row.CaraMasukName),
+            effectiveRegIbu,
+            effectiveNamaIbu);
     }
 
     private RegExtras LoadRegistrationExtras(IDbConnection conn, string regId) =>
@@ -978,7 +985,7 @@ public sealed partial class JourneyDal : IJourneyDal
 
     private static string BuildNonStageWhere(JourneyListFilter filter) =>
         """
-        (@ScopeActive = 0 OR j.SqlStage NOT IN (5, 6))
+        (@ScopeActive = 0 OR j.SqlStage NOT IN (4, 5, 6))
           AND (@HasDokter = 0 OR j.DokterId = @DokterId)
           AND (@HasBangsal = 0 OR j.BangsalId = @BangsalId)
           AND (@HasKelas = 0 OR j.KelasId = @KelasId)
@@ -1031,13 +1038,27 @@ public sealed partial class JourneyDal : IJourneyDal
             GROUP BY InpatientOrderId
             HAVING COUNT(*) > 1
         ),
-        ProspectiveOpname AS (
+        ProspectiveOrders AS (
             SELECT
-                CAST('opn:' + o.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
-                0 AS OriginKind,
+                CAST(
+                    CASE 
+                        WHEN o.OrderSource IN (1, 2) THEN 'opn:' + o.InpatientOrderId
+                        ELSE 'rsv:' + o.InpatientOrderId
+                    END AS VARCHAR(64)
+                ) AS JourneyId,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN 0
+                    ELSE 1
+                END AS OriginKind,
                 CAST(NULL AS VARCHAR(10)) AS RegId,
-                o.InpatientOrderId AS SourceOpnameRequestId,
-                CAST(NULL AS VARCHAR(12)) AS SourceReservationId,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN o.InpatientOrderId
+                    ELSE CAST(NULL AS VARCHAR(12))
+                END AS SourceOpnameRequestId,
+                CASE 
+                    WHEN o.OrderSource IN (3, 4) THEN o.InpatientOrderId
+                    ELSE CAST(NULL AS VARCHAR(12))
+                END AS SourceReservationId,
                 o.PasienId,
                 ISNULL(NULLIF(o.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
                 o.DokterId,
@@ -1049,7 +1070,12 @@ public sealed partial class JourneyDal : IJourneyDal
                 o.TipeJaminanId,
                 o.TipeJaminanName,
                 CAST(NULL AS INT) AS Priority,
-                CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END AS SortAt,
+                CASE 
+                    WHEN o.OrderSource IN (1, 2) THEN 
+                        CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END
+                    ELSE 
+                        CASE WHEN o.UpdDate = @VodDate THEN o.PlannedDate ELSE o.UpdDate END
+                END AS SortAt,
                 CASE
                     WHEN o.OrderStatus = 2 THEN 1
                     ELSE 0
@@ -1060,53 +1086,16 @@ public sealed partial class JourneyDal : IJourneyDal
                 CAST(NULL AS INT) AS ActiveWaitingListStatus,
                 0 AS HasClosedHandover,
                 0 AS HasActiveAdmission,
-                CASE WHEN o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
-                0 AS ProspectiveReservationReady
+                CASE WHEN o.OrderSource IN (1, 2) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
+                CASE WHEN o.OrderSource IN (3, 4) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
             FROM BILRG_AdmInpatientOrder o
             LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
             WHERE o.VodDate = @VodDate
-              AND o.OrderSource IN (1, 2)
+              AND o.OrderSource IN (1, 2, 3, 4)
               AND NOT EXISTS (
                     SELECT 1 FROM BILRG_AdmAdmission a
                     WHERE a.VodDate = @VodDate 
                       AND a.InpatientOrderId = o.InpatientOrderId)
-        ),
-        ProspectiveReservation AS (
-            SELECT
-                CAST('rsv:' + r.InpatientOrderId AS VARCHAR(64)) AS JourneyId,
-                1 AS OriginKind,
-                CAST(NULL AS VARCHAR(10)) AS RegId,
-                CAST(NULL AS VARCHAR(12)) AS SourceOpnameRequestId,
-                r.InpatientOrderId AS SourceReservationId,
-                r.PasienId,
-                ISNULL(NULLIF(r.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
-                r.DokterId,
-                r.DokterName,
-                r.KelasId,
-                r.KelasName,
-                r.BangsalId,
-                r.BangsalName,
-                r.TipeJaminanId,
-                r.TipeJaminanName,
-                CAST(NULL AS INT) AS Priority,
-                CASE WHEN r.UpdDate = @VodDate THEN r.PlannedDate ELSE r.UpdDate END AS SortAt,
-                CASE WHEN r.OrderStatus = 2 THEN 1 ELSE 0 END AS HasBlockingIntegrity,
-                0 AS AdmissionCancelled,
-                CASE WHEN r.OrderStatus = 3 THEN 1 ELSE 0 END AS ProspectiveSourceCancelled,
-                0 AS AdmissionCompletedWithoutAuthority,
-                CAST(NULL AS INT) AS ActiveWaitingListStatus,
-                0 AS HasClosedHandover,
-                0 AS HasActiveAdmission,
-                0 AS ProspectiveOpnameRequested,
-                CASE WHEN r.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
-            FROM BILRG_AdmInpatientOrder r
-            LEFT JOIN tc_mr mr ON r.PasienId = mr.fs_mr
-            WHERE r.VodDate = @VodDate
-              AND r.OrderSource IN (3, 4)
-              AND NOT EXISTS (
-                    SELECT 1 FROM BILRG_AdmAdmission a
-                    WHERE a.VodDate = @VodDate 
-                      AND a.InpatientOrderId = r.InpatientOrderId)
         ),
         AdmissionRoots AS (
             SELECT
@@ -1248,9 +1237,7 @@ public sealed partial class JourneyDal : IJourneyDal
               AND (@ScopeActive = 0 OR a.AdmissionStatus <> 4)
         ),
         JourneyUnion AS (
-            SELECT * FROM ProspectiveOpname
-            UNION ALL
-            SELECT * FROM ProspectiveReservation
+            SELECT * FROM ProspectiveOrders
             UNION ALL
             SELECT * FROM AdmissionRoots
         ),
@@ -1322,15 +1309,25 @@ public sealed partial class JourneyDal : IJourneyDal
         JourneyIdName? ReferringDoctor,
         string? ReferralOrSourceSummary,
         string? PolicySummary,
-        string? AddressSummary);
+        string? AddressSummary,
+        JourneyIdName? JenisInap = null,
+        JourneyIdName? ProsedurMasuk = null,
+        JourneyIdName? CaraMasuk = null,
+        string? RegIbuId = null,
+        string? NamaIbu = null);
 
-    private sealed record RegExtras(
+    internal sealed record RegExtras(
         JourneyIdName? Guarantor,
         JourneyIdName? CareClass,
         JourneyIdName? Doctor,
         string? ProcedureSummary,
         string? PolicySummary,
-        string? AddressSummary)
+        string? AddressSummary,
+        JourneyIdName? JenisInap = null,
+        JourneyIdName? ProsedurMasuk = null,
+        JourneyIdName? CaraMasuk = null,
+        string? RegIbuId = null,
+        string? NamaIbu = null)
     {
         public static RegExtras Empty { get; } = new(null, null, null, null, null, null);
     }
@@ -1344,7 +1341,7 @@ public sealed partial class JourneyDal : IJourneyDal
         int OriginKind,
         string? RegId);
 
-    private sealed record OpnameRowDto(
+    internal sealed record OpnameRowDto(
         string OpnameRequestId,
         int OpnameRequestStatus,
         string FulfilledRegId,
@@ -1359,7 +1356,7 @@ public sealed partial class JourneyDal : IJourneyDal
         string Gender,
         DateTime? TglLahir);
 
-    private sealed record ReservationRowDto(
+    internal sealed record ReservationRowDto(
         string ReservationId,
         int ReservationStatus,
         string RealizedRegId,
@@ -1380,7 +1377,7 @@ public sealed partial class JourneyDal : IJourneyDal
         string TipeJaminanName = "",
         string ClinicalNotes = "");
 
-    private sealed record AdmissionRowDto(
+    internal sealed record AdmissionRowDto(
         string RegId,
         int AdmissionStatus,
         string PasienId,
@@ -1397,7 +1394,7 @@ public sealed partial class JourneyDal : IJourneyDal
         string Gender,
         DateTime? TglLahir);
 
-    private sealed record WaitingListRowDto(
+    internal sealed record WaitingListRowDto(
         string WaitingListId,
         string RegId,
         int WaitingListStatus,
@@ -1488,13 +1485,23 @@ public sealed partial class JourneyDal : IJourneyDal
         WHERE a.VodDate = @VodDate AND a.RegId = @Id
         """;
 
-    private sealed record RegExtrasRowDto(
+    internal sealed record RegExtrasRowDto(
         string TipeJaminanId,
         string TipeJaminanName,
         string KelasId,
         string KelasName,
         string DokterId,
         string DokterName,
-        string ProsedurMasukId);
+        string JenisInapId,
+        string JenisInapName,
+        string ProsedurMasukId,
+        string ProsedurMasukName,
+        string CaraMasukId,
+        string CaraMasukName,
+        string RegIbuId = "",
+        string NamaIbu = "")
+    {
+        public RegExtrasRowDto() : this("", "", "", "", "", "", "", "", "", "", "", "", "", "") { }
+    }
 
 }

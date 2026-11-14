@@ -393,7 +393,21 @@ public class WardCockpitDalMappingTest
                 TglJam: new DateTime(2026, 10, 23, 10, 0, 0),
                 ItemTindakan: "Pemasangan Infus & Cairan RL",
                 Petugas: "Ns. Ratna",
-                Biaya: 125000m
+                Biaya: 125000m,
+                TindakanId: "TDK-001",
+                HasJasaDokter: true,
+                RegId: "REG-20261024-005",
+                IsBayi: false
+            ),
+            new(
+                TglJam: new DateTime(2026, 10, 23, 11, 0, 0),
+                ItemTindakan: "Pemeriksaan Neonatus & Fototerapi",
+                Petugas: "dr. Subroto, Sp.A",
+                Biaya: 180000m,
+                TindakanId: "TDK-002",
+                HasJasaDokter: true,
+                RegId: "REG-BABY-001",
+                IsBayi: true
             )
         };
 
@@ -439,12 +453,22 @@ public class WardCockpitDalMappingTest
         result.Occupancy.Dpjp.DokterId.Should().Be("DOK-01");
         result.Occupancy.Dpjp.DokterName.Should().Be("dr. Sutomo, Sp.PD");
 
-        result.TabTindakan.Should().HaveCount(1);
-        var tdk = result.TabTindakan.First();
-        tdk.TglJam.Should().Be(new DateTime(2026, 10, 23, 10, 0, 0));
-        tdk.ItemTindakan.Should().Be("Pemasangan Infus & Cairan RL");
-        tdk.Petugas.Should().Be("Ns. Ratna");
-        tdk.Biaya.Should().Be(125000m);
+        result.TabTindakan.Should().HaveCount(2);
+        var tdkIbu = result.TabTindakan.First();
+        tdkIbu.TglJam.Should().Be(new DateTime(2026, 10, 23, 10, 0, 0));
+        tdkIbu.ItemTindakan.Should().Be("Pemasangan Infus & Cairan RL");
+        tdkIbu.Petugas.Should().Be("Ns. Ratna");
+        tdkIbu.Biaya.Should().Be(125000m);
+        tdkIbu.RegId.Should().Be("REG-20261024-005");
+        tdkIbu.IsBayi.Should().BeFalse();
+
+        var tdkBayi = result.TabTindakan.Last();
+        tdkBayi.TglJam.Should().Be(new DateTime(2026, 10, 23, 11, 0, 0));
+        tdkBayi.ItemTindakan.Should().Be("Pemeriksaan Neonatus & Fototerapi");
+        tdkBayi.Petugas.Should().Be("dr. Subroto, Sp.A");
+        tdkBayi.Biaya.Should().Be(180000m);
+        tdkBayi.RegId.Should().Be("REG-BABY-001");
+        tdkBayi.IsBayi.Should().BeTrue();
 
         result.TabRoomCharge.Should().NotBeNull();
         result.TabRoomCharge!.TarifPerHari.Should().Be(250000m);
@@ -594,7 +618,9 @@ public class WardCockpitDalMappingTest
                 PakaiBedPurpose: 4,
                 BabyName: "BAYI NYONYA ENI MUNASIFAH",
                 BabyRegId: "RG01376440",
-                BabyMrNo: "00-27-04-12"
+                BabyMrNo: "00-27-04-12",
+                BabyDpjpName: "dr. Tri Kusuma, Sp.A",
+                BabyDpjpId: "DR00113"
             )
         };
 
@@ -607,6 +633,8 @@ public class WardCockpitDalMappingTest
         bed.CurrentOccupancy.BabyName.Should().Be("BAYI NYONYA ENI MUNASIFAH");
         bed.CurrentOccupancy.BabyRegId.Should().Be("RG01376440");
         bed.CurrentOccupancy.BabyMrNo.Should().Be("00-27-04-12");
+        bed.CurrentOccupancy.BabyDpjpName.Should().Be("dr. Tri Kusuma, Sp.A");
+        bed.CurrentOccupancy.BabyDpjpId.Should().Be("DR00113");
     }
 
     [Fact]
@@ -633,7 +661,9 @@ public class WardCockpitDalMappingTest
             BillingKelasName: "Kelas II",
             BabyName: "BAYI NYONYA ENI MUNASIFAH",
             BabyRegId: "RG01376440",
-            BabyMrNo: "00-27-04-12"
+            BabyMrNo: "00-27-04-12",
+            BabyDpjpName: "dr. Tri Kusuma, Sp.A",
+            BabyDpjpId: "DR00113"
         );
 
         var result = WardCockpitDal.BuildBedDetail(bedRow, "00012345678", [], [], _now);
@@ -644,6 +674,8 @@ public class WardCockpitDalMappingTest
         result.Occupancy.BabyName.Should().Be("BAYI NYONYA ENI MUNASIFAH");
         result.Occupancy.BabyRegId.Should().Be("RG01376440");
         result.Occupancy.BabyMrNo.Should().Be("00-27-04-12");
+        result.Occupancy.BabyDpjpName.Should().Be("dr. Tri Kusuma, Sp.A");
+        result.Occupancy.BabyDpjpId.Should().Be("DR00113");
         result.TabRoomCharge.Should().NotBeNull();
         result.TabRoomCharge!.TarifPerHari.Should().Be(300000m);
     }
@@ -715,5 +747,214 @@ public class WardCockpitDalMappingTest
 
         result.Occupancy.Should().NotBeNull();
         result.Occupancy!.KdJenisInap.Should().Be("2");
+    }
+
+    [Fact]
+    public void BuildOverview_WithDynamicTariffParameters_MapsLayananKelasAndTipeTarifAccurately()
+    {
+        var bangsal = new RawBangsalRow("BGS-01", "Bangsal Teratai", "KLS-02", "Kelas II", LayananId: "RI001");
+        var roomBedRows = new List<RawRoomBedRow>
+        {
+            new(
+                RoomId: "ROOM-101",
+                RoomName: "Kamar 101",
+                KelasKamar: "Kelas II",
+                BedId: "BED-101-A",
+                BedCode: "101-A",
+                IsBedActive: true,
+                PakaiBedId: "PKB-101",
+                RegId: "REG-101",
+                MrNo: "MR-101",
+                NamaPasien: "Pasien Rawat",
+                Gender: "L",
+                TglLahir: "1980-01-01",
+                TglIn: "2026-10-24",
+                JamIn: "08:00:00",
+                DpjpName: "dr. SpPD",
+                PenjaminName: "BPJS",
+                BillingKelasName: "Kelas II",
+                TransaksiKelasId: "KL2",
+                RegKelasId: "KL2",
+                PakaiBedPurpose: 1,
+                LayananId: "RI001",
+                KelasId: "KL2",
+                TipeTarifId: "KP"
+            )
+        };
+
+        var result = WardCockpitDal.BuildOverview(bangsal, roomBedRows, [], [], _now);
+
+        result.Bangsal.LayananId.Should().Be("RI001");
+        var bed = result.Rooms.Single().Beds.Single();
+        bed.CurrentOccupancy.Should().NotBeNull();
+        bed.CurrentOccupancy!.LayananId.Should().Be("RI001");
+        bed.CurrentOccupancy.KelasId.Should().Be("KL2");
+        bed.CurrentOccupancy.TipeTarifId.Should().Be("KP");
+    }
+
+    [Fact]
+    public void BuildOverview_WhenRoomBedRowLayananIdEmpty_FallsBackToBangsalLayananIdAndDefaultsTipeTarif()
+    {
+        var bangsal = new RawBangsalRow("BGS-02", "Bangsal Melati", "KLS-01", "Kelas I", LayananId: "RI002");
+        var roomBedRows = new List<RawRoomBedRow>
+        {
+            new(
+                RoomId: "ROOM-201",
+                RoomName: "Kamar 201",
+                KelasKamar: "Kelas I",
+                BedId: "BED-201-A",
+                BedCode: "201-A",
+                IsBedActive: true,
+                PakaiBedId: "PKB-201",
+                RegId: "REG-201",
+                MrNo: "MR-201",
+                NamaPasien: "Pasien VIP",
+                Gender: "P",
+                TglLahir: "1992-05-10",
+                TglIn: "2026-10-24",
+                JamIn: "09:00:00",
+                DpjpName: "dr. SpJP",
+                PenjaminName: "Umum",
+                BillingKelasName: "Kelas I",
+                TransaksiKelasId: "VIP",
+                RegKelasId: "VIP",
+                PakaiBedPurpose: 1,
+                LayananId: "",
+                KelasId: "VIP",
+                TipeTarifId: ""
+            )
+        };
+
+        var result = WardCockpitDal.BuildOverview(bangsal, roomBedRows, [], [], _now);
+
+        result.Bangsal.LayananId.Should().Be("RI002");
+        var bed = result.Rooms.Single().Beds.Single();
+        bed.CurrentOccupancy.Should().NotBeNull();
+        bed.CurrentOccupancy!.LayananId.Should().Be("RI002");
+        bed.CurrentOccupancy.KelasId.Should().Be("VIP");
+        bed.CurrentOccupancy.TipeTarifId.Should().Be("UM");
+    }
+
+    [Fact]
+    public void BuildBedDetail_WithDynamicTariffParameters_MapsBedInfoAndOccupancyAccurately()
+    {
+        var bedRow = new RawBedDetailRow(
+            BedId: "01003001",
+            BedCode: "103-1",
+            RoomName: "Kamar 103",
+            KelasKamar: "Kelas II",
+            PakaiBedId: "PKB-301",
+            RegId: "REG-301",
+            MrNo: "MR-301",
+            NamaPasien: "Pasien Operasi",
+            Gender: "L",
+            TglLahir: "1978-03-15",
+            TglIn: "2026-10-24",
+            JamIn: "07:30:00",
+            TarifPerHari: 350000m,
+            TipeJaminanId: "TJ-BPJS",
+            PenjaminName: "BPJS Kesehatan",
+            DokterId: "DOK-03",
+            DpjpName: "dr. SpB",
+            BillingKelasName: "Kelas II",
+            LayananId: "RI001",
+            BangsalId: "01",
+            KamarKelasId: "KL2",
+            OccupancyKelasId: "VIP",
+            KelasId: "KL2",
+            TipeTarifId: "PR"
+        );
+
+        var result = WardCockpitDal.BuildBedDetail(bedRow, "00098765432", [], [], _now);
+
+        result.Should().NotBeNull();
+        result.BedInfo.LayananId.Should().Be("RI001");
+        result.BedInfo.BangsalId.Should().Be("01");
+        result.BedInfo.KelasId.Should().Be("KL2");
+        result.Occupancy.Should().NotBeNull();
+        result.Occupancy!.LayananId.Should().Be("RI001");
+        result.Occupancy.KelasId.Should().Be("VIP");
+        result.Occupancy.TipeTarifId.Should().Be("PR");
+    }
+
+    [Fact]
+    public void BuildBedDetail_WhenOccupancyKelasIdEmpty_FallsBackToKamarKelasIdAndDefaultsTipeTarif()
+    {
+        var bedRow = new RawBedDetailRow(
+            BedId: "02001001",
+            BedCode: "201-1",
+            RoomName: "Kamar 201",
+            KelasKamar: "Kelas I",
+            PakaiBedId: "PKB-401",
+            RegId: "REG-401",
+            MrNo: "MR-401",
+            NamaPasien: "Pasien Umum",
+            Gender: "P",
+            TglLahir: "1988-12-01",
+            TglIn: "2026-10-24",
+            JamIn: "08:15:00",
+            TarifPerHari: 400000m,
+            TipeJaminanId: "TJ-UM",
+            PenjaminName: "Umum",
+            DokterId: "DOK-04",
+            DpjpName: "dr. SpA",
+            BillingKelasName: "Kelas I",
+            LayananId: "RI002",
+            BangsalId: "02",
+            KamarKelasId: "KL1",
+            OccupancyKelasId: "",
+            KelasId: "",
+            TipeTarifId: ""
+        );
+
+        var result = WardCockpitDal.BuildBedDetail(bedRow, null, [], [], _now);
+
+        result.Should().NotBeNull();
+        result.BedInfo.LayananId.Should().Be("RI002");
+        result.BedInfo.BangsalId.Should().Be("02");
+        result.BedInfo.KelasId.Should().Be("KL1");
+        result.Occupancy.Should().NotBeNull();
+        result.Occupancy!.LayananId.Should().Be("RI002");
+        result.Occupancy.KelasId.Should().Be("KL1");
+        result.Occupancy.TipeTarifId.Should().Be("UM");
+    }
+
+    [Fact]
+    public void BuildBedDetail_WithUnoccupiedBed_PreservesBedInfoDynamicTariffFields()
+    {
+        var bedRow = new RawBedDetailRow(
+            BedId: "03001001",
+            BedCode: "301-1",
+            RoomName: "Kamar VIP",
+            KelasKamar: "VIP",
+            PakaiBedId: null,
+            RegId: null,
+            MrNo: null,
+            NamaPasien: null,
+            Gender: null,
+            TglLahir: null,
+            TglIn: null,
+            JamIn: null,
+            TarifPerHari: 800000m,
+            TipeJaminanId: null,
+            PenjaminName: null,
+            DokterId: null,
+            DpjpName: null,
+            BillingKelasName: null,
+            LayananId: "RI003",
+            BangsalId: "03",
+            KamarKelasId: "VIP",
+            OccupancyKelasId: "",
+            KelasId: "",
+            TipeTarifId: "UM"
+        );
+
+        var result = WardCockpitDal.BuildBedDetail(bedRow, null, [], [], _now);
+
+        result.Should().NotBeNull();
+        result.BedInfo.LayananId.Should().Be("RI003");
+        result.BedInfo.BangsalId.Should().Be("03");
+        result.BedInfo.KelasId.Should().Be("VIP");
+        result.Occupancy.Should().BeNull();
     }
 }
