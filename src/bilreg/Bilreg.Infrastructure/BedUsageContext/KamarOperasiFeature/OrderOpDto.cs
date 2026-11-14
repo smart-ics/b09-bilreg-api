@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -23,6 +24,15 @@ public record OrderOpDto(
     DateTime PreferedDate,
     string SpecialEquipment,
     //
+    string DokterPengorderId,
+    string LayananPengorderId,
+    string DokterOperatorId,
+    string ProsedurTambahan,
+    int KlasifikasiOperasi,
+    int AnestesiPlan,
+    int PostOpCareUnit,
+    string AlasanBatal,
+    //
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -30,12 +40,15 @@ public record OrderOpDto(
     string VodUser,
     DateTime VodDate,
     //
-    string PasienName,
-    string TglLahir,
-    string Gender,
-    string fs_ket_icd,
-    string fs_nm_jenis_operasi,
-    string fs_nm_peg)
+    string PasienName = "",
+    string TglLahir = "3000-01-01",
+    string Gender = "",
+    string fs_ket_icd = "",
+    string fs_nm_jenis_operasi = "",
+    string fs_nm_peg = "",
+    string DokterPengorderName = "",
+    string LayananPengorderName = "",
+    string DokterOperatorName = "")
 {
     public static OrderOpDto FromModel(OrderOpModel model)
     {
@@ -47,13 +60,22 @@ public record OrderOpDto(
             model.Icd10.Icd10Id,
             model.JenisOperasi.JenisOperasiId,
             model.NamaOperasi,
-            model.Dokter.PpaId,
+            model.DokterOperator.PpaId,
             (int)model.UrgencyLevel,
             model.TarifOperasi.TarifId,
             model.TarifOperasi.TarifName,
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
             model.SpecialEquipment,
+            //
+            model.DokterPengorder.PpaId,
+            model.LayananPengorder.LayananId,
+            model.DokterOperator.PpaId,
+            model.ProsedurTambahan,
+            (int)model.KlasifikasiOperasi,
+            (int)model.AnestesiPlan,
+            (int)model.PostOpCareUnit,
+            model.AlasanBatal,
             //
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
@@ -67,11 +89,14 @@ public record OrderOpDto(
             model.Pasien.Gender,
             model.Icd10.Icd10Name,
             model.JenisOperasi.JenisOperasiName,
-            model.Dokter.PpaName);
+            model.DokterOperator.PpaName,
+            model.DokterPengorder.PpaName,
+            model.LayananPengorder.LayananName,
+            model.DokterOperator.PpaName);
         return result;
     }
 
-    public OrderOpModel ToModel()
+    public OrderOpModel ToModel(IEnumerable<OrderOpResourceModel>? resources = null)
     {
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
@@ -84,7 +109,15 @@ public record OrderOpDto(
         var icd10 = new Icd10Type(Icd10Id, fs_ket_icd);
         var jenisOp = new JenisOperasiType(JenisOperasiId, fs_nm_jenis_operasi);
         var tarif = new TarifReff(TarifId, TarifName);
-        var dokter = new PpaReff(DokterId, fs_nm_peg);
+        var dokterId = string.IsNullOrEmpty(DokterOperatorId) ? DokterId : DokterOperatorId;
+        var dokterName = string.IsNullOrEmpty(DokterOperatorName) ? fs_nm_peg : DokterOperatorName;
+        var dokterOperator = new PpaReff(dokterId, dokterName);
+        var dokterPengorder = new PpaReff(
+            string.IsNullOrEmpty(DokterPengorderId) ? dokterId : DokterPengorderId,
+            string.IsNullOrEmpty(DokterPengorderName) ? dokterName : DokterPengorderName);
+        var layananPengorder = new LayananReff(
+            string.IsNullOrEmpty(LayananPengorderId) ? "-" : LayananPengorderId,
+            string.IsNullOrEmpty(LayananPengorderName) ? "-" : LayananPengorderName);
 
         var result = new OrderOpModel(
             OrderOpId,
@@ -97,10 +130,18 @@ public record OrderOpDto(
             NamaOperasi,
             (UrgencyLevelEnum)UrgencyLevel,
             tarif,
-            dokter,
+            dokterOperator,
             EstimasiDurasi,
             PreferedDate,
-            SpecialEquipment);
+            SpecialEquipment,
+            dokterPengorder,
+            layananPengorder,
+            ProsedurTambahan,
+            (KlasifikasiOperasiEnum)(KlasifikasiOperasi <= 0 ? 1 : KlasifikasiOperasi),
+            (AnestesiPlanEnum)(AnestesiPlan <= 0 ? 1 : AnestesiPlan),
+            (PostOpCareUnitEnum)(PostOpCareUnit <= 0 ? 1 : PostOpCareUnit),
+            AlasanBatal,
+            resources);
         return result;
     }
-};
+}

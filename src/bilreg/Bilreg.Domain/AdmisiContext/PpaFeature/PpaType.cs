@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.PpaFeature;
 
@@ -52,5 +52,6 @@ public interface IPpaKey
 
 public record PpaReff(string PpaId, string PpaName) : IPpaKey
 {
-    public bool IsDefault => PpaId == "-";   
+    public bool IsDefault => PpaId == "-";
+    public static PpaReff Default => new("-", "-");
 }

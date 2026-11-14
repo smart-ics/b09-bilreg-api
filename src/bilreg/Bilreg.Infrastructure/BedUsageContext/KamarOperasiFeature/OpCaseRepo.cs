@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -76,7 +76,12 @@ public class OpCaseRepo : IOpCaseRepo
 
     public IEnumerable<OpCaseOrderView> ListActiveOpCase()
     {
-        var listDto = _opCaseAktifDal.ListData()?.ToList() ?? [];
+        return ListActiveOpCase(new OpCaseAktifFilter());
+    }
+
+    public IEnumerable<OpCaseOrderView> ListActiveOpCase(OpCaseAktifFilter filter)
+    {
+        var listDto = _opCaseAktifDal.ListData(filter)?.ToList() ?? [];
         return listDto.Select(x => x.ToView()).ToList();
     }
 }

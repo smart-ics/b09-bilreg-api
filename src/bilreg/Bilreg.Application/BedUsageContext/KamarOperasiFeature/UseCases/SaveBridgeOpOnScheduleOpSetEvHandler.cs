@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.Shared.Param;
@@ -29,6 +29,9 @@ public class SaveBridgeOpOnScheduleOpSetEvHandler : INotificationHandler<OkSched
     {
         var projectId = _projectIdSvc.Execute();
 
+        if (notification.Aggregate?.Reg == null || string.IsNullOrWhiteSpace(notification.Aggregate.Reg.RegId))
+            return Task.CompletedTask;
+
         // TODO: Bagaimana agar tdk perlu panggil orderOpRepo lagi
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(notification.Command.OrderOpId))
             .GetValueOrDefault();
@@ -38,9 +41,13 @@ public class SaveBridgeOpOnScheduleOpSetEvHandler : INotificationHandler<OkSched
             .GetValueOrDefault();
         if (reg == null) return Task.CompletedTask;
 
+        var namaOperasi = !string.IsNullOrWhiteSpace(orderOp.TarifOperasi?.TarifName) && orderOp.TarifOperasi.TarifName != "-"
+            ? orderOp.TarifOperasi.TarifName
+            : orderOp.NamaOperasi;
+
         var bridgeOpCommand = new BridgeOperasiCmd(projectId, reg.RegId,
             notification.Aggregate.TglOp.ToString(DateFormatEnum.YMD),
-            orderOp.TarifOperasi.TarifName, reg.Layanan.LayananId, reg.Layanan.LayananName,
+            namaOperasi, reg.Layanan.LayananId, reg.Layanan.LayananName,
             "0", reg.Polis.NoPolis, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         _bridgeOperasiSaveService.Execute(bridgeOpCommand);
 

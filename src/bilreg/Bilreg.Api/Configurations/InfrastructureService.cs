@@ -1,4 +1,4 @@
-using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AktivasiBerkasFeature.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
@@ -73,10 +73,12 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 using Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Infrastructure.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
+
 using Bilreg.Infrastructure.BrgContext.BrgFeature;
 using Bilreg.Infrastructure.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.PurchaseContext.DeliveryFeature;
@@ -228,6 +230,10 @@ public static class InfrastructureService
             .AddScoped<Bilreg.Application.BedUsageContext.PakaiBedFeature.IPakaiBedBillingLockChecker, Bilreg.Infrastructure.BedUsageContext.PakaiBedFeature.PakaiBedBillingLockChecker>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IBedOccupancyQuery, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.BedOccupancyQuery>()
             .AddScoped<Bilreg.Application.ChargeContext.RoomChargeFeature.IRoomChargeTarifService, Bilreg.Infrastructure.ChargeContext.RoomChargeFeature.RoomChargeTarifService>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IOrderOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IOrderOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
+            .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -308,6 +314,8 @@ public static class InfrastructureService
         services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
+        services.AddScoped<IOrderOpResourceDal, OrderOpResourceDal>();
+        services.AddScoped<IScheduleOpHistDal, ScheduleOpHistDal>();
         services.AddScoped<ILabExternalDal, LabExternalDal>();
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
         services.AddScoped<ILabDisciplineDal, LabDisciplineDal>();
