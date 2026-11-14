@@ -31,6 +31,8 @@ public class PakaiBedDal : IPakaiBedDal
             aa.fs_kd_kamar_tipe, aa.fs_kd_bed, aa.fn_tarif,
             aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_petugas_void,
             aa.fd_tgl_entry, aa.fs_jam_entry, aa.fs_kd_kelas,
+            ISNULL(aa.fs_kd_kelas_tindakan, '') AS fs_kd_kelas_tindakan,
+            ISNULL(aa.fd_tgl_jam_in, '') AS fd_tgl_jam_in,
             ISNULL(bb.fs_mr, '') AS fs_mr,
             ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
             ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan,
@@ -40,13 +42,13 @@ public class PakaiBedDal : IPakaiBedDal
             ISNULL(ff.fb_aktif, 0) AS fb_kamar_tipe_aktif,
             ISNULL(gg.fs_nm_kelas, '') AS fs_nm_kelas
         FROM
-            ta_trs_bed aa
-            LEFT JOIN ta_registrasi bb ON aa.fs_kd_reg = bb.fs_kd_reg
-            LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
-            LEFT JOIN ta_layanan dd ON aa.fs_kd_layanan = dd.fs_kd_layanan
-            LEFT JOIN ta_bed ee ON aa.fs_kd_bed = ee.fs_kd_bed
-            LEFT JOIN ta_kamar_tipe ff ON aa.fs_kd_kamar_tipe = ff.fs_kd_kamar_tipe
-            LEFT JOIN ta_kelas gg ON aa.fs_kd_kelas = gg.fs_kd_kelas
+            ta_trs_bed aa WITH (NOLOCK)
+            LEFT JOIN ta_registrasi bb WITH (NOLOCK) ON aa.fs_kd_reg = bb.fs_kd_reg
+            LEFT JOIN tc_mr cc WITH (NOLOCK) ON bb.fs_mr = cc.fs_mr
+            LEFT JOIN ta_layanan dd WITH (NOLOCK) ON aa.fs_kd_layanan = dd.fs_kd_layanan
+            LEFT JOIN ta_bed ee WITH (NOLOCK) ON aa.fs_kd_bed = ee.fs_kd_bed
+            LEFT JOIN ta_kamar_tipe ff WITH (NOLOCK) ON aa.fs_kd_kamar_tipe = ff.fs_kd_kamar_tipe
+            LEFT JOIN ta_kelas gg WITH (NOLOCK) ON aa.fs_kd_kelas = gg.fs_kd_kelas
         """;
 
     private readonly DatabaseOptions _opt;
@@ -63,8 +65,8 @@ public class PakaiBedDal : IPakaiBedDal
             DECLARE @isRoomingIn BIT = 0;
             IF EXISTS (
                 SELECT 1 
-                FROM ta_registrasi reg
-                INNER JOIN ta_trs_bed trs_ibu ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
+                FROM ta_registrasi reg WITH (NOLOCK)
+                INNER JOIN ta_trs_bed trs_ibu WITH (NOLOCK) ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
                 WHERE reg.fs_kd_reg = @fs_kd_reg
                   AND trs_ibu.fs_kd_bed = @fs_kd_bed
                   AND (trs_ibu.fd_tgl_out = '' OR trs_ibu.fd_tgl_out = '3000-01-01' OR trs_ibu.fd_tgl_out IS NULL)
@@ -120,6 +122,14 @@ public class PakaiBedDal : IPakaiBedDal
                     updjam = @fs_jam_in,
                     updusr = @fs_kd_petugas
                 WHERE fs_kd_bed = @fs_kd_bed;
+            END
+
+            -- Synchronize Layanan DK in tc_mr1 if patient record exists
+            IF EXISTS (SELECT 1 FROM tc_mr1 WHERE fs_kd_reg = @fs_kd_reg)
+            BEGIN
+                UPDATE tc_mr1
+                SET fs_kd_layanan_dk = @fs_kd_layanan_dk
+                WHERE fs_kd_reg = @fs_kd_reg;
             END
             """;
 
@@ -203,7 +213,7 @@ public class PakaiBedDal : IPakaiBedDal
 
         try
         {
-            if (isReleasedOrVoid)
+            if (isReleasedOrVoid && dto.fn_tarif > 0)
             {
                 const string sqlReleaseBed = """
                     UPDATE ta_bed
@@ -220,12 +230,12 @@ public class PakaiBedDal : IPakaiBedDal
                 var dpRelease = new DynamicParameters();
                 dpRelease.AddParam("@fs_kd_bed", dto.fs_kd_bed, SqlDbType.VarChar);
                 dpRelease.AddParam("@fs_kd_reg", SafeTruncate(dto.fs_kd_reg, 10), SqlDbType.VarChar);
-                dpRelease.AddParam("@updtgl", !string.IsNullOrWhiteSpace(dto.fd_tgl_out) && dto.fd_tgl_out != "3000-01-01" ? dto.fd_tgl_out : dto.fd_tgl_void, SqlDbType.VarChar);
-                dpRelease.AddParam("@updjam", !string.IsNullOrWhiteSpace(dto.fs_jam_out) ? dto.fs_jam_out : dto.fs_jam_void, SqlDbType.VarChar);
+                dpRelease.AddParam("@updtgl", !string.IsNullOrWhiteSpace(dto.fd_tgl_out) && dto.fd_tgl_out != "3000-01-01" ? dto.fd_tgl_out : SafeTruncate(dto.fd_tgl_void, 10), SqlDbType.VarChar);
+                dpRelease.AddParam("@updjam", !string.IsNullOrWhiteSpace(dto.fs_jam_out) ? dto.fs_jam_out : SafeTruncate(dto.fs_jam_void, 8), SqlDbType.VarChar);
                 dpRelease.AddParam("@updusr", !string.IsNullOrWhiteSpace(dto.fs_kd_petugas_out) ? SafeTruncate(dto.fs_kd_petugas_out, 10) : SafeTruncate(dto.fs_kd_petugas_void, 10), SqlDbType.VarChar);
                 conn.Execute(sqlReleaseBed, dpRelease);
 
-                // Cascade Void / Discharge on Rooming-In records on the same bed
+                // Cascade Void / Discharge on Rooming-In records on the same bed (only when releasing primary bed occupant)
                 if (!string.IsNullOrWhiteSpace(dto.fd_tgl_void) && dto.fd_tgl_void != "3000-01-01")
                 {
                     const string sqlCascadeVoid = """
@@ -262,8 +272,8 @@ public class PakaiBedDal : IPakaiBedDal
                     DECLARE @isRoomingIn BIT = 0;
                     IF EXISTS (
                         SELECT 1 
-                        FROM ta_registrasi reg
-                        INNER JOIN ta_trs_bed trs_ibu ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
+                        FROM ta_registrasi reg WITH (NOLOCK)
+                        INNER JOIN ta_trs_bed trs_ibu WITH (NOLOCK) ON trs_ibu.fs_kd_reg = reg.fs_reg_ibu
                         WHERE reg.fs_kd_reg = @fs_kd_reg
                           AND trs_ibu.fs_kd_bed = @fs_kd_bed
                           AND (trs_ibu.fd_tgl_out = '' OR trs_ibu.fd_tgl_out = '3000-01-01' OR trs_ibu.fd_tgl_out IS NULL)
@@ -672,6 +682,7 @@ public class PakaiBedDal : IPakaiBedDal
             WHERE mother.fs_kd_trs = @pakaiBedId
               AND baby.fn_tarif = 0
               AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
               AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
 
             -- 7. Return affected bangsal list & cleanup
@@ -708,35 +719,266 @@ public class PakaiBedDal : IPakaiBedDal
     public async Task<List<string>> GetRoomingInBabyRegIdsAsync(string pakaiBedId)
     {
         const string sql = """
-            -- Case A: @pakaiBedId is mother, find secondary rooming-in babies (fn_tarif = 0) on the same bed
+            -- Case A: @pakaiBedId is mother, find secondary rooming-in babies (fn_tarif = 0) on the same bed that are currently active
             SELECT DISTINCT baby.fs_kd_reg
-            FROM ta_trs_bed mother
-            INNER JOIN ta_trs_bed baby ON mother.fs_kd_bed = baby.fs_kd_bed
+            FROM ta_trs_bed mother WITH (NOLOCK)
+            INNER JOIN ta_trs_bed baby WITH (NOLOCK) ON mother.fs_kd_bed = baby.fs_kd_bed
+            LEFT JOIN ta_registrasi r WITH (NOLOCK) ON baby.fs_kd_reg = r.fs_kd_reg
             WHERE mother.fs_kd_trs = @pakaiBedId
               AND baby.fn_tarif = 0
               AND baby.fs_kd_trs <> mother.fs_kd_trs
               AND ISNULL(baby.fs_kd_reg, '') <> ''
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL)
+              AND (r.fd_tgl_keluar = '' OR r.fd_tgl_keluar = '3000-01-01' OR r.fd_tgl_keluar IS NULL)
+              AND (r.fd_tgl_void = '' OR r.fd_tgl_void = '3000-01-01' OR r.fd_tgl_void IS NULL)
             UNION
-            -- Case B: ta_registrasi relation linked to mother
+            -- Case B: ta_registrasi relation linked to mother, baby registration must be active
             SELECT DISTINCT r.fs_kd_reg
-            FROM ta_registrasi r
-            INNER JOIN ta_trs_bed mother ON r.fs_reg_ibu = mother.fs_kd_reg
+            FROM ta_registrasi r WITH (NOLOCK)
+            INNER JOIN ta_trs_bed mother WITH (NOLOCK) ON r.fs_reg_ibu = mother.fs_kd_reg
             WHERE mother.fs_kd_trs = @pakaiBedId
               AND r.fs_kd_jenis_inap = '3'
               AND ISNULL(r.fs_kd_reg, '') <> ''
+              AND (r.fd_tgl_keluar = '' OR r.fd_tgl_keluar = '3000-01-01' OR r.fd_tgl_keluar IS NULL)
+              AND (r.fd_tgl_void = '' OR r.fd_tgl_void = '3000-01-01' OR r.fd_tgl_void IS NULL)
             UNION
             -- Case C: @pakaiBedId is baby itself (fn_tarif = 0)
             SELECT DISTINCT baby.fs_kd_reg
-            FROM ta_trs_bed baby
+            FROM ta_trs_bed baby WITH (NOLOCK)
+            LEFT JOIN ta_registrasi r WITH (NOLOCK) ON baby.fs_kd_reg = r.fs_kd_reg
             WHERE baby.fs_kd_trs = @pakaiBedId
               AND baby.fn_tarif = 0
-              AND ISNULL(baby.fs_kd_reg, '') <> '';
+              AND ISNULL(baby.fs_kd_reg, '') <> ''
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL)
+              AND (r.fd_tgl_keluar = '' OR r.fd_tgl_keluar = '3000-01-01' OR r.fd_tgl_keluar IS NULL)
+              AND (r.fd_tgl_void = '' OR r.fd_tgl_void = '3000-01-01' OR r.fd_tgl_void IS NULL);
         """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dp = new DynamicParameters();
         dp.AddParam("@pakaiBedId", SafeTruncate(pakaiBedId, 15), SqlDbType.VarChar);
         var results = await conn.QueryAsync<string>(new CommandDefinition(sql, dp));
         return results.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList();
+    }
+
+    public async Task<List<string>> GetRoomingInBabyTrsIdsAsync(string bedId, string? babyRegId = null)
+    {
+        const string sql = """
+            SELECT DISTINCT fs_kd_trs
+            FROM ta_trs_bed WITH (NOLOCK)
+            WHERE fs_kd_bed = @bedId
+              AND fn_tarif = 0
+              AND (@babyRegId IS NULL OR @babyRegId = '' OR fs_kd_reg = @babyRegId)
+              AND (fd_tgl_out = '' OR fd_tgl_out = '3000-01-01' OR fd_tgl_out IS NULL)
+              AND (fd_tgl_void = '' OR fd_tgl_void = '3000-01-01' OR fd_tgl_void IS NULL);
+            """;
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var dp = new DynamicParameters();
+        dp.AddParam("@bedId", bedId, SqlDbType.VarChar);
+        dp.AddParam("@babyRegId", SafeTruncate(babyRegId, 50), SqlDbType.VarChar);
+        var results = await conn.QueryAsync<string>(new CommandDefinition(sql, dp));
+        return results.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList();
+    }
+
+    public async Task<List<string>> ReleaseRoomingInBabyAsync(string bedId, string? babyRegId, string userId, DateTime dischargeTime)
+    {
+        var nowDate = dischargeTime.ToString("yyyy-MM-dd");
+        var nowTime = dischargeTime.ToString("HH:mm:ss");
+
+        const string sql = """
+            DECLARE @UpdatedTrs TABLE (fs_kd_trs VARCHAR(50));
+
+            UPDATE ta_trs_bed
+            SET
+                fd_tgl_out = @nowDate,
+                fs_jam_out = @nowTime,
+                fs_kd_petugas_out = @userId
+            OUTPUT INSERTED.fs_kd_trs INTO @UpdatedTrs (fs_kd_trs)
+            WHERE fs_kd_bed = @bedId
+              AND fn_tarif = 0
+              AND (@babyRegId IS NULL OR @babyRegId = '' OR fs_kd_reg = @babyRegId)
+              AND (fd_tgl_out = '' OR fd_tgl_out = '3000-01-01' OR fd_tgl_out IS NULL)
+              AND (fd_tgl_void = '' OR fd_tgl_void = '3000-01-01' OR fd_tgl_void IS NULL);
+
+            SELECT DISTINCT fs_kd_trs FROM @UpdatedTrs WHERE ISNULL(fs_kd_trs, '') <> '';
+            """;
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var dp = new DynamicParameters();
+        dp.AddParam("@bedId", bedId, SqlDbType.VarChar);
+        dp.AddParam("@babyRegId", SafeTruncate(babyRegId, 50), SqlDbType.VarChar);
+        dp.AddParam("@userId", SafeTruncate(userId, 10), SqlDbType.VarChar);
+        dp.AddParam("@nowDate", nowDate, SqlDbType.VarChar);
+        dp.AddParam("@nowTime", nowTime, SqlDbType.VarChar);
+        var results = await conn.QueryAsync<string>(new CommandDefinition(sql, dp));
+        return results.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList();
+    }
+
+    public async Task<List<string>> VoidRoomingInBabyAsync(string motherPakaiBedId, string userId, string alasanBatal, DateTime? voidTime = null)
+    {
+        var now = voidTime ?? DateTime.Now;
+        var nowDate = now.ToString("yyyy-MM-dd");
+        var nowTime = now.ToString("HH:mm:ss");
+
+        const string sql = """
+            CREATE TABLE #RevertedBangsals (BangsalId VARCHAR(50));
+            CREATE TABLE #RoomingInPairs (
+                MotherRegId VARCHAR(50),
+                BabyRegId VARCHAR(50),
+                BabyMrNo VARCHAR(50)
+            );
+
+            -- Find babies for this motherPakaiBedId (only active bed & active registration)
+            INSERT INTO #RoomingInPairs (MotherRegId, BabyRegId, BabyMrNo)
+            SELECT DISTINCT
+                mother.fs_kd_reg,
+                baby.fs_kd_reg,
+                ISNULL(reg_baby.fs_mr, '')
+            FROM ta_trs_bed mother
+            INNER JOIN ta_trs_bed baby ON mother.fs_kd_bed = baby.fs_kd_bed
+            LEFT JOIN ta_registrasi reg_baby ON baby.fs_kd_reg = reg_baby.fs_kd_reg
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL)
+              AND (reg_baby.fd_tgl_keluar = '' OR reg_baby.fd_tgl_keluar = '3000-01-01' OR reg_baby.fd_tgl_keluar IS NULL)
+              AND (reg_baby.fd_tgl_void = '' OR reg_baby.fd_tgl_void = '3000-01-01' OR reg_baby.fd_tgl_void IS NULL);
+
+            -- Case: @pakaiBedId is baby itself
+            IF NOT EXISTS (SELECT 1 FROM #RoomingInPairs)
+            BEGIN
+                INSERT INTO #RoomingInPairs (MotherRegId, BabyRegId, BabyMrNo)
+                SELECT DISTINCT
+                    ISNULL(reg_baby.fs_reg_ibu, ''),
+                    baby.fs_kd_reg,
+                    ISNULL(reg_baby.fs_mr, '')
+                FROM ta_trs_bed baby
+                LEFT JOIN ta_registrasi reg_baby ON baby.fs_kd_reg = reg_baby.fs_kd_reg
+                WHERE baby.fs_kd_trs = @pakaiBedId
+                  AND baby.fn_tarif = 0
+                  AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+                  AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL)
+                  AND (reg_baby.fd_tgl_keluar = '' OR reg_baby.fd_tgl_keluar = '3000-01-01' OR reg_baby.fd_tgl_keluar IS NULL)
+                  AND (reg_baby.fd_tgl_void = '' OR reg_baby.fd_tgl_void = '3000-01-01' OR reg_baby.fd_tgl_void IS NULL);
+            END
+
+            -- Collect affected bangsal IDs from baby transactions
+            INSERT INTO #RevertedBangsals (BangsalId)
+            SELECT DISTINCT baby.fs_kd_layanan
+            FROM ta_trs_bed baby
+            INNER JOIN ta_trs_bed mother ON mother.fs_kd_bed = baby.fs_kd_bed
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND ISNULL(baby.fs_kd_layanan, '') <> ''
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
+
+            INSERT INTO #RevertedBangsals (BangsalId)
+            SELECT DISTINCT baby.fs_kd_layanan
+            FROM ta_trs_bed baby
+            WHERE baby.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND ISNULL(baby.fs_kd_layanan, '') <> ''
+              AND (baby.fd_tgl_out = '' OR baby.fd_tgl_out = '3000-01-01' OR baby.fd_tgl_out IS NULL)
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
+
+            -- 1. Void baby ta_trs_bed records only
+            UPDATE baby
+            SET fd_tgl_void = @nowDate,
+                fs_jam_void = @nowTime,
+                fs_kd_petugas_void = @userId
+            FROM ta_trs_bed baby
+            INNER JOIN ta_trs_bed mother ON mother.fs_kd_bed = baby.fs_kd_bed
+            WHERE mother.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND baby.fs_kd_trs <> mother.fs_kd_trs
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
+
+            UPDATE baby
+            SET fd_tgl_void = @nowDate,
+                fs_jam_void = @nowTime,
+                fs_kd_petugas_void = @userId
+            FROM ta_trs_bed baby
+            WHERE baby.fs_kd_trs = @pakaiBedId
+              AND baby.fn_tarif = 0
+              AND (baby.fd_tgl_void = '' OR baby.fd_tgl_void = '3000-01-01' OR baby.fd_tgl_void IS NULL);
+
+            -- 2. Clean up baby room charge if any existed (tariff 0)
+            IF OBJECT_ID('ta_trs_roomcharge', 'U') IS NOT NULL
+            BEGIN
+                DELETE rc
+                FROM ta_trs_roomcharge rc
+                INNER JOIN #RoomingInPairs p ON rc.fs_kd_reg = p.BabyRegId;
+            END
+
+            -- 3. Revert waiting list for baby only
+            IF OBJECT_ID('BILRG_BedWaitingList', 'U') IS NOT NULL
+            BEGIN
+                DECLARE @clearCols NVARCHAR(MAX) = N'';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'PlacedBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', PlacedBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'PlacedPakaiBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', PlacedPakaiBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedBedId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedBedId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedNurseId') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedNurseId = ''''';
+                IF COL_LENGTH('BILRG_BedWaitingList', 'AdmittedDate') IS NOT NULL
+                    SET @clearCols = @clearCols + N', AdmittedDate = ''3000-01-01''';
+
+                DECLARE @sqlRevertBabyWl NVARCHAR(MAX) = N'
+                    UPDATE wl
+                    SET wl.WaitingListStatus = 0' + @clearCols + N',
+                        wl.UpdUser = @userId,
+                        wl.UpdDate = @now
+                    OUTPUT INSERTED.BangsalId INTO #RevertedBangsals (BangsalId)
+                    FROM BILRG_BedWaitingList wl
+                    WHERE wl.WaitingListStatus = 2
+                    AND EXISTS (
+                        SELECT 1 FROM #RoomingInPairs p
+                        WHERE wl.RegId = p.BabyRegId
+                            OR (ISNULL(p.BabyMrNo, '''') <> '''' AND wl.PasienId = p.BabyMrNo)
+                    )';
+                EXEC sp_executesql @sqlRevertBabyWl, N'@userId VARCHAR(50), @now DATETIME', @userId, @now;
+            END
+
+            -- 4. Unlink ta_registrasi rooming-in
+            UPDATE r
+            SET r.fs_reg_ibu = ''
+            FROM ta_registrasi r
+            INNER JOIN #RoomingInPairs p ON r.fs_kd_reg = p.BabyRegId;
+
+            SELECT DISTINCT BangsalId FROM #RevertedBangsals WHERE ISNULL(BangsalId, '') <> '';
+            DROP TABLE #RevertedBangsals;
+            DROP TABLE #RoomingInPairs;
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        await conn.OpenAsync();
+        using var trans = conn.BeginTransaction();
+        try
+        {
+            var dp = new DynamicParameters();
+            dp.AddParam("@pakaiBedId", SafeTruncate(motherPakaiBedId, 15), SqlDbType.VarChar);
+            dp.AddParam("@userId", SafeTruncate(userId, 10), SqlDbType.VarChar);
+            dp.AddParam("@alasanBatal", SafeTruncate(alasanBatal, 255), SqlDbType.VarChar);
+            dp.AddParam("@now", now, SqlDbType.DateTime);
+            dp.AddParam("@nowDate", nowDate, SqlDbType.VarChar);
+            dp.AddParam("@nowTime", nowTime, SqlDbType.VarChar);
+
+            var bangsalResults = (await conn.QueryAsync<string>(
+                new CommandDefinition(sql, dp, transaction: trans))).ToList();
+
+            trans.Commit();
+            return bangsalResults.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList();
+        }
+        catch
+        {
+            trans.Rollback();
+            throw;
+        }
     }
 
     private static string SafeTruncate(string? val, int maxLen)

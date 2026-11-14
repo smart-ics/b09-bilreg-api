@@ -20,7 +20,8 @@ public class PakaiBedModel : IPakaiBed
         RegReff reg, LayananReff layanan, BedReff bed, TipeKamarReff tipeKamar,
         KelasReff kelas, decimal tarif, AuditTrailType auditTrail,
         IEnumerable<PakaiBedKomponenType>? listKomponen = null,
-        string kelasTindakanId = "")
+        string kelasTindakanId = "",
+        string layananDkId = "")
     {
         PakaiBedId = pakaiBedId;
         Periode = periode;
@@ -33,6 +34,7 @@ public class PakaiBedModel : IPakaiBed
         AuditTrail = auditTrail;
         ListKomponen = listKomponen?.ToList() ?? new List<PakaiBedKomponenType>();
         KelasTindakanId = string.IsNullOrWhiteSpace(kelasTindakanId) ? kelas.KelasId : kelasTindakanId;
+        LayananDkId = layananDkId ?? string.Empty;
     }
 
     public static IPakaiBed Key(string id) => new PakaiBedModel(id, PeriodePakaiBedType.Default,
@@ -44,7 +46,8 @@ public class PakaiBedModel : IPakaiBed
         LayananType layanan, BedType bed, TipeKamarType tipeKamar,
         KelasType kelas, decimal tarif,
         IEnumerable<PakaiBedKomponenType>? listKomponen = null,
-        string kelasTindakanId = "")
+        string kelasTindakanId = "",
+        string layananDkId = "")
     {
         var newId = NunaId.NewLegacy("BE", 'A');
         var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
@@ -52,7 +55,7 @@ public class PakaiBedModel : IPakaiBed
             new PeriodePakaiBedType(masuk, AuditInfoType.Default),
             reg.ToReff(), layanan.ToReff(), bed.ToReff(), tipeKamar.ToReff(),
             kelas.ToReff(), tarif, auditTrail,
-            listKomponen, kelasTindakanId);
+            listKomponen, kelasTindakanId, layananDkId);
     }
 
     public void Void(string userId, DateTime voidDateTime)
@@ -83,6 +86,7 @@ public class PakaiBedModel : IPakaiBed
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<PakaiBedKomponenType> ListKomponen { get; private set; }
     public string KelasTindakanId { get; private set; }
+    public string LayananDkId { get; private set; }
 }
 
 public record PeriodePakaiBedType
