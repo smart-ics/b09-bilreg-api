@@ -18,6 +18,7 @@ using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
@@ -776,5 +777,162 @@ public class PakaiBedVoidCommandTest
 
         // Assert
         _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-VOID-001", false, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCancelScopeIsBayi_UnbindsRoomingInBaby_PreservesMotherActiveInBed_AndRevertsBabyWaitingList()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_MOTHER_SCOPE", "REG_MOTHER_SCOPE", "LAY01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_MOTHER_SCOPE")))
+            .Returns(MayBe.From(motherBed));
+
+        _billingLockCheckerMock
+            .Setup(x => x.CheckIsBillingLocked(It.IsAny<string>()))
+            .Returns(false);
+
+        var now = new DateTime(2026, 11, 10, 8, 30, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        _pakaiBedDalMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_MOTHER_SCOPE"))
+            .ReturnsAsync(new List<string> { "REG_BABY_SCOPE" });
+
+        _pakaiBedDalMock
+            .Setup(x => x.VoidRoomingInBabyAsync("PKB_MOTHER_SCOPE", "nurse_v", "Batal Bayi Saja", now))
+            .ReturnsAsync(new List<string> { "BSL11" });
+
+        var babyWl = WaitingListModel.Create(
+            "REG_BABY_SCOPE",
+            new PasienReff("MR_BABY_S", "By. Ny. Scope", new DateOnly(2026, 11, 9), "P"),
+            new KelasReff("KL01", "Kelas 1"),
+            new BangsalReff("BSL11", "Bangsal Perinatologi"),
+            0,
+            "admin",
+            now.AddHours(-3))
+            .Place("BED01", "PKB_BABY_SCOPE", "admin", now.AddHours(-1));
+
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_BABY_SCOPE"))
+            .Returns(new[] { babyWl });
+
+        var cmd = new PakaiBedVoidCommand("PKB_MOTHER_SCOPE", "nurse_v", "Batal Bayi Saja", "Mozilla/5.0", "127.0.0.1", CancelScope: "bayi");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert 1: Mother's PakaiBed is NOT voided
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB_MOTHER_SCOPE" && m.AuditTrail.IsVoided)), Times.Never);
+
+        // Assert 2: DAL VoidRoomingInBabyAsync was called
+        _pakaiBedDalMock.Verify(x => x.VoidRoomingInBabyAsync("PKB_MOTHER_SCOPE", "nurse_v", "Batal Bayi Saja", now), Times.Once);
+
+        // Assert 3: Baby waiting list reverted to Waiting
+        _waitingListRepoMock.Verify(x => x.SaveChanges(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_BABY_SCOPE" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting
+        )), Times.Once);
+
+        // Assert 4: Bed operational was NOT marked CleaningRequired (Mother still active)
+        _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.IsAny<BedOperationalModel>()), Times.Never);
+
+        // Assert 5: EMR Gateway called with isGabung: true
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG_BABY_SCOPE", true, It.IsAny<CancellationToken>()), Times.Once);
+
+        // Assert 6: SignalR broadcast Occupied to mother's bed & WaitingList to baby's ward
+        _eventPublisherMock.Verify(x => x.PublishBedStatusChangedAsync("LAY01", "BED01", "Occupied", null, It.IsAny<CancellationToken>()), Times.Once);
+        _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("LAY01", It.IsAny<CancellationToken>()), Times.Once);
+        _eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("BSL11", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCancelScopeIsBayi_AndBabyHasActiveTindakan_ThrowsInvalidOperationException_ZeroTransactionInvariant()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_MOTHER_TDK", "REG_MOTHER_TDK", "LAY01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_MOTHER_TDK")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedDalMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_MOTHER_TDK"))
+            .ReturnsAsync(new List<string> { "REG_BABY_TDK" });
+
+        var tindakanMock = new TindakanView(
+            "TDK-001",
+            DateTime.Now,
+            "ORD-001",
+            new RegReff("REG_BABY_TDK", "PAS_B", "By"),
+            new LayananReff("LAY01", "Mawar"),
+            new TarifReff("TRF01", "Pemeriksaan Neonatus"));
+
+        _tindakanRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY_TDK")))
+            .Returns(new[] { tindakanMock });
+
+        var cmd = new PakaiBedVoidCommand("PKB_MOTHER_TDK", "nurse_v", "Batal Bayi", "Mozilla/5.0", "127.0.0.1", CancelScope: "bayi");
+
+        // Act & Assert
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Tindakan bayi harus dibatalkan/void terlebih dahulu sebelum membatalkan penempatan.*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCancelScopeIsKeduanya_VoidsBedAndUnbindsRoomingInBaby()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_MOTHER_ALL", "REG_MOTHER_ALL", "LAY01");
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_MOTHER_ALL")))
+            .Returns(MayBe.From(motherBed));
+
+        _billingLockCheckerMock
+            .Setup(x => x.CheckIsBillingLocked(It.IsAny<string>()))
+            .Returns(false);
+
+        var now = new DateTime(2026, 11, 10, 9, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+
+        _pakaiBedDalMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_MOTHER_ALL"))
+            .ReturnsAsync(new List<string> { "REG_BABY_ALL" });
+
+        var babyWl = WaitingListModel.Create(
+            "REG_BABY_ALL",
+            new PasienReff("MR_BABY_ALL", "By. Ny. All", new DateOnly(2026, 11, 9), "P"),
+            new KelasReff("KL01", "Kelas 1"),
+            new BangsalReff("BSL11", "Bangsal Perinatologi"),
+            0,
+            "admin",
+            now.AddHours(-3))
+            .Place("BED01", "PKB_BABY_ALL", "admin", now.AddHours(-1));
+
+        _waitingListRepoMock
+            .Setup(x => x.ListByRegId("REG_BABY_ALL"))
+            .Returns(new[] { babyWl });
+
+        var cmd = new PakaiBedVoidCommand("PKB_MOTHER_ALL", "nurse_v", "Batal Keduanya", "Mozilla/5.0", "127.0.0.1", CancelScope: "keduanya");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert 1: Mother's PakaiBed is voided
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB_MOTHER_ALL" && m.AuditTrail.IsVoided)), Times.Once);
+
+        // Assert 2: DAL VoidBedAndRoomChargeAsync was called
+        _pakaiBedDalMock.Verify(x => x.VoidBedAndRoomChargeAsync("PKB_MOTHER_ALL", "nurse_v", "Batal Keduanya", now), Times.Once);
+
+        // Assert 3: Baby waiting list reverted to Waiting
+        _waitingListRepoMock.Verify(x => x.SaveChanges(It.Is<WaitingListModel>(w =>
+            w.RegId == "REG_BABY_ALL" &&
+            w.WaitingListStatus == WaitingListStatusEnum.Waiting
+        )), Times.Once);
+
+        // Assert 4: Bed operational marked CleaningRequired (entire bed vacated)
+        _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.Is<BedOperationalModel>(b =>
+            b.CurrentReadiness == BedReadinessStatusEnum.CleaningRequired
+        )), Times.Once);
     }
 }

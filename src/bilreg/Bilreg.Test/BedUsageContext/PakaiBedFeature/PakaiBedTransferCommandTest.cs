@@ -445,6 +445,268 @@ public class PakaiBedTransferCommandTest
         result.TargetBedId.Should().Be("BED02");
     }
 
+    private static PakaiBedModel CreateActiveBabyPakaiBed(string pakaiBedId = "PKB_BABY01", string bedId = "BED01", decimal tarif = 0m, string regId = "REG_BABY01")
+    {
+        var masuk = new AuditInfoType("usr_in", new DateTime(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc));
+        var periode = new PeriodePakaiBedType(masuk, AuditInfoType.Default);
+        var reg = new RegReff(regId, "PAS_" + regId, "Bayi Ny Budi");
+        var layanan = new LayananReff("LYN01", "Bangsal Mawar");
+        var bed = new BedReff(bedId, "Bed 01", true);
+        var tipeKamar = new TipeKamarReff("TK01", "Standard", true);
+        var kelas = new KelasReff("KLS01", "Kelas 1");
+        var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
+
+        return new PakaiBedModel(
+            pakaiBedId,
+            periode,
+            reg,
+            layanan,
+            bed,
+            tipeKamar,
+            kelas,
+            tarif,
+            auditTrail);
+    }
+
+    [Fact]
+    public async Task Handle_MotherScope_WithRoomingInBaby_CascadesBabyTransferToTargetBedWithZeroTariffAndMarksOldBedDirty()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        var babyBed = CreateActiveBabyPakaiBed("PKB_BABY01", "BED01", 0m);
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY01")))
+            .Returns(MayBe.From(babyBed));
+
+        _pakaiBedRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(new[] { babyBed });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", It.IsAny<string?>()))
+            .ReturnsAsync(new List<string> { "PKB_BABY01" });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string> { "REG_BABY01" });
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG001")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY01")));
+
+        var transferTime = new DateTime(2026, 10, 24, 11, 0, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Pindah ibu dan bayi rawat gabung",
+            TransferScope: "ibu",
+            BabyRegId: "REG_BABY01"
+        );
+
+        var savedModels = new List<PakaiBedModel>();
+        var savedOperationalModels = new List<BedOperationalModel>();
+
+        _pakaiBedRepoMock.Setup(x => x.SaveChanges(It.IsAny<PakaiBedModel>()))
+            .Callback<PakaiBedModel>(model => savedModels.Add(model));
+        _bedOperationalRepoMock.Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(op => savedOperationalModels.Add(op));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+        result.PakaiBedLamaId.Should().Be("PKB001");
+        result.TargetBedId.Should().Be("BED02");
+        result.BabyPakaiBedBaruId.Should().NotBeNullOrWhiteSpace();
+
+        // 1. Mother old bed released
+        oldBed.Periode.Keluar.UserId.Should().Be("nurse_01");
+        oldBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+
+        // 2. Baby old bed released
+        babyBed.Periode.Keluar.UserId.Should().Be("nurse_01");
+        babyBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+
+        // 3. Old bed operational marked CleaningRequired
+        var oldOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED01");
+        oldOp.Should().NotBeNull();
+        oldOp!.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+
+        // 4. Target bed operational epoch advanced
+        var targetOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED02");
+        targetOp.Should().NotBeNull();
+        targetOp!.OccupancyEpoch.Should().Be(_targetOperationalReady.OccupancyEpoch + 1);
+
+        // 5. Mother new bed created with normal tariff
+        var motherNewBed = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG001" && x.Bed.BedId == "BED02");
+        motherNewBed.Should().NotBeNull();
+        motherNewBed!.Tarif.Should().Be(250000m);
+
+        // 6. Baby new bed created on BED02 with 0m tariff (maintaining rooming-in)
+        var babyNewBed = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG_BABY01" && x.Bed.BedId == "BED02");
+        babyNewBed.Should().NotBeNull();
+        babyNewBed!.Tarif.Should().Be(0m);
+        babyNewBed.KelasTindakanId.Should().Be(motherNewBed.KelasTindakanId);
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_InvokedFromMotherBed_TransfersOnlyBabyToTargetBedWithNormalRateAndDoesNotMarkOldBedDirty()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        var babyBed = CreateActiveBabyPakaiBed("PKB_BABY01", "BED01", 0m);
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY01")))
+            .Returns(MayBe.From(babyBed));
+
+        _pakaiBedRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(new[] { babyBed });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", "REG_BABY01"))
+            .ReturnsAsync(new List<string> { "PKB_BABY01" });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string> { "REG_BABY01" });
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG001")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY01")));
+
+        var transferTime = new DateTime(2026, 10, 24, 11, 0, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Bayi dipindahkan ke inkubator NICU",
+            TransferScope: "bayi",
+            BabyRegId: "REG_BABY01"
+        );
+
+        var savedModels = new List<PakaiBedModel>();
+        var savedOperationalModels = new List<BedOperationalModel>();
+
+        _pakaiBedRepoMock.Setup(x => x.SaveChanges(It.IsAny<PakaiBedModel>()))
+            .Callback<PakaiBedModel>(model => savedModels.Add(model));
+        _bedOperationalRepoMock.Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(op => savedOperationalModels.Add(op));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.PakaiBedLamaId.Should().Be("PKB_BABY01");
+        result.TargetBedId.Should().Be("BED02");
+        result.PakaiBedBaruId.Should().NotBeNullOrWhiteSpace();
+
+        // 1. Mother bed remains ACTIVE and NOT released!
+        oldBed.Periode.Keluar.Timestamp.Should().Be(new DateTime(3000, 1, 1));
+        savedModels.Should().NotContain(x => x.PakaiBedId == "PKB001");
+
+        // 2. Baby old bed IS released
+        babyBed.Periode.Keluar.UserId.Should().Be("nurse_01");
+        babyBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+
+        // 3. Old bed operational BED01 was NOT marked CleaningRequired!
+        savedOperationalModels.Should().NotContain(x => x.BedId == "BED01");
+
+        // 4. Target bed operational BED02 advanced epoch
+        var targetOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED02");
+        targetOp.Should().NotBeNull();
+        targetOp!.OccupancyEpoch.Should().Be(_targetOperationalReady.OccupancyEpoch + 1);
+
+        // 5. Baby new bed created on BED02 with NORMAL rate (independent occupancy)
+        var babyNewBed = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG_BABY01" && x.Bed.BedId == "BED02");
+        babyNewBed.Should().NotBeNull();
+        babyNewBed!.Tarif.Should().Be(250000m);
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_InvokedDirectlyWithBabyPakaiBedId_TransfersBabyWithoutCleaningOldBed()
+    {
+        // Arrange
+        var babyBed = CreateActiveBabyPakaiBed("PKB_BABY01", "BED01", 0m);
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY01")))
+            .Returns(MayBe.From(babyBed));
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG001")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY01")));
+
+        var transferTime = new DateTime(2026, 10, 24, 11, 0, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB_BABY01",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Pindah mandiri bayi",
+            TransferScope: "bayi"
+        );
+
+        var savedModels = new List<PakaiBedModel>();
+        var savedOperationalModels = new List<BedOperationalModel>();
+
+        _pakaiBedRepoMock.Setup(x => x.SaveChanges(It.IsAny<PakaiBedModel>()))
+            .Callback<PakaiBedModel>(model => savedModels.Add(model));
+        _bedOperationalRepoMock.Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(op => savedOperationalModels.Add(op));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.PakaiBedLamaId.Should().Be("PKB_BABY01");
+        result.TargetBedId.Should().Be("BED02");
+
+        // Old bed operational was NOT set to CleaningRequired
+        savedOperationalModels.Should().NotContain(x => x.BedId == "BED01");
+
+        // Baby new bed created with normal rate
+        var babyNewBed = savedModels.FirstOrDefault(x => x.Bed.BedId == "BED02");
+        babyNewBed.Should().NotBeNull();
+        babyNewBed!.Tarif.Should().Be(250000m);
+    }
+
+    [Fact]
+    public void SystemTextJson_Deserialize_WithScopeAndBabyRegId_ShouldSucceed()
+    {
+        // Arrange
+        var json = """
+        {
+            "pakaiBedId": "PKB001",
+            "targetBedId": "BED02",
+            "userId": "nurse_01",
+            "tglJamTransfer": "2026-02-11T11:58:28",
+            "alasanPindah": "Pindah kamar VIP",
+            "transferScope": "bayi",
+            "babyRegId": "REG_BABY01"
+        }
+        """;
+
+        // Act
+        var result = System.Text.Json.JsonSerializer.Deserialize<PakaiBedTransferCommand>(json, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.PakaiBedId.Should().Be("PKB001");
+        result.TargetBedId.Should().Be("BED02");
+        result.UserId.Should().Be("nurse_01");
+        result.TransferScope.Should().Be("bayi");
+        result.BabyRegId.Should().Be("REG_BABY01");
+    }
+
     [Fact]
     public void SystemTextJson_Deserialize_ShouldSucceed()
     {
@@ -472,5 +734,181 @@ public class PakaiBedTransferCommandTest
         result.UserId.Should().Be("nurse_01");
         result.TglJamTransfer.Should().Be(new DateTime(2026, 2, 11, 11, 58, 28));
         result.AlasanPindah.Should().Be("Pindah kamar VIP");
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_WhenNoBabyRecordFound_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", null))
+            .ReturnsAsync(new List<string>());
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string>());
+
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: DateTime.UtcNow,
+            AlasanPindah: "Pindah mandiri bayi tanpa record",
+            TransferScope: "bayi"
+        );
+
+        // Act & Assert
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Rooming-in baby record not found*");
+    }
+
+    [Fact]
+    public async Task Handle_MotherScope_WithMultipleRoomingInBabies_CascadesAllBabiesToTargetBed()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        var babyBed1 = CreateActiveBabyPakaiBed("PKB_BABY01", "BED01", 0m, "REG_BABY01");
+        var babyBed2 = CreateActiveBabyPakaiBed("PKB_BABY02", "BED01", 0m, "REG_BABY02");
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY01")))
+            .Returns(MayBe.From(babyBed1));
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY02")))
+            .Returns(MayBe.From(babyBed2));
+
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string> { "REG_BABY01", "REG_BABY02" });
+
+        _pakaiBedRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(new[] { babyBed1 });
+        _pakaiBedRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY02")))
+            .Returns(new[] { babyBed2 });
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG001")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY01")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY02")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY02")));
+
+        var transferTime = new DateTime(2026, 10, 24, 11, 0, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Pindah ibu dan bayi kembar",
+            TransferScope: "ibu"
+        );
+
+        var savedModels = new List<PakaiBedModel>();
+        var savedOperationalModels = new List<BedOperationalModel>();
+
+        _pakaiBedRepoMock.Setup(x => x.SaveChanges(It.IsAny<PakaiBedModel>()))
+            .Callback<PakaiBedModel>(model => savedModels.Add(model));
+        _bedOperationalRepoMock.Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(op => savedOperationalModels.Add(op));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+
+        // Old bed BED01 marked CleaningRequired
+        var oldOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED01");
+        oldOp.Should().NotBeNull();
+        oldOp!.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+
+        // Target bed BED02 advanced epoch
+        var targetOp = savedOperationalModels.FirstOrDefault(x => x.BedId == "BED02");
+        targetOp.Should().NotBeNull();
+
+        // 3 new bed records created on BED02: Mother, Baby 1 (0m), Baby 2 (0m)
+        var motherNew = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG001" && x.Bed.BedId == "BED02");
+        var baby1New = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG_BABY01" && x.Bed.BedId == "BED02");
+        var baby2New = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG_BABY02" && x.Bed.BedId == "BED02");
+
+        motherNew.Should().NotBeNull();
+        motherNew!.Tarif.Should().Be(250000m);
+
+        baby1New.Should().NotBeNull();
+        baby1New!.Tarif.Should().Be(0m);
+        baby1New.KelasTindakanId.Should().Be(motherNew.KelasTindakanId);
+
+        baby2New.Should().NotBeNull();
+        baby2New!.Tarif.Should().Be(0m);
+        baby2New.KelasTindakanId.Should().Be(motherNew.KelasTindakanId);
+    }
+
+    [Fact]
+    public async Task Handle_MotherScope_WithRoomingInBaby_BabyInheritsMotherKelasTindakanIdOnTargetBed()
+    {
+        // Arrange
+        var oldBed = CreateActiveOldPakaiBed("PKB001");
+        var babyBed = CreateActiveBabyPakaiBed("PKB_BABY01", "BED01", 0m);
+
+        // Mother targets bed with specific Kelas
+        var targetKamarCustomKelas = _defaultKamarTarget with
+        {
+            Kelas = new KelasReff("KLS_VIP", "Kelas VIP")
+        };
+        var targetKelasCustom = KelasType.Default with { KelasId = "KLS_VIP", KelasName = "Kelas VIP" };
+
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.Is<IKamarKey>(k => k.KamarId == "KMR02")))
+            .Returns(MayBe.From(targetKamarCustomKelas));
+        _kelasRepoMock.Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "KLS_VIP")))
+            .Returns(MayBe.From(targetKelasCustom));
+
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(oldBed));
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BABY01")))
+            .Returns(MayBe.From(babyBed));
+
+        _pakaiBedRepoMock.Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(new[] { babyBed });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", It.IsAny<string?>()))
+            .ReturnsAsync(new List<string> { "PKB_BABY01" });
+        _pakaiBedRepoMock.Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string> { "REG_BABY01" });
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG001")));
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BABY01")))
+            .Returns(MayBe.From((RegModel)RegModel.Key("REG_BABY01")));
+
+        var transferTime = new DateTime(2026, 10, 24, 11, 0, 0, DateTimeKind.Utc);
+        var cmd = new PakaiBedTransferCommand(
+            PakaiBedId: "PKB001",
+            TargetBedId: "BED02",
+            UserId: "nurse_01",
+            TglJamTransfer: transferTime,
+            AlasanPindah: "Pindah ibu dan bayi rawat gabung ke VIP",
+            TransferScope: "ibu",
+            BabyRegId: "REG_BABY01"
+        );
+
+        var savedModels = new List<PakaiBedModel>();
+        _pakaiBedRepoMock.Setup(x => x.SaveChanges(It.IsAny<PakaiBedModel>()))
+            .Callback<PakaiBedModel>(model => savedModels.Add(model));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        var motherNewBed = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG001" && x.Bed.BedId == "BED02");
+        var babyNewBed = savedModels.FirstOrDefault(x => x.Reg.RegId == "REG_BABY01" && x.Bed.BedId == "BED02");
+
+        motherNewBed.Should().NotBeNull();
+        babyNewBed.Should().NotBeNull();
+        motherNewBed!.KelasTindakanId.Should().Be("KLS_VIP");
+        babyNewBed!.KelasTindakanId.Should().Be("KLS_VIP");
+        babyNewBed.KelasTindakanId.Should().Be(motherNewBed.KelasTindakanId);
     }
 }
