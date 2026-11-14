@@ -10,6 +10,7 @@ public record AdmProcessReservationCmd(
     string BangsalId,
     string UserId,
     AdmissionRegistrationData Registration,
+    bool IsBbl = false,
     string? KelasId = null,
     int Priority = 3) : IRequest<AdmProcessAdmissionResponse>, IReservationKey;
 

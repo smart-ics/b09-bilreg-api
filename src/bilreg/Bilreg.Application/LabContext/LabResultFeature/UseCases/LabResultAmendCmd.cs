@@ -52,9 +52,10 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
         var current = _labResultDocumentRepo.LoadByOrderId(request.OrderId)
             .GetValueOrThrow($"LabResultDocument untuk order '{request.OrderId}' tidak ditemukan.");
 
-        if (current.ResultStatus != LabResultStatusEnum.Verified)
+        if (current.ResultStatus != LabResultStatusEnum.Verified
+            && current.ResultStatus != LabResultStatusEnum.Released)
             throw new InvalidOperationException(
-                $"Hasil untuk order '{request.OrderId}' berstatus {current.ResultStatus}; amend hanya diperbolehkan untuk hasil Verified.");
+                $"Hasil untuk order '{request.OrderId}' berstatus {current.ResultStatus}; amend hanya diperbolehkan untuk hasil Verified atau Released.");
 
         var scaffold = _scaffoldService.BuildFromOrder(order);
         var regeneratedItems = _scaffoldService.BuildStructureOnlyItems(scaffold);
