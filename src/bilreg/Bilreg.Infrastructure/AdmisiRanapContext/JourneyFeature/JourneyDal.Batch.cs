@@ -284,7 +284,7 @@ public sealed partial class JourneyDal
                  WaitingListId ASC
         """;
 
-    private static string BuildRegExtrasSelectSql() =>
+    internal static string BuildRegExtrasSelectSql() =>
         """
         SELECT
             reg.fs_kd_reg AS RegId,
@@ -294,11 +294,23 @@ public sealed partial class JourneyDal
             ISNULL(kl.fs_nm_kelas,'') AS KelasName,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
-            ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
+            ISNULL(reg.fs_kd_jenis_inap,'') AS JenisInapId,
+            ISNULL(ji.fs_nm_jenis_inap,'') AS JenisInapName,
+            ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId,
+            ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName,
+            ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId,
+            ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName,
+            ISNULL(reg.fs_reg_ibu,'') AS RegIbuId,
+            ISNULL(ibuMr.fs_nm_pasien,'') AS NamaIbu
         FROM ta_registrasi reg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
         LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
         LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = reg.fs_kd_reg
+        LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
+        LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap
+        LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk
+        LEFT JOIN ta_registrasi ibuReg ON reg.fs_reg_ibu = ibuReg.fs_kd_reg
+        LEFT JOIN tc_mr ibuMr ON ibuReg.fs_mr = ibuMr.fs_mr
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
@@ -463,14 +475,24 @@ public sealed partial class JourneyDal
             extras ?? RegExtras.Empty);
     }
 
-    private static RegExtras MapRegExtras(RegExtrasBatchRowDto row) =>
-        new(
+    internal static RegExtras MapRegExtras(RegExtrasBatchRowDto row)
+    {
+        var effectiveRegIbu = (string.IsNullOrWhiteSpace(row.RegIbuId) || row.RegIbuId.All(c => c == '0' || c == '-')) ? null : row.RegIbuId.Trim();
+        var effectiveNamaIbu = string.IsNullOrWhiteSpace(row.NamaIbu) ? null : row.NamaIbu.Trim();
+
+        return new(
             Named(row.TipeJaminanId, row.TipeJaminanName),
             Named(row.KelasId, row.KelasName),
             Named(row.DokterId, row.DokterName),
             string.IsNullOrWhiteSpace(row.ProsedurMasukId) ? null : $"Prosedur masuk: {row.ProsedurMasukId}",
             null,
-            null);
+            null,
+            Named(row.JenisInapId, row.JenisInapName),
+            Named(row.ProsedurMasukId, row.ProsedurMasukName),
+            Named(row.CaraMasukId, row.CaraMasukName),
+            effectiveRegIbu,
+            effectiveNamaIbu);
+    }
 
     private sealed record ExpandedFactBatch(
         IReadOnlyList<OpnameRowDto> Opnames,
@@ -479,7 +501,7 @@ public sealed partial class JourneyDal
         IReadOnlyList<WaitingListRowDto> WaitingLists,
         IReadOnlyList<RegExtrasBatchRowDto> RegExtras);
 
-    private sealed record RegExtrasBatchRowDto(
+    internal sealed record RegExtrasBatchRowDto(
         string RegId,
         string TipeJaminanId,
         string TipeJaminanName,
@@ -487,5 +509,15 @@ public sealed partial class JourneyDal
         string KelasName,
         string DokterId,
         string DokterName,
-        string ProsedurMasukId);
+        string JenisInapId,
+        string JenisInapName,
+        string ProsedurMasukId,
+        string ProsedurMasukName,
+        string CaraMasukId,
+        string CaraMasukName,
+        string RegIbuId = "",
+        string NamaIbu = "")
+    {
+        public RegExtrasBatchRowDto() : this("", "", "", "", "", "", "", "", "", "", "", "", "", "", "") { }
+    }
 }

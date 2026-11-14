@@ -286,6 +286,8 @@ public class RegInapModel : IRegKey
         ProsedurMasukInap = prosedurMasukInap;
     }
 
+    public void ChangeProsedurMasuk(ProsedurMasukInapType prosedurMasukInap) => SetProsedurMasukInap(prosedurMasukInap);
+
     #endregion
 
     #region PRIVATE

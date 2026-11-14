@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
@@ -213,6 +214,98 @@ public class AdmissionRegistrationOrchestratorTest
         harness.OpnameRepo.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Never);
         harness.AuditRepo.Verify(x => x.SaveChanges(It.IsAny<Domain.Shared.AuditLogFeature.AuditLog>()), Times.Never);
         harness.Publisher.Verify(x => x.PublishRanapCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GivenBblOpnameRequest_WhenRegIbuIdMissingOrWhitespace_ThenRejectsWithValidationException(string? missingRegIbuId)
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { IsBbl = true, RegIbuId = missingRegIbuId });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("Pasien BBL wajib menyertakan Register Ibu yang valid.");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenBblReservation_WhenRegIbuIdMissingOrWhitespace_ThenRejectsWithValidationException()
+    {
+        var harness = CreateReservationHarness();
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2",
+            RegistrationData(),
+            IsBbl: true);
+
+        var act = () => harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("Pasien BBL wajib menyertakan Register Ibu yang valid.");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenBblOpnameRequest_WhenRegIbuIdValid_ThenProcessesSuccessfully()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { IsBbl = true, RegIbuId = "REG-IBU-001", JenisInapId = "3" });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.SavedRegAktif.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Once);
+        harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenBblReservation_WhenRegIbuIdValid_ThenProcessesSuccessfully()
+    {
+        var harness = CreateReservationHarness();
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2",
+            RegistrationData() with { RegIbuId = "REG-IBU-002" },
+            IsBbl: true);
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
+        harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNonBblRequest_WhenRegIbuIdEmpty_ThenProcessesSuccessfullyWithoutValidationException()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { IsBbl = false, JenisInapId = "3", RegIbuId = null });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
     }
 
     [Fact]

@@ -30,7 +30,9 @@ public record LabResultPdfView(
     string VerifiedUserId,
     string AmendmentReason,
     int PreviousVersionNo,
-    IEnumerable<LabResultPdfItemView> Items);
+    IEnumerable<LabResultPdfItemView> Items,
+    string ExpertiseNote = "",
+    string CriticalNote = "");
 
 public record LabResultPdfItemView(
     string TestName,
@@ -85,6 +87,8 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             LabResultStatusEnum.Draft => "Draft",
             LabResultStatusEnum.Recorded => "Recorded (belum diverifikasi)",
             LabResultStatusEnum.Verified => "Verified",
+            LabResultStatusEnum.Released => "Released",
+            LabResultStatusEnum.Amended => "Amended (tidak aktif)",
             _ => result.ResultStatus.ToString()
         };
 
@@ -107,7 +111,9 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             VerifiedUserId: result.VerifiedUserId,
             AmendmentReason: result.AmendmentReason,
             PreviousVersionNo: previousVersionNo,
-            Items: result.Items.Select(MapItem).ToList());
+            Items: result.Items.Select(MapItem).ToList(),
+            ExpertiseNote: result.ExpertiseNote,
+            CriticalNote: result.CriticalNote);
     }
 
     private static LabResultPdfItemView MapItem(LabResultItemModel item)
@@ -125,6 +131,7 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
         {
             LabResultFlagEnum.Low => "L",
             LabResultFlagEnum.High => "H",
+            LabResultFlagEnum.Critical => "C",
             LabResultFlagEnum.Normal => "",
             _ => ""
         };

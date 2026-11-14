@@ -36,12 +36,14 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 ResultSource, ResultStatus,
                 RecordedDate, RecordedUserId, VerifiedDate, VerifiedUserId,
                 AmendmentReason, AmendedDate, AmendedUserId, PreviousVersionId,
+                ExpertiseNote, CriticalNote,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @ResultDocumentId, @OrderId, @VersionNo, @IsCurrentVersion,
                 @ResultSource, @ResultStatus,
                 @RecordedDate, @RecordedUserId, @VerifiedDate, @VerifiedUserId,
                 @AmendmentReason, @AmendedDate, @AmendedUserId, @PreviousVersionId,
+                @ExpertiseNote, @CriticalNote,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -66,6 +68,8 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 AmendedDate = @AmendedDate,
                 AmendedUserId = @AmendedUserId,
                 PreviousVersionId = @PreviousVersionId,
+                ExpertiseNote = @ExpertiseNote,
+                CriticalNote = @CriticalNote,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -95,6 +99,7 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 aa.ResultSource, aa.ResultStatus,
                 aa.RecordedDate, aa.RecordedUserId, aa.VerifiedDate, aa.VerifiedUserId,
                 aa.AmendmentReason, aa.AmendedDate, aa.AmendedUserId, aa.PreviousVersionId,
+                aa.ExpertiseNote, aa.CriticalNote,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabResultDocument aa
             WHERE aa.ResultDocumentId = @ResultDocumentId
@@ -115,6 +120,7 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 aa.ResultSource, aa.ResultStatus,
                 aa.RecordedDate, aa.RecordedUserId, aa.VerifiedDate, aa.VerifiedUserId,
                 aa.AmendmentReason, aa.AmendedDate, aa.AmendedUserId, aa.PreviousVersionId,
+                aa.ExpertiseNote, aa.CriticalNote,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabResultDocument aa
             WHERE aa.OrderId = @OrderId
@@ -147,6 +153,8 @@ public class LabResultDocumentDal : ILabResultDocumentDal
         dp.AddParam("@AmendedDate", dto.AmendedDate, SqlDbType.DateTime);
         dp.AddParam("@AmendedUserId", dto.AmendedUserId, SqlDbType.VarChar);
         dp.AddParam("@PreviousVersionId", dto.PreviousVersionId, SqlDbType.VarChar);
+        dp.AddParam("@ExpertiseNote", dto.ExpertiseNote, SqlDbType.VarChar);
+        dp.AddParam("@CriticalNote", dto.CriticalNote, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
