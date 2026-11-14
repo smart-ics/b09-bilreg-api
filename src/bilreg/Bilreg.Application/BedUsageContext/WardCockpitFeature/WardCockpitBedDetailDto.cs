@@ -12,7 +12,10 @@ public record WardCockpitBedDetailBedInfoDto(
     string BedId,
     string BedCode,
     string RoomName,
-    string KelasKamar
+    string KelasKamar,
+    string LayananId = "",
+    string BangsalId = "",
+    string KelasId = ""
 );
 
 public record WardCockpitBedDetailOccupancyDto(
@@ -28,7 +31,12 @@ public record WardCockpitBedDetailOccupancyDto(
     string? BabyName = null,
     string? BabyRegId = null,
     string? BabyMrNo = null,
-    string? KdJenisInap = null
+    string? KdJenisInap = null,
+    string? BabyDpjpName = null,
+    string? BabyDpjpId = null,
+    string LayananId = "",
+    string KelasId = "",
+    string TipeTarifId = "UM"
 );
 
 public record WardCockpitBedDetailPatientDto(
@@ -56,7 +64,9 @@ public record WardCockpitBedDetailTindakanDto(
     string Petugas,
     decimal Biaya,
     string TindakanId = "",
-    bool HasJasaDokter = false
+    bool HasJasaDokter = false,
+    string RegId = "",
+    bool IsBayi = false
 );
 
 public record WardCockpitBedDetailRoomChargeDto(

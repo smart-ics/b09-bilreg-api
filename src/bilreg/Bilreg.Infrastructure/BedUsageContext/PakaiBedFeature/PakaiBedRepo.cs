@@ -52,4 +52,10 @@ public class PakaiBedRepo : IPakaiBedRepo
 
     public Task<List<string>> GetRoomingInBabyRegIdsAsync(string pakaiBedId)
         => _dal.GetRoomingInBabyRegIdsAsync(pakaiBedId);
+
+    public Task<List<string>> GetRoomingInBabyTrsIdsAsync(string bedId, string? babyRegId = null)
+        => _dal.GetRoomingInBabyTrsIdsAsync(bedId, babyRegId);
+
+    public Task<List<string>> ReleaseRoomingInBabyAsync(string bedId, string? babyRegId, string userId, DateTime dischargeTime)
+        => _dal.ReleaseRoomingInBabyAsync(bedId, babyRegId, userId, dischargeTime);
 }

@@ -51,11 +51,17 @@ public class TransferToWardWaitingListCommandTest
         _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 3, 10, 0, 0));
     }
 
-    private static PakaiBedModel CreateTestBed(string pakaiBedId = "PKB001", string bedId = "BED01", string regId = "REG001")
+    private static PakaiBedModel CreateTestBed(
+        string pakaiBedId = "PKB001",
+        string bedId = "BED01",
+        string regId = "REG001",
+        decimal tarif = 300000m,
+        string pasienId = "PAS001",
+        string pasienName = "Pasien A")
     {
         var masuk = new AuditInfoType("usr_in", new DateTime(2026, 10, 15, 10, 0, 0));
         var periode = new PeriodePakaiBedType(masuk, AuditInfoType.Default);
-        var reg = new RegReff(regId, "PAS001", "Pasien A");
+        var reg = new RegReff(regId, pasienId, pasienName);
         var layanan = new LayananReff("LAY01", "Ranap Mawar");
         var bed = new BedReff(bedId, "Bed 01", true);
         var tipeKamar = new TipeKamarReff("TK01", "Standar", true);
@@ -70,8 +76,32 @@ public class TransferToWardWaitingListCommandTest
             bed,
             tipeKamar,
             kelas,
-            300000m,
+            tarif,
             auditTrail);
+    }
+
+    private static RegModel CreateTestBabyReg(string regId = "REG_BAYI", string motherRegId = "REG_IBU")
+    {
+        return new RegModel(
+            regId,
+            new DateOnly(2026, 10, 16),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            new PasienReff("PAS_BAYI", "Bayi Ny A", new DateOnly(2026, 10, 16), "L"),
+            new TipeJaminanReff("TJ01", "Umum"),
+            new PolisReff("-", "-", "-"),
+            new KelasReff("KL01", "Kelas 1"),
+            CaraMasukDkType.Default,
+            new RujukanReff("-", "-"),
+            new PpaReff("DOK01", "dr. Subroto"),
+            new LayananReff("LAY01", "Ranap Mawar"),
+            new KarcisReff("-", "-"),
+            new RegEligibilityType("-", "-", "-"),
+            [],
+            regIbu: motherRegId);
     }
 
     private static RegModel CreateTestReg(string regId = "REG001")
@@ -482,5 +512,456 @@ public class TransferToWardWaitingListCommandTest
         savedWl.Should().NotBeNull();
         savedWl!.ClinicalUrgency.Should().Be(ClinicalUrgencyEnum.Emergency);
         savedWl.Priority.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_MotherScope_WithRoomingInBaby_CreatesWaitingListForBothMotherAndBabyAndMarksOldBedDirty()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU", 300000m);
+        var babyBed = CreateTestBed("PKB_BAYI", "BED01", "REG_BAYI", 0m, "PAS_BAYI", "Bayi Ny A");
+        var motherReg = CreateTestReg("REG_IBU");
+        var babyReg = CreateTestBabyReg("REG_BAYI", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BAYI")))
+            .Returns(MayBe.From(babyBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", "REG_BAYI"))
+            .ReturnsAsync(new List<string> { "PKB_BAYI" });
+
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(new List<PakaiBedModel> { babyBed });
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_IBU")))
+            .Returns(MayBe.From(motherReg));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(MayBe.From(babyReg));
+
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        BedOperationalModel? savedBedOp = null;
+        _bedOperationalRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<BedOperationalModel>()))
+            .Callback<BedOperationalModel>(model => savedBedOp = model);
+
+        var savedWls = new List<WaitingListModel>();
+        _waitingListRepoMock
+            .Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(model => savedWls.Add(model));
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS02",
+            transferTime,
+            "Pindah bangsal rawat inap",
+            "Catatan transfer",
+            "nurse_1",
+            TransferScope: "ibu",
+            BabyRegId: "REG_BAYI");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+        result.WaitingListId.Should().NotBeNullOrWhiteSpace();
+        result.BabyWaitingListId.Should().NotBeNullOrWhiteSpace();
+        result.WaitingListId.Should().NotBe(result.BabyWaitingListId);
+
+        // Old bed released for mother
+        motherBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(motherBed), Times.Once);
+
+        // Old bed released for baby
+        babyBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(babyBed), Times.Once);
+        _pakaiBedRepoMock.Verify(x => x.ReleaseRoomingInBabyAsync("BED01", "REG_BAYI", "nurse_1", transferTime), Times.Once);
+
+        // Old bed marked CleaningRequired
+        savedBedOp.Should().NotBeNull();
+        savedBedOp!.CurrentReadiness.Should().Be(BedReadinessStatusEnum.CleaningRequired);
+
+        // Two waiting list entries saved
+        savedWls.Should().HaveCount(2);
+        savedWls.Should().Contain(w => w.RegId == "REG_IBU");
+        savedWls.Should().Contain(w => w.RegId == "REG_BAYI");
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_InvokedFromMotherBed_CreatesWaitingListOnlyForBabyAndDoesNotMarkOldBedDirty()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU", 300000m);
+        var babyBed = CreateTestBed("PKB_BAYI", "BED01", "REG_BAYI", 0m, "PAS_BAYI", "Bayi Ny A");
+        var motherReg = CreateTestReg("REG_IBU");
+        var babyReg = CreateTestBabyReg("REG_BAYI", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS_NICU", BangsalName = "Bangsal NICU" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BAYI")))
+            .Returns(MayBe.From(babyBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", "REG_BAYI"))
+            .ReturnsAsync(new List<string> { "PKB_BAYI" });
+
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(new List<PakaiBedModel> { babyBed });
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS_NICU")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(MayBe.From(babyReg));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId("REG_BAYI"))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var savedWls = new List<WaitingListModel>();
+        _waitingListRepoMock
+            .Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(model => savedWls.Add(model));
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS_NICU",
+            transferTime,
+            "Transfer bayi ke NICU",
+            "Perlu inkubator",
+            "nurse_1",
+            TransferScope: "bayi",
+            BabyRegId: "REG_BAYI");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.WaitingListId.Should().NotBeNullOrWhiteSpace();
+        result.BabyWaitingListId.Should().Be(result.WaitingListId);
+
+        // Mother bed was NOT released
+        motherBed.Periode.Keluar.Timestamp.Should().Be(new DateTime(3000, 1, 1));
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(motherBed), Times.Never);
+
+        // Old bed operational was NOT set to cleaning
+        _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.IsAny<BedOperationalModel>()), Times.Never);
+
+        // Baby bed was released
+        babyBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(babyBed), Times.Once);
+        _pakaiBedRepoMock.Verify(x => x.ReleaseRoomingInBabyAsync("BED01", "REG_BAYI", "nurse_1", transferTime), Times.Once);
+
+        // Waiting list created ONLY for baby
+        savedWls.Should().HaveCount(1);
+        savedWls[0].RegId.Should().Be("REG_BAYI");
+        savedWls[0].Bangsal.BangsalId.Should().Be("BGS_NICU");
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_InvokedDirectlyWithBabyPakaiBedId_CreatesWaitingListOnlyForBabyAndDoesNotMarkOldBedDirty()
+    {
+        // Arrange
+        var babyBed = CreateTestBed("PKB_BAYI", "BED01", "REG_BAYI", 0m, "PAS_BAYI", "Bayi Ny A");
+        var babyReg = CreateTestBabyReg("REG_BAYI", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS_NICU", BangsalName = "Bangsal NICU" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BAYI")))
+            .Returns(MayBe.From(babyBed));
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS_NICU")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(MayBe.From(babyReg));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId("REG_BAYI"))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var savedWls = new List<WaitingListModel>();
+        _waitingListRepoMock
+            .Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(model => savedWls.Add(model));
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_BAYI",
+            "BGS_NICU",
+            transferTime,
+            "Transfer direct baby to NICU",
+            "Kondisi memburuk",
+            "nurse_1",
+            TransferScope: "bayi");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.WaitingListId.Should().NotBeNullOrWhiteSpace();
+
+        // Old bed operational was NOT set to cleaning
+        _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.IsAny<BedOperationalModel>()), Times.Never);
+
+        // Baby bed released
+        babyBed.Periode.Keluar.Timestamp.Should().Be(transferTime);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(babyBed), Times.Once);
+
+        // Only one waiting list created
+        savedWls.Should().HaveCount(1);
+        savedWls[0].RegId.Should().Be("REG_BAYI");
+    }
+
+    [Fact]
+    public void SystemTextJson_Deserialize_WithTransferScopeAndBabyRegId_ShouldSucceed()
+    {
+        // Arrange
+        var json = """
+        {
+            "pakaiBedId": "PKB001",
+            "targetBangsalId": "BGS02",
+            "tglJamTransfer": "2026-11-03T10:30:00",
+            "alasanTransfer": "Pindah bangsal",
+            "catatan": "Catatan",
+            "userId": "nurse_1",
+            "clinicalUrgency": "Cito",
+            "transferScope": "bayi",
+            "babyRegId": "REG_BAYI"
+        }
+        """;
+
+        // Act
+        var cmd = System.Text.Json.JsonSerializer.Deserialize<TransferToWardWaitingListCommand>(
+            json,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        // Assert
+        cmd.Should().NotBeNull();
+        cmd!.PakaiBedId.Should().Be("PKB001");
+        cmd.TargetBangsalId.Should().Be("BGS02");
+        cmd.TransferScope.Should().Be("bayi");
+        cmd.BabyRegId.Should().Be("REG_BAYI");
+        cmd.ClinicalUrgency.Should().Be("Cito");
+    }
+
+    [Fact]
+    public async Task Handle_BabyScope_WhenNoBabyRecordFoundAndNoBabyRegId_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var pakaiBed = CreateTestBed("PKB001", "BED01", "REG001");
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(pakaiBed));
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyTrsIdsAsync("BED01", null))
+            .ReturnsAsync(new List<string>());
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB001"))
+            .ReturnsAsync(new List<string>());
+
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB001",
+            "BGS02",
+            DateTime.Now,
+            "Transfer Bayi Mandiri",
+            null,
+            "nurse_1",
+            TransferScope: "bayi",
+            BabyRegId: null);
+
+        // Act & Assert
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Rooming-in baby record not found*");
+    }
+
+    [Fact]
+    public async Task Handle_MotherScope_WithMultipleRoomingInBabies_CreatesWaitingListForMotherAndAllBabies()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU", 300000m);
+        var babyBed1 = CreateTestBed("PKB_BAYI1", "BED01", "REG_BAYI1", 0m, "PAS_BAYI1", "Bayi Ny A 1");
+        var babyBed2 = CreateTestBed("PKB_BAYI2", "BED01", "REG_BAYI2", 0m, "PAS_BAYI2", "Bayi Ny A 2");
+        var motherReg = CreateTestReg("REG_IBU");
+        var babyReg1 = CreateTestBabyReg("REG_BAYI1", "REG_IBU");
+        var babyReg2 = CreateTestBabyReg("REG_BAYI2", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_IBU"))
+            .ReturnsAsync(new List<string> { "REG_BAYI1", "REG_BAYI2" });
+
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BAYI1")))
+            .Returns(new List<PakaiBedModel> { babyBed1 });
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BAYI2")))
+            .Returns(new List<PakaiBedModel> { babyBed2 });
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_IBU")))
+            .Returns(MayBe.From(motherReg));
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI1")))
+            .Returns(MayBe.From(babyReg1));
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI2")))
+            .Returns(MayBe.From(babyReg2));
+
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var savedWls = new List<WaitingListModel>();
+        _waitingListRepoMock
+            .Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(model => savedWls.Add(model));
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS02",
+            transferTime,
+            "Pindah bangsal ibu dan bayi kembar",
+            null,
+            "nurse_1",
+            TransferScope: "ibu");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+
+        // 3 waiting list records created: Mother, Baby 1, Baby 2
+        savedWls.Should().HaveCount(3);
+        savedWls.Should().Contain(w => w.RegId == "REG_IBU");
+        savedWls.Should().Contain(w => w.RegId == "REG_BAYI1");
+        savedWls.Should().Contain(w => w.RegId == "REG_BAYI2");
     }
 }
