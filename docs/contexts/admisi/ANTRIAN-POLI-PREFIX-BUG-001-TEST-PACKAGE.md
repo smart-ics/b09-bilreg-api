@@ -28,8 +28,8 @@ Referensi:
 
 | No | Prasyarat | Keterangan |
 |---|---|---|
-| P1 | Layanan `Bilreg.Api` berjalan dari worktree | Menjalankan kode terbaru dari worktree `b09-bilreg-api-worktree-antrian-poli-prefix` pada port `5189`. |
-| P2 | Aplikasi web petugas `c012_myhospital_web` berjalan dari worktree | Menjalankan kode terbaru dari worktree `c012_myhospital_web-worktree-antrian-poli-prefix` (port `5173`). |
+| P1 | Layanan `Bilreg.Api` berjalan dari worktree | Menjalankan kode terbaru dari worktree `b09-bilreg-api` pada port `5189`. |
+| P2 | Aplikasi web petugas `c012_myhospital_web` berjalan dari worktree | Menjalankan kode terbaru dari worktree `c012_myhospital_web` (port `5173`). |
 | P3 | Data Registrasi Uji | Registrasi pasien pada jadwal dokter dengan ruangan berprefix (misal: Poli Penyakit Dalam ruangan prefix `C`, contoh: `RG01378282` atau registrasi walk-in baru). |
 | P4 | Token Akses / Akun Petugas | Akun petugas pendaftaran/admisi atau Bearer token untuk verifikasi API langsung. |
 

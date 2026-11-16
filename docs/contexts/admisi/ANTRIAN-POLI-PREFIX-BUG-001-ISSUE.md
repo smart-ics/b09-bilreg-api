@@ -36,7 +36,7 @@ Setelah diverifikasi, endpoint detail registrasi `GET /api/reg/{id}` yang dipang
 ## Evidence
 
 1. Dokumen pengujian:
-   - [ANTRIAN-POLI-PREFIX-TEST-EXECUTION.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-TEST-EXECUTION.md) (Hasil TC-01: FAIL, Cacat: `DEF-001`).
+   - [ANTRIAN-POLI-PREFIX-TEST-EXECUTION.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-TEST-EXECUTION.md) (Hasil TC-01: FAIL, Cacat: `DEF-001`).
 2. Tangkapan layar bukti cetak:
    - `Screenshot 2026-11-13 134635.png` (menampilkan nomor antrian tercetak polos `7` pada pendaftaran Poli Penyakit Dalam).
 3. Respons JSON endpoint `GET http://localhost:5189/api/reg/RG01378282`:

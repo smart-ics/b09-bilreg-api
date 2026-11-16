@@ -16,8 +16,8 @@ Planning Mode: FEATURE-PLANNING
 
 Referenced artifacts:
 - ISSUE: [ANTRIAN-POLI-PREFIX-BUG-001-ISSUE.md](file:///home/hlysx/projects/ics/billingweb/b21-myhosweb-system/Issues/ANTRIAN-POLI-PREFIX-BUG-001-ISSUE.md) (`ISSUE-BILREG-ANTRIAN-POLI-PREFIX-BUG-001`)
-- BUG-INVESTIGATION: [ANTRIAN-POLI-PREFIX-BUG-001-BUG-INVESTIGATION.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-BUG-001-BUG-INVESTIGATION.md)
-- ARCHITECTURE (Reference): [ANTRIAN-POLI-PREFIX-ARCHITECTURE.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-ARCHITECTURE.md)
+- BUG-INVESTIGATION: [ANTRIAN-POLI-PREFIX-BUG-001-BUG-INVESTIGATION.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-BUG-001-BUG-INVESTIGATION.md)
+- ARCHITECTURE (Reference): [ANTRIAN-POLI-PREFIX-ARCHITECTURE.md](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/docs/contexts/admisi/ANTRIAN-POLI-PREFIX-ARCHITECTURE.md)
 
 Architecture Applicability: ARCHITECTURE-NOT-REQUIRED
 
@@ -28,13 +28,13 @@ No architectural target-state artifact was required. Implementation relies on ex
 # 2. Planning Scope
 
 ### Included:
-1. **Backend (`b09-bilreg-api` / worktree `b09-bilreg-api-worktree-antrian-poli-prefix`)**:
+1. **Backend (`b09-bilreg-api` / worktree `b09-bilreg-api`)**:
    - Proyeksi kolom `ISNULL(bb.QueuePrefixSnapshot, '') AS QueuePrefixSnapshot` pada query `AntrianDal.ListData(DateTime date)`.
    - Penambahan properti opsional/default `QueuePrefixSnapshot` pada `AntrianViewDto` dan `AntrianView`, beserta kalkulasi label ringkas poli (`QueueLabel`).
    - Penambahan properti aditif `QueueLabel` dan `PrefixAntrian` pada `RegGetResponse` di `RegGetQuery.cs` serta pemetaan nilai dari `physicianQue` pada `RegJalanGethandler`.
    - Penyelarasan `RegJalanByBookingResponse` di `RegJalanByBookingCmd.cs` agar turut mengembalikan `QueueLabel` dan `PrefixAntrian` secara konsisten.
    - Pengujian unit terarah pada `Bilreg.Test` untuk memvalidasi `RegGetQuery` mengembalikan `QueueLabel` dan `PrefixAntrian` dengan benar.
-2. **Frontend (`c012_myhospital_web` / worktree `c012_myhospital_web-worktree-antrian-poli-prefix`)**:
+2. **Frontend (`c012_myhospital_web` / worktree `c012_myhospital_web`)**:
    - Memastikan skema `registerPasienSchema`, `registerPasienOutputSchema`, dan adapter `registerPasienAdapter` di `src/modules/Admisi/types/registrasi.ts` meneruskan `queueLabel` dan `prefixAntrian`.
    - Pembaruan fungsi `preparePrintItems()` di `src/modules/Admisi/components/registrationAssistance/LegacyRegistrationWorkspace.vue` agar memetakan `noAntrian: reg.queueLabel || (reg.prefixAntrian ? `${reg.prefixAntrian}${reg.noAntrian}` : reg.noAntrian)` ke data template cetak `antrian_registrasi.html`.
    - Pengujian unit terarah pada `registrasi.spec.ts` untuk memverifikasi adaptasi `queueLabel` dan `prefixAntrian` pada `registerPasienAdapter`.
@@ -118,17 +118,17 @@ Depends On: None
 Repository: b09-bilreg-api
 
 Completion Criteria:
-- Query SQL pada `AntrianDal.ListData(DateTime date)` di [AntrianDal.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/src/bilreg/Bilreg.Infrastructure/AdmisiContext/AntrianFeature/AntrianDal.cs) menyertakan `ISNULL(bb.QueuePrefixSnapshot, '') AS QueuePrefixSnapshot`.
-- Record `AntrianViewDto` di [AntrianViewDto.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/src/bilreg/Bilreg.Infrastructure/AdmisiContext/AntrianFeature/AntrianViewDto.cs) menerima `string QueuePrefixSnapshot = ""` dan meneruskannya ke `AntrianView` melalui `ToView()`.
-- Record `AntrianView` di [AntrianModel.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/src/bilreg/Bilreg.Domain/AdmisiContext/AntrianFeature/AntrianModel.cs) memiliki parameter opsional `string QueuePrefixSnapshot = ""` dan menyediakan properti/method pemformat label ringkas poli (`QueueLabel`: jika `NoUrut <= 0` maka `""`, jika `QueuePrefixSnapshot` kosong maka `NoUrut.ToString()`, selain itu `$"{QueuePrefixSnapshot}{NoUrut}"`).
-- Record `RegGetResponse` di [RegGetQuery.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegGetQuery.cs) memiliki parameter aditif `string QueueLabel = "", string PrefixAntrian = ""` dengan tetap menjaga `int NoAntrian`.
+- Query SQL pada `AntrianDal.ListData(DateTime date)` di [AntrianDal.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/AdmisiContext/AntrianFeature/AntrianDal.cs) menyertakan `ISNULL(bb.QueuePrefixSnapshot, '') AS QueuePrefixSnapshot`.
+- Record `AntrianViewDto` di [AntrianViewDto.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/src/bilreg/Bilreg.Infrastructure/AdmisiContext/AntrianFeature/AntrianViewDto.cs) menerima `string QueuePrefixSnapshot = ""` dan meneruskannya ke `AntrianView` melalui `ToView()`.
+- Record `AntrianView` di [AntrianModel.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/src/bilreg/Bilreg.Domain/AdmisiContext/AntrianFeature/AntrianModel.cs) memiliki parameter opsional `string QueuePrefixSnapshot = ""` dan menyediakan properti/method pemformat label ringkas poli (`QueueLabel`: jika `NoUrut <= 0` maka `""`, jika `QueuePrefixSnapshot` kosong maka `NoUrut.ToString()`, selain itu `$"{QueuePrefixSnapshot}{NoUrut}"`).
+- Record `RegGetResponse` di [RegGetQuery.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegGetQuery.cs) memiliki parameter aditif `string QueueLabel = "", string PrefixAntrian = ""` dengan tetap menjaga `int NoAntrian`.
 - `RegJalanGethandler.Handle` mengisi `QueueLabel` dan `PrefixAntrian` pada `RegGetResponse` dari objek `physicianQue`.
-- Record `RegJalanByBookingResponse` di [RegJalanByBookingCmd.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix/src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegJalanByBookingCmd.cs) memiliki parameter aditif `string QueueLabel = "", string PrefixAntrian = ""` dan diisi menggunakan `antrian.FormatClinicQueueLabel(booking.NoAntrian)` serta `antrian.QueuePrefixSnapshot`.
+- Record `RegJalanByBookingResponse` di [RegJalanByBookingCmd.cs](file:///home/hlysx/projects/ics/billingweb/b09-bilreg-api/src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegJalanByBookingCmd.cs) memiliki parameter aditif `string QueueLabel = "", string PrefixAntrian = ""` dan diisi menggunakan `antrian.FormatClinicQueueLabel(booking.NoAntrian)` serta `antrian.QueuePrefixSnapshot`.
 - Unit test untuk `RegJalanGethandler` (`RegGetQuery`) ditambahkan/diperbarui di `Bilreg.Test` untuk memverifikasi pengembalian `NoAntrian: 7`, `QueueLabel: "C7"`, dan `PrefixAntrian: "C"` saat sesi dokter memiliki prefix `"C"`, serta perilaku fallback saat prefix kosong.
-- Kompilasi dan pengujian unit terarah di `b09-bilreg-api-worktree-antrian-poli-prefix` lulus tanpa error (`dotnet test ... -p:UseSharedCompilation=false /nodeReuse:false`).
+- Kompilasi dan pengujian unit terarah di `b09-bilreg-api` lulus tanpa error (`dotnet test ... -p:UseSharedCompilation=false /nodeReuse:false`).
 
 Notes:
-- Bekerja di direktori worktree `/home/hlysx/projects/ics/billingweb/b09-bilreg-api-worktree-antrian-poli-prefix`.
+- Bekerja di direktori worktree `/home/hlysx/projects/ics/billingweb/b09-bilreg-api`.
 - Gunakan parameter default pada konstruktor record `AntrianViewDto`, `AntrianView`, `RegGetResponse`, dan `RegJalanByBookingResponse` agar kode pemanggil atau test yang sudah ada tidak rusak (*zero breaking change*).
 - Jalankan `dotnet build-server shutdown` setelah siklus pengujian selesai.
 
@@ -177,17 +177,17 @@ Depends On: P1-S01
 Repository: c012_myhospital_web
 
 Completion Criteria:
-- Fungsi `preparePrintItems()` di [LegacyRegistrationWorkspace.vue](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web-worktree-antrian-poli-prefix/src/modules/Admisi/components/registrationAssistance/LegacyRegistrationWorkspace.vue) memetakan properti `noAntrian` pada `baseData` dengan prioritas: `reg.queueLabel || (reg.prefixAntrian ? `${reg.prefixAntrian}${reg.noAntrian}` : reg.noAntrian)`.
-- Skema `registerPasienSchema`, `registerPasienOutputSchema`, dan `registerPasienAdapter` di [registrasi.ts](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web-worktree-antrian-poli-prefix/src/modules/Admisi/types/registrasi.ts) terverifikasi meneruskan `queueLabel` dan `prefixAntrian`.
-- File pengujian [registrasi.spec.ts](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web-worktree-antrian-poli-prefix/src/modules/Admisi/types/__tests__/registrasi.spec.ts) memiliki test case yang memvalidasi `registerPasienAdapter` memetakan `queueLabel` (contoh: `"C7"`) dan `prefixAntrian` (contoh: `"C"`) dari respons `GET /api/reg/{id}`, serta tetap kompatibel saat properti tersebut tidak dikirim.
-- Verifikasi berurutan di direktori `/home/hlysx/projects/ics/billingweb/c012_myhospital_web-worktree-antrian-poli-prefix` lulus:
+- Fungsi `preparePrintItems()` di [LegacyRegistrationWorkspace.vue](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web/src/modules/Admisi/components/registrationAssistance/LegacyRegistrationWorkspace.vue) memetakan properti `noAntrian` pada `baseData` dengan prioritas: `reg.queueLabel || (reg.prefixAntrian ? `${reg.prefixAntrian}${reg.noAntrian}` : reg.noAntrian)`.
+- Skema `registerPasienSchema`, `registerPasienOutputSchema`, dan `registerPasienAdapter` di [registrasi.ts](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web/src/modules/Admisi/types/registrasi.ts) terverifikasi meneruskan `queueLabel` dan `prefixAntrian`.
+- File pengujian [registrasi.spec.ts](file:///home/hlysx/projects/ics/billingweb/c012_myhospital_web/src/modules/Admisi/types/__tests__/registrasi.spec.ts) memiliki test case yang memvalidasi `registerPasienAdapter` memetakan `queueLabel` (contoh: `"C7"`) dan `prefixAntrian` (contoh: `"C"`) dari respons `GET /api/reg/{id}`, serta tetap kompatibel saat properti tersebut tidak dikirim.
+- Verifikasi berurutan di direktori `/home/hlysx/projects/ics/billingweb/c012_myhospital_web` lulus:
   1. `npx prettier --write` pada file yang dimodifikasi
   2. `pnpm tc:app`
   3. `pnpm test src/modules/Admisi/types/__tests__/registrasi.spec.ts`
   4. `pnpm lint`
 
 Notes:
-- Bekerja strictly di dalam direktori worktree `/home/hlysx/projects/ics/billingweb/c012_myhospital_web-worktree-antrian-poli-prefix`.
+- Bekerja strictly di dalam direktori worktree `/home/hlysx/projects/ics/billingweb/c012_myhospital_web`.
 - Jangan menjalankan `pnpm test` penuh tanpa argumen path spec.
 
 Implementation Notes:
