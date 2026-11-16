@@ -46,7 +46,8 @@ Accept: application/json
   "kota": "Surabaya",
   "kodePos": "60271",
   "noTelp": "081234567890",
-  "noKtp": ""
+  "noKtp": "",
+  "mrIbu": "517102000000045"
 }
 
 ### 3. Register Pasien Baru Berbasis e-KTP
@@ -136,6 +137,7 @@ Accept: application/json
   "kotaKeluarga": "Surabaya",
   "kodePosKeluarga": "60272",
   "ibuKandung": "Wati Sukeni",
+  "mrIbu": "517102000000045",
   "userId": "{{userId}}"
 }
 
