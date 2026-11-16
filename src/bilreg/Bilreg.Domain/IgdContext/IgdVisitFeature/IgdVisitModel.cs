@@ -35,7 +35,8 @@ public class IgdVisitModel : IIgdVisitKey
         AuditTrailType auditTrail,
         AuditInfoType dischargeAudit,
         IEnumerable<IgdVisitTriageType> listTriage,
-        IEnumerable<IgdVisitEventType> listEvent)
+        IEnumerable<IgdVisitEventType> listEvent,
+        bool hasPendingBilling = false)
     {
         IgdVisitId = igdVisitId;
         DaftarDateTime = daftarDateTime;
@@ -53,6 +54,7 @@ public class IgdVisitModel : IIgdVisitKey
         NextReTriageAt = nextReTriageAt;
         AuditTrail = auditTrail;
         DischargeAudit = dischargeAudit;
+        HasPendingBilling = hasPendingBilling;
         _listTriage = listTriage?.ToList() ?? [];
         _listEvent = listEvent?.ToList() ?? [];
     }
@@ -75,7 +77,8 @@ public class IgdVisitModel : IIgdVisitKey
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
-        listEvent: []);
+        listEvent: [],
+        hasPendingBilling: false);
 
     public static IIgdVisitKey Key(string id) => new IgdVisitModel(
         igdVisitId: id,
@@ -95,7 +98,8 @@ public class IgdVisitModel : IIgdVisitKey
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
-        listEvent: []);
+        listEvent: [],
+        hasPendingBilling: false);
 
     public static IgdVisitModel Create(VisitorType visitor, AuditInfoType audit)
     {
@@ -122,7 +126,8 @@ public class IgdVisitModel : IIgdVisitKey
             auditTrail: AuditTrailType.Create(audit.UserId, audit.Timestamp),
             dischargeAudit: AuditInfoType.Default,
             listTriage: [],
-            listEvent: []);
+            listEvent: [],
+            hasPendingBilling: false);
 
         visit.Emit(IgdEventEnum.Daftar, audit, $"Visit dibuat untuk {visitor.VisitorName}");
         return visit;
@@ -146,6 +151,7 @@ public class IgdVisitModel : IIgdVisitKey
     public DateTime NextReTriageAt { get; private set; }
     public AuditTrailType AuditTrail { get; init; }
     public AuditInfoType DischargeAudit { get; private set; }
+    public bool HasPendingBilling { get; private set; }
     public IEnumerable<IgdVisitTriageType> ListTriage => _listTriage;
     public IEnumerable<IgdVisitEventType> ListEvent => _listEvent;
 
@@ -496,6 +502,11 @@ public class IgdVisitModel : IIgdVisitKey
                 ? latest.AssessmentDateTime.Add(interval)
                 : new DateTime(3000, 1, 1);
         }
+    }
+
+    public void SetPendingBilling(bool hasPending)
+    {
+        HasPendingBilling = hasPending;
     }
     #endregion
 

