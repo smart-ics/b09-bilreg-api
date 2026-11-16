@@ -17,11 +17,12 @@ namespace Bilreg.Test.ChargeContext.TindakanFeature;
 public class TindakanGetHandlerTest
 {
     private readonly Mock<ITindakanRepo> _tdkRepoMock = new();
+    private readonly Mock<ITindakanBarangRepo> _tdkBarangRepoMock = new();
     private readonly TindakanGetHandler _sut;
 
     public TindakanGetHandlerTest()
     {
-        _sut = new TindakanGetHandler(_tdkRepoMock.Object);
+        _sut = new TindakanGetHandler(_tdkRepoMock.Object, _tdkBarangRepoMock.Object);
     }
 
     private static TindakanModel CreateTestTindakan(string tindakanId, int qty = 2)
@@ -88,6 +89,8 @@ public class TindakanGetHandlerTest
         result.AuditTrail.Should().NotBeNull();
         result.IsDiskonDokter.Should().BeFalse();
         result.DiskonDokter.Should().Be(0m);
+        result.IsChargeBarang.Should().BeFalse();
+        result.ListBarang.Should().BeEmpty();
 
         var listKomponen = result.ListKomponen.ToList();
         listKomponen.Should().HaveCount(2);
@@ -285,5 +288,109 @@ public class TindakanGetHandlerTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenTindakanHasBomSnapshot_ReturnsListBarangAndIsChargeBarang()
+    {
+        // Arrange
+        const string tindakanId = "TDK-BOM-001";
+        var tindakan = CreateTestTindakan(tindakanId);
+        var query = new TindakanGetQuery(tindakanId);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(query))
+            .Returns(MayBe.From(tindakan));
+
+        var item1 = new TindakanBarangType(
+            TindakanBarangId: "TB01",
+            TindakanId: tindakanId,
+            NoUrut: 1,
+            BrgId: "BRG01",
+            SatuanBomId: "PCS",
+            QtyBom: 2m,
+            SatuanKecilId: "PCS",
+            QtyKecilRequested: 2m,
+            QtyKecilDeducted: 2m,
+            QtyKecilPending: 0m,
+            IsChargeBarang: true,
+            HargaJualTotal: 15000m,
+            PakaiBrgId: "PK001",
+            TrsBillingId: "TDK-BOM-001-B01",
+            IsVoid: false,
+            BrgName: "Spuit 3cc",
+            QtyPending: 0m
+        );
+
+        var item2 = new TindakanBarangType(
+            TindakanBarangId: "TB02",
+            TindakanId: tindakanId,
+            NoUrut: 2,
+            BrgId: "BRG02",
+            SatuanBomId: "ROL",
+            QtyBom: 1m,
+            SatuanKecilId: "ROL",
+            QtyKecilRequested: 1m,
+            QtyKecilDeducted: 0m,
+            QtyKecilPending: 1m,
+            IsChargeBarang: true,
+            HargaJualTotal: 25000m,
+            PakaiBrgId: "",
+            TrsBillingId: "TDK-BOM-001-B02",
+            IsVoid: false,
+            BrgName: "Kassa",
+            QtyPending: 1m
+        );
+
+        _tdkBarangRepoMock.Setup(x => x.ListByTindakanId(tindakanId))
+            .Returns([item1, item2]);
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsChargeBarang.Should().BeTrue();
+        var listBarang = result.ListBarang.ToList();
+        listBarang.Should().HaveCount(2);
+
+        listBarang[0].BrgId.Should().Be("BRG01");
+        listBarang[0].BrgName.Should().Be("Spuit 3cc");
+        listBarang[0].SatuanBomId.Should().Be("PCS");
+        listBarang[0].QtyBom.Should().Be(2m);
+        listBarang[0].QtyKecilDeducted.Should().Be(2m);
+        listBarang[0].QtyPending.Should().Be(0m);
+        listBarang[0].PakaiBrgId.Should().Be("PK001");
+        listBarang[0].TrsBillingId.Should().Be("TDK-BOM-001-B01");
+
+        listBarang[1].BrgId.Should().Be("BRG02");
+        listBarang[1].BrgName.Should().Be("Kassa");
+        listBarang[1].SatuanBomId.Should().Be("ROL");
+        listBarang[1].QtyBom.Should().Be(1m);
+        listBarang[1].QtyKecilDeducted.Should().Be(0m);
+        listBarang[1].QtyPending.Should().Be(1m);
+        listBarang[1].PakaiBrgId.Should().Be("");
+        listBarang[1].TrsBillingId.Should().Be("TDK-BOM-001-B02");
+    }
+
+    [Fact]
+    public async Task Handle_WhenSingleArgConstructorUsed_ReturnsEmptyListBarangAndIsChargeBarangFalse()
+    {
+        // Arrange
+        const string tindakanId = "TDK-LEGACY";
+        var tindakan = CreateTestTindakan(tindakanId);
+        var query = new TindakanGetQuery(tindakanId);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(query))
+            .Returns(MayBe.From(tindakan));
+
+        var sutLegacy = new TindakanGetHandler(_tdkRepoMock.Object);
+
+        // Act
+        var result = await sutLegacy.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsChargeBarang.Should().BeFalse();
+        result.ListBarang.Should().BeEmpty();
     }
 }

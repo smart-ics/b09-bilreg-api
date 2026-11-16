@@ -7,7 +7,8 @@ public record TarifType : ITarifKey
     #region CREATION
     public TarifType(string tarifId, string tarifName, 
         GroupTarifType groupTarif, GroupTarifDkType groupTarifDk, 
-        JenisTarifType jenisTarif, RekapCetakReff rekapCetak)
+        JenisTarifType jenisTarif, RekapCetakReff rekapCetak,
+        bool isChargeBarang = false)
     {
         TarifId = tarifId;
         TarifName = tarifName;
@@ -15,9 +16,10 @@ public record TarifType : ITarifKey
         GroupTarifDk = groupTarifDk;
         JenisTarif = jenisTarif;
         RekapCetak = rekapCetak;
+        IsChargeBarang = isChargeBarang;
     }
     public static TarifType Default => new TarifType("-", "-", GroupTarifType.Default,
-        GroupTarifDkType.Default, JenisTarifType.Default, RekapCetakType.Default.ToReff());
+        GroupTarifDkType.Default, JenisTarifType.Default, RekapCetakType.Default.ToReff(), false);
     public static ITarifKey Key(string id) => Default with { TarifId = id };
     #endregion
 
@@ -27,6 +29,7 @@ public record TarifType : ITarifKey
     public GroupTarifDkType GroupTarifDk { get; init; }
     public JenisTarifType JenisTarif { get; init; }
     public RekapCetakReff RekapCetak { get; init; }
+    public bool IsChargeBarang { get; init; }
     public TarifReff ToReff() => new(TarifId, TarifName);
 }
 

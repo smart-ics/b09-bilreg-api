@@ -1,3 +1,5 @@
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
+using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
@@ -34,22 +36,36 @@ public class CatchUpScopeFromLegacyHandler
     private readonly IStockBatchRepo _batchRepo;
     private readonly IStockLegacyScopeRepo _scopeRepo;
     private readonly LegacyScopeJournalReplayer _replayer;
+    private readonly ISender? _sender;
+    private readonly ILogger<CatchUpScopeFromLegacyHandler>? _logger;
 
     public CatchUpScopeFromLegacyHandler(
         ILegacyStockReadPort legacyRead,
         IStockBatchRepo batchRepo,
         IStockLegacyScopeRepo scopeRepo,
-        LegacyScopeJournalReplayer replayer)
+        LegacyScopeJournalReplayer replayer,
+        ISender? sender = null,
+        ILogger<CatchUpScopeFromLegacyHandler>? logger = null)
     {
         _legacyRead = legacyRead;
         _batchRepo = batchRepo;
         _scopeRepo = scopeRepo;
         _replayer = replayer;
+        _sender = sender;
+        _logger = logger;
     }
 
-    public Task<CatchUpScopeFromLegacyResult> Handle(
+    public async Task<CatchUpScopeFromLegacyResult> Handle(
         CatchUpScopeFromLegacyCommand request,
         CancellationToken cancellationToken)
+    {
+        var result = await HandleCore(request);
+        if (result.Outcome == CatchUpScopeOutcomeEnum.Success && result.AppliedJournalCount > 0)
+            await PendingSettleTrigger.TryDrain(_sender, _logger, request.UserId, [(request.BrgId, string.Empty)], cancellationToken);
+        return result;
+    }
+
+    private Task<CatchUpScopeFromLegacyResult> HandleCore(CatchUpScopeFromLegacyCommand request)
     {
         Guard.Against.NullOrWhiteSpace(request.BrgId);
         Guard.Against.NullOrWhiteSpace(request.BrgMasukReffId);

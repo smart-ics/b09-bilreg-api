@@ -379,6 +379,43 @@ public class TindakanDal : ITindakanDal
                 bb.RegId = @RegId
                 AND bb.VodDate = @VodDate
 
+            UNION ALL
+
+            SELECT
+                ISNULL(NULLIF(tb.TrsBillingId, ''), tb.TindakanBarangId) AS TransaksiId,
+                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_TRS + ' ' + aa.FS_JAM_TRS), '2000-01-01') AS TransaksiDate,
+                aa.FS_CATATAN AS OrderTransaksiId,
+                aa.FS_KD_REG AS RegId,
+                ISNULL(rg.FS_MR, '') AS PasienId,
+                ISNULL(pmr.FS_NM_PASIEN, '') AS PasienName,
+                aa.FS_KD_LAYANAN AS LayananId,
+                ISNULL(ly.FS_NM_LAYANAN, '') AS LayananName,
+                tb.BrgId AS DiskripsiId,
+                ISNULL(b.fs_nm_barang, '') AS DiskripsiName,
+                CAST(tb.QtyBom AS INT) AS Qty,
+                tb.HargaJualTotal AS Total,
+                'BARANG' AS Tipe,
+                ISNULL(peg.fs_nm_peg, tb.CRTUSR) AS CrtUser,
+                ISNULL(TRY_CONVERT(DATETIME, tb.CRTTGL + ' ' + tb.CRTJAM), '2000-01-01') AS CrtDate,
+                tb.UPDUSR AS UpdUser,
+                ISNULL(TRY_CONVERT(DATETIME, tb.UPDTGL + ' ' + tb.UPDJAM), '3000-01-01') AS UpdDate,
+                '' AS VodUser,
+                CONVERT(DATETIME, '3000-01-01') AS VodDate,
+                '' AS PakaiBedId
+            FROM
+                BILRG_TindakanBarang tb
+                INNER JOIN TA_TRS_TINDAKAN aa ON tb.TindakanId = aa.FS_KD_TRS
+                LEFT JOIN tb_barang b ON tb.BrgId = b.fs_kd_barang
+                LEFT JOIN ta_registrasi rg ON aa.FS_KD_REG = rg.FS_KD_REG
+                LEFT JOIN tc_mr pmr ON rg.FS_MR = pmr.FS_MR
+                LEFT JOIN ta_layanan ly ON aa.FS_KD_LAYANAN = ly.FS_KD_LAYANAN
+                LEFT JOIN td_peg peg ON tb.CRTUSR = peg.fs_kd_peg
+            WHERE
+                aa.FS_KD_REG = @RegId
+                AND (aa.FD_TGL_VOID = @VodDate OR aa.FD_TGL_VOID = '' OR aa.FD_TGL_VOID IS NULL)
+                AND tb.IsVoid = 0
+                AND tb.IsChargeBarang = 1
+
             ORDER BY
                 TransaksiDate DESC, TransaksiId DESC
             """;
@@ -388,6 +425,6 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@VodDate", "3000-01-01", SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TindakanJualDto>(sql, dp);
+        return conn.Read<TindakanJualDto>(sql, dp) ?? [];
     }
 }

@@ -50,6 +50,14 @@ public interface IAddBillAppService
         GroupRekType groupRek,
         DateTime createdAt = default);
 
+    TrsBillType FromTindakanBarang(
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
+
     TrsBillType FromBhpRanap(
         BhpRanapModel bhp,
         RegModel reg,
@@ -106,6 +114,26 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromTindakan(
             tataRekening, tindakan, reg, tarif, jaminan, listReffKomp, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromTindakanBarang(
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromTindakanBarang(
+            tataRekening, tindakan, barang, reg, jaminan, groupRek, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

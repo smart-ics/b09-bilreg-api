@@ -4,10 +4,13 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BrgContext.BrgFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -16,8 +19,10 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
@@ -436,4 +441,137 @@ public class TdkSaveTindakanHandlerTest
         kompResult.Diskon.Should().Be(150000m);
         kompResult.SubTotal.Should().Be(0m);
     }
+
+    [Fact]
+    public async Task GivenSaveTindakan_WhenTrsBillingRepoInjected_ThenCallsSaveChangesOnTrsBillingRepo()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var trsBillingRepoMock = new Mock<ITrsBillingRepo>();
+        var sut = new TdkSaveTindakanHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            trsBillingRepo: trsBillingRepoMock.Object);
+
+        var cmd = new TdkSaveTindakanCmd(
+            "-", "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkSaveTindakanPpaCmd("KOMP-01", "PPA-01")], 1);
+
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == "-")))
+            .Returns(MayBe<TindakanModel>.None);
+
+        var expectedBill = TrsBillType.Default;
+        _addBillAppServiceMock.Setup(x => x.FromTindakan(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<TarifType>(), It.IsAny<JaminanType>(), It.IsAny<IEnumerable<KomponenType>>(), It.IsAny<DateTime>()))
+            .Returns(expectedBill);
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        trsBillingRepoMock.Verify(x => x.SaveChanges(expectedBill), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTindakanWithOldBom_WhenEditQty_ThenReversesOldBomAndCreatesNewBomAndBarangBills()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var trsBillingRepoMock = new Mock<ITrsBillingRepo>();
+        var bomProcessorMock = new Mock<ITindakanBomProcessor>();
+        var tdkBarangRepoMock = new Mock<ITindakanBarangRepo>();
+        var tdkPendingRepoMock = new Mock<ITindakanStokPendingRepo>();
+        var pakaiBrgServiceMock = new Mock<IPakaiBrgInternalService>();
+        var brgRepoMock = new Mock<IBrgRepo>();
+        var groupRekRepoMock = new Mock<IGroupRekRepo>();
+
+        var sut = new TdkSaveTindakanHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            trsBillingRepo: trsBillingRepoMock.Object,
+            tindakanBomProcessor: bomProcessorMock.Object,
+            tindakanBarangRepo: tdkBarangRepoMock.Object,
+            tindakanStokPendingRepo: tdkPendingRepoMock.Object,
+            pakaiBrgInternalService: pakaiBrgServiceMock.Object,
+            brgRepo: brgRepoMock.Object,
+            groupRekRepo: groupRekRepoMock.Object);
+
+        const string existingTdkId = "TDK-OLD-01";
+        var oldBom = new List<TindakanBarangType>
+        {
+            new("TBG-OLD-01", existingTdkId, 1, "BRG-01", "PCS", 1m, "PCS", 1m, 1m, 0m, true, 50000m, "PK-OLD-01", $"{existingTdkId}-B01", false, "Alkes A")
+        };
+        tdkBarangRepoMock.Setup(x => x.ListByTindakanId(existingTdkId))
+            .Returns(oldBom);
+
+        var existingTdk = CreateTindakan(existingTdkId, "REG-01", qty: 1);
+        _tindakanRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == existingTdkId)))
+            .Returns(MayBe.From(existingTdk));
+
+        var newBomItems = new List<TindakanBomItemResult>
+        {
+            new("BRG-01", "Alkes A", 1, "PCS", 2m, 1m, "PCS", 2m, 2m, 0m, "PK-NEW-01", true, 100000m, "TBG-NEW-01")
+        };
+        bomProcessorMock.Setup(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TindakanBomResult(existingTdkId, "PK-NEW-01", true, newBomItems));
+
+        _addBillAppServiceMock.Setup(x => x.FromTindakanBarang(It.IsAny<TindakanModel>(), It.IsAny<TindakanBarangType>(), It.IsAny<RegModel>(), It.IsAny<JaminanType>(), It.IsAny<GroupRekType>(), It.IsAny<DateTime>()))
+            .Returns(TrsBillType.Default);
+
+        var cmd = new TdkSaveTindakanCmd(
+            existingTdkId, "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkSaveTindakanPpaCmd("KOMP-01", "PPA-01")], Qty: 2);
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        // 1. Old BOM reversed
+        pakaiBrgServiceMock.Verify(x => x.VoidFromTindakan(It.Is<PakaiBrgVoidFromTindakanCommand>(c => c.PakaiBrgId == "PK-OLD-01"), It.IsAny<CancellationToken>()), Times.Once);
+        tdkPendingRepoMock.Verify(x => x.MarkVoidByTindakanId(existingTdkId, It.IsAny<DateTime>(), "USER-01"), Times.Once);
+        tdkBarangRepoMock.Verify(x => x.MarkVoid(existingTdkId, "USER-01"), Times.Once);
+        trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == $"{existingTdkId}-B01")), Times.Once);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == $"{existingTdkId}-B01")), Times.Once);
+
+        // 2. New BOM created
+        bomProcessorMock.Verify(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), "USER-01", It.IsAny<CancellationToken>()), Times.Once);
+        _addBillAppServiceMock.Verify(x => x.FromTindakanBarang(It.IsAny<TindakanModel>(), It.Is<TindakanBarangType>(b => b.TrsBillingId == $"{existingTdkId}-B01"), It.IsAny<RegModel>(), It.IsAny<JaminanType>(), It.IsAny<GroupRekType>(), It.IsAny<DateTime>()), Times.Once);
+    }
+
+    private static TindakanModel CreateTindakan(string tindakanId, string regId, int qty = 1) =>
+        new(
+            tindakanId,
+            new DateTime(2026, 10, 16, 9, 0, 0),
+            orderTindakanId: string.Empty,
+            new RegReff(regId, "PAS-01", "Pasien Test"),
+            LayananType.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            TipeTarifType.Default.ToReff(),
+            TarifType.Default.ToReff(),
+            [],
+            AuditTrailType.Default,
+            qty: qty);
 }

@@ -9,6 +9,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabMasterFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
@@ -59,6 +60,7 @@ using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.ChargeContext.PricingBarangFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
+using Bilreg.Infrastructure.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.IgdContext.Integration;
 using Bilreg.Infrastructure.LabContext;
 using Bilreg.Infrastructure.LabContext.Integration;
@@ -194,6 +196,14 @@ public static class InfrastructureService
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
             .AddScoped<ITarifPublishLogRepo, TarifPublishLogRepo>()
+            .AddScoped<ITarifDal, TarifDal>()
+            .AddScoped<ITarifRepo, TarifRepo>()
+            .AddScoped<ITarifBarangDal, TarifBarangDal>()
+            .AddScoped<ITarifBarangRepo, TarifBarangRepo>()
+            .AddScoped<ITindakanBarangDal, TindakanBarangDal>()
+            .AddScoped<ITindakanBarangRepo, TindakanBarangRepo>()
+            .AddScoped<ITindakanStokPendingDal, TindakanStokPendingDal>()
+            .AddScoped<ITindakanStokPendingRepo, TindakanStokPendingRepo>()
             .AddScoped<INilaiTarifProjectionWriter, NilaiTarifProjectionWriter>()
             .AddScoped<INilaiTarifRepo, NilaiTarifRepo>()
             .AddScoped<INilaiTarifDal, NilaiTarifDal>()
