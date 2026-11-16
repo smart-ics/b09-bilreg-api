@@ -2,6 +2,7 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Domain.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -241,6 +242,29 @@ public class LabOrderChargeHandlerTest
         var response = await _sut.Handle(new LabOrderChargeCmd(order.OrderId, "U1"), CancellationToken.None);
 
         response.Success.Should().BeFalse();
+        _queueRepo.Verify(q => q.SaveChanges(It.IsAny<LabOwareOutboundQueueModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ChargeSuccess_WhenOwareInactive_DoesNotCreateOwareQueue()
+    {
+        var mockOware = new Mock<ILabOwareIntegration>();
+        mockOware.Setup(o => o.IsActive).Returns(false);
+
+        var handler = new LabOrderChargeHandler(
+            _repo.Object,
+            _billingIntegration.Object,
+            TestTglJamProvider.Instance,
+            _queueRepo.Object,
+            mockOware.Object);
+
+        var order = OrderedOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _billingIntegration.Setup(i => i.ChargeOrder(order, "U1", It.IsAny<DateTime>())).Returns("TDK-999");
+
+        var response = await handler.Handle(new LabOrderChargeCmd(order.OrderId, "U1"), CancellationToken.None);
+
+        response.Success.Should().BeTrue();
         _queueRepo.Verify(q => q.SaveChanges(It.IsAny<LabOwareOutboundQueueModel>()), Times.Never);
     }
 }
