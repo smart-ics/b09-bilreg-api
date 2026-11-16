@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 
 namespace Bilreg.Domain.BedUsageContext.WardFeature;
 
@@ -39,4 +39,7 @@ public interface IKamarKey
     string KamarId {get;}
 }
 
-public record KamarReff(string KamarId, string KamarName);
+public record KamarReff(string KamarId, string KamarName)
+{
+    public static KamarReff Default => new("-", "-");
+}

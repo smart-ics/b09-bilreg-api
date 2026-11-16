@@ -45,7 +45,9 @@ public record RegGetResponse(
     TipeTarifReff TipeTarif,
     TipeBrgType TipeBarang,
     int NoAntrian,
-    string SjpNo
+    string SjpNo,
+    string QueueLabel = "",
+    string PrefixAntrian = ""
     );
 public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 {
@@ -99,7 +101,8 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             reg.Pasien, umur, reg.TipeJaminan, reg.Polis,
             reg.Kelas, reg.CaraMasukDk, reg.Rujukan,
             reg.Dokter, jamPraktek, reg.Layanan, reg.Karcis,
-            tipeTarif, tipeBrg, physicianQue.NoUrut, reg.Eligibility.SjpNo);
+            tipeTarif, tipeBrg, physicianQue.NoUrut, reg.Eligibility.SjpNo,
+            physicianQue.QueueLabel, physicianQue.QueuePrefixSnapshot);
 
         return Task.FromResult(result);
 

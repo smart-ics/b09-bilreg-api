@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
@@ -163,5 +164,34 @@ public class Release1JourneySqlStageParityTest
         s2.Should().Be(sortAt);
         j1.Should().Be("opn:A");
         j2.Should().Be("opn:B");
+    }
+
+    [Theory]
+    [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.EmrIgd, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.ExternalChannel, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
+    public void FromNormalizedFacts_WithInpatientOrder_DerivesExpectedSqlStage(
+        OrderSourceEnum orderSource,
+        InpatientOrderStatusEnum status,
+        JourneyOperationalStage expectedStage)
+    {
+        var facts = new JourneyNormalizedFacts(
+            OriginKind: orderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd ? JourneyOriginKind.OpnameRequest : JourneyOriginKind.Reservation,
+            Patient: new JourneyPatientSummary("P001", "RM001", "Pasien Uji"),
+            OpnameRequest: null,
+            Reservation: null,
+            Admissions: [],
+            WaitingLists: [],
+            HasOrphanRegistration: false,
+            InpatientOrder: new InpatientOrderJourneyFact("ORD001", orderSource, status, "-", T0));
+
+        var sqlInputs = Release1JourneySqlStageExpression.FromNormalizedFacts(facts);
+        var sqlStage = Release1JourneySqlStageExpression.Derive(sqlInputs);
+
+        sqlStage.Should().Be(expectedStage);
     }
 }

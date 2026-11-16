@@ -361,4 +361,84 @@ public class LabOrderGetHandlerTest
         resItem.TestGroupId.Should().Be("GRP-BIOPSI");
         resItem.TestGroupName.Should().Be("Biopsi Jaringan");
     }
+
+    [Fact]
+    public async Task Handle_GivenHospitalOrderWithRegistration_ResolvesPenjaminNameFromRegRepo()
+    {
+        // Arrange
+        var order = CreateSampleOrder();
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        var regRepoMock = new Mock<IRegRepo>();
+        var regModel = new RegModel(
+            "REG001",
+            new DateOnly(2026, 10, 15),
+            new AuditInfoType("USER01", FixedNow),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            new PasienReff("MR001", "Budi Santoso", new DateOnly(1985, 5, 20), "L"),
+            new TipeJaminanReff("JMN01", "BPJS Kesehatan"),
+            PolisModel.Default.ToReff(),
+            new KelasReff("I", "Kelas 1"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            new RegEligibilityType("-", "-", "-"),
+            []);
+
+        regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From(regModel));
+
+        var sut = new LabOrderGetHandler(_repo.Object, regRepo: regRepoMock.Object);
+
+        // Act
+        var result = await sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.PenjaminName.Should().Be("BPJS Kesehatan");
+    }
+
+    [Fact]
+    public async Task Handle_GivenExternalPatientOrder_ResolvesPenjaminNameToUmumPasienLuar()
+    {
+        // Arrange
+        var snapshot = new PatientSnapshotType(
+            "EXT001", "MR-EXT", "Pasien Luar Walkin", new DateTime(1990, 1, 1), "L", 36);
+
+        var item = LabOrderItemModel.Create(
+            testDefinitionId: "DEF-CKMB",
+            labTestCode: "CKMB",
+            labTestName: "Creatine Kinase-MB",
+            tarifId: "TRF-CKMB",
+            tarifCode: "CKMB01",
+            tarifName: "Pemeriksaan CK-MB",
+            tubeType: VacutainerTypeEnum.Edta,
+            specimenType: "Serum",
+            requiredTubeCount: 1,
+            urgency: LabOrderUrgencyEnum.Rutin);
+
+        var line = new LabOrderModel.ResolvedOrderLine(item, []);
+        var audit = new AuditInfoType("PETUGAS01", FixedNow);
+
+        var order = LabOrderModel.CreateExternal(
+            emrOrderId: null,
+            snapshot: snapshot,
+            lines: [line],
+            orderNo: "EXT20261015001",
+            audit: audit);
+
+        _repo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == order.OrderId)))
+            .Returns(MayBe.From(order));
+
+        // Act
+        var result = await _sut.Handle(new LabOrderGetQuery(order.OrderId), CancellationToken.None);
+
+        // Assert
+        result.PenjaminName.Should().Be("Umum / Pasien Luar");
+    }
 }
