@@ -234,6 +234,15 @@ public static class InfrastructureService
             .AddScoped<Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceDal, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceDal>()
             .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IOrderOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
             .AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IScheduleOpResourceRepo, Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature.OrderOpResourceRepo>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.IAmbulanceDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.AmbulanceDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.IAmbulanceKomponenDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.AmbulanceKomponenDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.ITransportTujuanDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TransportTujuanDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.ITujuanTransportDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TujuanTransportDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.ITrsTransportDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TrsTransportDal>()
+            .AddScoped<Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.ITrsTransportItemDal, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TrsTransportItemDal>()
+            .AddScoped<Bilreg.Application.ChargeContext.AmbulanceFeature.IAmbulanceRepo, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.AmbulanceRepo>()
+            .AddScoped<Bilreg.Application.ChargeContext.AmbulanceFeature.ITujuanTransportRepo, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TujuanTransportRepo>()
+            .AddScoped<Bilreg.Application.ChargeContext.AmbulanceFeature.ITrsTransportRepo, Bilreg.Infrastructure.ChargeContext.AmbulanceFeature.TrsTransportRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

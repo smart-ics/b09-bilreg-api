@@ -3,9 +3,11 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
@@ -46,6 +48,14 @@ public interface IAddBillAppService
         RegModel reg,
         JaminanType jaminan,
         GroupRekType groupRek,
+        DateTime createdAt = default);
+
+    TrsBillType FromAmbulanceUsage(
+        TrsTransportModel transport,
+        RegModel reg,
+        JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        RekapCetakType? rekapCetak = null,
         DateTime createdAt = default);
 }
 
@@ -138,6 +148,32 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromPenjualanItem(
             tataRekening, penjualan, item, reg, jaminan, groupRek, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromAmbulanceUsage(
+        TrsTransportModel transport,
+        RegModel reg,
+        JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        RekapCetakType? rekapCetak = null,
+        DateTime createdAt = default)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(reg);
+
+        if (transport.IsNonReg || string.IsNullOrWhiteSpace(transport.RegId))
+            throw new ArgumentException("Transaksi ambulans non-registrasi tidak dapat diposting ke Billing.", nameof(transport));
+
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromAmbulanceUsage(
+            tataRekening, transport, reg, jaminan, listReffKomp, rekapCetak, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

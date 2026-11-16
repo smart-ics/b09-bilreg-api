@@ -291,7 +291,11 @@
     <None Include="PaymentContext\RekapCatakFeature\ta_rekap_cetak_tarif.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_transport2.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_transport3.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_trs_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_trs_transport2.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\Migration_ta_transport_AmbulanceFeature.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />

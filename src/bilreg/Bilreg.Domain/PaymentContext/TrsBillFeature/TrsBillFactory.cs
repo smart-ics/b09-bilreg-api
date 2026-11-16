@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
@@ -269,6 +270,161 @@ internal class TrsBillFactory
             reg.Kelas,
             audit.Created,
             rekapCetak,
+            nilai,
+            ketBilling,
+            listBill2TransEvent,
+            [],
+            []);
+
+        return result;
+    }
+
+    public static TrsBillType CreateFromAmbulanceUsage(
+        TrsTransportModel transport,
+        RegModel reg,
+        JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        RekapCetakType? rekapCetak = null,
+        DateTime createdAt = default)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(reg);
+        ArgumentNullException.ThrowIfNull(jaminan);
+
+        if (transport.IsNonReg || string.IsNullOrWhiteSpace(transport.RegId))
+            throw new ArgumentException("Transaksi ambulans non-registrasi tidak dapat diposting ke Billing.", nameof(transport));
+
+        if (!string.Equals(transport.RegId, reg.RegId, StringComparison.Ordinal))
+            throw new ArgumentException($"RegId transaksi ambulans '{transport.RegId}' tidak sesuai dengan registrasi '{reg.RegId}'.", nameof(transport));
+
+        var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
+            ? reg.TipeJaminan.TipeJaminanId[..3]
+            : reg.TipeJaminan.TipeJaminanId;
+        if (!string.IsNullOrWhiteSpace(expectedJaminanId) && expectedJaminanId != "-" && jaminan.JaminanId != "-" && jaminan.JaminanId != expectedJaminanId)
+            throw new ArgumentException("Jaminan tidak sesuai registrasi", nameof(jaminan));
+
+        var userId = !string.IsNullOrWhiteSpace(transport.PetugasId) ? transport.PetugasId : "SYSTEM";
+        var audit = AuditTrailType.Create(userId, createdAt);
+
+        var keteranganText = !string.IsNullOrWhiteSpace(transport.Keterangan)
+            ? transport.Keterangan
+            : $"Pemakaian Ambulans {transport.NoPolisi}".Trim();
+        var ketBilling = new TrsBillKetType(
+            keteranganText,
+            transport.LokasiTujuan,
+            transport.AmbulanceId,
+            1m,
+            transport.TrsTransportId);
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap.CoaId
+            : jaminan.Rekening.PpdpJasaRajal.CoaId;
+
+        var i = 0;
+        var listReffKompFetched = listReffKomp?.ToList() ?? [];
+        var listBill2TransEvent = new List<TrsBill2TransEventType>();
+
+        var activeItems = transport.ListItems.Where(x => !x.IsVoid).ToList();
+        if (activeItems.Count > 0)
+        {
+            foreach (var item in activeItems)
+            {
+                var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.DetilTarifId);
+
+                var rekPdpt = reffKomp?.RekPdpt.CoaId ?? string.Empty;
+                var rekDiskon = reffKomp?.RekDiskon.CoaId ?? string.Empty;
+
+                var ppa = !string.IsNullOrWhiteSpace(item.PetugasMedisId)
+                    ? new PpaReff(item.PetugasMedisId, "")
+                    : (!string.IsNullOrWhiteSpace(transport.DokterId)
+                        ? new PpaReff(transport.DokterId, "")
+                        : PpaType.Default.ToReff());
+
+                var bill2Coa = new TrsBill2CoaType(
+                    new CoaType(rekPpdp, ""),
+                    new CoaType(rekPdpt, ""),
+                    CoaType.Default,
+                    CoaType.Default,
+                    CoaType.Default,
+                    new CoaType(rekDiskon, ""));
+
+                var komponenName = reffKomp?.KomponenName ?? item.DetilTarifId;
+                var komponen = new TrsBill2KomponenType(item.DetilTarifId, komponenName);
+
+                var trsBill2 = new TrsBill2TransEventType(
+                    i++,
+                    komponen,
+                    TrsBillJenisBayarType.Pdp,
+                    item.SubTotal,
+                    ppa,
+                    bill2Coa);
+
+                listBill2TransEvent.Add(trsBill2);
+            }
+        }
+        else if (transport.BiayaBatal > 0)
+        {
+            var bill2Coa = new TrsBill2CoaType(
+                new CoaType(rekPpdp, ""),
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default);
+
+            var komponen = new TrsBill2KomponenType("STANDBY", "Biaya Standby Ambulans");
+            var trsBill2 = new TrsBill2TransEventType(
+                i++,
+                komponen,
+                TrsBillJenisBayarType.Pdp,
+                transport.BiayaBatal,
+                PpaType.Default.ToReff(),
+                bill2Coa);
+
+            listBill2TransEvent.Add(trsBill2);
+        }
+
+        decimal subTotal;
+        decimal diskon;
+        if (activeItems.Count > 0)
+        {
+            subTotal = transport.SubTotal;
+            diskon = transport.Diskon;
+        }
+        else if (transport.BiayaBatal > 0)
+        {
+            subTotal = transport.BiayaBatal;
+            diskon = 0m;
+        }
+        else
+        {
+            subTotal = transport.SubTotal;
+            diskon = transport.Diskon;
+        }
+
+        var nilai = new TrsBillNilaiType(subTotal, diskon, 0m, 0m);
+
+        var layanan = !string.IsNullOrWhiteSpace(transport.LayananId) && transport.LayananId == reg.Layanan.LayananId
+            ? reg.Layanan
+            : (!string.IsNullOrWhiteSpace(transport.LayananId)
+                ? new LayananReff(transport.LayananId, "")
+                : reg.Layanan);
+
+        var rekapCetakReff = rekapCetak?.ToReff() ?? RekapCetakType.Default.ToReff();
+
+        var billDate = transport.TglTrs == default
+            ? (createdAt == default ? DateTime.Now : createdAt)
+            : transport.TglTrs;
+
+        var result = new TrsBillType(
+            transport.TrsTransportId,
+            BillModulGroup.Jasa,
+            billDate,
+            reg.ToReff(),
+            layanan,
+            reg.Kelas,
+            audit.Created,
+            rekapCetakReff,
             nilai,
             ketBilling,
             listBill2TransEvent,

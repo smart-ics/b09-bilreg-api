@@ -3,6 +3,9 @@ CREATE TABLE ta_transport (
     fs_nm_transport VARCHAR(30) NOT NULL CONSTRAINT DF_ta_transport_fs_nm_transport DEFAULT (''),
     fb_aktif BIT NOT NULL CONSTRAINT DF_ta_transport_fb_aktif DEFAULT (0),
     fn_abonemen DECIMAL(20) NOT NULL CONSTRAINT DF_ta_transport_fn_abonemen DEFAULT (0),
+    fs_no_polisi VARCHAR(20) NOT NULL CONSTRAINT DF_ta_transport_fs_no_polisi DEFAULT (''),
+    fs_tipe_armada VARCHAR(20) NOT NULL CONSTRAINT DF_ta_transport_fs_tipe_armada DEFAULT ('Transport'),
+    fs_status_armada VARCHAR(20) NOT NULL CONSTRAINT DF_ta_transport_fs_status_armada DEFAULT ('Available'),
     
     CONSTRAINT PK_ta_transport PRIMARY KEY CLUSTERED (fs_kd_transport)
 )
