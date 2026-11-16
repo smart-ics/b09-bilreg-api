@@ -28,7 +28,11 @@ public class AntrianRepo : IAntrianRepo
     {
         LoadEntity(model)
             .Match(
-                onSome: _ => _antrianDal.Update(AntrianDto.FromModel(model)),
+                onSome: _ =>
+                {
+                    _antrianDal.Update(AntrianDto.FromModel(model));
+                    _antrianDal.UpdatePrefixIfEmpty(model.AntrianId, model.QueuePrefixSnapshot);
+                },
                 onNone: () => _antrianDal.Insert(AntrianDto.FromModel(model))
             );
 
