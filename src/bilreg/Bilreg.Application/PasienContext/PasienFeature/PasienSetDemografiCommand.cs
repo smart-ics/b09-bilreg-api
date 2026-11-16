@@ -6,7 +6,9 @@ using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
@@ -19,7 +21,8 @@ public record PasienSetDemografiCommand(string PasienId,
     string NoKartuKeluarga, string Email, string NoHp,
     string NamaKeluarga, string Relasi, string NoTelpKeluarga,
     string Alamat1Keluarga, string Alamat2Keluarga, 
-    string kotaKeluarga, string kodePosKeluarga, string IbuKandung
+    string kotaKeluarga, string kodePosKeluarga, string IbuKandung,
+    string MrIbu = ""
     ) : IRequest, IPasienKey, IKelurahanKey
 {
     public string UserId { get; init; } = string.Empty;
@@ -36,6 +39,7 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
     private readonly IPendidikanDkDal _pendidikanDkDal;
     private readonly IKelurahanRepo _kelurahanRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public PasienSetDemografiHandler(IPasienRepo pasienRepo,
         IStatusKawinDkDal statisKawinDal,
@@ -44,7 +48,8 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         IPekerjaanDkDal pekerjaanDal,
         IPendidikanDkDal pendidikanDkDal,
         IKelurahanRepo kelurahanRepo,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _pasienRepo = pasienRepo;
         _statisKawinDal = statisKawinDal;
@@ -54,6 +59,7 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         _pendidikanDkDal = pendidikanDkDal;
         _kelurahanRepo = kelurahanRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
 
         _pasien = PasienModel.Default;
     }
@@ -63,11 +69,9 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NullOrWhiteSpace(request.PasienId, nameof(request.PasienId));
         Guard.Against.NullOrWhiteSpace(request.KelurahanId, nameof(request.KelurahanId));
-        Guard.Against.NullOrWhiteSpace(request.StatusKawinId, nameof(request.StatusKawinId));
         Guard.Against.Null(request.AgamaId, nameof(request.AgamaId));
         Guard.Against.Null(request.SukuId, nameof(request.SukuId));
         Guard.Against.Null(request.PekerjaanId, nameof(request.PekerjaanId));
-        Guard.Against.NullOrWhiteSpace(request.PendidikanId, nameof(request.PendidikanId));
 
         Guard.Against.Null(request.AlamatDomisili1, nameof(request.AlamatDomisili1));
         Guard.Against.Null(request.AlamatDomisili2, nameof(request.AlamatDomisili2));
@@ -85,22 +89,46 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         Guard.Against.Null(request.kodePosKeluarga, nameof(request.kodePosKeluarga));
         Guard.Against.NullOrWhiteSpace(request.IbuKandung, nameof(request.IbuKandung));
 
-
-
         _pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
             );
 
+        var now = _tglJamProvider?.Now ?? default;
+        var today = (now == default || now == DateTime.MinValue)
+            ? DateOnly.FromDateTime(DateTime.Today)
+            : DateOnly.FromDateTime(now);
+        var usia = CalculateAge(_pasien.Person.TglLahir, today);
+
+        var statusKawinId = request.StatusKawinId;
+        if (string.IsNullOrWhiteSpace(statusKawinId))
+        {
+            if (usia < 17)
+                statusKawinId = "1";
+            else
+                Guard.Against.NullOrWhiteSpace(request.StatusKawinId, nameof(request.StatusKawinId));
+        }
+
+        var pendidikanId = request.PendidikanId;
+        if (string.IsNullOrWhiteSpace(pendidikanId))
+        {
+            if (usia < 7)
+                pendidikanId = "1";
+            else
+                Guard.Against.NullOrWhiteSpace(request.PendidikanId, nameof(request.PendidikanId));
+        }
+
         var originalDataJson = AuditLogSnapshotJson.Serialize(_pasien);
         
+        _pasien.SetMrIbu(request.MrIbu?.Trim() ?? string.Empty);
+
         SetAdminData(request, request.NoKartuKeluarga, request.Email, request.NoHp, request.NoTelpKeluarga, request.NamaKeluarga,
             request.Relasi, request.Alamat1Keluarga, request.Alamat2Keluarga, request.IbuKandung, 
             request.KotaDomisili, request.kodePosDomisili, request.kotaKeluarga, request.kodePosKeluarga,
             request.AlamatDomisili1, request.AlamatDomisili2, request.AlamatDomisili3);
 
-        SetDemografi(request.StatusKawinId, request.AgamaId, request.SukuId, request.PekerjaanId, request.PendidikanId);
+        SetDemografi(statusKawinId, request.AgamaId, request.SukuId, request.PekerjaanId, pendidikanId);
 
         _pasienRepo.SaveChanges(_pasien);
         var auditLog = AuditLog.Create(request.UserId, DateTime.Now, "Pasien.SetDemografi", "Pasien", _pasien.PasienId, null, originalDataJson);
@@ -160,5 +188,13 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         person = person with { Alamat = alamat };
         
         _pasien.UpdateAdminInfo(kelurahan, kartuKeluarga, emailContact, noHpContact, keluarga, namaIbuKandung, person);
+    }
+
+    private static int CalculateAge(DateOnly birthDate, DateOnly referenceDate)
+    {
+        var age = referenceDate.Year - birthDate.Year;
+        if (referenceDate < birthDate.AddYears(age))
+            age--;
+        return Math.Max(0, age);
     }
 }

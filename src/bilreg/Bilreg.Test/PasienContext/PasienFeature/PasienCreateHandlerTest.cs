@@ -560,4 +560,537 @@ public class PasienCreateHandlerTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task Handle_ChildUnder17WithoutNoTelp_ShouldSucceedWithDefaultContact(string? emptyTelp)
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with
+        {
+            PasienName = "Budi Kecil",
+            TglLahir = "2016-01-01",
+            NoTelp = emptyTelp!,
+            NoKtp = ""
+        };
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000010",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        PasienModel? savedPasien = null;
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Callback<PasienModel>(p => savedPasien = p)
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000010")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PasienId.Should().Be("00100000010");
+
+        savedPasien.Should().NotBeNull();
+        savedPasien!.Person.Contact.Should().Be(ContactType.Default);
+        savedPasien.Person.Contact.ContactDetail.Should().Be("-");
+    }
+
+    [Fact]
+    public async Task Handle_ChildUnder17WithValidNoTelp_ShouldSucceedWithPhoneContact()
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with
+        {
+            PasienName = "Budi Kecil",
+            TglLahir = "2016-01-01",
+            NoTelp = "081298765432",
+            NoKtp = ""
+        };
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000011",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        PasienModel? savedPasien = null;
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Callback<PasienModel>(p => savedPasien = p)
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000011")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PasienId.Should().Be("00100000011");
+
+        savedPasien.Should().NotBeNull();
+        savedPasien!.Person.Contact.JenisContact.Should().Be(JenisContactEnum.Phone);
+        savedPasien.Person.Contact.ContactDetail.Should().Be("081298765432");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task Handle_Adult17OrOlderWithoutNoTelp_ShouldThrowArgumentException(string? invalidTelp)
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with { NoTelp = invalidTelp! };
+        var handler = CreateHandler();
+
+        // Act
+        var act = async () => await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Pasien berusia 17 tahun ke atas wajib memiliki nomor telepon/HP*");
+    }
+
+    [Fact]
+    public async Task Handle_Adult17OrOlderWithValidNoTelp_ShouldSucceed()
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand();
+
+        _pasienRepoMock
+            .Setup(x => x.GetDataByNik(command.NoKtp))
+            .Returns(MayBe<PasienPersonView>.None);
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000012",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000012")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PasienId.Should().Be("00100000012");
+    }
+
+    [Fact]
+    public async Task Handle_ChildUnder17WithoutNoTelp_WhenMatchingDemographicExistsWithoutPhone_ShouldNotThrowDuplicate()
+    {
+        // Arrange
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with
+        {
+            PasienName = "Ahmad Dani",
+            TglLahir = "2018-03-25",
+            NoTelp = "",
+            NoKtp = ""
+        };
+
+        var existingPerson = new PersonInfoType(command.PasienName, DateOnly.Parse(command.TglLahir), command.Gender,
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var existingView = new PasienPersonView("00100000099", true, existingPerson);
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien($"{command.PasienName} {command.TglLahir}"))
+            .Returns(new[] { existingView });
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000013",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000013")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert: Tidak melempar InvalidOperationException false-positive
+        result.Should().NotBeNull();
+        result.PasienId.Should().Be("00100000013");
+    }
+
+    [Fact]
+    public async Task Handle_BoundaryAge_Exact17WithoutNoTelp_ShouldThrowArgumentException()
+    {
+        // Arrange: reference date = 2026-10-14, lahir 2009-10-14 (tepat 17 tahun)
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with
+        {
+            TglLahir = "2009-10-14",
+            NoTelp = ""
+        };
+        var handler = CreateHandler();
+
+        // Act
+        var act = async () => await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Pasien berusia 17 tahun ke atas wajib memiliki nomor telepon/HP*");
+    }
+
+    [Fact]
+    public async Task Handle_BoundaryAge_OneDayUnder17WithoutNoTelp_ShouldSucceed()
+    {
+        // Arrange: reference date = 2026-10-14, lahir 2009-10-15 (16 tahun 364 hari, belum 17)
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        var command = CreateSampleCommand() with
+        {
+            TglLahir = "2009-10-15",
+            NoTelp = "",
+            NoKtp = ""
+        };
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000014",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000014")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PasienId.Should().Be("00100000014");
+    }
+
+    [Fact]
+    public async Task Handle_WithMrIbu_ShouldCallSetMrIbuOnPasien()
+    {
+        // Arrange
+        var command = new PasienCreateCommand(
+            PasienName: "Bayi Ny. Siti",
+            TempatLahir: "Surabaya",
+            TglLahir: "2026-10-14",
+            Gender: "L",
+            NickName: "Bayi",
+            IbuKandung: "Siti Aminah",
+            GolDarah: "O",
+            Alamat1: "Jl. Basuki Rahmat No. 12",
+            Alamat2: "RT 01 / RW 02",
+            Alamat3: "Genteng",
+            Kota: "Surabaya",
+            KodePos: "60271",
+            NoTelp: "",
+            NoKtp: "",
+            MrIbu: "  00100000001  "
+        );
+
+        _pasienRepoMock
+            .Setup(x => x.GetDataByNik(It.IsAny<string>()))
+            .Returns(MayBe<PasienPersonView>.None);
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000015",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        PasienModel? savedPasien = null;
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Callback<PasienModel>(p => savedPasien = p)
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000015")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        savedPasien.Should().NotBeNull();
+        savedPasien!.MrIbu.Should().Be("00100000001");
+    }
+
+    [Fact]
+    public async Task Handle_WithoutMrIbu_ShouldHaveEmptyMrIbu()
+    {
+        // Arrange
+        var command = new PasienCreateCommand(
+            PasienName: "Bayi Ny. Siti",
+            TempatLahir: "Surabaya",
+            TglLahir: "2026-10-14",
+            Gender: "L",
+            NickName: "Bayi",
+            IbuKandung: "Siti Aminah",
+            GolDarah: "O",
+            Alamat1: "Jl. Basuki Rahmat No. 12",
+            Alamat2: "RT 01 / RW 02",
+            Alamat3: "Genteng",
+            Kota: "Surabaya",
+            KodePos: "60271",
+            NoTelp: "",
+            NoKtp: ""
+        );
+
+        _pasienRepoMock
+            .Setup(x => x.GetDataByNik(It.IsAny<string>()))
+            .Returns(MayBe<PasienPersonView>.None);
+
+        _pasienRepoMock
+            .Setup(x => x.SearchPasien(It.IsAny<string>()))
+            .Returns(Enumerable.Empty<PasienPersonView>());
+
+        var fixedNow = new DateTime(2026, 10, 14, 10, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(fixedNow);
+
+        _pasienFactoryMock
+            .Setup(x => x.CreateFromPerson(
+                It.IsAny<PersonInfoType>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<GolDarahType>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns((PersonInfoType person, string nick, string tempat, GolDarahType gol, string ibu, DateTime createdAt) =>
+                new PasienModel(
+                    "00100000016",
+                    person,
+                    nick,
+                    tempat,
+                    gol,
+                    ibu,
+                    KtpType.Default,
+                    KelurahanType.Default,
+                    IdentitasType.Default,
+                    new List<ContactType>(),
+                    PasienKeluargaType.Default,
+                    AgamaType.Default,
+                    SukuType.Default,
+                    StatusKawinDkType.Default,
+                    PendidikanDkType.Default,
+                    PekerjaanDkType.Default,
+                    createdAt,
+                    true
+                ));
+
+        PasienModel? savedPasien = null;
+        _pasienRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<PasienModel>()))
+            .Callback<PasienModel>(p => savedPasien = p)
+            .Returns(Result<IPasienKey>.Success(PasienModel.Key("00100000016")));
+
+        var handler = CreateHandler();
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        savedPasien.Should().NotBeNull();
+        savedPasien!.MrIbu.Should().BeEmpty();
+    }
 }
