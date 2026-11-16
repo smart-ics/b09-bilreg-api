@@ -285,4 +285,124 @@ public class TindakanVoidHandlerTest
         tindakan.AuditTrail.IsVoided.Should().BeTrue();
         _tdkRepoMock.Verify(x => x.SaveChanges(tindakan), Times.Once);
     }
+
+    [Fact]
+    public async Task GivenEditedTindakanWithVoidedAndActiveBomRows_WhenVoid_ThenOnlyActiveBomRowsProcessed()
+    {
+        // Arrange
+        const string tindakanId = "TDK-01";
+        const string regId = "REG-01";
+        var cmd = new TindakanVoidCmd(tindakanId, "USER-01", "Batal setelah edit", "127.0.0.1", "TestAgent");
+        var tindakan = CreateTindakan(tindakanId, regId);
+
+        var tdkBarangRepoMock = new Mock<ITindakanBarangRepo>();
+        var tdkPendingRepoMock = new Mock<ITindakanStokPendingRepo>();
+        var pakaiBrgServiceMock = new Mock<IPakaiBrgInternalService>();
+
+        var sut = new TindakanVoidHandler(
+            _tdkRepoMock.Object,
+            _tataRekeningRepoMock.Object,
+            _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _trsBillingRepoMock.Object,
+            _jurnalRepoMock.Object,
+            new NullBillingLockValidationService(),
+            tdkBarangRepoMock.Object,
+            tdkPendingRepoMock.Object,
+            pakaiBrgServiceMock.Object);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(cmd))
+            .Returns(MayBe.From(tindakan));
+        _tataRekeningRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe<TataRekeningModel>.None);
+
+        var bomItems = new List<TindakanBarangType>
+        {
+            new("TBG-01", tindakanId, 1, "BRG-01", "PCS", 1m, "PCS", 1m, 1m, 0m, true, 50000m, "PK-OLD", $"{tindakanId}-B01", true, "Barang Lama"),
+            new("TBG-02", tindakanId, 1, "BRG-01", "PCS", 2m, "PCS", 2m, 2m, 0m, true, 50000m, "PK-NEW", $"{tindakanId}-B02", false, "Barang Baru")
+        };
+        tdkBarangRepoMock.Setup(x => x.ListByTindakanId(tindakanId))
+            .Returns(bomItems);
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        tdkPendingRepoMock.Verify(x => x.MarkVoidByTindakanId(tindakanId, It.IsAny<DateTime>(), "USER-01"), Times.Once);
+
+        pakaiBrgServiceMock.Verify(
+            x => x.VoidFromTindakan(It.Is<PakaiBrgVoidFromTindakanCommand>(c => c.PakaiBrgId == "PK-NEW"), It.IsAny<CancellationToken>()),
+            Times.Once);
+        pakaiBrgServiceMock.Verify(
+            x => x.VoidFromTindakan(It.Is<PakaiBrgVoidFromTindakanCommand>(c => c.PakaiBrgId == "PK-OLD"), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == $"{tindakanId}-B02")), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == $"{tindakanId}-B01")), Times.Never);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == $"{tindakanId}-B02")), Times.Once);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == $"{tindakanId}-B01")), Times.Never);
+
+        tdkBarangRepoMock.Verify(x => x.MarkVoid(tindakanId, "USER-01"), Times.Once);
+        tindakan.AuditTrail.IsVoided.Should().BeTrue();
+        _tdkRepoMock.Verify(x => x.SaveChanges(tindakan), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTindakanWithAllBomRowsAlreadyVoided_WhenVoid_ThenSkipsBomCascadingAndVoidsTindakan()
+    {
+        // Arrange
+        const string tindakanId = "TDK-01";
+        const string regId = "REG-01";
+        var cmd = new TindakanVoidCmd(tindakanId, "USER-01", "Batal tindakan", "127.0.0.1", "TestAgent");
+        var tindakan = CreateTindakan(tindakanId, regId);
+        var bill = TataRekeningTestDataBuilder.CreateBill(tindakanId, regId, 50000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(regId, TataRekeningStatusEnum.Opened, bill);
+
+        var tdkBarangRepoMock = new Mock<ITindakanBarangRepo>();
+        var tdkPendingRepoMock = new Mock<ITindakanStokPendingRepo>();
+        var pakaiBrgServiceMock = new Mock<IPakaiBrgInternalService>();
+
+        var sut = new TindakanVoidHandler(
+            _tdkRepoMock.Object,
+            _tataRekeningRepoMock.Object,
+            _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _trsBillingRepoMock.Object,
+            _jurnalRepoMock.Object,
+            new NullBillingLockValidationService(),
+            tdkBarangRepoMock.Object,
+            tdkPendingRepoMock.Object,
+            pakaiBrgServiceMock.Object);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(cmd))
+            .Returns(MayBe.From(tindakan));
+        _tataRekeningRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var bomItems = new List<TindakanBarangType>
+        {
+            new("TBG-01", tindakanId, 1, "BRG-01", "PCS", 1m, "PCS", 1m, 1m, 0m, true, 50000m, "PK-OLD", $"{tindakanId}-B01", true, "Barang Lama")
+        };
+        tdkBarangRepoMock.Setup(x => x.ListByTindakanId(tindakanId))
+            .Returns(bomItems);
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        tdkPendingRepoMock.Verify(x => x.MarkVoidByTindakanId(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<string>()), Times.Never);
+        pakaiBrgServiceMock.Verify(x => x.VoidFromTindakan(It.IsAny<PakaiBrgVoidFromTindakanCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        tdkBarangRepoMock.Verify(x => x.MarkVoid(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == $"{tindakanId}-B01")), Times.Never);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == $"{tindakanId}-B01")), Times.Never);
+
+        tataRekening.ListTrsBill.Should().NotContain(x => x.TrsBillingId == tindakanId);
+        tindakan.AuditTrail.IsVoided.Should().BeTrue();
+        _tdkRepoMock.Verify(x => x.SaveChanges(tindakan), Times.Once);
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(tataRekening), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == tindakanId)), Times.Once);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == tindakanId)), Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
+    }
 }

@@ -138,7 +138,9 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         // Cascading void for BOM items, stock, and bills
         if (_tindakanBarangRepo != null)
         {
-            var bomItems = _tindakanBarangRepo.ListByTindakanId(tdk.TindakanId).ToList();
+            var bomItems = _tindakanBarangRepo.ListByTindakanId(tdk.TindakanId)
+                .Where(x => !x.IsVoid)
+                .ToList();
             if (bomItems.Count > 0)
             {
                 // 1. Mark pending void
