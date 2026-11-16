@@ -34,13 +34,13 @@ public class PolisModel : IPolisKey
     
     #region PROPERTIES
     public string PolisId { get; init; }
-    public string NoPolis { get; init; } 
-    public string AtasNama { get; init; } 
-    public DateOnly ExpiredDate { get; init; } 
+    public string NoPolis { get; private set; } 
+    public string AtasNama { get; private set; } 
+    public DateOnly ExpiredDate { get; private set; } 
 
     public TipeJaminanReff TipeJaminan { get; init; }
-    public KelasReff Kelas { get; init; }
-    public bool IsCoverRajal { get; init; }
+    public KelasReff Kelas { get; private set; }
+    public bool IsCoverRajal { get; private set; }
     public IEnumerable<PolisCoverModel> ListCover => _listCover;
     #endregion
     
@@ -72,6 +72,48 @@ public class PolisModel : IPolisKey
         if (cover.Status.StatusCode == "P")
             throw new KeyNotFoundException($"Pasien ini adalah peserta utama di polis {cover.PolisId}");
         _listCover.Remove(cover);
+    }
+
+    public void Update(string noPolis, string atasNama, DateOnly expiredDate, KelasReff kelas, bool isCoverRajal)
+    {
+        Guard.Against.NullOrWhiteSpace(noPolis, nameof(noPolis));
+        Guard.Against.NullOrWhiteSpace(atasNama, nameof(atasNama));
+        Guard.Against.Null(kelas, nameof(kelas));
+
+        NoPolis = noPolis;
+        AtasNama = atasNama;
+        ExpiredDate = expiredDate;
+        Kelas = kelas;
+        IsCoverRajal = isCoverRajal;
+    }
+
+    public void UpdateCoverageStatus(PasienModel pasien, StatusPesertaType newStatus)
+    {
+        Guard.Against.Null(pasien, nameof(pasien));
+        Guard.Against.Null(newStatus, nameof(newStatus));
+
+        var cover = _listCover.FirstOrDefault(x => x.Pasien.PasienId == pasien.PasienId);
+        if (cover == null)
+            throw new ArgumentException("Cover not found");
+
+        if (cover.Status.StatusCode == "P" && newStatus.StatusCode != "P")
+            throw new ArgumentException("Status peserta utama tidak dapat diubah");
+
+        if (cover.Status.StatusCode != "P" && cover.Status.StatusCode != newStatus.StatusCode)
+        {
+            var duplicateStatus = _listCover.Any(x => x.Pasien.PasienId != pasien.PasienId && x.Status.StatusCode == newStatus.StatusCode);
+            if (duplicateStatus)
+                throw new ArgumentException("Status Kepesertaan already exist");
+        }
+
+        var index = _listCover.IndexOf(cover);
+        _listCover[index] = cover with { Status = newStatus };
+    }
+
+    public void Update(string noPolis, string atasNama, DateOnly expiredDate, KelasReff kelas, bool isCoverRajal, PasienModel pasien, StatusPesertaType newStatus)
+    {
+        Update(noPolis, atasNama, expiredDate, kelas, isCoverRajal);
+        UpdateCoverageStatus(pasien, newStatus);
     }
     #endregion
 

@@ -18,7 +18,10 @@ public class BhpIgdModel : IBhpIgdKey
         string bhpItemName,
         int qty,
         decimal price,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string trsBillId = "",
+        bool isPosted = false,
+        DateTime? postedDate = null)
     {
         BhpIgdId = bhpIgdId;
         IgdVisitId = igdVisitId;
@@ -28,6 +31,9 @@ public class BhpIgdModel : IBhpIgdKey
         Qty = qty;
         Price = price;
         Audit = audit;
+        TrsBillId = trsBillId ?? string.Empty;
+        IsPosted = isPosted;
+        PostedDate = postedDate;
     }
 
     public static BhpIgdModel Default => new(
@@ -64,14 +70,13 @@ public class BhpIgdModel : IBhpIgdKey
         if (visit.IsTerminal)
             throw new InvalidOperationException(
                 $"Visit {visit.IgdVisitId} sudah terminal; BHP tidak dapat ditambahkan.");
-        if (!visit.HasReg)
-            throw new InvalidOperationException(
-                $"Visit {visit.IgdVisitId} belum memiliki RegId; BHP tidak dapat ditambahkan (rule 7.3).");
+
+        var regId = visit.HasReg ? visit.Reg.RegId : "-";
 
         return new BhpIgdModel(
             bhpIgdId: NunaId.New(ID_PREFIX),
             igdVisitId: visit.IgdVisitId,
-            regId: visit.Reg.RegId,
+            regId: regId,
             bhpItemId: bhpItemId,
             bhpItemName: string.IsNullOrWhiteSpace(bhpItemName) ? "-" : bhpItemName,
             qty: qty,
@@ -83,12 +88,31 @@ public class BhpIgdModel : IBhpIgdKey
     #region PROPERTIES
     public string BhpIgdId { get; init; }
     public string IgdVisitId { get; init; }
-    public string RegId { get; init; }
+    public string RegId { get; private set; }
     public string BhpItemId { get; init; }
     public string BhpItemName { get; init; }
     public int Qty { get; init; }
     public decimal Price { get; init; }
     public AuditInfoType Audit { get; init; }
+    public string TrsBillId { get; private set; }
+    public bool IsPosted { get; private set; }
+    public DateTime? PostedDate { get; private set; }
     public decimal Subtotal => Qty * Price;
+    #endregion
+
+    #region BEHAVIOUR
+    public void AssignRegister(string regId)
+    {
+        Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
+        RegId = regId;
+    }
+
+    public void MarkAsPosted(string trsBillId, DateTime postedAt)
+    {
+        Guard.Against.NullOrWhiteSpace(trsBillId, nameof(trsBillId));
+        TrsBillId = trsBillId;
+        IsPosted = true;
+        PostedDate = postedAt;
+    }
     #endregion
 }

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -50,6 +50,9 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+
+        if (scheduleOp.IsDraft || opCase.OrderOpState != OpCaseStateEnum.Scheduled)
+            throw new InvalidOperationException("Tindakan operasi tidak dapat diproses karena jadwal operasi masih berstatus DRAFT.");
 
         var tglOp = DateTime.ParseExact(
             $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);

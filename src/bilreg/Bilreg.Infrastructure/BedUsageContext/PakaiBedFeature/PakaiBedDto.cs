@@ -108,7 +108,7 @@ public record PakaiBedDto(
             fs_kd_petugas_out: model.Periode.Keluar.UserId,
             fs_kd_reg: model.Reg.RegId,
             fs_kd_layanan: model.Layanan.LayananId,
-            fs_kd_layanan_dk: string.Empty,
+            fs_kd_layanan_dk: model.LayananDkId,
             fs_kd_kamar_tipe: model.TipeKamar.TipeKamarId,
             fs_kd_bed: model.Bed.BedId,
             fn_tarif: model.Tarif,
@@ -157,6 +157,6 @@ public record PakaiBedDto(
 
         return new PakaiBedModel(
             fs_kd_trs, periode, reg, layanan, bed, tipeKamar,
-            kelas, fn_tarif, auditTrail, komponenList, fs_kd_kelas_tindakan);
+            kelas, fn_tarif, auditTrail, komponenList, fs_kd_kelas_tindakan, fs_kd_layanan_dk);
     }
 }

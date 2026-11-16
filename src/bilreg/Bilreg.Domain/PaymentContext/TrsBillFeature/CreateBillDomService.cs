@@ -1,6 +1,8 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -58,6 +60,15 @@ public interface ICreateBillDomService
         JaminanType jaminan,
         GroupRekType groupRek,
         DateTime createdAt = default);
+
+    TrsBillType FromBhpRanap(
+        TataRekeningModel tataRekening,
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -112,6 +123,19 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromPenjualanItem(penjualan, item, reg, jaminan, groupRek, createdAt);
+    }
+
+    public TrsBillType FromBhpRanap(
+        TataRekeningModel tataRekening,
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromBhpRanap(bhp, reg, layanan, jaminan, groupRek, createdAt);
     }
 
     private static void ValidateReg(TataRekeningModel tataRekening, string regId)

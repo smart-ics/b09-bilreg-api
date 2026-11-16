@@ -18,6 +18,8 @@ public record LabResultDocumentDto(
     DateTime AmendedDate,
     string AmendedUserId,
     string PreviousVersionId,
+    string ExpertiseNote,
+    string CriticalNote,
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -41,6 +43,8 @@ public record LabResultDocumentDto(
             AmendedDate: model.AmendedDate,
             AmendedUserId: model.AmendedUserId,
             PreviousVersionId: model.PreviousVersionId,
+            ExpertiseNote: model.ExpertiseNote,
+            CriticalNote: model.CriticalNote,
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId,
@@ -73,6 +77,8 @@ public record LabResultDocumentDto(
             AmendedUserId,
             PreviousVersionId,
             auditTrail,
-            items);
+            items,
+            ExpertiseNote,
+            CriticalNote);
     }
 }

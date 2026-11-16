@@ -84,6 +84,7 @@ public class BedOperationalRegistrationTest
         services.AddSingleton(new Mock<IBangsalRepo>().Object);
         services.AddSingleton(new Mock<IRoomRateRepo>().Object);
         services.AddSingleton(new Mock<IWaitingListRepo>().Object);
+        services.AddSingleton(new Mock<IWardCockpitDal>().Object);
         services.AddSingleton(new Mock<ITglJamProvider>().Object);
 
         using var sp = services.BuildServiceProvider();

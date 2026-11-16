@@ -41,7 +41,9 @@ public class PakaiBedDalTest
             fb_bed_aktif: false,
             fs_nm_kamar_tipe: "",
             fb_kamar_tipe_aktif: false,
-            fs_nm_kelas: "");
+            fs_nm_kelas: "",
+            fs_kd_kelas_tindakan: "",
+            fd_tgl_jam_in: "2026-07-17 09:00:00");
 
     private static IPakaiBed FakerKey()
         => PakaiBedModel.Key("TPKB0000000001");
@@ -102,6 +104,24 @@ public class PakaiBedDalTest
     }
 
     [Fact]
+    public void Insert_WithLayananDk_ShouldPersistLayananDk()
+    {
+        using var trans = TransHelper.NewScope();
+        var key = "TPKB_DK_0001";
+        var dto = Faker() with
+        {
+            fs_kd_trs = key,
+            fs_kd_layanan_dk = "88"
+        };
+
+        _sut.Insert(dto);
+
+        var actual = _sut.GetData(PakaiBedModel.Key(key));
+        actual.Should().NotBeNull();
+        actual!.fs_kd_layanan_dk.Should().Be("88");
+    }
+
+    [Fact]
     public void Insert_WithKomponenTarif_ShouldPersistToBed2()
     {
         using var trans = TransHelper.NewScope();
@@ -129,6 +149,31 @@ public class PakaiBedDalTest
         actual.list_komponen![0].fn_tarif.Should().Be(100000);
         actual.list_komponen![1].fs_kd_detil_tarif.Should().Be("02");
         actual.list_komponen![1].fn_tarif.Should().Be(50000);
+    }
+
+    [Fact]
+    public void GetData_WhenKelasTindakanPopulated_ShouldReturnKelasTindakanAndMapToModel()
+    {
+        using var trans = TransHelper.NewScope();
+        var key = "TPKB_KT_0001";
+        var dto = Faker() with
+        {
+            fs_kd_trs = key,
+            fs_kd_kelas = "T01",
+            fs_kd_kelas_tindakan = "T02",
+            fd_tgl_jam_in = "2026-07-17 09:00:00"
+        };
+        _sut.Insert(dto);
+
+        var actual = _sut.GetData(PakaiBedModel.Key(key));
+        actual.Should().NotBeNull();
+        actual!.fs_kd_kelas.Should().Be("T01");
+        actual.fs_kd_kelas_tindakan.Should().Be("T02");
+        actual.fd_tgl_jam_in.Should().Be("2026-07-17 09:00:00");
+
+        var model = actual.ToModel();
+        model.KelasTindakanId.Should().Be("T02");
+        model.Kelas.KelasId.Should().Be("T01");
     }
 
     [Fact]
@@ -945,5 +990,27 @@ public class PakaiBedDalTest
                 babyPakaiBedId = testBabyPakaiBedId
             });
         }
+    }
+
+    [Fact]
+    public async Task GetRoomingInBabyTrsIdsAsync_WhenBabyRegIdNullOrEmpty_DoesNotThrowNullReferenceException()
+    {
+        // Act & Assert
+        var actNull = async () => await _sut.GetRoomingInBabyTrsIdsAsync("NONEXISTENT_BED", null);
+        await actNull.Should().NotThrowAsync<NullReferenceException>();
+
+        var actEmpty = async () => await _sut.GetRoomingInBabyTrsIdsAsync("NONEXISTENT_BED", "");
+        await actEmpty.Should().NotThrowAsync<NullReferenceException>();
+    }
+
+    [Fact]
+    public async Task ReleaseRoomingInBabyAsync_WhenBabyRegIdNullOrEmpty_DoesNotThrowNullReferenceException()
+    {
+        // Act & Assert
+        var actNull = async () => await _sut.ReleaseRoomingInBabyAsync("NONEXISTENT_BED", null, "USR1", DateTime.Now);
+        await actNull.Should().NotThrowAsync<NullReferenceException>();
+
+        var actEmpty = async () => await _sut.ReleaseRoomingInBabyAsync("NONEXISTENT_BED", "", "USR1", DateTime.Now);
+        await actEmpty.Should().NotThrowAsync<NullReferenceException>();
     }
 }

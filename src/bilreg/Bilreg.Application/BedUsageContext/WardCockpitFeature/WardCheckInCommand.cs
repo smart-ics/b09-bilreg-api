@@ -41,6 +41,7 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
     private readonly IKamarRepo _kamarRepo;
     private readonly IBangsalRepo _bangsalRepo;
     private readonly IRoomRateRepo _roomRateRepo;
+    private readonly IWardCockpitDal _wardCockpitDal;
     private readonly IMediator _mediator;
     private readonly ITglJamProvider _tglJamProvider;
 
@@ -51,6 +52,7 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
         IKamarRepo kamarRepo,
         IBangsalRepo bangsalRepo,
         IRoomRateRepo roomRateRepo,
+        IWardCockpitDal wardCockpitDal,
         IMediator mediator,
         ITglJamProvider tglJamProvider)
     {
@@ -60,6 +62,7 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
         _kamarRepo = kamarRepo;
         _bangsalRepo = bangsalRepo;
         _roomRateRepo = roomRateRepo;
+        _wardCockpitDal = wardCockpitDal;
         _mediator = mediator;
         _tglJamProvider = tglJamProvider;
     }
@@ -141,10 +144,22 @@ public class WardCheckInCommandHandler : IRequestHandler<WardCheckInCommand, War
                 .GetValueOrThrow($"Kamar '{bed.Kamar.KamarId}' tidak ditemukan.");
             var roomRate = _roomRateRepo.LoadEntity(kamar)
                 .GetValueOrThrow($"Room Rate untuk Kamar '{kamar.KamarId}' tidak ditemukan.");
-            var firstTipe = roomRate.ListTipe.FirstOrDefault()
-                ?? throw new InvalidOperationException(
-                    $"Tidak ada Tipe Kamar pada Room Rate untuk Kamar '{kamar.KamarId}'.");
-            tipeKamarId = firstTipe.TipeKamar.TipeKamarId;
+
+            // 1. Coba resolve tipe kamar dari jaminan registrasi pasien
+            var guarantorTipeKamarId = await _wardCockpitDal.GetKamarTipeByRegIdAsync(regId, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(guarantorTipeKamarId) &&
+                roomRate.ListTipe.Any(x => x.TipeKamar.TipeKamarId == guarantorTipeKamarId))
+            {
+                tipeKamarId = guarantorTipeKamarId;
+            }
+            else
+            {
+                // 2. Fallback jika tidak ada konfigurasi jaminan khusus untuk kamar tersebut
+                var firstTipe = roomRate.ListTipe.FirstOrDefault()
+                    ?? throw new InvalidOperationException(
+                        $"Tidak ada Tipe Kamar pada Room Rate untuk Kamar '{kamar.KamarId}'.");
+                tipeKamarId = firstTipe.TipeKamar.TipeKamarId;
+            }
         }
 
         // 4. Eksekusi alokasi via PakaiBedCreateCommand

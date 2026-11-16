@@ -1,7 +1,9 @@
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -52,6 +54,14 @@ public interface IAddBillAppService
         TindakanModel tindakan,
         TindakanBarangType barang,
         RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
+
+    TrsBillType FromBhpRanap(
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
         JaminanType jaminan,
         GroupRekType groupRek,
         DateTime createdAt = default);
@@ -166,6 +176,26 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromPenjualanItem(
             tataRekening, penjualan, item, reg, jaminan, groupRek, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromBhpRanap(
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromBhpRanap(
+            tataRekening, bhp, reg, layanan, jaminan, groupRek, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

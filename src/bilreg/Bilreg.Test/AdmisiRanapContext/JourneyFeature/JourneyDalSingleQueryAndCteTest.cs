@@ -86,4 +86,23 @@ public class JourneyDalSingleQueryAndCteTest
         sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId");
         sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (3, 4) THEN a.InpatientOrderId");
     }
+
+    [Fact]
+    public void BuildJourneyCte_ProspectiveOrders_MergesOpnameAndReservationIntoSingleCte()
+    {
+        // Act
+        var cteSql = JourneyDal.BuildJourneyCte();
+
+        // Assert - ProspectiveOpname and ProspectiveReservation merged into ProspectiveOrders
+        cteSql.Should().Contain("ProspectiveOrders AS (");
+        cteSql.Should().NotContain("ProspectiveOpname AS (");
+        cteSql.Should().NotContain("ProspectiveReservation AS (");
+        cteSql.Should().Contain("SELECT * FROM ProspectiveOrders");
+        cteSql.Should().Contain("UNION ALL");
+        cteSql.Should().Contain("SELECT * FROM AdmissionRoots");
+        cteSql.Should().NotContain("SELECT * FROM ProspectiveOpname");
+        cteSql.Should().NotContain("SELECT * FROM ProspectiveReservation");
+        cteSql.Should().Contain("WHEN o.OrderSource IN (1, 2) THEN 'opn:' + o.InpatientOrderId");
+        cteSql.Should().Contain("ELSE 'rsv:' + o.InpatientOrderId");
+    }
 }

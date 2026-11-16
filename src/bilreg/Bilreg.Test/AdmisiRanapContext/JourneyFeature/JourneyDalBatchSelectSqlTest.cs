@@ -26,4 +26,24 @@ public class JourneyDalBatchSelectSqlTest
         sql.Should().NotContain("a.OpnameRequestId IN @OpnIds");
         sql.Should().NotContain("a.ReservationId IN @RsvIds");
     }
+
+    [Fact]
+    public void BuildRegExtrasSelectSql_UsesDapperParameterList_EliminatesStringSplit_AndIsSqlServer2012Compatible()
+    {
+        // Act
+        var sql = JourneyDal.BuildRegExtrasSelectSql();
+
+        // Assert - Criteria 1: Elimination of STRING_SPLIT and @RegIdCsv
+        sql.Should().NotContain("STRING_SPLIT");
+        sql.Should().NotContain("@RegIdCsv");
+
+        // Assert - Criteria 2: Dapper parameter list syntax for SQL Server 2012 compatibility
+        sql.Should().Contain("reg.fs_kd_reg IN @RegIds");
+        sql.Should().Contain("h.fs_kd_reg IN @RegIds");
+        sql.Should().Contain("WHERE @HasRegIds = 1");
+
+        // Assert - Criteria 3: SQL Server 2012 compatible string handling without SQL 2017+ standalone TRIM
+        sql.Should().NotMatchRegex(@"(?<![LR])TRIM\(");
+        sql.Should().Contain("LTRIM(RTRIM(");
+    }
 }

@@ -9,6 +9,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -31,11 +32,12 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
     private readonly IRegInapRepo _regInapRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IProsedureMasukInapRepo _prosedurMasukInapRepo;
-    private readonly ILayananRepo _layananRepo;
+    private readonly ILayananRepo? _layananRepo;
+    private readonly ICaraMasukDkRepo? _caraMasukRepo;
+    private readonly ICaraMasukDkRepo? _caraMasukDkRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IRegAktifRepo? _regAktifRepo;
-    private readonly ICaraMasukDkRepo? _caraMasukDkRepo;
 
     public AdmUpdateInpatientVisitHandler(
         IRegRepo regRepo,
@@ -59,6 +61,24 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
         _caraMasukDkRepo = caraMasukDkRepo;
     }
 
+    public AdmUpdateInpatientVisitHandler(
+        IRegRepo regRepo,
+        IRegInapRepo regInapRepo,
+        IPpaRepo ppaRepo,
+        IProsedureMasukInapRepo prosedurMasukInapRepo,
+        ICaraMasukDkRepo caraMasukRepo,
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
+    {
+        _regRepo = regRepo;
+        _regInapRepo = regInapRepo;
+        _ppaRepo = ppaRepo;
+        _prosedurMasukInapRepo = prosedurMasukInapRepo;
+        _caraMasukRepo = caraMasukRepo;
+        _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
+    }
+
     public Task Handle(AdmUpdateInpatientVisitCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
@@ -74,11 +94,29 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
             throw new ArgumentException($"Jenis Inap '{request.JenisInapId}' tidak valid.", nameof(request.JenisInapId));
         }
 
-        if (request.JenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL && string.IsNullOrWhiteSpace(request.RegIbu))
+        // 1. Validasi Perinatal dan Integritas Registrasi Ibu
+        if (request.JenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL)
         {
-            throw new ArgumentException("No Reg Ibu wajib diisi untuk jenis inap Perinatal.", nameof(request.RegIbu));
+            if (string.IsNullOrWhiteSpace(request.RegIbu))
+                throw new ArgumentException("Nomor registrasi ibu wajib diisi untuk jenis inap Perinatal. (Reg Ibu)", nameof(request.RegIbu));
+
+            var mother = _regRepo.LoadEntity(new RegKey(request.RegIbu.Trim()))
+                .Match(
+                    onSome: x => x,
+                    onNone: () => throw new KeyNotFoundException($"Registrasi ibu '{request.RegIbu}' tidak ditemukan.")
+                );
+
+            if (mother.RegVoidAudit.Timestamp.Date != new DateTime(3000, 1, 1))
+                throw new InvalidOperationException("Registrasi ibu sudah berstatus void.");
+
+            if (mother.RegKeluarAudit.Timestamp.Date != new DateTime(3000, 1, 1))
+                throw new InvalidOperationException("Registrasi ibu sudah berstatus pulang/keluar.");
+
+            if (mother.JenisInap?.JenisInapId != InpatientAgePolicy.JENIS_INAP_OBSTETRI)
+                throw new InvalidOperationException("JENIS INAP IBU invalid: Registrasi ibu harus berjenis inap Obstetri.");
         }
 
+        // 2. Load entitas pasien (reg & regInap)
         var reg = _regRepo.LoadEntity(request)
             .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
 
@@ -88,43 +126,62 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
         }
 
         var regInap = _regInapRepo.LoadEntity(request)
-            .GetValueOrThrow($"Registrasi Inap '{request.RegId}' tidak ditemukan.");
+            .GetValueOrThrow($"Registrasi rawat inap '{request.RegId}' tidak ditemukan.");
 
         if (regInap.IsTerminal)
         {
             throw new InvalidOperationException($"Registrasi Inap '{request.RegId}' sudah berstatus terminal.");
         }
 
+        // 3. Resolve master data pendukung
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId))
             .GetValueOrThrow($"Dokter '{request.DokterId}' tidak ditemukan.");
 
         var prosedur = _prosedurMasukInapRepo.LoadEntity(ProsedurMasukInapType.Key(request.ProsedurMasukInapId))
             .GetValueOrThrow($"Prosedur Masuk Inap '{request.ProsedurMasukInapId}' tidak ditemukan.");
 
-        var layanan = _layananRepo.LoadEntity(LayananType.Key(reg.Layanan.LayananId))
-            .GetValueOrThrow($"Layanan '{reg.Layanan.LayananId}' tidak ditemukan.");
-
-        var jenisInap = JenisInapType.FromId(request.JenisInapId);
-        var regIbu = request.JenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL
-            ? request.RegIbu.Trim()
-            : string.Empty;
-
-        var snapshotJson = AuditLogSnapshotJson.Serialize(regInap);
+        // 4. Snapshots & timestamp untuk audit
         var occurredAt = _tglJamProvider.Now;
-        var today = DateOnly.FromDateTime(occurredAt);
+        var auditInfo = new AuditInfoType(request.UserId, occurredAt);
+        var regSnapshot = AuditLogSnapshotJson.Serialize(reg);
+        var regInapSnapshot = AuditLogSnapshotJson.Serialize(regInap);
 
+        // 5. Update RegInapModel (ta_reg_inap)
         if (regInap.Dpjp.PpaId != dokter.PpaId)
         {
-            regInap.ChangePrimaryDpjp(dokter.ToReff(), today);
+            var effectiveDate = DateOnly.FromDateTime(occurredAt);
+            var currentPrimary = regInap.ListDokter.FirstOrDefault(x =>
+                x.IsActive && x.DokterRole == DokterRoleEnum.Dpjp && x.DpjpResponsibility == DpjpResponsibilityEnum.Primary);
+            if (currentPrimary is not null && effectiveDate < currentPrimary.AssignDate)
+            {
+                effectiveDate = currentPrimary.AssignDate;
+            }
+            regInap.ChangePrimaryDpjp(dokter.ToReff(), effectiveDate);
+        }
+        regInap.SetProsedurMasukInap(prosedur);
+
+        // 6. Update RegModel (ta_registrasi)
+        if (_layananRepo != null)
+        {
+            var layanan = _layananRepo.LoadEntity(LayananType.Key(reg.Layanan.LayananId))
+                .GetValueOrThrow($"Layanan '{reg.Layanan.LayananId}' tidak ditemukan.");
+            reg.AssignInpatientVisitTo(dokter, layanan);
+        }
+        else if (reg.Dokter.PpaId != dokter.PpaId)
+        {
+            reg.ChangePrimaryDpjp(dokter.ToReff());
         }
 
-        regInap.SetProsedurMasukInap(prosedur);
-        reg.AssignInpatientVisitTo(dokter, layanan);
-        reg.SetJenisInap(jenisInap, regIbu);
+        var targetRegIbu = request.JenisInapId == InpatientAgePolicy.JENIS_INAP_PERINATAL
+            ? request.RegIbu.Trim()
+            : string.Empty;
+        var jenisInap = JenisInapType.FromId(request.JenisInapId);
+        reg.SetJenisInap(jenisInap, targetRegIbu);
 
-        if (!string.IsNullOrWhiteSpace(request.CaraMasukDkId) && _caraMasukDkRepo != null)
+        var caraMasukRepo = _caraMasukRepo ?? _caraMasukDkRepo;
+        if (!string.IsNullOrWhiteSpace(request.CaraMasukDkId) && caraMasukRepo != null)
         {
-            var caraMasuk = _caraMasukDkRepo.LoadEntity(CaraMasukDkType.Key(request.CaraMasukDkId))
+            var caraMasuk = caraMasukRepo.LoadEntity(CaraMasukDkType.Key(request.CaraMasukDkId))
                 .GetValueOrThrow($"Cara Masuk '{request.CaraMasukDkId}' tidak ditemukan.");
 
             if (!caraMasuk.RequiresRujukan)
@@ -143,22 +200,28 @@ public class AdmUpdateInpatientVisitHandler : IRequestHandler<AdmUpdateInpatient
             }
         }
 
-        using (var trans = TransHelper.NewScope())
-        {
-            _regRepo.SaveChanges(reg);
-            _regInapRepo.SaveChanges(regInap);
-            _regAktifRepo?.SaveChanges(RegAktifModel.CreateFromReg(reg));
+        // 7. Simpan dalam transaksional scope
+        using var trans = TransHelper.NewScope();
 
-            _auditRepo.SaveChanges(AuditLog.Create(
-                request.UserId,
-                occurredAt,
-                "UPDATE",
-                nameof(RegInapModel),
-                request.RegId,
-                originalDataJson: snapshotJson));
+        _regRepo.SaveChanges(reg);
+        _regInapRepo.SaveChanges(regInap);
+        _regAktifRepo?.SaveChanges(RegAktifModel.CreateFromReg(reg));
 
-            trans.Complete();
-        }
+        _auditRepo.SaveChanges(AuditLog.Create(
+            auditInfo,
+            "UPDATE",
+            nameof(RegInapModel),
+            regInap.RegId,
+            originalDataJson: regInapSnapshot));
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            auditInfo,
+            "UPDATE",
+            nameof(RegModel),
+            reg.RegId,
+            originalDataJson: regSnapshot));
+
+        trans.Complete();
 
         return Task.CompletedTask;
     }

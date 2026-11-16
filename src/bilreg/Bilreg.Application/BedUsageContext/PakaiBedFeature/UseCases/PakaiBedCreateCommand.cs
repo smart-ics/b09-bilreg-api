@@ -177,6 +177,10 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 AuditInfoType.Default
                 );
 
+            var layananDkId = reg.JenisInap?.JenisInapId == "3"
+                ? "88"
+                : (layanan.LayananDk?.LayananDkId ?? string.Empty);
+
             var pakaiBed = PakaiBedModel.Create(
                 reg, 
                 periode.Masuk, 
@@ -186,7 +190,8 @@ namespace Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases
                 kelas,
                 rate.TotalNilai,
                 listKomponen,
-                kelas.KelasId);
+                kelas.KelasId,
+                layananDkId);
 
             using var trans = TransHelper.NewScope();
 

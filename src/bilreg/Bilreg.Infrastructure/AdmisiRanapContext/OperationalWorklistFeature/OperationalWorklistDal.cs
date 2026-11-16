@@ -180,8 +180,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
             LEFT JOIN BILRG_AdmInpatientOrder op
-                ON (aa.InpatientOrderId <> '-' AND aa.InpatientOrderId = op.InpatientOrderId)
-                OR (aa.InpatientOrderId = '-' AND aa.OpnameRequestId <> '-' AND aa.OpnameRequestId = op.InpatientOrderId)
+                ON aa.InpatientOrderId <> '-' AND aa.InpatientOrderId = op.InpatientOrderId
             LEFT JOIN ta_registrasi reg ON aa.RegId = reg.fs_kd_reg
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
             WHERE aa.VodDate = @VodDate{terminalFilter}

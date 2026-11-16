@@ -4,5 +4,6 @@ public enum LabResultFlagEnum
 {
     Normal = 1,
     High = 2,
-    Low = 3
+    Low = 3,
+    Critical = 4
 }

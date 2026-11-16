@@ -15,10 +15,16 @@ public record TindakanIgdDto(
     int Aktifitas,
     string PpaId, 
     string PpaName,
+    string? TrsTdkId,
+    string? TrsBillId,
+    bool IsPosted,
+    DateTime? PostedDate,
     string CrtUser,
     DateTime CrtDate
     )
 {
+    public TindakanIgdDto() : this("", "", "", "", "", 0, 0, "", "", null, null, false, null, "", default) { }
+
     public static TindakanIgdDto FromModel(TindakanIgdModel model)
         => new(
             TindakanIgdId: model.TindakanIgdId,
@@ -29,7 +35,13 @@ public record TindakanIgdDto(
             Qty: model.Qty,
             Aktifitas: (int)model.Aktifitas,
             PpaId: model.Ppa.PpaId,
-            PpaName: model.Ppa.PpaName,model.Audit.UserId, model.Audit.Timestamp);
+            PpaName: model.Ppa.PpaName,
+            TrsTdkId: model.TrsTdkId,
+            TrsBillId: model.TrsBillId,
+            IsPosted: model.IsPosted,
+            PostedDate: model.PostedDate,
+            CrtUser: model.Audit.UserId,
+            CrtDate: model.Audit.Timestamp);
 
     public TindakanIgdModel ToModel()
     {
@@ -45,7 +57,11 @@ public record TindakanIgdDto(
             qty: Qty,
             aktifitas: (ActivityTindakanIgd)Aktifitas,
             ppa: petugasMedis,
-            audit: audit);
+            audit: audit,
+            trsTdkId: TrsTdkId ?? string.Empty,
+            trsBillId: TrsBillId ?? string.Empty,
+            isPosted: IsPosted,
+            postedDate: PostedDate);
         return result;
     }
 
@@ -60,5 +76,9 @@ public record TindakanIgdDto(
             Aktifitas: (ActivityTindakanIgd)Aktifitas,
             Ppa: new PpaReff(PpaId, PpaName),
             CrtUserId: CrtUser,
-            CreatedDateTime: CrtDate);
+            CreatedDateTime: CrtDate,
+            TrsTdkId: TrsTdkId ?? string.Empty,
+            TrsBillId: TrsBillId ?? string.Empty,
+            IsPosted: IsPosted,
+            PostedDate: PostedDate);
 }

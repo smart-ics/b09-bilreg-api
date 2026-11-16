@@ -21,7 +21,13 @@ public record LabResultView(
     string RecordedUserId,
     DateTime VerifiedDate,
     string VerifiedUserId,
-    IEnumerable<LabResultItemView> Items);
+    IEnumerable<LabResultItemView> Items,
+    string ExpertiseNote = "",
+    string CriticalNote = "",
+    string AmendmentReason = "",
+    string PreviousVersionId = "",
+    DateTime? AmendedDate = null,
+    string AmendedUserId = "");
 
 public record LabResultItemView(
     int ItemNo,
@@ -71,7 +77,13 @@ public class LabResultGetHandler : IRequestHandler<LabResultGetQuery, LabResultV
             RecordedUserId: "",
             VerifiedDate: new DateTime(3000, 1, 1),
             VerifiedUserId: "",
-            Items: Array.Empty<LabResultItemView>());
+            Items: Array.Empty<LabResultItemView>(),
+            ExpertiseNote: "",
+            CriticalNote: "",
+            AmendmentReason: "",
+            PreviousVersionId: "",
+            AmendedDate: null,
+            AmendedUserId: "");
 
         return Task.FromResult(
             _labResultDocumentRepo.LoadByOrderId(request.OrderId).Match(
@@ -103,7 +115,13 @@ public class LabResultGetHandler : IRequestHandler<LabResultGetQuery, LabResultV
                         x.Unit,
                         x.ReferenceRangeText,
                         x.IsMandatory,
-                        (int)x.FlagStatus)).ToList()),
+                        (int)x.FlagStatus)).ToList(),
+                    m.ExpertiseNote ?? string.Empty,
+                    m.CriticalNote ?? string.Empty,
+                    m.AmendmentReason ?? string.Empty,
+                    m.PreviousVersionId ?? string.Empty,
+                    m.AmendedDate == default || m.AmendedDate == new DateTime(3000, 1, 1) || m.AmendedDate.Year >= 3000 ? null : m.AmendedDate,
+                    m.AmendedUserId ?? string.Empty),
                 onNone: () => empty));
     }
 

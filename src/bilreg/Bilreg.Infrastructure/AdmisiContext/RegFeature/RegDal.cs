@@ -2,6 +2,7 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -326,4 +327,57 @@ public class RegDal : IRegDal
             LEFT JOIN td_peg hh ON aa.fs_kd_medis = hh.fs_kd_peg
             LEFT JOIN ta_layanan ii ON aa.fs_kd_layanan = ii.fs_kd_layanan
             LEFT JOIN ta_karcis jj ON aa.fs_kd_karcis = jj.fs_kd_karcis ";
+
+    public BangsalReff? GetAssignedBangsal(string regId)
+    {
+        if (string.IsNullOrWhiteSpace(regId) || regId == "-")
+            return null;
+
+        const string sql = """
+            SELECT TOP 1 BangsalId, BangsalName
+            FROM (
+                SELECT 1 AS Priority, b.fs_kd_bangsal AS BangsalId, b.fs_nm_bangsal AS BangsalName
+                FROM ta_bed a
+                INNER JOIN ta_kamar k ON a.fs_kd_kamar = k.fs_kd_kamar
+                INNER JOIN ta_bangsal b ON k.fs_kd_bangsal = b.fs_kd_bangsal
+                WHERE a.fs_kd_reg = @regId AND a.fb_aktif = 1
+
+                UNION ALL
+
+                SELECT 2 AS Priority, b.fs_kd_bangsal AS BangsalId, b.fs_nm_bangsal AS BangsalName
+                FROM ta_trs_bed tb
+                INNER JOIN ta_bed a ON tb.fs_kd_bed = a.fs_kd_bed
+                INNER JOIN ta_kamar k ON a.fs_kd_kamar = k.fs_kd_kamar
+                INNER JOIN ta_bangsal b ON k.fs_kd_bangsal = b.fs_kd_bangsal
+                WHERE tb.fs_kd_reg = @regId 
+                  AND (tb.fd_tgl_void IS NULL OR tb.fd_tgl_void = '' OR tb.fd_tgl_void = '3000-01-01')
+
+                UNION ALL
+
+                SELECT 3 AS Priority, a.BangsalId, a.BangsalName
+                FROM BILRG_AdmAdmission a
+                WHERE a.RegId = @regId AND a.BangsalId <> '-' AND a.BangsalId <> ''
+
+                UNION ALL
+
+                SELECT 4 AS Priority, o.BangsalId, o.BangsalName
+                FROM BILRG_AdmInpatientOrder o
+                WHERE (o.FulfilledRegId = @regId OR o.InpatientOrderId = @regId) 
+                  AND o.BangsalId <> '-' AND o.BangsalId <> ''
+            ) q
+            ORDER BY Priority ASC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@regId", regId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var row = conn.ReadSingle<BangsalAssignedRow>(sql, dp);
+        if (row is null || string.IsNullOrWhiteSpace(row.BangsalId) || row.BangsalId == "-")
+            return null;
+
+        return new BangsalReff(row.BangsalId, row.BangsalName ?? string.Empty);
+    }
+
+    private record BangsalAssignedRow(string BangsalId, string BangsalName);
 }
