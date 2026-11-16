@@ -343,4 +343,24 @@ public class LabOwareIntegrationTest
         instance.Should().NotBeNull();
         instance.Should().BeOfType<LabOwareIntegration>();
     }
+
+    [Theory]
+    [InlineData("http://dev.smart-ics.com:8888/OwareApi", true)]
+    [InlineData("https://oware.hospital.local/api", true)]
+    [InlineData("http://localhost:5255", true)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    [InlineData(null, false)]
+    [InlineData("not-a-valid-url", false)]
+    [InlineData("ftp://invalid-scheme.com", false)]
+    public void OwareOptions_IsConfiguredAndValid_ValidatesCorrectly(string? baseUrl, bool expected)
+    {
+        var opt = new OwareOptions { BaseUrl = baseUrl! };
+        opt.IsConfiguredAndValid.Should().Be(expected);
+
+        var handler = new FakeHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        using var httpClient = new HttpClient(handler);
+        var sut = new LabOwareIntegration(httpClient, Options.Create(opt));
+        sut.IsActive.Should().Be(expected);
+    }
 }

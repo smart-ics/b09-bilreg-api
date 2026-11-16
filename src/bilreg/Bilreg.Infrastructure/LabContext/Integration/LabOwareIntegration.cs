@@ -31,6 +31,8 @@ public class LabOwareIntegration : ILabOwareIntegration
         _options = options.Value;
     }
 
+    public bool IsActive => _options.IsConfiguredAndValid;
+
     public LabOwareSendResult Send(string payloadJson)
     {
         return SendAsync(payloadJson).ConfigureAwait(false).GetAwaiter().GetResult();
