@@ -22,7 +22,8 @@ public class BhpRanapModelTest
             audit: audit);
 
         model.Should().NotBeNull();
-        model.BhpRanapId.Should().StartWith("BHR");
+        model.BhpRanapId.Should().StartWith("DU");
+        model.BhpRanapId.Length.Should().Be(10);
         model.PakaiBedId.Should().Be("BED001");
         model.RegId.Should().Be("REG001");
         model.LayananId.Should().Be("3RI02");

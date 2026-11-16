@@ -346,6 +346,20 @@ public class PakaiBedReleaseCommandHandler : IRequestHandler<PakaiBedReleaseComm
                         OccupancyPolicyReff.Default)
                 );
 
+            var latestTx = bedOperational.ListReadinessTransaction
+                .OrderBy(x => x.OccurredAt)
+                .ThenBy(x => x.TransactionId, StringComparer.Ordinal)
+                .LastOrDefault();
+
+            if (latestTx != null && occurredAtUtc <= latestTx.OccurredAt)
+            {
+                occurredAtUtc = latestTx.OccurredAt.AddSeconds(1);
+            }
+            if (nowUtc < occurredAtUtc)
+            {
+                nowUtc = occurredAtUtc;
+            }
+
             var defaultReason = isBatal
                 ? $"Pembersihan Pasca Batal Check-In: {pakaiBed.Reg.RegId}"
                 : $"Pasien pulang: {pakaiBed.Reg.RegId}";
