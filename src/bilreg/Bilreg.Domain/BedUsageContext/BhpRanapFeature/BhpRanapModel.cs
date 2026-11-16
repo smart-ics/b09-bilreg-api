@@ -9,7 +9,7 @@ namespace Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 
 public class BhpRanapModel : IBhpRanapKey, IPakaiBed, IRegKey, ILayananKey
 {
-    private const string ID_PREFIX = "BHR";
+    private const string ID_PREFIX = "DU";
 
     #region CREATION
     public BhpRanapModel(
@@ -82,7 +82,7 @@ public class BhpRanapModel : IBhpRanapKey, IPakaiBed, IRegKey, ILayananKey
         Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
 
         return new BhpRanapModel(
-            bhpRanapId: NunaId.New(ID_PREFIX),
+            bhpRanapId: NunaId.NewLegacy(ID_PREFIX, 'A'),
             pakaiBedId: pakaiBedId,
             regId: regId,
             layananId: layananId ?? string.Empty,
