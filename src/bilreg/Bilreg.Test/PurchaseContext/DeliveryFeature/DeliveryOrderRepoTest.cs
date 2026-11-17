@@ -62,9 +62,9 @@ public class DeliveryOrderRepoTest
                 qtyDitolak: 0m,
                 alasanTolak: string.Empty,
                 isBonus: false,
-                hasJaminanRetur: false,
+
                 noSuratJaminan: string.Empty,
-                poId: PoId,
+
                 poNoUrut: i);
 
             var item = DeliveryOrderItemType.Create(
@@ -151,24 +151,24 @@ public class DeliveryOrderRepoTest
                 NoUrut = 1,
                 BrgId = "BRG0001",
                 BrgName = "Obat Paten 1",
-                PoId = PoId,
+
                 PoNoUrut = 1,
                 QtyKirim = 10m,
                 QtyDiterima = 10m,
                 QtyDitolak = 0m,
                 AlasanTolak = string.Empty,
                 IsBonus = false,
-                HasJaminanRetur = false,
+
                 NoSuratJaminan = string.Empty,
                 Status = status,
                 ConfirmedAt = status == "Confirmed" ? new DateTime(2026, 10, 15, 11, 0, 0) : null,
                 ConfirmedBy = status == "Confirmed" ? "APOTEKER01" : string.Empty,
-                VoidedAt = status == "Voided" ? new DateTime(2026, 10, 15, 12, 0, 0) : null,
-                VoidedBy = status == "Voided" ? "USER_VOID" : string.Empty,
-                CreatedAt = new DateTime(2026, 10, 15, 10, 0, 0),
-                CreatedBy = UserId,
-                UpdatedAt = new DateTime(2026, 10, 15, 10, 0, 0),
-                UpdatedBy = UserId
+
+
+
+
+
+
             }
         ];
     }
@@ -337,8 +337,8 @@ public class DeliveryOrderRepoTest
         capturedInspections.Should().NotBeNull();
         var inspection = capturedInspections!.First();
         inspection.Status.Should().Be("Voided");
-        inspection.VoidedBy.Should().Be("USER_VOID");
-        inspection.VoidedAt.Should().Be(voidDate);
+
+
     }
 
     [Fact]
@@ -389,7 +389,7 @@ public class DeliveryOrderRepoTest
         item.Inspection.QtyKirim.Should().Be(10m);
         item.Inspection.QtyDiterima.Should().Be(10m);
         item.Inspection.QtyDitolak.Should().Be(0m);
-        item.Inspection.PoId.Should().Be(PoId);
+        item.Inspection.PoNoUrut.Should().Be(1);
     }
 
     [Fact]
@@ -483,9 +483,9 @@ public class DeliveryOrderRepoTest
             qtyDitolak: 0m,
             alasanTolak: string.Empty,
             isBonus: true,
-            hasJaminanRetur: false,
+
             noSuratJaminan: string.Empty,
-            poId: PoId,
+
             poNoUrut: 1);
 
         var item = DeliveryOrderItemType.Create(
@@ -557,5 +557,83 @@ public class DeliveryOrderRepoTest
         var actual = result.Value;
         actual.CreatedUserName.Should().Be("Apoteker Pengadaan");
         actual.ConfirmedUserName.Should().Be("Kepala Bagian Farmasi");
+    }
+
+    [Fact]
+    public void GivenVoidedDeliveryOrderWithEmptyUpdUsrAndActiveUpdTgl_WhenLoadEntity_ThenReconstituteModelWithoutThrowingAndStatusIsVoided()
+    {
+        // Arrange
+        var key = new DeliveryOrderKey("DMA8O9DSEA");
+        var orderDto = BuildOrderDto(DeliveryOrderStatusEnum.Voided);
+        orderDto.DoId = "DMA8O9DSEA";
+        orderDto.TglVoid = new DateTime(2026, 11, 16, 14, 0, 0);
+        orderDto.JamVoid = "14:00:00";
+        orderDto.PetugasVoid = "USER_VOID";
+        // Legacy defect condition: UpdTgl has active date from legacy update but UpdUsr is empty
+        orderDto.UpdTgl = new DateTime(2026, 11, 16, 14, 0, 0);
+        orderDto.UpdUsr = string.Empty;
+
+        var inspectionDtos = BuildInspectionDtos("Voided");
+        inspectionDtos[0].DoId = "DMA8O9DSEA";
+        inspectionDtos[0].Status = "Voided";
+
+        _orderDalMock
+            .Setup(x => x.GetData(key))
+            .Returns(orderDto);
+        _itemDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(BuildItemDtos());
+        _inspectionDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(inspectionDtos);
+
+        // Act
+        var result = _sut.LoadEntity(key);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        var actual = result.Value;
+        actual.Status.Should().Be(DeliveryOrderStatusEnum.Voided);
+        actual.AuditTrail.Modified.IsEmpty.Should().BeTrue();
+        actual.AuditTrail.Voided.UserId.Should().Be("USER_VOID");
+        actual.AuditTrail.IsVoided.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GivenVoidedDeliveryOrderWithEmptyPetugasVoidAndEmptyUpdUsr_WhenLoadEntity_ThenReconstituteModelWithoutThrowing()
+    {
+        // Arrange
+        var key = new DeliveryOrderKey("DMA8O9DSEA");
+        var orderDto = BuildOrderDto(DeliveryOrderStatusEnum.Voided);
+        orderDto.DoId = "DMA8O9DSEA";
+        orderDto.TglVoid = new DateTime(2026, 11, 16, 14, 0, 0);
+        orderDto.JamVoid = "14:00:00";
+        orderDto.PetugasVoid = string.Empty;
+        orderDto.UpdTgl = new DateTime(2026, 11, 16, 14, 0, 0);
+        orderDto.UpdUsr = string.Empty;
+
+        var inspectionDtos = BuildInspectionDtos("Voided");
+        inspectionDtos[0].DoId = "DMA8O9DSEA";
+        inspectionDtos[0].Status = "Voided";
+
+        _orderDalMock
+            .Setup(x => x.GetData(key))
+            .Returns(orderDto);
+        _itemDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(BuildItemDtos());
+        _inspectionDalMock
+            .Setup(x => x.ListData(key))
+            .Returns(inspectionDtos);
+
+        // Act
+        var result = _sut.LoadEntity(key);
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        var actual = result.Value;
+        actual.Status.Should().Be(DeliveryOrderStatusEnum.Voided);
+        actual.AuditTrail.Modified.IsEmpty.Should().BeTrue();
+        actual.AuditTrail.Voided.IsEmpty.Should().BeTrue();
     }
 }

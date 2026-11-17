@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.PurchaseContext.DeliveryFeature;
 using Bilreg.Domain.PurchaseContext.PurchaseOrderFeature;
+using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -41,9 +42,7 @@ public class DeliveryQueryTest
             qtyDitolak: 2m,
             alasanTolak: "Kemasan penyok",
             isBonus: false,
-            hasJaminanRetur: true,
             noSuratJaminan: "SJ-RET-01",
-            poId: "PO26100001",
             poNoUrut: 1
         );
 
@@ -588,5 +587,135 @@ public class DeliveryQueryTest
         response.Should().NotBeNull();
         response.Created.UserName.Should().Be("Petugas Gudang Farmasi");
         response.Confirmed.UserName.Should().Be("Kepala Instalasi Farmasi");
+    }
+
+    [Fact]
+    public async Task DeliveryGet_WhenDeliveryOrderIsVoidedWithEmptyUpdUsr_ReturnsVoidedStatusSuccessfully()
+    {
+        // Arrange
+        var model = CreateTestDeliveryOrder("DMA8O9DSEA");
+        model.Void("USER_VOID", new DateTime(2026, 11, 16, 14, 0, 0));
+        _deliveryOrderRepoMock.Setup(x => x.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == model.DeliveryOrderId)))
+            .Returns(MayBe.From(model));
+
+        var sut = new DeliveryGetHandler(_deliveryOrderRepoMock.Object);
+        var query = new DeliveryGetQuery(model.DeliveryOrderId);
+
+        // Act
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response.DeliveryOrderId.Should().Be(model.DeliveryOrderId);
+        response.Status.Should().Be(DeliveryOrderStatusEnum.Voided.ToString());
+        response.SuratJalanNo.Should().Be("SJ-KF-2026-001");
+        response.PoId.Should().Be("PO26100001");
+        response.Supplier.PartnerId.Should().Be("SUP001");
+        response.Supplier.PartnerName.Should().Be("PT Kimia Farma");
+        response.Gudang.LayananId.Should().Be("GDFAR");
+        response.Gudang.LayananName.Should().Be("Gudang Farmasi Pusat");
+        response.GrandTotal.Should().Be(model.GrandTotal);
+        response.Created.Should().NotBeNull();
+        response.Created.UserId.Should().Be("USR01");
+        response.ListItem.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task DeliveryGet_WhenReconstitutedFromLegacyVoidedDataWithEmptyUpdUsr_LoadsWithoutExceptionAndReturnsCompleteResponse()
+    {
+        // Arrange: Setup real DeliveryOrderRepo with mocked DALs simulating legacy DMA8O9DSEA
+        var orderDalMock = new Mock<IDeliveryOrderDal>();
+        var itemDalMock = new Mock<IDeliveryOrderItemDal>();
+        var inspectionDalMock = new Mock<IDeliveryInspectionDal>();
+
+        var key = new DeliveryOrderKey("DMA8O9DSEA");
+        var orderDto = new DeliveryOrderDto
+        {
+            DoId = "DMA8O9DSEA",
+            DoDate = new DateTime(2026, 11, 16, 10, 0, 0),
+            PetugasId = "PETUGAS01",
+            PoId = "PO26110001",
+            SuratJalanNo = "SJ-LEGACY-001",
+            LayananId = "GDFAR",
+            LayananName = "Gudang Farmasi Pusat",
+            SupplierId = "SUP001",
+            SupplierName = "PT Kimia Farma",
+            Total = 2500000m,
+            Keterangan = "Dokumen void historis",
+            PembelianBebas = false,
+            TglVoid = new DateTime(2026, 11, 16, 14, 0, 0),
+            JamVoid = "14:00:00",
+            PetugasVoid = "USER_VOID",
+            // DEF-CR13-03 legacy anomaly: UpdTgl has active timestamp from buggy update but UpdUsr is empty
+            UpdTgl = new DateTime(2026, 11, 16, 14, 0, 0),
+            UpdUsr = string.Empty,
+            CrtTgl = new DateTime(2026, 11, 16, 10, 0, 0),
+            CrtUsr = "PETUGAS01"
+        };
+
+        var itemDto = new DeliveryOrderItemDto
+        {
+            DoId = "DMA8O9DSEA",
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Amoxicillin 500mg",
+            SatuanId = "STRIP",
+            SatuanName = "Strip",
+            Konversi = 10,
+            Harga = 25000m,
+            Diskon = 0m,
+            Qty = 100m,
+            SubTotal = 2500000m,
+            Tax = 0m,
+            Total = 2500000m,
+            NoBatch = "BATCH-VOID-01",
+            TglEd = new DateTime(2028, 1, 1),
+            IsVoid = true,
+            Het = 30000m
+        };
+
+        var inspectionDto = new DeliveryInspectionDto
+        {
+            DoId = "DMA8O9DSEA",
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Amoxicillin 500mg",
+            PoNoUrut = 1,
+            QtyKirim = 100m,
+            QtyDiterima = 100m,
+            QtyDitolak = 0m,
+            AlasanTolak = string.Empty,
+            IsBonus = false,
+            NoSuratJaminan = string.Empty,
+            Status = "Voided"
+        };
+
+        orderDalMock.Setup(d => d.GetData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == "DMA8O9DSEA")))
+            .Returns(orderDto);
+        itemDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == "DMA8O9DSEA")))
+            .Returns([itemDto]);
+        inspectionDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == "DMA8O9DSEA")))
+            .Returns([inspectionDto]);
+
+        var repo = new DeliveryOrderRepo(orderDalMock.Object, itemDalMock.Object, inspectionDalMock.Object);
+        var sut = new DeliveryGetHandler(repo);
+        var query = new DeliveryGetQuery("DMA8O9DSEA");
+
+        // Act: Must load cleanly without throwing ArgumentException (HTTP 500)
+        var response = await sut.Handle(query, CancellationToken.None);
+
+        // Assert: Complete DTO response is returned successfully
+        response.Should().NotBeNull();
+        response.DeliveryOrderId.Should().Be("DMA8O9DSEA");
+        response.SuratJalanNo.Should().Be("SJ-LEGACY-001");
+        response.PoId.Should().Be("PO26110001");
+        response.Status.Should().Be("Voided");
+        response.GrandTotal.Should().Be(2500000m);
+        response.Created.UserId.Should().Be("PETUGAS01");
+        response.Supplier.PartnerName.Should().Be("PT Kimia Farma");
+        response.Gudang.LayananName.Should().Be("Gudang Farmasi Pusat");
+        response.ListItem.Should().HaveCount(1);
+        response.ListItem[0].BrgId.Should().Be("BRG001");
+        response.ListItem[0].Inspection.QtyDiterima.Should().Be(100m);
     }
 }
