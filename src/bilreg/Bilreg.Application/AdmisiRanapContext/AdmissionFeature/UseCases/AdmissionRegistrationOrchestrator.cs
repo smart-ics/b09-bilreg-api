@@ -677,9 +677,9 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             throw new InvalidOperationException(
                 $"Pasien '{pasien.PasienId}' masih memiliki admission aktif ({activeAdmission.RegId}).");
 
-        if (_regAktifRepo.IsPasienAktif(PasienModel.Key(pasien.PasienId)))
+        if (_regAktifRepo.IsPasienAktif(PasienModel.Key(pasien.PasienId), JenisRegEnum.RegInap))
             throw new InvalidOperationException(
-                $"Pasien '{pasien.PasienId}' masih memiliki registrasi aktif.");
+                $"Pasien '{pasien.PasienId}' masih memiliki registrasi rawat inap aktif.");
     }
 
     private void SaveCommon(AdmissionModel admission, RegModel reg, RegInapModel regInap)

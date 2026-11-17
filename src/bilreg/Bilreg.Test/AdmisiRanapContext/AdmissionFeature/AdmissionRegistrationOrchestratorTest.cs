@@ -1264,17 +1264,127 @@ public class AdmissionRegistrationOrchestratorTest
     public async Task GivenDirectAdmission_WhenPatientAlreadyHasActiveRegistration_ThenThrowsInvalidOperationException()
     {
         var harness = CreateDirectHarness();
-        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(true);
 
         var command = new AdmProcessDirectAdmissionCmd("P001", "1", "B1", "user2", RegistrationData());
 
         var act = () => harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*masih memiliki registrasi aktif*");
+            .WithMessage("*masih memiliki registrasi rawat inap aktif*");
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
         harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
         harness.Publisher.Verify(x => x.PublishRanapCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(JenisRegEnum.RegJalan)]
+    [InlineData(JenisRegEnum.Darurat)]
+    public async Task GivenDirectAdmission_WhenPatientOnlyHasNonInpatientActiveRegistration_ThenSucceeds(JenisRegEnum activeJenisReg)
+    {
+        var harness = CreateDirectHarness();
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), activeJenisReg)).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
+
+        var command = new AdmProcessDirectAdmissionCmd("P001", "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessDirectAdmission(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.SavedRegAktif.Should().NotBeNull();
+        harness.RegAktifRepo.Verify(
+            x => x.IsPasienAktif(It.Is<IPasienKey>(k => k.PasienId == "P001"), JenisRegEnum.RegInap),
+            Times.Once);
+        harness.RegAktifRepo.Verify(x => x.IsPasienAktif(It.IsAny<IPasienKey>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(JenisRegEnum.RegJalan)]
+    [InlineData(JenisRegEnum.Darurat)]
+    public async Task GivenOpnameRequest_WhenPatientOnlyHasNonInpatientActiveRegistration_ThenSucceeds(JenisRegEnum activeJenisReg)
+    {
+        var harness = CreateOpnameHarness();
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), activeJenisReg)).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.RegAktifRepo.Verify(
+            x => x.IsPasienAktif(It.Is<IPasienKey>(k => k.PasienId == harness.Opname.Pasien.PasienId), JenisRegEnum.RegInap),
+            Times.Once);
+        harness.RegAktifRepo.Verify(x => x.IsPasienAktif(It.IsAny<IPasienKey>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(JenisRegEnum.RegJalan)]
+    [InlineData(JenisRegEnum.Darurat)]
+    public async Task GivenReservation_WhenPatientOnlyHasNonInpatientActiveRegistration_ThenSucceeds(JenisRegEnum activeJenisReg)
+    {
+        var harness = CreateReservationHarness();
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), activeJenisReg)).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
+
+        var command = new AdmProcessReservationCmd(
+            harness.Reservation.ReservationId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessReservation(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedRegInap.Should().NotBeNull();
+        harness.RegAktifRepo.Verify(
+            x => x.IsPasienAktif(It.Is<IPasienKey>(k => k.PasienId == harness.Reservation.Pasien.PasienId), JenisRegEnum.RegInap),
+            Times.Once);
+        harness.RegAktifRepo.Verify(x => x.IsPasienAktif(It.IsAny<IPasienKey>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(JenisRegEnum.RegJalan)]
+    [InlineData(JenisRegEnum.Darurat)]
+    public async Task GivenInpatientOrder_WhenPatientOnlyHasNonInpatientActiveRegistration_ThenSucceeds(JenisRegEnum activeJenisReg)
+    {
+        var harness = CreateInpatientOrderHarness(OrderSourceEnum.EmrRawatJalan);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), activeJenisReg)).Returns(true);
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
+
+        var command = new AdmProcessInpatientOrderCmd(
+            harness.Order.InpatientOrderId, "1", "B1", "user2", RegistrationData());
+
+        var response = await harness.Sut.ProcessInpatientOrder(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedAdmission.Should().NotBeNull();
+        harness.RegAktifRepo.Verify(
+            x => x.IsPasienAktif(It.Is<IPasienKey>(k => k.PasienId == harness.Order.Pasien.PasienId), JenisRegEnum.RegInap),
+            Times.Once);
+        harness.RegAktifRepo.Verify(x => x.IsPasienAktif(It.IsAny<IPasienKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOpnameRequest_WhenPatientAlreadyHasActiveInpatientRegistration_ThenThrowsInvalidOperationException()
+    {
+        var harness = CreateOpnameHarness();
+        harness.RegAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(true);
+
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*masih memiliki registrasi rawat inap aktif*");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
     }
 
     [Fact]
@@ -1340,7 +1450,7 @@ public class AdmissionRegistrationOrchestratorTest
         var auditRepo = new Mock<IAuditRepo>();
         opnameRepo.Setup(x => x.LoadEntity(It.IsAny<IOpnameRequestKey>())).Returns(MayBe.From(opname));
         admissionRepo.Setup(x => x.ListData(It.IsAny<AdmissionListFilter>())).Returns([]);
-        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(false);
+        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
         prosedurRepo.Setup(x => x.LoadEntity(It.IsAny<IProsedurMasukInapKey>()))
             .Returns(MayBe.From(new ProsedurMasukInapType("IGD", "Dari IGD", ProsedurMasukInapDkType.Default)));
 
@@ -1442,7 +1552,7 @@ public class AdmissionRegistrationOrchestratorTest
         reservationRepo.Setup(x => x.LoadEntity(It.IsAny<IReservationKey>()))
             .Returns(MayBe.From(reservation));
         admissionRepo.Setup(x => x.ListData(It.IsAny<AdmissionListFilter>())).Returns([]);
-        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(false);
+        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
         prosedurRepo.Setup(x => x.LoadEntity(It.IsAny<IProsedurMasukInapKey>()))
             .Returns(MayBe.From(new ProsedurMasukInapType("IGD", "Dari IGD", ProsedurMasukInapDkType.Default)));
 
@@ -1625,7 +1735,7 @@ public class AdmissionRegistrationOrchestratorTest
         var prosedurRepo = new Mock<IProsedureMasukInapRepo>();
         var auditRepo = new Mock<IAuditRepo>();
         admissionRepo.Setup(x => x.ListData(It.IsAny<AdmissionListFilter>())).Returns([]);
-        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(false);
+        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
         prosedurRepo.Setup(x => x.LoadEntity(It.IsAny<IProsedurMasukInapKey>()))
             .Returns(MayBe.From(new ProsedurMasukInapType("IGD", "Dari IGD", ProsedurMasukInapDkType.Default)));
 
@@ -1732,7 +1842,7 @@ public class AdmissionRegistrationOrchestratorTest
         inpatientOrderRepo.Setup(x => x.LoadEntity(It.IsAny<IInpatientOrderKey>()))
             .Returns(MayBe.From(order));
         admissionRepo.Setup(x => x.ListData(It.IsAny<AdmissionListFilter>())).Returns([]);
-        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>())).Returns(false);
+        regAktifRepo.Setup(x => x.IsPasienAktif(It.IsAny<IPasienKey>(), JenisRegEnum.RegInap)).Returns(false);
         prosedurRepo.Setup(x => x.LoadEntity(It.IsAny<IProsedurMasukInapKey>()))
             .Returns(MayBe.From(new ProsedurMasukInapType("IGD", "Dari IGD", ProsedurMasukInapDkType.Default)));
 
