@@ -31,17 +31,15 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
     {
         const string sql = """
             INSERT INTO BILRG_DoInspeksi (
-                DoId, NoUrut, BrgId, PoId, PoNoUrut,
+                DoId, NoUrut, BrgId, PoNoUrut,
                 QtyKirim, QtyDiterima, QtyDitolak, AlasanTolak,
-                IsBonus, HasJaminanRetur, NoSuratJaminan, Status,
-                ConfirmedAt, ConfirmedBy, VoidedAt, VoidedBy,
-                CreatedAt, CreatedBy, UpdatedAt, UpdatedBy
+                IsBonus, NoSuratJaminan, Status,
+                ConfirmedAt, ConfirmedBy
             ) VALUES (
-                @DoId, @NoUrut, @BrgId, @PoId, @PoNoUrut,
+                @DoId, @NoUrut, @BrgId, @PoNoUrut,
                 @QtyKirim, @QtyDiterima, @QtyDitolak, @AlasanTolak,
-                @IsBonus, @HasJaminanRetur, @NoSuratJaminan, @Status,
-                @ConfirmedAt, @ConfirmedBy, @VoidedAt, @VoidedBy,
-                @CreatedAt, @CreatedBy, @UpdatedAt, @UpdatedBy
+                @IsBonus, @NoSuratJaminan, @Status,
+                @ConfirmedAt, @ConfirmedBy
             )
             """;
 
@@ -57,17 +55,15 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
 
         const string sql = """
             INSERT INTO BILRG_DoInspeksi (
-                DoId, NoUrut, BrgId, PoId, PoNoUrut,
+                DoId, NoUrut, BrgId, PoNoUrut,
                 QtyKirim, QtyDiterima, QtyDitolak, AlasanTolak,
-                IsBonus, HasJaminanRetur, NoSuratJaminan, Status,
-                ConfirmedAt, ConfirmedBy, VoidedAt, VoidedBy,
-                CreatedAt, CreatedBy, UpdatedAt, UpdatedBy
+                IsBonus, NoSuratJaminan, Status,
+                ConfirmedAt, ConfirmedBy
             ) VALUES (
-                @DoId, @NoUrut, @BrgId, @PoId, @PoNoUrut,
+                @DoId, @NoUrut, @BrgId, @PoNoUrut,
                 @QtyKirim, @QtyDiterima, @QtyDitolak, @AlasanTolak,
-                @IsBonus, @HasJaminanRetur, @NoSuratJaminan, @Status,
-                @ConfirmedAt, @ConfirmedBy, @VoidedAt, @VoidedBy,
-                @CreatedAt, @CreatedBy, @UpdatedAt, @UpdatedBy
+                @IsBonus, @NoSuratJaminan, @Status,
+                @ConfirmedAt, @ConfirmedBy
             )
             """;
 
@@ -85,22 +81,16 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
         const string sql = """
             UPDATE BILRG_DoInspeksi SET
                 BrgId = @BrgId,
-                PoId = @PoId,
                 PoNoUrut = @PoNoUrut,
                 QtyKirim = @QtyKirim,
                 QtyDiterima = @QtyDiterima,
                 QtyDitolak = @QtyDitolak,
                 AlasanTolak = @AlasanTolak,
                 IsBonus = @IsBonus,
-                HasJaminanRetur = @HasJaminanRetur,
                 NoSuratJaminan = @NoSuratJaminan,
                 Status = @Status,
                 ConfirmedAt = @ConfirmedAt,
-                ConfirmedBy = @ConfirmedBy,
-                VoidedAt = @VoidedAt,
-                VoidedBy = @VoidedBy,
-                UpdatedAt = @UpdatedAt,
-                UpdatedBy = @UpdatedBy
+                ConfirmedBy = @ConfirmedBy
             WHERE
                 DoId = @DoId AND NoUrut = @NoUrut
             """;
@@ -160,25 +150,17 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
             aa.NoUrut,
             aa.BrgId,
             ISNULL(bb.fs_nm_barang, '') AS BrgName,
-            aa.PoId,
             aa.PoNoUrut,
             aa.QtyKirim,
             aa.QtyDiterima,
             aa.QtyDitolak,
             aa.AlasanTolak,
             aa.IsBonus,
-            aa.HasJaminanRetur,
             aa.NoSuratJaminan,
             aa.Status,
             aa.ConfirmedAt,
             aa.ConfirmedBy,
-            ISNULL(NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)), ''), aa.ConfirmedBy) AS ConfirmedByName,
-            aa.VoidedAt,
-            aa.VoidedBy,
-            aa.CreatedAt,
-            aa.CreatedBy,
-            aa.UpdatedAt,
-            aa.UpdatedBy
+            ISNULL(NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)), ''), aa.ConfirmedBy) AS ConfirmedByName
         FROM BILRG_DoInspeksi aa
         LEFT JOIN tb_barang bb ON aa.BrgId = bb.fs_kd_barang
         LEFT JOIN td_peg peg ON aa.ConfirmedBy = peg.fs_kd_peg
@@ -190,24 +172,16 @@ public class DeliveryInspectionDal : IDeliveryInspectionDal
         dp.AddParam("@DoId", dto.DoId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@NoUrut", dto.NoUrut, SqlDbType.Int);
         dp.AddParam("@BrgId", dto.BrgId ?? string.Empty, SqlDbType.VarChar);
-        dp.AddParam("@PoId", dto.PoId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@PoNoUrut", dto.PoNoUrut, SqlDbType.Int);
         dp.AddParam("@QtyKirim", dto.QtyKirim, SqlDbType.Decimal);
         dp.AddParam("@QtyDiterima", dto.QtyDiterima, SqlDbType.Decimal);
         dp.AddParam("@QtyDitolak", dto.QtyDitolak, SqlDbType.Decimal);
         dp.AddParam("@AlasanTolak", dto.AlasanTolak ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@IsBonus", dto.IsBonus, SqlDbType.Bit);
-        dp.AddParam("@HasJaminanRetur", dto.HasJaminanRetur, SqlDbType.Bit);
         dp.AddParam("@NoSuratJaminan", dto.NoSuratJaminan ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@Status", string.IsNullOrWhiteSpace(dto.Status) ? "Draft" : dto.Status, SqlDbType.VarChar);
         dp.AddParam("@ConfirmedAt", dto.ConfirmedAt, SqlDbType.DateTime);
         dp.AddParam("@ConfirmedBy", dto.ConfirmedBy ?? string.Empty, SqlDbType.VarChar);
-        dp.AddParam("@VoidedAt", dto.VoidedAt, SqlDbType.DateTime);
-        dp.AddParam("@VoidedBy", dto.VoidedBy ?? string.Empty, SqlDbType.VarChar);
-        dp.AddParam("@CreatedAt", dto.CreatedAt != default ? dto.CreatedAt : DateTime.Now, SqlDbType.DateTime);
-        dp.AddParam("@CreatedBy", dto.CreatedBy ?? string.Empty, SqlDbType.VarChar);
-        dp.AddParam("@UpdatedAt", dto.UpdatedAt != default ? dto.UpdatedAt : DateTime.Now, SqlDbType.DateTime);
-        dp.AddParam("@UpdatedBy", dto.UpdatedBy ?? string.Empty, SqlDbType.VarChar);
         return dp;
     }
 }

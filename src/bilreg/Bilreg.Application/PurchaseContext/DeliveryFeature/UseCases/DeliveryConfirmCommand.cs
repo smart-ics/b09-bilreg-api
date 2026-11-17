@@ -171,7 +171,7 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
                     ? 0m
                     : (item.Harga - item.Diskon) / konversi;
                 var qtyPersediaan = item.Inspection.QtyDiterima * konversi;
-                var itemPoId = !string.IsNullOrWhiteSpace(item.Inspection.PoId) ? item.Inspection.PoId : poId;
+                var itemPoId = poId;
 
                 var matchedQuota = (item.Inspection.PoNoUrut > 0
                     ? poQuotas.FirstOrDefault(q => q.NoUrut == item.Inspection.PoNoUrut)
@@ -214,7 +214,7 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
             var lineGroups = nonBonusItems
                 .GroupBy(x =>
                 {
-                    var targetPoId = !string.IsNullOrWhiteSpace(x.Inspection.PoId) ? x.Inspection.PoId : poId;
+                    var targetPoId = poId;
                     var noUrut = x.Inspection.PoNoUrut;
                     if (noUrut <= 0)
                     {
