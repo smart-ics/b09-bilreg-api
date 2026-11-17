@@ -20,9 +20,12 @@ public class PakaiBrgRepo : IPakaiBrgRepo
         _pakaiBrgItemDal = pakaiBrgItemDal;
     }
 
-    public void SaveChanges(PakaiBrgModel model)
+    public void SaveChanges(PakaiBrgModel model) => SaveChanges(model, string.Empty);
+
+    public void SaveChanges(PakaiBrgModel model, string regId)
     {
         var dto = PakaiBrgDto.FromModel(model);
+        dto.fs_kd_reg = string.IsNullOrWhiteSpace(regId) ? " " : regId;
         var existing = _pakaiBrgDal.GetData(model);
         if (existing == null)
         {

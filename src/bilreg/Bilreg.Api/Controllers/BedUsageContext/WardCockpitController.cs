@@ -1,3 +1,4 @@
+using Bilreg.Api.Helpers;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature.UseCases;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
@@ -103,10 +104,21 @@ public class WardCockpitController : ControllerBase
             }
         }
 
-        // 1. Broadcast Cleaning status to old (source) bed so it immediately enters HK mode
-        if (!string.IsNullOrWhiteSpace(srcBangsalId) && !string.IsNullOrWhiteSpace(result.SourceBedId))
+        // 1. Broadcast Cleaning status to old (source) bed only if IsCleaningTriggered
+        if (result.IsCleaningTriggered)
         {
-            await _eventPublisher.PublishBedStatusChangedAsync(srcBangsalId, result.SourceBedId, "Cleaning");
+            if (!string.IsNullOrWhiteSpace(srcBangsalId) && !string.IsNullOrWhiteSpace(result.SourceBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(srcBangsalId, result.SourceBedId, "Cleaning");
+            }
+        }
+        else
+        {
+            // Isolated baby transfer: source bed remains occupied by mother
+            if (!string.IsNullOrWhiteSpace(srcBangsalId) && !string.IsNullOrWhiteSpace(result.SourceBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(srcBangsalId, result.SourceBedId, "Occupied");
+            }
         }
 
         // 2. Broadcast Occupied status to target bed
@@ -116,6 +128,60 @@ public class WardCockpitController : ControllerBase
         }
 
         // 3. Broadcast WaitingListUpdated to both source and target wards
+        if (!string.IsNullOrWhiteSpace(srcBangsalId))
+        {
+            await _eventPublisher.PublishWaitingListUpdatedAsync(srcBangsalId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(tgtBangsalId) &&
+            !string.Equals(tgtBangsalId.Trim(), srcBangsalId?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            await _eventPublisher.PublishWaitingListUpdatedAsync(tgtBangsalId);
+        }
+
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("transfer-to-waiting-list")]
+    [HttpPost("/api/ward-cockpit/transfer-to-waiting-list")]
+    public async Task<IActionResult> TransferToWaitingList([FromBody] TransferToWardWaitingListCommand cmd, [FromQuery] string? bangsalId = null)
+    {
+        var effectiveUserId = !string.IsNullOrWhiteSpace(cmd.UserId)
+            ? cmd.UserId
+            : (User?.Identity?.Name ?? "SYSTEM");
+        var effectiveCmd = string.IsNullOrWhiteSpace(cmd.UserId)
+            ? cmd with { UserId = effectiveUserId }
+            : cmd;
+        var result = await _mediator.Send(effectiveCmd);
+
+        var srcBangsalId = !string.IsNullOrWhiteSpace(result.OldBangsalId) ? result.OldBangsalId : bangsalId;
+        var tgtBangsalId = result.TargetBangsalId;
+
+        if (string.IsNullOrWhiteSpace(srcBangsalId) && _bedRepo != null && !string.IsNullOrWhiteSpace(result.OldBedId))
+        {
+            var maybeBed = _bedRepo.LoadEntity(BedType.Key(result.OldBedId));
+            if (maybeBed.HasValue && !string.IsNullOrWhiteSpace(maybeBed.Value.Bangsal?.BangsalId) && maybeBed.Value.Bangsal.BangsalId != "-")
+            {
+                srcBangsalId = maybeBed.Value.Bangsal.BangsalId;
+            }
+        }
+
+        if (result.IsCleaningTriggered)
+        {
+            if (!string.IsNullOrWhiteSpace(srcBangsalId) && !string.IsNullOrWhiteSpace(result.OldBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(srcBangsalId, result.OldBedId, "Cleaning");
+            }
+        }
+        else
+        {
+            // Isolated baby transfer: source bed remains occupied by mother
+            if (!string.IsNullOrWhiteSpace(srcBangsalId) && !string.IsNullOrWhiteSpace(result.OldBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(srcBangsalId, result.OldBedId, "Occupied");
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(srcBangsalId))
         {
             await _eventPublisher.PublishWaitingListUpdatedAsync(srcBangsalId);
@@ -146,9 +212,20 @@ public class WardCockpitController : ControllerBase
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(targetBangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+        if (result.IsCleaningTriggered)
         {
-            await _eventPublisher.PublishBedStatusChangedAsync(targetBangsalId, targetBedId, "Cleaning");
+            if (!string.IsNullOrWhiteSpace(targetBangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(targetBangsalId, targetBedId, "Cleaning");
+            }
+        }
+        else
+        {
+            // Isolated baby discharge: mother remains in bed, keep Occupied
+            if (!string.IsNullOrWhiteSpace(targetBangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(targetBangsalId, targetBedId, "Occupied");
+            }
         }
 
         if (result.IsBatalCheckIn)
@@ -169,9 +246,9 @@ public class WardCockpitController : ControllerBase
     }
 
     [HttpGet("lookup-baby")]
-    public async Task<IActionResult> LookupBaby([FromQuery] string keyword)
+    public async Task<IActionResult> LookupBaby([FromQuery] string keyword, [FromQuery] string? bangsalId = null)
     {
-        var result = await _mediator.Send(new WardCockpitLookupBabyQuery(keyword));
+        var result = await _mediator.Send(new WardCockpitLookupBabyQuery(keyword, bangsalId));
         return Ok(new JSendOk(result));
     }
 
@@ -238,4 +315,29 @@ public class WardCockpitController : ControllerBase
         }
         return Ok(new JSendOk(result));
     }
+
+    [HttpPost("cancel-checkin")]
+    [HttpPatch("cancel-checkin")]
+    public async Task<IActionResult> CancelCheckin([FromBody] CancelCheckinDto req)
+    {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+        var effectiveReason = !string.IsNullOrWhiteSpace(req.VoidReason)
+            ? req.VoidReason
+            : (!string.IsNullOrWhiteSpace(req.Reason) ? req.Reason : "Batal Check-in");
+        var effectiveUserId = !string.IsNullOrWhiteSpace(req.UserId)
+            ? req.UserId
+            : (User?.Identity?.Name ?? "SYSTEM");
+        var cmd = new PakaiBedVoidCommand(req.PakaiBedId, effectiveUserId, effectiveReason, userAgent, remoteIpAddress, req.CancelScope);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    public record CancelCheckinDto(
+        string PakaiBedId,
+        string? UserId = null,
+        string? VoidReason = null,
+        string? Reason = null,
+        string? CancelScope = null
+    );
 }

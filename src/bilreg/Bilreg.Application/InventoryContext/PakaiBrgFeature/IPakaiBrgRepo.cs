@@ -9,6 +9,7 @@ public interface IPakaiBrgRepo :
     ISaveChange<PakaiBrgModel>,
     ILoadEntity<PakaiBrgModel, IPakaiBrgKey>
 {
+    void SaveChanges(PakaiBrgModel model, string regId);
     IEnumerable<PakaiBrgModel> ListByLayanan(ILayananKey layanan, Periode periode);
     IEnumerable<PakaiBrgStokLokasiView> ListStokLokasi(ILayananKey layanan);
 }

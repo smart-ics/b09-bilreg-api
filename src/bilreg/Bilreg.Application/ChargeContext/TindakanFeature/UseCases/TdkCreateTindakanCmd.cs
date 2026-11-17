@@ -4,6 +4,7 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BrgContext.BrgFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.BillingLockFeature;
@@ -13,8 +14,10 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -60,6 +63,10 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IJurnalRepo _jurnalRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IBillingLockValidationService _billingLockValidator;
+    private readonly ITindakanBomProcessor? _tindakanBomProcessor;
+    private readonly IBrgRepo? _brgRepo;
+    private readonly IGroupRekRepo? _groupRekRepo;
+
     public TindakanCreateHandler(ITindakanRepo tindakanRepo,
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
@@ -69,7 +76,10 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
         ITglJamProvider tglJamProvider,
-        IBillingLockValidationService billingLockValidator)
+        IBillingLockValidationService billingLockValidator,
+        ITindakanBomProcessor? tindakanBomProcessor = null,
+        IBrgRepo? brgRepo = null,
+        IGroupRekRepo? groupRekRepo = null)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -85,6 +95,23 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _jurnalRepo = jurnalRepo;
         _tglJamProvider = tglJamProvider;
         _billingLockValidator = billingLockValidator;
+        _tindakanBomProcessor = tindakanBomProcessor;
+        _brgRepo = brgRepo;
+        _groupRekRepo = groupRekRepo;
+    }
+
+    public TindakanCreateHandler(ITindakanRepo tindakanRepo,
+        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        ITrsBillingRepo? trsBillingRepo,
+        IAddBillAppService addBillAppService, 
+        IMapJaminanJkRepo mapJaminanJkRepo, 
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator)
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, trsBillingRepo, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, billingLockValidator, null, null, null)
+    {
     }
 
     public TindakanCreateHandler(ITindakanRepo tindakanRepo,
@@ -95,7 +122,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
         ITglJamProvider tglJamProvider)
-        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, null, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService())
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, null, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService(), null, null, null)
     {
     }
 
@@ -164,6 +191,66 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
             _trsBillingRepo.SaveChanges(trsBilling);
         }
         _jurnalRepo.SaveChanges(jurnal);
+
+        // BOM Expansion & Stock Allocation / Pending / Separate Billing
+        if (_tindakanBomProcessor != null)
+        {
+            var bomResult = await _tindakanBomProcessor.Process(tindakan, reg, request.UserId, cancellationToken);
+            if (bomResult.IsChargeBarang && bomResult.Items.Count > 0)
+            {
+                foreach (var item in bomResult.Items)
+                {
+                    GroupRekType? groupRek = null;
+                    if (_brgRepo != null && _groupRekRepo != null)
+                    {
+                        var brg = _brgRepo.LoadEntity(new BrgKey(item.BrgId))
+                            .Match(b => b, () => (IBrg?)null);
+                        if (brg != null)
+                        {
+                            groupRek = _groupRekRepo.LoadEntity(GroupRekType.Key(brg.GroupRek.GroupRekId))
+                                .Match(g => g, () => (GroupRekType?)null);
+                        }
+                    }
+
+                    groupRek ??= new GroupRekType(
+                        "OBAT",
+                        "OBAT/BHP",
+                        GroupRekDkType.Default,
+                        string.Empty,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default);
+
+                    var tindakanBarang = new TindakanBarangType(
+                        TindakanBarangId: item.TindakanBarangId,
+                        TindakanId: tindakan.TindakanId,
+                        NoUrut: item.NoUrut,
+                        BrgId: item.BrgId,
+                        SatuanBomId: item.SatuanBomId,
+                        QtyBom: item.QtyBom,
+                        SatuanKecilId: item.SatuanKecilId,
+                        QtyKecilRequested: item.QtyKecilRequested,
+                        QtyKecilDeducted: item.QtyImmediateCut,
+                        QtyKecilPending: item.QtyPending,
+                        IsChargeBarang: item.IsChargeBarang,
+                        HargaJualTotal: item.HargaJualTotal,
+                        PakaiBrgId: item.PakaiBrgId,
+                        TrsBillingId: item.IsChargeBarang ? $"{tindakan.TindakanId}-B{item.NoUrut:D2}" : string.Empty,
+                        IsVoid: false,
+                        BrgName: item.BrgName,
+                        QtyPending: item.QtyPending);
+
+                    var billBarang = _addBillAppService.FromTindakanBarang(
+                        tindakan, tindakanBarang, reg, jaminan, groupRek, occurredAt);
+
+                    var jurnalBarang = JurnalType.CreateFromTrsBilling(billBarang, layanan, mapJaminanJk);
+                    _jurnalRepo.SaveChanges(jurnalBarang);
+                }
+            }
+        }
+
         trans.Complete();
 
         //  RESPONSE

@@ -41,6 +41,7 @@ public class IgdVisitDal : IIgdVisitDal
                 RedirectRajalId, RedirectDateTime, RedirectReason,
                 BedIgdId,
                 DischargeUser, DischargeDateTime,
+                HasPendingBilling,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @IgdVisitId, @DaftarDateTime,
@@ -51,6 +52,7 @@ public class IgdVisitDal : IIgdVisitDal
                 @RedirectRajalId, @RedirectDateTime, @RedirectReason,
                 @BedIgdId,
                 @DischargeUser, @DischargeDateTime,
+                @HasPendingBilling,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -86,6 +88,7 @@ public class IgdVisitDal : IIgdVisitDal
                 BedIgdId = @BedIgdId,
                 DischargeUser = @DischargeUser,
                 DischargeDateTime = @DischargeDateTime,
+                HasPendingBilling = @HasPendingBilling,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -157,7 +160,8 @@ public class IgdVisitDal : IIgdVisitDal
             aa.RedirectRajalId, aa.RedirectDateTime, aa.RedirectReason,
             aa.BedIgdId,
             aa.DischargeUser, aa.DischargeDateTime,
-            aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+            aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+            aa.HasPendingBilling
         FROM BILRG_IgdVisit aa
         """;
 
@@ -195,6 +199,8 @@ public class IgdVisitDal : IIgdVisitDal
 
         dp.AddParam("@DischargeUser", dto.DischargeUser, SqlDbType.VarChar);
         dp.AddParam("@DischargeDateTime", dto.DischargeDateTime, SqlDbType.DateTime);
+
+        dp.AddParam("@HasPendingBilling", dto.HasPendingBilling, SqlDbType.Bit);
 
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);

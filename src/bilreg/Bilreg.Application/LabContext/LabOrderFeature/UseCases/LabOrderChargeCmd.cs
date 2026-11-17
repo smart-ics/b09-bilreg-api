@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOwareFeature;
 using MediatR;
@@ -24,17 +25,20 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
     private readonly ILabBillingIntegration _labBillingIntegration;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ILabOwareOutboundQueueRepo _queueRepo;
+    private readonly ILabOwareIntegration? _owareIntegration;
 
     public LabOrderChargeHandler(
         ILabOrderRepo labOrderRepo,
         ILabBillingIntegration labBillingIntegration,
         ITglJamProvider tglJamProvider,
-        ILabOwareOutboundQueueRepo queueRepo)
+        ILabOwareOutboundQueueRepo queueRepo,
+        ILabOwareIntegration? owareIntegration = null)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
         _tglJamProvider = tglJamProvider;
         _queueRepo = queueRepo;
+        _owareIntegration = owareIntegration;
     }
 
     public Task<LabOrderChargeResponse> Handle(LabOrderChargeCmd request, CancellationToken cancellationToken)
@@ -61,7 +65,8 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         }
 
         LabOwareOutboundQueueModel? queue = null;
-        if (success)
+        var isOwareActive = _owareIntegration == null || _owareIntegration.IsActive;
+        if (success && isOwareActive)
         {
             var payloadJson = $"{{\"orderId\":\"{order.OrderId}\"}}";
             queue = LabOwareOutboundQueueModel.CreatePending(order.OrderId, payloadJson, occurredAt);

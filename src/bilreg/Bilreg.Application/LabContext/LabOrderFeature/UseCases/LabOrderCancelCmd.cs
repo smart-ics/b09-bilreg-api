@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using System.Text.Json;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
@@ -24,6 +25,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
     private readonly ILabOwareOutboundQueueRepo _queueRepo;
     private readonly IBillingLockValidationService _billingLockValidator;
     private readonly IAuditRepo _auditRepo;
+    private readonly ILabOwareIntegration? _owareIntegration;
 
     public LabOrderCancelHandler(
         ILabOrderRepo labOrderRepo,
@@ -31,7 +33,8 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         ITglJamProvider tglJamProvider,
         ILabOwareOutboundQueueRepo queueRepo,
         IBillingLockValidationService billingLockValidator,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ILabOwareIntegration? owareIntegration = null)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
@@ -39,6 +42,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         _queueRepo = queueRepo;
         _billingLockValidator = billingLockValidator;
         _auditRepo = auditRepo;
+        _owareIntegration = owareIntegration;
     }
 
     private class NullAuditRepo : IAuditRepo
@@ -51,7 +55,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         ILabBillingIntegration labBillingIntegration,
         ITglJamProvider tglJamProvider,
         ILabOwareOutboundQueueRepo queueRepo)
-        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, new NullBillingLockValidationService(), new NullAuditRepo())
+        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, new NullBillingLockValidationService(), new NullAuditRepo(), null)
     {
     }
 
@@ -61,7 +65,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         ITglJamProvider tglJamProvider,
         ILabOwareOutboundQueueRepo queueRepo,
         IBillingLockValidationService billingLockValidator)
-        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, billingLockValidator, new NullAuditRepo())
+        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, billingLockValidator, new NullAuditRepo(), null)
     {
     }
 
@@ -104,7 +108,8 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         order.Cancel(request.UserId, request.Reason, occurredAt);
 
         LabOwareOutboundQueueModel? cancelQueue = null;
-        if (wasOwareSent)
+        var isOwareActive = _owareIntegration == null || _owareIntegration.IsActive;
+        if (wasOwareSent && isOwareActive)
         {
             var payloadJson = $"{{\"orderId\":\"{order.OrderId}\"}}";
             cancelQueue = LabOwareOutboundQueueModel.CreatePending(

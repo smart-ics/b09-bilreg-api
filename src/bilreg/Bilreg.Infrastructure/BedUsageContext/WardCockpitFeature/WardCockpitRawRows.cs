@@ -4,7 +4,8 @@ internal record RawBangsalRow(
     string BangsalId,
     string BangsalName,
     string KelasId,
-    string KelasName
+    string KelasName,
+    string LayananId = ""
 );
 
 internal record RawRoomBedRow(
@@ -31,8 +32,20 @@ internal record RawRoomBedRow(
     string? BabyName = null,
     string? BabyRegId = null,
     string? BabyMrNo = null,
-    string? KdJenisInap = null
-);
+    string? BabyDpjpName = null,
+    string? BabyDpjpId = null,
+    string? KdJenisInap = null,
+    string LayananId = "",
+    string KelasId = "",
+    string TipeTarifId = "UM"
+)
+{
+    public RawRoomBedRow() : this(
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+        false, null, null, null, null, null, null, null, null, null, null,
+        null, null, null, 0, null, null, null, null, null, null,
+        string.Empty, string.Empty, "UM") { }
+}
 
 internal record RawBedOperationalRow(
     string BedId,
@@ -83,8 +96,23 @@ internal record RawBedDetailRow(
     string? BabyName = null,
     string? BabyRegId = null,
     string? BabyMrNo = null,
-    string? KdJenisInap = null
-);
+    string? BabyDpjpName = null,
+    string? BabyDpjpId = null,
+    string? KdJenisInap = null,
+    string LayananId = "",
+    string BangsalId = "",
+    string KamarKelasId = "",
+    string OccupancyKelasId = "",
+    string KelasId = "",
+    string TipeTarifId = "UM"
+)
+{
+    public RawBedDetailRow() : this(
+        string.Empty, string.Empty, string.Empty, string.Empty,
+        null, null, null, null, null, null, null, null, 0m,
+        null, null, null, null, null, null, null, null, null, null, null,
+        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, "UM") { }
+}
 
 internal record RawTindakanRow
 {
@@ -94,6 +122,8 @@ internal record RawTindakanRow
     public string Petugas { get; init; } = string.Empty;
     public decimal Biaya { get; init; }
     public bool HasJasaDokter { get; init; } = false;
+    public string RegId { get; init; } = string.Empty;
+    public bool IsBayi { get; init; } = false;
 
     public RawTindakanRow() { }
 
@@ -116,9 +146,15 @@ internal record RawTindakanRow
         string ItemTindakan,
         string Petugas,
         decimal Biaya,
-        string TindakanId = "")
+        string TindakanId = "",
+        bool HasJasaDokter = false,
+        string RegId = "",
+        bool IsBayi = false)
         : this(TindakanId, TglJam, ItemTindakan, Petugas, Biaya)
     {
+        this.HasJasaDokter = HasJasaDokter;
+        this.RegId = RegId;
+        this.IsBayi = IsBayi;
     }
 }
 

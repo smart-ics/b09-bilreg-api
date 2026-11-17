@@ -14,7 +14,8 @@ public record TarifDto(
     string fs_nm_grup_tarif,
     string fs_nm_grup_tarif_dk,
     string fs_nm_jenis_tarif,
-    string fs_nm_rekap_cetak_tarif
+    string fs_nm_rekap_cetak_tarif,
+    bool fb_charge_brg = false
 )
 {
     public static TarifDto FromModel(TarifType model)
@@ -29,7 +30,8 @@ public record TarifDto(
             model.GroupTarif.GroupTarifName,
             model.GroupTarifDk.GroupTarifDkName,
             model.JenisTarif.JenisTarifName,
-            model.RekapCetak.RekapCetakName
+            model.RekapCetak.RekapCetakName,
+            model.IsChargeBarang
         );
         return result;
     }
@@ -41,7 +43,7 @@ public record TarifDto(
         var jnsTarif = new JenisTarifType(fs_kd_jenis_tarif, fs_nm_jenis_tarif, 0);
         var rekapCetak = new RekapCetakReff(fs_kd_rekap_cetak_tarif, fs_nm_rekap_cetak_tarif);
         return new TarifType(fs_kd_tarif, fs_nm_tarif, groupTarif,
-            groupTarifDk, jnsTarif, rekapCetak);
+            groupTarifDk, jnsTarif, rekapCetak, fb_charge_brg);
     }
 }
 

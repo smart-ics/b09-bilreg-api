@@ -40,7 +40,8 @@ public class AntrianFactory : IAntrianFactory
 
         return new AntrianModel(newId, antrianDate, effective.JamMulai,
             effective.JamSelesai, sequenceTag, antrianDesc, servicePoint,
-            new List<AntrianEntryModel>(), _antrianSequencer);
+            new List<AntrianEntryModel>(), _antrianSequencer,
+            effective.Ruang?.PrefixAntrian ?? string.Empty);
     }
 
     public AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek)
@@ -59,7 +60,8 @@ public class AntrianFactory : IAntrianFactory
         
         var result = new AntrianModel(newId, antrianDate, jadwalPraktek.JamMulai, 
             jadwalPraktek.JamSelesai, sequenceTag, antrianDesc, servicePoint,
-            new List<AntrianEntryModel>(), _antrianSequencer);
+            new List<AntrianEntryModel>(), _antrianSequencer,
+            jadwalPraktek.Ruang?.PrefixAntrian ?? string.Empty);
         return result;
     }
 

@@ -516,4 +516,235 @@ public class WardCockpitControllerTest
         _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Maintenance", null, default), Times.Once);
         _publisherMock.Verify(p => p.PublishWaitingListUpdatedAsync("BGS-01", default), Times.Once);
     }
+
+    [Fact]
+    public async Task Transfer_GivenMotherScope_WhenCleaningTriggered_BroadcastsCleaningToSourceBed()
+    {
+        // Arrange
+        var cmd = new PakaiBedTransferCommand("PKB-01", "BED-02", "USR-01", DateTime.UtcNow, "Pindah Bed", null, null, "ibu", null);
+        var expectedResponse = new PakaiBedTransferResult("PKB-02", "PKB-01", "BED-02", cmd.TglJamTransfer, SourceBedId: "BED-01", SourceBangsalId: "BGS-01", TargetBangsalId: "BGS-02", IsCleaningTriggered: true);
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.Transfer(cmd, bangsalId: "BGS-01");
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Once);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Never);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-02", "BED-02", "Occupied", expectedResponse, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task Transfer_GivenBabyScope_WhenCleaningNotTriggered_BroadcastsOccupiedToSourceBedAndDoesNotBroadcastCleaning()
+    {
+        // Arrange
+        var cmd = new PakaiBedTransferCommand("PKB-01", "BED-BOX-01", "USR-01", DateTime.UtcNow, "Pindah Bayi Mandiri", null, null, "bayi", "REG-BABY");
+        var expectedResponse = new PakaiBedTransferResult("PKB-02", "PKB-01", "BED-BOX-01", cmd.TglJamTransfer, SourceBedId: "BED-01", SourceBangsalId: "BGS-01", TargetBangsalId: "BGS-02", IsCleaningTriggered: false);
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.Transfer(cmd, bangsalId: "BGS-01");
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Never);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Once);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-02", "BED-BOX-01", "Occupied", expectedResponse, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task TransferToWaitingList_GivenMotherScope_WhenCleaningTriggered_BroadcastsCleaningToOldBedAndUpdatesWaitingLists()
+    {
+        // Arrange
+        var cmd = new TransferToWardWaitingListCommand("PKB-01", "BGS-02", DateTime.UtcNow, "Transfer Bangsal Ibu & Bayi", "Catatan", "USR-01", null, "ibu", null);
+        var expectedResponse = new TransferToWardWaitingListResult("WL-01", "PKB-01", "BED-01", "BGS-01", "BGS-02", cmd.TglJamTransfer, "Waiting", IsCleaningTriggered: true, BabyWaitingListId: "WL-01-B");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.TransferToWaitingList(cmd, bangsalId: "BGS-01");
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Once);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Never);
+        _publisherMock.Verify(p => p.PublishWaitingListUpdatedAsync("BGS-01", default), Times.Once);
+        _publisherMock.Verify(p => p.PublishWaitingListUpdatedAsync("BGS-02", default), Times.Once);
+    }
+
+    [Fact]
+    public async Task TransferToWaitingList_GivenBabyScope_WhenCleaningNotTriggered_BroadcastsOccupiedToOldBedAndDoesNotBroadcastCleaning()
+    {
+        // Arrange
+        var cmd = new TransferToWardWaitingListCommand("PKB-01", "BGS-02", DateTime.UtcNow, "Transfer Bangsal Bayi Mandiri", "Catatan", "USR-01", null, "bayi", "REG-BABY");
+        var expectedResponse = new TransferToWardWaitingListResult("WL-01", "PKB-01", "BED-01", "BGS-01", "BGS-02", cmd.TglJamTransfer, "Waiting", IsCleaningTriggered: false, BabyWaitingListId: "WL-01-B");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.TransferToWaitingList(cmd, bangsalId: "BGS-01");
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Never);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Once);
+        _publisherMock.Verify(p => p.PublishWaitingListUpdatedAsync("BGS-01", default), Times.Once);
+        _publisherMock.Verify(p => p.PublishWaitingListUpdatedAsync("BGS-02", default), Times.Once);
+    }
+
+    [Fact]
+    public async Task Discharge_GivenMotherScope_WhenCleaningTriggered_BroadcastsCleaningToBed()
+    {
+        // Arrange
+        var cmd = new PakaiBedReleaseCommand("PKB-01", DateTime.UtcNow, "USR-01", "Pulang Ibu & Bayi", DischargeScope: "ibu");
+        var expectedResponse = new PakaiBedReleaseResult("PKB-01", cmd.TglJamOut, null, BangsalId: "BGS-01", BedId: "BED-01", IsBatalCheckIn: false, IsCleaningTriggered: true);
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.Discharge(cmd);
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Once);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Never);
+    }
+
+    [Fact]
+    public async Task Discharge_GivenBabyScope_WhenCleaningNotTriggered_BroadcastsOccupiedToBedAndDoesNotBroadcastCleaning()
+    {
+        // Arrange
+        var cmd = new PakaiBedReleaseCommand("PKB-01", DateTime.UtcNow, "USR-01", "Pulang Bayi Mandiri", DischargeScope: "bayi", BabyRegId: "REG-BABY");
+        var expectedResponse = new PakaiBedReleaseResult("PKB-01", cmd.TglJamOut, null, BangsalId: "BGS-01", BedId: "BED-01", IsBatalCheckIn: false, IsCleaningTriggered: false);
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new WardCockpitController(_mediatorMock.Object, _publisherMock.Object);
+
+        // Act
+        var actionResult = await controller.Discharge(cmd);
+
+        // Assert
+        actionResult.Should().BeOfType<OkObjectResult>();
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Cleaning", null, default), Times.Never);
+        _publisherMock.Verify(p => p.PublishBedStatusChangedAsync("BGS-01", "BED-01", "Occupied", null, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetOverview_GivenBangsalWithDynamicTariffParameters_ReturnsJSendOkWithTariffFields()
+    {
+        var bangsal = new WardCockpitBangsalDto("BGS-01", "Dahlia", "KLS-01", "Kelas 1", LayananId: "RI001");
+        var occupancy = new WardCockpitOccupancyDto(
+            PakaiBedId: "PKB-01",
+            RegId: "REG-01",
+            MrNo: "MR-01",
+            NamaPasien: "Pasien A",
+            Gender: "L",
+            Umur: "30 Thn",
+            TglJamMasuk: DateTime.UtcNow,
+            LosDays: 1,
+            DpjpName: "dr. SpPD",
+            PenjaminName: "BPJS",
+            BillingKelasName: "Kelas 1",
+            IsTitipKelas: false,
+            IsRawatGabung: false,
+            LayananId: "RI001",
+            KelasId: "KL1",
+            TipeTarifId: "KP"
+        );
+        var bed = new WardCockpitBedDto("BED-01", "101-A", "Occupied", occupancy, new WardCockpitOperationalStateDto("Ready", "None", null, null));
+        var room = new WardCockpitRoomDto("ROOM-01", "Kamar 101", "Kelas 1", "Male", new[] { bed });
+        var expectedResponse = new WardCockpitOverviewDto(
+            bangsal,
+            new WardCockpitKpiDto(1, 1, 100.0, 0, 0, 0, 0),
+            new[] { room },
+            new List<WardCockpitWaitingListDto>()
+        );
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WardCockpitOverviewQuery>(q => q.BangsalId == "BGS-01"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var actionResult = await _sut.GetOverview("BGS-01");
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var data = jsend.data.Should().BeOfType<WardCockpitOverviewDto>().Subject;
+        data.Bangsal.LayananId.Should().Be("RI001");
+        var returnedOcc = data.Rooms.Single().Beds.Single().CurrentOccupancy!;
+        returnedOcc.LayananId.Should().Be("RI001");
+        returnedOcc.KelasId.Should().Be("KL1");
+        returnedOcc.TipeTarifId.Should().Be("KP");
+    }
+
+    [Fact]
+    public async Task GetBedDetail_GivenBedWithDynamicTariffParameters_ReturnsJSendOkWithTariffFields()
+    {
+        var bedInfo = new WardCockpitBedDetailBedInfoDto("BED-01", "101-A", "Kamar 101", "Kelas 1", LayananId: "RI001", BangsalId: "BGS-01", KelasId: "KL1");
+        var patient = new WardCockpitBedDetailPatientDto("MR-01", "Pasien A", "Laki-laki", "1990-01-01", "36 Tahun");
+        var penjamin = new WardCockpitBedDetailPenjaminDto("BPJS", "BPJS Kesehatan", "000123");
+        var dpjp = new WardCockpitBedDetailDpjpDto("DOK-01", "dr. Sutomo");
+        var occupancy = new WardCockpitBedDetailOccupancyDto(
+            PakaiBedId: "PKB-01",
+            RegId: "REG-01",
+            Patient: patient,
+            Penjamin: penjamin,
+            Dpjp: dpjp,
+            CheckInTime: DateTime.UtcNow,
+            LosDays: 1,
+            BillingKelas: "Kelas 1",
+            LayananId: "RI001",
+            KelasId: "KL1",
+            TipeTarifId: "KP"
+        );
+        var expectedResponse = new WardCockpitBedDetailDto(
+            bedInfo,
+            occupancy,
+            new List<WardCockpitBedDetailTindakanDto>(),
+            null,
+            new List<WardCockpitBedDetailRiwayatMutasiDto>()
+        );
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WardCockpitBedDetailQuery>(q => q.BedId == "BED-01"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var actionResult = await _sut.GetBedDetail("BED-01");
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        var data = jsend.data.Should().BeOfType<WardCockpitBedDetailDto>().Subject;
+        data.BedInfo.LayananId.Should().Be("RI001");
+        data.BedInfo.BangsalId.Should().Be("BGS-01");
+        data.BedInfo.KelasId.Should().Be("KL1");
+        data.Occupancy.Should().NotBeNull();
+        data.Occupancy!.LayananId.Should().Be("RI001");
+        data.Occupancy.KelasId.Should().Be("KL1");
+        data.Occupancy.TipeTarifId.Should().Be("KP");
+    }
 }

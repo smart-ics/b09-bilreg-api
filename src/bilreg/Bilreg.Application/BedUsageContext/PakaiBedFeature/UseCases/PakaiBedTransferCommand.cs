@@ -29,6 +29,8 @@ public record PakaiBedTransferCommand : IRequest<PakaiBedTransferResult>
     public string? AlasanPindah { get; init; }
     public string? TargetTipeKamarId { get; init; }
     public string? TargetLayananId { get; init; }
+    public string? TransferScope { get; init; }
+    public string? BabyRegId { get; init; }
 
     public string PakaiBedLamaId => PakaiBedId;
 
@@ -40,7 +42,9 @@ public record PakaiBedTransferCommand : IRequest<PakaiBedTransferResult>
         DateTime TglJamTransfer = default,
         string? AlasanPindah = null,
         string? TargetTipeKamarId = null,
-        string? TargetLayananId = null)
+        string? TargetLayananId = null,
+        string? TransferScope = null,
+        string? BabyRegId = null)
     {
         this.PakaiBedId = PakaiBedId;
         this.TargetBedId = TargetBedId;
@@ -49,13 +53,15 @@ public record PakaiBedTransferCommand : IRequest<PakaiBedTransferResult>
         this.AlasanPindah = AlasanPindah;
         this.TargetTipeKamarId = TargetTipeKamarId;
         this.TargetLayananId = TargetLayananId;
+        this.TransferScope = TransferScope;
+        this.BabyRegId = BabyRegId;
     }
 
     public PakaiBedTransferCommand(
         string PakaiBedId,
         string TargetBedId,
         string UserId) 
-        : this(PakaiBedId, TargetBedId, UserId, default, null, null, null)
+        : this(PakaiBedId, TargetBedId, UserId, default, null, null, null, null, null)
     {
     }
 }
@@ -67,7 +73,9 @@ public record PakaiBedTransferResult(
     DateTime TglJamTransfer,
     string SourceBedId = "",
     string SourceBangsalId = "",
-    string TargetBangsalId = ""
+    string TargetBangsalId = "",
+    bool IsCleaningTriggered = true,
+    string? BabyPakaiBedBaruId = null
 );
 
 public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCommand, PakaiBedTransferResult>
@@ -107,7 +115,7 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task<PakaiBedTransferResult> Handle(PakaiBedTransferCommand request, CancellationToken cancellationToken)
+    public async Task<PakaiBedTransferResult> Handle(PakaiBedTransferCommand request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.PakaiBedId, nameof(request.PakaiBedId));
         Guard.Against.NullOrWhiteSpace(request.TargetBedId, nameof(request.TargetBedId));
@@ -123,7 +131,70 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             throw new InvalidOperationException($"Pakai Bed '{request.PakaiBedId}' is not active.");
         }
 
-        if (pakaiBedLama.Bed.BedId == request.TargetBedId)
+        var isBayiScope = string.Equals(request.TransferScope, "bayi", StringComparison.OrdinalIgnoreCase);
+
+        // In baby scope, if request.PakaiBedId is mother's bed, we locate the rooming-in baby record
+        PakaiBedModel? babyPakaiBed = null;
+        if (isBayiScope)
+        {
+            if (pakaiBedLama.Tarif == 0 || (!string.IsNullOrWhiteSpace(request.BabyRegId) && pakaiBedLama.Reg.RegId == request.BabyRegId))
+            {
+                babyPakaiBed = pakaiBedLama;
+            }
+            else
+            {
+                var sourceBedId = (pakaiBedLama.Bed?.BedId ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(request.BabyRegId))
+                {
+                    var babyRecords = _pakaiBedRepo.ListData(RegModel.Key(request.BabyRegId))?.ToList() ?? [];
+                    babyPakaiBed = babyRecords.FirstOrDefault(x =>
+                        (string.IsNullOrWhiteSpace(sourceBedId) || x.Bed.BedId == sourceBedId) &&
+                        (x.Periode.Keluar.Timestamp == default || x.Periode.Keluar.Timestamp.Year == 3000));
+                }
+
+                if (babyPakaiBed == null && !string.IsNullOrWhiteSpace(sourceBedId))
+                {
+                    var babyTrsIds = await _pakaiBedRepo.GetRoomingInBabyTrsIdsAsync(sourceBedId, request.BabyRegId);
+                    if (babyTrsIds != null && babyTrsIds.Count > 0)
+                    {
+                        var loaded = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(babyTrsIds[0]));
+                        if (loaded.HasValue)
+                        {
+                            babyPakaiBed = loaded.Value;
+                        }
+                    }
+                }
+
+                if (babyPakaiBed == null)
+                {
+                    var babyRegIds = await _pakaiBedRepo.GetRoomingInBabyRegIdsAsync(pakaiBedLama.PakaiBedId);
+                    if (babyRegIds != null)
+                    {
+                        foreach (var bReg in babyRegIds)
+                        {
+                            var babyRecords = _pakaiBedRepo.ListData(RegModel.Key(bReg))?.ToList() ?? [];
+                            babyPakaiBed = babyRecords.FirstOrDefault(x =>
+                                (string.IsNullOrWhiteSpace(sourceBedId) || x.Bed.BedId == sourceBedId) &&
+                                (x.Periode.Keluar.Timestamp == default || x.Periode.Keluar.Timestamp.Year == 3000));
+                            if (babyPakaiBed != null) break;
+                        }
+                    }
+                }
+
+                if (babyPakaiBed == null)
+                {
+                    throw new InvalidOperationException($"Rooming-in baby record not found for bed '{pakaiBedLama.Bed?.BedId}'.");
+                }
+            }
+
+            if (babyPakaiBed.Periode.Keluar.Timestamp != new DateTime(3000, 1, 1) || babyPakaiBed.AuditTrail.IsVoided)
+            {
+                throw new InvalidOperationException($"Pakai Bed '{babyPakaiBed.PakaiBedId}' is not active.");
+            }
+        }
+
+        var subjectBedId = isBayiScope ? (babyPakaiBed!.Bed?.BedId ?? string.Empty).Trim() : (pakaiBedLama.Bed?.BedId ?? string.Empty).Trim();
+        if (subjectBedId == request.TargetBedId)
         {
             throw new InvalidOperationException($"Target bed cannot be the same as current bed '{request.TargetBedId}'.");
         }
@@ -155,7 +226,7 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
 
         var targetTipeKamarId = !string.IsNullOrWhiteSpace(request.TargetTipeKamarId)
             ? request.TargetTipeKamarId
-            : pakaiBedLama.TipeKamar.TipeKamarId;
+            : (isBayiScope ? babyPakaiBed!.TipeKamar.TipeKamarId : pakaiBedLama.TipeKamar.TipeKamarId);
 
         var targetTipeKamar = _tipeKamarRepo.LoadEntity(TipeKamarType.Key(targetTipeKamarId))
             .GetValueOrThrow($"Tipe kamar '{targetTipeKamarId}' not found");
@@ -164,23 +235,21 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             ?? throw new InvalidOperationException($"Room Rate for Tipe Kamar '{targetTipeKamarId}' not found in kamar '{targetKamar.KamarId}'.");
 
         string targetLayananId;
+        var currentSubjectLayanan = isBayiScope ? babyPakaiBed!.Layanan.LayananId : pakaiBedLama.Layanan.LayananId;
         if (!string.IsNullOrWhiteSpace(request.TargetLayananId))
         {
             var maybeLayanan = _layananRepo.LoadEntity(LayananType.Key(request.TargetLayananId));
             targetLayananId = maybeLayanan.HasValue
                 ? request.TargetLayananId
-                : pakaiBedLama.Layanan.LayananId;
+                : currentSubjectLayanan;
         }
         else
         {
-            targetLayananId = pakaiBedLama.Layanan.LayananId;
+            targetLayananId = currentSubjectLayanan;
         }
 
         var targetLayanan = _layananRepo.LoadEntity(LayananType.Key(targetLayananId))
             .GetValueOrThrow($"Layanan '{targetLayananId}' not found");
-
-        var reg = _regRepo.LoadEntity(RegModel.Key(pakaiBedLama.Reg.RegId))
-            .GetValueOrThrow($"Registration '{pakaiBedLama.Reg.RegId}' not found");
 
         // 4. Validasi status kesiapan operasional target bed
         var maybeTargetBedOp = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(request.TargetBedId));
@@ -226,74 +295,236 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             nowUtc = transferTimeUtc;
         }
 
-        // 5. Atomic transaction
-        using var trans = TransHelper.NewScope();
-
-        // 5a. Release bed lama
-        pakaiBedLama.Release(request.UserId, transferTime);
-        _pakaiBedRepo.SaveChanges(pakaiBedLama);
-
-        // 5b. Otomatis mencatat bed lama menjadi berstatus kotor (CleaningRequired) via BedOperationalModel
-        var oldBedId = (pakaiBedLama.Bed?.BedId ?? string.Empty).Trim();
-        var oldBed = !string.IsNullOrWhiteSpace(oldBedId)
-            ? _bedRepo.LoadEntity(BedType.Key(oldBedId))
-            : MayBe<BedType>.None;
-        var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : targetBed.Bangsal.BangsalId;
-        var oldKamarId = oldBed.HasValue ? oldBed.Value.Kamar.KamarId : targetKamar.KamarId;
-
-        var oldBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(oldBedId))
-            .Match(
-                onSome: bo => bo,
-                onNone: () => BedOperationalModel.Create(
-                    oldBedId,
-                    oldBangsalId,
-                    oldKamarId,
-                    OccupancyPolicyReff.Default)
-            );
-
-        var dirtyReason = string.IsNullOrWhiteSpace(request.AlasanPindah)
-            ? $"Pindah kamar ke bed {request.TargetBedId}"
-            : request.AlasanPindah;
-
-        oldBedOperational = oldBedOperational.SetCleaningRequired(
-            dirtyReason,
-            request.UserId,
-            transferTimeUtc,
-            nowUtc,
-            sourceFactId: $"TRANSFER-OUT-{pakaiBedLama.PakaiBedId}",
-            requestId: $"REQ-{Guid.NewGuid():N}");
-
-        _bedOperationalRepo.SaveChanges(oldBedOperational);
-
-        // 5c. Advance epoch on target bed operational
-        targetBedOperational = targetBedOperational.AdvanceOccupancyEpoch();
-        _bedOperationalRepo.SaveChanges(targetBedOperational);
-
-        // 5d. Create alokasi bed baru
         var periodeMasuk = new PeriodePakaiBedType(
             new AuditInfoType(request.UserId, transferTime),
             AuditInfoType.Default);
 
-        var pakaiBedBaru = PakaiBedModel.Create(
-            reg,
-            periodeMasuk.Masuk,
-            targetLayanan,
-            targetBed,
-            targetTipeKamar,
-            targetKelas,
-            rate.TotalNilai);
+        if (isBayiScope)
+        {
+            // --- BRANCH 1: BAYI SCOPE (Isolated Child Transfer) ---
+            var babyReg = _regRepo.LoadEntity(RegModel.Key(babyPakaiBed!.Reg.RegId))
+                .Match(
+                    onSome: r => r,
+                    onNone: () => (RegModel)RegModel.Key(babyPakaiBed.Reg.RegId)
+                );
 
-        _pakaiBedRepo.SaveChanges(pakaiBedBaru);
+            var babyPakaiBedBaru = PakaiBedModel.Create(
+                babyReg,
+                periodeMasuk.Masuk,
+                targetLayanan,
+                targetBed,
+                targetTipeKamar,
+                targetKelas,
+                rate.TotalNilai);
 
-        trans.Complete();
+            var oldBed = !string.IsNullOrWhiteSpace(subjectBedId)
+                ? _bedRepo.LoadEntity(BedType.Key(subjectBedId))
+                : MayBe<BedType>.None;
+            var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : targetBed.Bangsal.BangsalId;
 
-        return Task.FromResult(new PakaiBedTransferResult(
-            pakaiBedBaru.PakaiBedId,
-            pakaiBedLama.PakaiBedId,
-            targetBed.BedId,
-            transferTime,
-            SourceBedId: oldBedId,
-            SourceBangsalId: oldBangsalId,
-            TargetBangsalId: targetBed.Bangsal.BangsalId));
+            targetBedOperational = targetBedOperational.AdvanceOccupancyEpoch();
+
+            using var trans = TransHelper.NewScope();
+
+            // 1. Release baby's bed allocation on old bed
+            babyPakaiBed.Release(request.UserId, transferTime);
+            _pakaiBedRepo.SaveChanges(babyPakaiBed);
+
+            if (!string.IsNullOrWhiteSpace(subjectBedId))
+            {
+                await _pakaiBedRepo.ReleaseRoomingInBabyAsync(subjectBedId, babyPakaiBed.Reg.RegId, request.UserId, transferTime);
+            }
+
+            // 2. Advance epoch on target bed operational
+            _bedOperationalRepo.SaveChanges(targetBedOperational);
+
+            // 3. Create independent baby bed allocation on target bed (with normal rate)
+            _pakaiBedRepo.SaveChanges(babyPakaiBedBaru);
+
+            // Note: Mother remains on the old bed! Old bed is NOT marked as CleaningRequired.
+            trans.Complete();
+
+            return new PakaiBedTransferResult(
+                babyPakaiBedBaru.PakaiBedId,
+                babyPakaiBed.PakaiBedId,
+                targetBed.BedId,
+                transferTime,
+                SourceBedId: subjectBedId,
+                SourceBangsalId: oldBangsalId,
+                TargetBangsalId: targetBed.Bangsal.BangsalId,
+                IsCleaningTriggered: false);
+        }
+        else
+        {
+            // --- BRANCH 2: IBU / DEFAULT SCOPE (Cascade Transfer with Rooming-In Babies) ---
+            var reg = _regRepo.LoadEntity(RegModel.Key(pakaiBedLama.Reg.RegId))
+                .GetValueOrThrow($"Registration '{pakaiBedLama.Reg.RegId}' not found");
+
+            // 1. Prepare mother's new bed allocation on target bed
+            var pakaiBedBaru = PakaiBedModel.Create(
+                reg,
+                periodeMasuk.Masuk,
+                targetLayanan,
+                targetBed,
+                targetTipeKamar,
+                targetKelas,
+                rate.TotalNilai);
+
+            // 2. Cascade transfer rooming-in babies on the same source bed (DISCOVER BEFORE MODIFYING DATABASE)
+            var babyPakaiBedsToTransfer = new List<PakaiBedModel>();
+            var processedBabyRegs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(request.BabyRegId))
+            {
+                var babyRecords = _pakaiBedRepo.ListData(RegModel.Key(request.BabyRegId))?.ToList() ?? [];
+                var activeBabyBed = babyRecords.FirstOrDefault(x =>
+                    (string.IsNullOrWhiteSpace(subjectBedId) || x.Bed.BedId == subjectBedId) &&
+                    (x.Periode.Keluar.Timestamp == default || x.Periode.Keluar.Timestamp.Year == 3000));
+                if (activeBabyBed != null)
+                {
+                    babyPakaiBedsToTransfer.Add(activeBabyBed);
+                    processedBabyRegs.Add(activeBabyBed.Reg.RegId);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(subjectBedId))
+            {
+                var babyTrsIds = await _pakaiBedRepo.GetRoomingInBabyTrsIdsAsync(subjectBedId, request.BabyRegId);
+                if (babyTrsIds != null)
+                {
+                    foreach (var bTrsId in babyTrsIds)
+                    {
+                        if (bTrsId == pakaiBedLama.PakaiBedId) continue;
+                        var loaded = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(bTrsId));
+                        if (loaded.HasValue)
+                        {
+                            var bModel = loaded.Value;
+                            if (!processedBabyRegs.Contains(bModel.Reg.RegId) &&
+                                (bModel.Periode.Keluar.Timestamp == default || bModel.Periode.Keluar.Timestamp.Year == 3000))
+                            {
+                                babyPakaiBedsToTransfer.Add(bModel);
+                                processedBabyRegs.Add(bModel.Reg.RegId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            var detectedBabyRegs = await _pakaiBedRepo.GetRoomingInBabyRegIdsAsync(pakaiBedLama.PakaiBedId);
+            if (detectedBabyRegs != null)
+            {
+                foreach (var bReg in detectedBabyRegs.Where(x => !string.IsNullOrWhiteSpace(x)))
+                {
+                    if (processedBabyRegs.Contains(bReg.Trim())) continue;
+                    var babyRecords = _pakaiBedRepo.ListData(RegModel.Key(bReg.Trim()))?.ToList() ?? [];
+                    var activeBabyBed = babyRecords.FirstOrDefault(x =>
+                        (string.IsNullOrWhiteSpace(subjectBedId) || x.Bed.BedId == subjectBedId) &&
+                        (x.Periode.Keluar.Timestamp == default || x.Periode.Keluar.Timestamp.Year == 3000));
+                    if (activeBabyBed != null)
+                    {
+                        babyPakaiBedsToTransfer.Add(activeBabyBed);
+                        processedBabyRegs.Add(activeBabyBed.Reg.RegId);
+                    }
+                }
+            }
+
+            // Pre-load baby registration entities and construct baby models before entering transaction
+            var babyTransferPairs = new List<(PakaiBedModel oldBabyBed, PakaiBedModel newBabyBed)>();
+            foreach (var bBed in babyPakaiBedsToTransfer)
+            {
+                var babyReg = _regRepo.LoadEntity(RegModel.Key(bBed.Reg.RegId))
+                    .Match(
+                        onSome: r => r,
+                        onNone: () => (RegModel)RegModel.Key(bBed.Reg.RegId)
+                    );
+
+                var babyPakaiBedBaru = PakaiBedModel.Create(
+                    babyReg,
+                    periodeMasuk.Masuk,
+                    targetLayanan,
+                    targetBed,
+                    targetTipeKamar,
+                    targetKelas,
+                    0m, // Rooming-in baby has rate = 0
+                    kelasTindakanId: pakaiBedBaru.KelasTindakanId);
+
+                babyTransferPairs.Add((bBed, babyPakaiBedBaru));
+            }
+
+            // Pre-load bed operational entities before entering transaction
+            var oldBed = !string.IsNullOrWhiteSpace(subjectBedId)
+                ? _bedRepo.LoadEntity(BedType.Key(subjectBedId))
+                : MayBe<BedType>.None;
+            var oldBangsalId = oldBed.HasValue ? oldBed.Value.Bangsal.BangsalId : targetBed.Bangsal.BangsalId;
+            var oldKamarId = oldBed.HasValue ? oldBed.Value.Kamar.KamarId : targetKamar.KamarId;
+
+            var oldBedOperational = _bedOperationalRepo.LoadEntity(BedOperationalModel.Key(subjectBedId))
+                .Match(
+                    onSome: bo => bo,
+                    onNone: () => BedOperationalModel.Create(
+                        subjectBedId,
+                        oldBangsalId,
+                        oldKamarId,
+                        OccupancyPolicyReff.Default)
+                );
+
+            var dirtyReason = string.IsNullOrWhiteSpace(request.AlasanPindah)
+                ? $"Pindah kamar ke bed {request.TargetBedId}"
+                : request.AlasanPindah;
+
+            oldBedOperational = oldBedOperational.SetCleaningRequired(
+                dirtyReason,
+                request.UserId,
+                transferTimeUtc,
+                nowUtc,
+                sourceFactId: $"TRANSFER-OUT-{pakaiBedLama.PakaiBedId}",
+                requestId: $"REQ-{Guid.NewGuid():N}");
+
+            targetBedOperational = targetBedOperational.AdvanceOccupancyEpoch();
+
+            // 3. Atomic transaction: Writes only
+            using var trans = TransHelper.NewScope();
+
+            // Release mother's old bed
+            pakaiBedLama.Release(request.UserId, transferTime);
+            _pakaiBedRepo.SaveChanges(pakaiBedLama);
+
+            // Cascade transfer rooming-in babies
+            string? firstBabyPakaiBedBaruId = null;
+            foreach (var (oldBabyBed, newBabyBed) in babyTransferPairs)
+            {
+                oldBabyBed.Release(request.UserId, transferTime);
+                _pakaiBedRepo.SaveChanges(oldBabyBed);
+                _pakaiBedRepo.SaveChanges(newBabyBed);
+                firstBabyPakaiBedBaruId ??= newBabyBed.PakaiBedId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(subjectBedId))
+            {
+                await _pakaiBedRepo.ReleaseRoomingInBabyAsync(subjectBedId, null, request.UserId, transferTime);
+            }
+
+            // Mark old bed as CleaningRequired
+            _bedOperationalRepo.SaveChanges(oldBedOperational);
+
+            // Advance epoch on target bed operational
+            _bedOperationalRepo.SaveChanges(targetBedOperational);
+
+            // Persist mother's new bed allocation on target bed
+            _pakaiBedRepo.SaveChanges(pakaiBedBaru);
+
+            trans.Complete();
+
+            return new PakaiBedTransferResult(
+                pakaiBedBaru.PakaiBedId,
+                pakaiBedLama.PakaiBedId,
+                targetBed.BedId,
+                transferTime,
+                SourceBedId: subjectBedId,
+                SourceBangsalId: oldBangsalId,
+                TargetBangsalId: targetBed.Bangsal.BangsalId,
+                IsCleaningTriggered: true,
+                BabyPakaiBedBaruId: firstBabyPakaiBedBaruId);
+        }
     }
 }

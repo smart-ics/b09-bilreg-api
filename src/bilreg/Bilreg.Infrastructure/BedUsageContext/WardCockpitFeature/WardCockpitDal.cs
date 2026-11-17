@@ -17,7 +17,8 @@ public class WardCockpitDal : IWardCockpitDal
             b.fs_kd_bangsal AS BangsalId,
             b.fs_nm_bangsal AS BangsalName,
             ISNULL(k.fs_kd_kelas, '') AS KelasId,
-            ISNULL(k.fs_nm_kelas, '') AS KelasName
+            ISNULL(k.fs_nm_kelas, '') AS KelasName,
+            ISNULL(b.fs_kd_layanan, '') AS LayananId
         FROM ta_bangsal b
         LEFT JOIN ta_kamar km ON b.fs_kd_bangsal = km.fs_kd_bangsal
         LEFT JOIN ta_kelas k ON km.fs_kd_kelas = k.fs_kd_kelas
@@ -59,9 +60,15 @@ public class WardCockpitDal : IWardCockpitDal
             baby.BabyName,
             baby.BabyRegId,
             baby.BabyMrNo,
-            reg.fs_kd_jenis_inap AS KdJenisInap
+            baby.BabyDpjpName,
+            baby.BabyDpjpId,
+            reg.fs_kd_jenis_inap AS KdJenisInap,
+            ISNULL(b.fs_kd_layanan, '') AS LayananId,
+            COALESCE(NULLIF(occ.fs_kd_kelas, ''), NULLIF(reg.fs_kd_kelas, ''), km.fs_kd_kelas, '') AS KelasId,
+            COALESCE(NULLIF(j.fs_kd_tipe_tarif_rawat_inap, ''), NULLIF(j.fs_kd_tarif_tipe, ''), 'UM') AS TipeTarifId
         FROM ta_kamar km
         INNER JOIN ta_bed bd ON km.fs_kd_kamar = bd.fs_kd_kamar
+        LEFT JOIN ta_bangsal b ON km.fs_kd_bangsal = b.fs_kd_bangsal
         LEFT JOIN ta_kelas kls_kamar ON km.fs_kd_kelas = kls_kamar.fs_kd_kelas
         LEFT JOIN (
             SELECT 
@@ -87,6 +94,7 @@ public class WardCockpitDal : IWardCockpitDal
         LEFT JOIN tc_mr pmr ON reg.fs_mr = pmr.fs_mr
         LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
+        LEFT JOIN ta_jaminan j ON tj.fs_kd_jaminan = j.fs_kd_jaminan
         LEFT JOIN ta_kelas kls_reg ON reg.fs_kd_kelas = kls_reg.fs_kd_kelas
         LEFT JOIN (
             SELECT RegId, KelasId, KelasName,
@@ -102,6 +110,8 @@ public class WardCockpitDal : IWardCockpitDal
                     NULLIF(pmr_baby.fs_nm_pasien, ''),
                     'By. Ny. ' + ISNULL(pmr_mother.fs_nm_pasien, '')
                 ) AS BabyName,
+                ISNULL(r_baby.fs_kd_medis, '') AS BabyDpjpId,
+                ISNULL(peg_baby.fs_nm_peg, '') AS BabyDpjpName,
                 ROW_NUMBER() OVER (
                     PARTITION BY tb_baby.fs_kd_bed 
                     ORDER BY tb_baby.fd_tgl_in DESC, tb_baby.fs_jam_in DESC
@@ -109,6 +119,7 @@ public class WardCockpitDal : IWardCockpitDal
             FROM ta_trs_bed tb_baby
             LEFT JOIN ta_registrasi r_baby ON tb_baby.fs_kd_reg = r_baby.fs_kd_reg
             LEFT JOIN tc_mr pmr_baby ON r_baby.fs_mr = pmr_baby.fs_mr
+            LEFT JOIN td_peg peg_baby ON r_baby.fs_kd_medis = peg_baby.fs_kd_peg
             LEFT JOIN ta_trs_bed tb_mother ON tb_baby.fs_kd_bed = tb_mother.fs_kd_bed AND tb_mother.fn_tarif > 0
                 AND (tb_mother.fd_tgl_out = '' OR tb_mother.fd_tgl_out = '3000-01-01' OR tb_mother.fd_tgl_out IS NULL)
                 AND (tb_mother.fd_tgl_void = '' OR tb_mother.fd_tgl_void = '3000-01-01' OR tb_mother.fd_tgl_void IS NULL)
@@ -146,7 +157,11 @@ public class WardCockpitDal : IWardCockpitDal
             ISNULL(wl.UrgencyLevel, 0) AS ClinicalUrgency,
             ISNULL(wl.EntrySource, 0) AS ArrivalSourceType,
             ISNULL(wl.UnitPengirimName, '') AS ReferringUnitName,
-            ISNULL(wl.KelasName, '') AS RequestedKelasName,
+            COALESCE(
+                NULLIF(NULLIF(kls_reg.fs_nm_kelas, 'NON KELAS'), ''),
+                NULLIF(wl.KelasName, ''),
+                ''
+            ) AS RequestedKelasName,
             ISNULL(wl.AdvisoryBedId, '') AS PlannedBedId,
             ISNULL(wl.SpecialNeeds, '') AS SpecialRequirements,
             wl.CrtDate,
@@ -155,6 +170,7 @@ public class WardCockpitDal : IWardCockpitDal
         FROM BILRG_BedWaitingList wl
         LEFT JOIN tc_mr pmr ON wl.PasienId = pmr.fs_mr
         LEFT JOIN ta_registrasi r ON wl.RegId = r.fs_kd_reg
+        LEFT JOIN ta_kelas kls_reg ON r.fs_kd_kelas = kls_reg.fs_kd_kelas
         WHERE wl.BangsalId = @BangsalId 
           AND wl.WaitingListStatus IN (0, 1)
         ORDER BY ISNULL(wl.UrgencyLevel, 0) DESC, wl.CrtDate ASC;
@@ -190,9 +206,18 @@ public class WardCockpitDal : IWardCockpitDal
             baby.BabyName,
             baby.BabyRegId,
             baby.BabyMrNo,
-            reg.fs_kd_jenis_inap AS KdJenisInap
+            baby.BabyDpjpName,
+            baby.BabyDpjpId,
+            reg.fs_kd_jenis_inap AS KdJenisInap,
+            ISNULL(b.fs_kd_layanan, '') AS LayananId,
+            ISNULL(km.fs_kd_bangsal, '') AS BangsalId,
+            ISNULL(km.fs_kd_kelas, '') AS KamarKelasId,
+            COALESCE(NULLIF(occ.fs_kd_kelas, ''), NULLIF(reg.fs_kd_kelas, ''), km.fs_kd_kelas, '') AS OccupancyKelasId,
+            COALESCE(NULLIF(occ.fs_kd_kelas, ''), NULLIF(reg.fs_kd_kelas, ''), km.fs_kd_kelas, '') AS KelasId,
+            COALESCE(NULLIF(j.fs_kd_tipe_tarif_rawat_inap, ''), NULLIF(j.fs_kd_tarif_tipe, ''), 'UM') AS TipeTarifId
         FROM ta_bed bd
         INNER JOIN ta_kamar km ON bd.fs_kd_kamar = km.fs_kd_kamar
+        LEFT JOIN ta_bangsal b ON km.fs_kd_bangsal = b.fs_kd_bangsal
         LEFT JOIN ta_kelas kls ON km.fs_kd_kelas = kls.fs_kd_kelas
         LEFT JOIN (
             SELECT 
@@ -218,6 +243,7 @@ public class WardCockpitDal : IWardCockpitDal
         LEFT JOIN tc_mr pmr ON reg.fs_mr = pmr.fs_mr
         LEFT JOIN td_peg peg ON reg.fs_kd_medis = peg.fs_kd_peg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
+        LEFT JOIN ta_jaminan j ON tj.fs_kd_jaminan = j.fs_kd_jaminan
         LEFT JOIN ta_kelas kls_reg ON reg.fs_kd_kelas = kls_reg.fs_kd_kelas
         LEFT JOIN (
             SELECT RegId, KelasId, KelasName,
@@ -233,6 +259,8 @@ public class WardCockpitDal : IWardCockpitDal
                     NULLIF(pmr_baby.fs_nm_pasien, ''),
                     'By. Ny. ' + ISNULL(pmr_mother.fs_nm_pasien, '')
                 ) AS BabyName,
+                ISNULL(r_baby.fs_kd_medis, '') AS BabyDpjpId,
+                ISNULL(peg_baby.fs_nm_peg, '') AS BabyDpjpName,
                 ROW_NUMBER() OVER (
                     PARTITION BY tb_baby.fs_kd_bed 
                     ORDER BY tb_baby.fd_tgl_in DESC, tb_baby.fs_jam_in DESC
@@ -240,6 +268,7 @@ public class WardCockpitDal : IWardCockpitDal
             FROM ta_trs_bed tb_baby
             LEFT JOIN ta_registrasi r_baby ON tb_baby.fs_kd_reg = r_baby.fs_kd_reg
             LEFT JOIN tc_mr pmr_baby ON r_baby.fs_mr = pmr_baby.fs_mr
+            LEFT JOIN td_peg peg_baby ON r_baby.fs_kd_medis = peg_baby.fs_kd_peg
             LEFT JOIN ta_trs_bed tb_mother ON tb_baby.fs_kd_bed = tb_mother.fs_kd_bed AND tb_mother.fn_tarif > 0
                 AND (tb_mother.fd_tgl_out = '' OR tb_mother.fd_tgl_out = '3000-01-01' OR tb_mother.fd_tgl_out IS NULL)
                 AND (tb_mother.fd_tgl_void = '' OR tb_mother.fd_tgl_void = '3000-01-01' OR tb_mother.fd_tgl_void IS NULL)
@@ -282,18 +311,25 @@ public class WardCockpitDal : IWardCockpitDal
                 SELECT 1 FROM TA_TRS_TINDAKAN2 tk 
                 WHERE tk.FS_KD_TRS = t.FS_KD_TRS 
                   AND ISNULL(tk.FS_KD_PETUGAS_MEDIS, '') <> ''
-            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS HasJasaDokter
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS HasJasaDokter,
+            ISNULL(t.FS_KD_REG, '') AS RegId,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM ta_trs_bed tb_baby
+                WHERE tb_baby.fs_kd_bed = @BedId
+                  AND tb_baby.fs_kd_reg = t.FS_KD_REG
+                  AND tb_baby.fn_tarif = 0
+                  AND (tb_baby.fd_tgl_out = '' OR tb_baby.fd_tgl_out = '3000-01-01' OR tb_baby.fd_tgl_out IS NULL)
+                  AND (tb_baby.fd_tgl_void = '' OR tb_baby.fd_tgl_void = '3000-01-01' OR tb_baby.fd_tgl_void IS NULL)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsBayi
         FROM TA_TRS_TINDAKAN t
         LEFT JOIN td_peg peg ON t.CRTUSR = peg.fs_kd_peg
         LEFT JOIN ta_tarif tr ON t.FS_KD_TARIF = tr.FS_KD_TARIF
-        WHERE t.FS_KD_REG = (
-            SELECT TOP 1 occ.fs_kd_reg
-            FROM ta_bed bd
-            INNER JOIN ta_trs_bed occ ON bd.fs_kd_bed = occ.fs_kd_bed
-                AND (occ.fd_tgl_out = '' OR occ.fd_tgl_out = '3000-01-01' OR occ.fd_tgl_out IS NULL)
-                AND (occ.fd_tgl_void = '' OR occ.fd_tgl_void = '3000-01-01' OR occ.fd_tgl_void IS NULL)
-            WHERE bd.fs_kd_bed = @BedId
-            ORDER BY CASE WHEN occ.fn_tarif > 0 THEN 1 ELSE 2 END, occ.fd_tgl_in ASC, occ.fs_jam_in ASC
+        WHERE t.FS_KD_REG IN (
+            SELECT occ.fs_kd_reg
+            FROM ta_trs_bed occ
+            WHERE occ.fs_kd_bed = @BedId
+              AND (occ.fd_tgl_out = '' OR occ.fd_tgl_out = '3000-01-01' OR occ.fd_tgl_out IS NULL)
+              AND (occ.fd_tgl_void = '' OR occ.fd_tgl_void = '3000-01-01' OR occ.fd_tgl_void IS NULL)
         )
         AND (t.FD_TGL_VOID = '3000-01-01' OR t.FD_TGL_VOID = '' OR t.FD_TGL_VOID IS NULL)
 
@@ -305,17 +341,25 @@ public class WardCockpitDal : IWardCockpitDal
             ISNULL(b.BhpItemName, '') AS ItemTindakan,
             ISNULL(peg.fs_nm_peg, b.CrtUser) AS Petugas,
             ISNULL(b.Qty * b.Price, 0) AS Biaya,
-            CAST(0 AS BIT) AS HasJasaDokter
+            CAST(0 AS BIT) AS HasJasaDokter,
+            COALESCE(NULLIF(b.RegId, ''), occ_b.fs_kd_reg, '') AS RegId,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM ta_trs_bed tb_baby
+                WHERE tb_baby.fs_kd_bed = @BedId
+                  AND tb_baby.fs_kd_reg = COALESCE(NULLIF(b.RegId, ''), occ_b.fs_kd_reg)
+                  AND tb_baby.fn_tarif = 0
+                  AND (tb_baby.fd_tgl_out = '' OR tb_baby.fd_tgl_out = '3000-01-01' OR tb_baby.fd_tgl_out IS NULL)
+                  AND (tb_baby.fd_tgl_void = '' OR tb_baby.fd_tgl_void = '3000-01-01' OR tb_baby.fd_tgl_void IS NULL)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsBayi
         FROM BILRG_BhpRanap b
         LEFT JOIN td_peg peg ON b.CrtUser = peg.fs_kd_peg
-        WHERE b.PakaiBedId = (
-            SELECT TOP 1 occ.fs_kd_trs
-            FROM ta_bed bd
-            INNER JOIN ta_trs_bed occ ON bd.fs_kd_bed = occ.fs_kd_bed
-                AND (occ.fd_tgl_out = '' OR occ.fd_tgl_out = '3000-01-01' OR occ.fd_tgl_out IS NULL)
-                AND (occ.fd_tgl_void = '' OR occ.fd_tgl_void = '3000-01-01' OR occ.fd_tgl_void IS NULL)
-            WHERE bd.fs_kd_bed = @BedId
-            ORDER BY CASE WHEN occ.fn_tarif > 0 THEN 1 ELSE 2 END, occ.fd_tgl_in ASC, occ.fs_jam_in ASC
+        LEFT JOIN ta_trs_bed occ_b ON b.PakaiBedId = occ_b.fs_kd_trs
+        WHERE b.PakaiBedId IN (
+            SELECT occ.fs_kd_trs
+            FROM ta_trs_bed occ
+            WHERE occ.fs_kd_bed = @BedId
+              AND (occ.fd_tgl_out = '' OR occ.fd_tgl_out = '3000-01-01' OR occ.fd_tgl_out IS NULL)
+              AND (occ.fd_tgl_void = '' OR occ.fd_tgl_void = '3000-01-01' OR occ.fd_tgl_void IS NULL)
         )
         AND (b.VodDate = '3000-01-01' OR b.VodDate IS NULL)
         ORDER BY TglJam DESC;
@@ -500,7 +544,12 @@ public class WardCockpitDal : IWardCockpitDal
                         BabyName: b.BabyName,
                         BabyRegId: b.BabyRegId,
                         BabyMrNo: b.BabyMrNo,
-                        KdJenisInap: b.KdJenisInap
+                        KdJenisInap: b.KdJenisInap,
+                        BabyDpjpName: b.BabyDpjpName,
+                        BabyDpjpId: b.BabyDpjpId,
+                        LayananId: !string.IsNullOrWhiteSpace(b.LayananId) ? b.LayananId : (bangsalRow.LayananId ?? string.Empty),
+                        KelasId: b.KelasId ?? string.Empty,
+                        TipeTarifId: string.IsNullOrWhiteSpace(b.TipeTarifId) ? "UM" : b.TipeTarifId
                     );
                 }
 
@@ -565,7 +614,8 @@ public class WardCockpitDal : IWardCockpitDal
             BangsalId: bangsalRow.BangsalId,
             BangsalName: bangsalRow.BangsalName,
             KelasId: bangsalRow.KelasId,
-            KelasName: bangsalRow.KelasName
+            KelasName: bangsalRow.KelasName,
+            LayananId: bangsalRow.LayananId ?? string.Empty
         );
 
         return new WardCockpitOverviewDto(
@@ -722,11 +772,18 @@ public class WardCockpitDal : IWardCockpitDal
     {
         var now = currentTime ?? DateTime.Now;
 
+        var bedInfoKelasId = !string.IsNullOrWhiteSpace(bedRow.KamarKelasId)
+            ? bedRow.KamarKelasId
+            : (!string.IsNullOrWhiteSpace(bedRow.KelasId) ? bedRow.KelasId : string.Empty);
+
         var bedInfo = new WardCockpitBedDetailBedInfoDto(
             BedId: bedRow.BedId,
             BedCode: bedRow.BedCode,
             RoomName: bedRow.RoomName,
-            KelasKamar: bedRow.KelasKamar
+            KelasKamar: bedRow.KelasKamar,
+            LayananId: bedRow.LayananId ?? string.Empty,
+            BangsalId: bedRow.BangsalId ?? string.Empty,
+            KelasId: bedInfoKelasId
         );
 
         var isOccupied = !string.IsNullOrWhiteSpace(bedRow.PakaiBedId);
@@ -775,6 +832,10 @@ public class WardCockpitDal : IWardCockpitDal
 
         var isRawatGabung = !string.IsNullOrWhiteSpace(bedRow.BabyRegId) || !string.IsNullOrWhiteSpace(bedRow.BabyName);
 
+        var occupancyKelasId = !string.IsNullOrWhiteSpace(bedRow.OccupancyKelasId)
+            ? bedRow.OccupancyKelasId
+            : (!string.IsNullOrWhiteSpace(bedRow.KelasId) ? bedRow.KelasId : bedInfoKelasId);
+
         var occupancy = new WardCockpitBedDetailOccupancyDto(
             PakaiBedId: bedRow.PakaiBedId!,
             RegId: bedRow.RegId ?? string.Empty,
@@ -788,7 +849,12 @@ public class WardCockpitDal : IWardCockpitDal
             BabyName: bedRow.BabyName,
             BabyRegId: bedRow.BabyRegId,
             BabyMrNo: bedRow.BabyMrNo,
-            KdJenisInap: bedRow.KdJenisInap
+            KdJenisInap: bedRow.KdJenisInap,
+            BabyDpjpName: bedRow.BabyDpjpName,
+            BabyDpjpId: bedRow.BabyDpjpId,
+            LayananId: bedRow.LayananId ?? string.Empty,
+            KelasId: occupancyKelasId,
+            TipeTarifId: string.IsNullOrWhiteSpace(bedRow.TipeTarifId) ? "UM" : bedRow.TipeTarifId
         );
 
         var tabTindakan = (tindakanRows ?? [])
@@ -798,7 +864,9 @@ public class WardCockpitDal : IWardCockpitDal
                 Petugas: t.Petugas,
                 Biaya: t.Biaya,
                 TindakanId: t.TindakanId ?? string.Empty,
-                HasJasaDokter: t.HasJasaDokter
+                HasJasaDokter: t.HasJasaDokter,
+                RegId: t.RegId ?? string.Empty,
+                IsBayi: t.IsBayi
             ))
             .ToList();
 
@@ -992,7 +1060,8 @@ public class WardCockpitDal : IWardCockpitDal
                     fs_kd_reg, fs_kd_layanan, fs_kd_layanan_dk,
                     fs_kd_kamar_tipe, fs_kd_bed, fn_tarif,
                     fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
-                    fd_tgl_entry, fs_jam_entry, fs_kd_kelas
+                    fd_tgl_entry, fs_jam_entry, fs_kd_kelas,
+                    fs_kd_kelas_tindakan, fd_tgl_jam_in
                 )
                 SELECT TOP 1
                     @BabyPakaiBedId,
@@ -1009,9 +1078,27 @@ public class WardCockpitDal : IWardCockpitDal
                     '3000-01-01', '', '',
                     CONVERT(VARCHAR(10), @OccurredAt, 120),
                     CONVERT(VARCHAR(8), @OccurredAt, 108),
-                    trs_ibu.fs_kd_kelas
+                    trs_ibu.fs_kd_kelas,
+                    ISNULL(NULLIF(trs_ibu.fs_kd_kelas_tindakan, ''), trs_ibu.fs_kd_kelas),
+                    @OccurredAt
                 FROM ta_trs_bed trs_ibu
                 WHERE trs_ibu.fs_kd_trs = @MotherPakaiBedId;
+            END
+            ELSE
+            BEGIN
+                UPDATE b
+                SET b.fs_kd_kelas_tindakan = ISNULL(NULLIF(trs_ibu.fs_kd_kelas_tindakan, ''), trs_ibu.fs_kd_kelas)
+                FROM ta_trs_bed b
+                CROSS JOIN (
+                    SELECT TOP 1 fs_kd_kelas, fs_kd_kelas_tindakan 
+                    FROM ta_trs_bed 
+                    WHERE fs_kd_trs = @MotherPakaiBedId
+                ) trs_ibu
+                WHERE b.fs_kd_reg = @ResolvedBabyRegId 
+                  AND b.fs_kd_bed = @BedId 
+                  AND (b.fd_tgl_out = '' OR b.fd_tgl_out = '3000-01-01' OR b.fd_tgl_out IS NULL)
+                  AND (b.fd_tgl_void = '' OR b.fd_tgl_void = '3000-01-01' OR b.fd_tgl_void IS NULL)
+                  AND (b.fs_kd_kelas_tindakan IS NULL OR b.fs_kd_kelas_tindakan = '');
             END
 
             -- 3. Cari tiket antrean aktif bayi dan transisikan ke Placed (2)
@@ -1061,7 +1148,7 @@ public class WardCockpitDal : IWardCockpitDal
         return string.IsNullOrWhiteSpace(bangsalResult) ? null : bangsalResult.Trim();
     }
 
-    public async Task<IEnumerable<WardCockpitBabyLookupDto>> LookupBabyAsync(string keyword, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<WardCockpitBabyLookupDto>> LookupBabyAsync(string keyword, string? bangsalId = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(keyword) || keyword.Trim().Length < 3)
             return Enumerable.Empty<WardCockpitBabyLookupDto>();
@@ -1079,7 +1166,15 @@ public class WardCockpitDal : IWardCockpitDal
                 p.fd_tgl_lahir AS TglLahir
             FROM ta_registrasi r
             LEFT JOIN tc_mr p ON r.fs_mr = p.fs_mr
+            INNER JOIN BILRG_BedWaitingList wl ON (
+                (ISNULL(wl.RegId, '') <> '' AND wl.RegId = r.fs_kd_reg)
+                OR (ISNULL(wl.PasienId, '') <> '' AND wl.PasienId = r.fs_mr)
+            )
             WHERE r.fs_kd_jenis_inap = '3'
+              AND wl.WaitingListStatus IN (0, 1)
+              AND (@BangsalId IS NULL OR @BangsalId = '' OR wl.BangsalId = @BangsalId)
+              AND (r.fd_tgl_keluar = '3000-01-01' OR r.fd_tgl_keluar = '' OR r.fd_tgl_keluar IS NULL)
+              AND (r.fd_tgl_void = '3000-01-01' OR r.fd_tgl_void = '' OR r.fd_tgl_void IS NULL)
               AND (
                   r.fs_kd_reg LIKE '%' + @Keyword + '%' 
                   OR r.fs_mr LIKE '%' + @Keyword + '%' 
@@ -1090,9 +1185,32 @@ public class WardCockpitDal : IWardCockpitDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@Keyword", keyword.Trim(), SqlDbType.VarChar);
+        dp.AddParam("@BangsalId", string.IsNullOrWhiteSpace(bangsalId) ? string.Empty : bangsalId.Trim(), SqlDbType.VarChar);
 
         await using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var command = new CommandDefinition(sql, dp, cancellationToken: cancellationToken);
         return await conn.QueryAsync<WardCockpitBabyLookupDto>(command);
+    }
+
+    public async Task<string?> GetKamarTipeByRegIdAsync(string regId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            return null;
+
+        const string sql = """
+            SELECT TOP 1 ISNULL(cc.fs_kd_kamar_tipe, '') AS fs_kd_kamar_tipe
+            FROM ta_registrasi aa WITH (NOLOCK)
+            INNER JOIN ta_tipe_jaminan bb WITH (NOLOCK) ON aa.fs_kd_tipe_jaminan = bb.fs_kd_tipe_jaminan
+            INNER JOIN ta_jaminan cc WITH (NOLOCK) ON cc.fs_kd_jaminan = bb.fs_kd_jaminan
+            WHERE aa.fs_kd_reg = @regId;
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@regId", regId.Trim(), SqlDbType.VarChar);
+
+        await using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var command = new CommandDefinition(sql, dp, cancellationToken: cancellationToken);
+        var result = await conn.ExecuteScalarAsync<string?>(command);
+        return string.IsNullOrWhiteSpace(result) ? null : result.Trim();
     }
 }

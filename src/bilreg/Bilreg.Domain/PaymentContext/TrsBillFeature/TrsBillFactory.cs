@@ -2,6 +2,7 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -14,7 +15,7 @@ using Nuna.Lib.DataTypeExtension;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-internal class TrsBillFactory
+public class TrsBillFactory
 {
     public static TrsBillType CreateFromReg(RegModel reg,
         KarcisType karcis, JaminanType jaminan, PpaType dokter,
@@ -266,6 +267,168 @@ internal class TrsBillFactory
             billDate,
             reg.ToReff(),
             penjualan.Layanan,
+            reg.Kelas,
+            audit.Created,
+            rekapCetak,
+            nilai,
+            ketBilling,
+            listBill2TransEvent,
+            [],
+            []);
+
+        return result;
+    }
+
+    public static TrsBillType CreateFromTindakanBarang(
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
+            ? reg.TipeJaminan.TipeJaminanId[..3]
+            : reg.TipeJaminan.TipeJaminanId;
+        if (jaminan.JaminanId != expectedJaminanId)
+            throw new ArgumentException("Jaminan tidak sesuai registrasi");
+
+        var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, createdAt);
+        var ketBilling = new TrsBillKetType(
+            $"[{groupRek.GroupRekId}] {barang.BrgName} {barang.QtyBom:G29} {barang.SatuanBomId}",
+            "",
+            barang.BrgId,
+            barang.QtyBom,
+            tindakan.TindakanId);
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpObatRanap
+            : jaminan.Rekening.PpdpObatRajal;
+
+        var rekPdpt = (reg.JenisReg != JenisRegEnum.RegInap && !string.IsNullOrWhiteSpace(groupRek.RekJualRajal.CoaId) && groupRek.RekJualRajal.CoaId != "-")
+            ? groupRek.RekJualRajal
+            : groupRek.RekJual;
+
+        var ppa = PpaType.Default.ToReff();
+        var komponen = new TrsBill2KomponenType(groupRek.GroupRekId, groupRek.GroupRekName);
+
+        var bill2CoaPdp = new TrsBill2CoaType(
+            rekPpdp,
+            rekPdpt,
+            groupRek.RekPersediaan,
+            CoaType.Default,
+            CoaType.Default,
+            groupRek.RekDisc);
+
+        var listBill2TransEvent = new List<TrsBill2TransEventType>
+        {
+            new(
+                1,
+                komponen,
+                TrsBillJenisBayarType.Pdp,
+                barang.HargaJualTotal,
+                ppa,
+                bill2CoaPdp)
+        };
+
+        var rekapCetak = new RekapCetakReff(groupRek.RekapCetakId, "");
+        var nilai = new TrsBillNilaiType(barang.HargaJualTotal, 0, 0, 0);
+
+        var billId = string.IsNullOrWhiteSpace(barang.TrsBillingId)
+            ? $"{tindakan.TindakanId}-B{barang.NoUrut:D2}"
+            : barang.TrsBillingId;
+
+        var billDate = createdAt == default ? DateTime.Now : createdAt;
+        var result = new TrsBillType(
+            billId,
+            BillModulGroup.Obat,
+            billDate,
+            reg.ToReff(),
+            tindakan.Layanan,
+            reg.Kelas,
+            audit.Created,
+            rekapCetak,
+            nilai,
+            ketBilling,
+            listBill2TransEvent,
+            [],
+            []);
+
+        return result;
+    }
+
+    public static TrsBillType CreateFromBhpRanap(
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ArgumentNullException.ThrowIfNull(bhp);
+        ArgumentNullException.ThrowIfNull(reg);
+        ArgumentNullException.ThrowIfNull(layanan);
+        ArgumentNullException.ThrowIfNull(jaminan);
+        ArgumentNullException.ThrowIfNull(groupRek);
+
+        if (!string.Equals(reg.RegId, bhp.RegId, StringComparison.Ordinal))
+            throw new ArgumentException("Registrasi tidak sesuai dengan BHP Ranap");
+
+        var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
+            ? reg.TipeJaminan.TipeJaminanId[..3]
+            : reg.TipeJaminan.TipeJaminanId;
+        if (jaminan.JaminanId != expectedJaminanId)
+            throw new ArgumentException("Jaminan tidak sesuai registrasi");
+
+        var audit = AuditTrailType.Create(bhp.Audit.UserId, createdAt);
+        var ketBilling = new TrsBillKetType(
+            $"[{groupRek.GroupRekId}] {bhp.BhpItemName} {bhp.Qty}",
+            "",
+            bhp.BhpItemId,
+            bhp.Qty,
+            bhp.BhpRanapId);
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpObatRanap
+            : jaminan.Rekening.PpdpObatRajal;
+
+        var rekPdpt = (reg.JenisReg != JenisRegEnum.RegInap && !string.IsNullOrWhiteSpace(groupRek.RekJualRajal.CoaId) && groupRek.RekJualRajal.CoaId != "-")
+            ? groupRek.RekJualRajal
+            : groupRek.RekJual;
+
+        var ppa = PpaType.Default.ToReff();
+        var komponen = new TrsBill2KomponenType(groupRek.GroupRekId, groupRek.GroupRekName);
+
+        var bill2CoaPdp = new TrsBill2CoaType(
+            rekPpdp,
+            rekPdpt,
+            groupRek.RekPersediaan,
+            CoaType.Default,
+            CoaType.Default,
+            groupRek.RekDisc);
+
+        var noUrut = 1;
+        var listBill2TransEvent = new List<TrsBill2TransEventType>
+        {
+            new(
+                noUrut++,
+                komponen,
+                TrsBillJenisBayarType.Pdp,
+                bhp.Subtotal,
+                ppa,
+                bill2CoaPdp)
+        };
+
+        var rekapCetak = new RekapCetakReff(groupRek.RekapCetakId, "");
+        var nilai = new TrsBillNilaiType(bhp.Subtotal, 0, 0, 0);
+
+        var billDate = createdAt == default ? DateTime.Now : createdAt;
+        var result = new TrsBillType(
+            bhp.BhpRanapId,
+            BillModulGroup.Obat,
+            billDate,
+            reg.ToReff(),
+            layanan.ToReff(),
             reg.Kelas,
             audit.Created,
             rekapCetak,

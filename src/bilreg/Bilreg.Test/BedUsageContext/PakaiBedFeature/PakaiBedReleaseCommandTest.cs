@@ -41,11 +41,11 @@ public class PakaiBedReleaseCommandTest
             emr20Gateway: _emr20GatewayMock.Object);
     }
 
-    private static PakaiBedModel CreateTestBed(string pakaiBedId = "PKB001")
+    private static PakaiBedModel CreateTestBed(string pakaiBedId = "PKB001", decimal tarif = 300000m, string regId = "REG001")
     {
         var masuk = new AuditInfoType("usr_in", new DateTime(2026, 10, 15, 10, 0, 0));
         var periode = new PeriodePakaiBedType(masuk, AuditInfoType.Default);
-        var reg = new RegReff("REG001", "PAS001", "Pasien A");
+        var reg = new RegReff(regId, "PAS001", "Pasien A");
         var layanan = new LayananReff("LAY01", "Ranap Mawar");
         var bed = new BedReff("BED01", "Bed 01", true);
         var tipeKamar = new TipeKamarReff("TK01", "Standar", true);
@@ -60,7 +60,7 @@ public class PakaiBedReleaseCommandTest
             bed,
             tipeKamar,
             kelas,
-            300000m,
+            tarif,
             auditTrail);
     }
 
@@ -539,5 +539,253 @@ public class PakaiBedReleaseCommandTest
         // Act & Assert
         var act = () => _sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenScopeIsBayi_OnlyReleasesBabyAndDoesNotSetBedCleaningOrReconcile()
+    {
+        // Arrange
+        var momBed = CreateTestBed("PKB-MOM", tarif: 300000m, regId: "REG-MOM");
+        var babyBed = CreateTestBed("PKB-BABY", tarif: 0m, regId: "REG-BABY");
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-MOM")))
+            .Returns(MayBe.From(momBed));
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BABY")))
+            .Returns(new List<PakaiBedModel> { babyBed });
+
+        var bedOpRepoMock = new Mock<IBedOperationalRepo>();
+
+        var sut = new PakaiBedReleaseCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _mediatorMock.Object,
+            _tglJamProviderMock.Object,
+            bedOperationalRepo: bedOpRepoMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 11, 0, 0);
+        var cmd = new PakaiBedReleaseCommand(
+            "PKB-MOM",
+            checkoutTime,
+            "nurse_user",
+            CheckoutReason: "Baby Discharged",
+            DischargeScope: "bayi",
+            BabyRegId: "REG-BABY");
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.ReconcileResult.Should().BeNull();
+
+        // Baby pakaiBed must be released and saved
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-BABY" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Mother pakaiBed must NOT be released/saved
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-MOM")), Times.Never);
+
+        // Bed must NOT be transitioned to CleaningRequired
+        bedOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<BedOperationalModel>()), Times.Never);
+
+        // Reconcile checkout command must NOT be triggered
+        _mediatorMock.Verify(x => x.Send(It.IsAny<RoomChargeReconcileCheckoutCmd>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        // EMR20 gateway called for baby with isGabung = true
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-BABY", true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenScopeIsIbu_WithRoomingInBaby_CascadesDischargeAndSetsBedCleaningRequired()
+    {
+        // Arrange
+        var momBed = CreateTestBed("PKB-MOM", tarif: 300000m, regId: "REG-MOM");
+        var babyBed = CreateTestBed("PKB-BABY", tarif: 0m, regId: "REG-BABY");
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-MOM")))
+            .Returns(MayBe.From(momBed));
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB-MOM"))
+            .ReturnsAsync(new List<string> { "REG-BABY" });
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BABY")))
+            .Returns(new List<PakaiBedModel> { babyBed });
+
+        var bedRepoMock = new Mock<IBedRepo>();
+        var bedType = new BedType("BED01", "Bed 01", new KamarReff("KMR01", "Kamar 01"), new BangsalReff("BGS01", "Bangsal 01"), true);
+        bedRepoMock.Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01"))).Returns(MayBe.From(bedType));
+
+        var bedOpRepoMock = new Mock<IBedOperationalRepo>();
+        bedOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedOperationalKey>())).Returns(MayBe<BedOperationalModel>.None);
+
+        var reconcileResponse = new RoomChargeReconcileResponse("RC-MOM", 2.0m, 600000m);
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<RoomChargeReconcileCheckoutCmd>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reconcileResponse);
+
+        var sut = new PakaiBedReleaseCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _mediatorMock.Object,
+            _tglJamProviderMock.Object,
+            bedOperationalRepo: bedOpRepoMock.Object,
+            bedRepo: bedRepoMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 11, 0, 0);
+        var cmd = new PakaiBedReleaseCommand(
+            "PKB-MOM",
+            checkoutTime,
+            "nurse_user",
+            CheckoutReason: "Mother and Baby Discharged",
+            DischargeScope: "ibu");
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+        result.ReconcileResult.Should().Be(reconcileResponse);
+
+        // Mother pakaiBed must be released and saved
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-MOM" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Associated baby pakaiBed must also be released and saved
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-BABY" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Bed must be transitioned to CleaningRequired
+        bedOpRepoMock.Verify(x => x.SaveChanges(It.Is<BedOperationalModel>(m =>
+            m.BedId == "BED01" &&
+            m.CurrentReadiness == Bilreg.Domain.BedUsageContext.BedOperationalFeature.BedReadinessStatusEnum.CleaningRequired)), Times.Once);
+
+        // EMR20 gateway called for mother (isGabung = false) and baby (isGabung = true)
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-MOM", false, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-BABY", true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDirectBabyPakaiBedIdPassed_WithBayiScope_ReleasesOnlyBabyWithoutCleaning()
+    {
+        // Arrange
+        var babyBed = CreateTestBed("PKB-BABY-DIRECT", tarif: 0m, regId: "REG-BABY-DIRECT");
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-BABY-DIRECT")))
+            .Returns(MayBe.From(babyBed));
+
+        var bedOpRepoMock = new Mock<IBedOperationalRepo>();
+
+        var sut = new PakaiBedReleaseCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _mediatorMock.Object,
+            _tglJamProviderMock.Object,
+            bedOperationalRepo: bedOpRepoMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 11, 0, 0);
+        var cmd = new PakaiBedReleaseCommand(
+            "PKB-BABY-DIRECT",
+            checkoutTime,
+            "nurse_user",
+            CheckoutReason: "Baby Discharged",
+            DischargeScope: "bayi");
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeFalse();
+        result.ReconcileResult.Should().BeNull();
+
+        // Baby must be saved with release timestamp
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-BABY-DIRECT" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Bed must NOT be transitioned to CleaningRequired
+        bedOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<BedOperationalModel>()), Times.Never);
+
+        // Reconcile must NOT be triggered
+        _mediatorMock.Verify(x => x.Send(It.IsAny<RoomChargeReconcileCheckoutCmd>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        // EMR20 gateway called for baby
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-BABY-DIRECT", true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenScopeIsIbu_WithMultipleRoomingInBabies_CascadesAllBabiesDischargeAndEMR20()
+    {
+        // Arrange
+        var momBed = CreateTestBed("PKB-MOM", tarif: 300000m, regId: "REG-MOM");
+        var babyBed1 = CreateTestBed("PKB-BABY1", tarif: 0m, regId: "REG-BABY1");
+        var babyBed2 = CreateTestBed("PKB-BABY2", tarif: 0m, regId: "REG-BABY2");
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB-MOM")))
+            .Returns(MayBe.From(momBed));
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB-MOM"))
+            .ReturnsAsync(new List<string> { "REG-BABY1", "REG-BABY2" });
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BABY1")))
+            .Returns(new List<PakaiBedModel> { babyBed1 });
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG-BABY2")))
+            .Returns(new List<PakaiBedModel> { babyBed2 });
+
+        var bedRepoMock = new Mock<IBedRepo>();
+        var bedType = new BedType("BED01", "Bed 01", new KamarReff("KMR01", "Kamar 01"), new BangsalReff("BGS01", "Bangsal 01"), true);
+        bedRepoMock.Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01"))).Returns(MayBe.From(bedType));
+
+        var bedOpRepoMock = new Mock<IBedOperationalRepo>();
+        bedOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedOperationalKey>())).Returns(MayBe<BedOperationalModel>.None);
+
+        var reconcileResponse = new RoomChargeReconcileResponse("RC-MOM", 2.0m, 600000m);
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<RoomChargeReconcileCheckoutCmd>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reconcileResponse);
+
+        var sut = new PakaiBedReleaseCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _mediatorMock.Object,
+            _tglJamProviderMock.Object,
+            bedOperationalRepo: bedOpRepoMock.Object,
+            bedRepo: bedRepoMock.Object,
+            emr20Gateway: _emr20GatewayMock.Object);
+
+        var checkoutTime = new DateTime(2026, 10, 20, 11, 0, 0);
+        var cmd = new PakaiBedReleaseCommand(
+            "PKB-MOM",
+            checkoutTime,
+            "nurse_user",
+            CheckoutReason: "Mother and Twins Discharged",
+            DischargeScope: "ibu");
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.IsCleaningTriggered.Should().BeTrue();
+        result.ReconcileResult.Should().Be(reconcileResponse);
+
+        // Mother released
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-MOM" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Both babies released
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-BABY1" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(m => m.PakaiBedId == "PKB-BABY2" && m.Periode.Keluar.Timestamp != default)), Times.Once);
+
+        // Bed marked CleaningRequired
+        bedOpRepoMock.Verify(x => x.SaveChanges(It.Is<BedOperationalModel>(m =>
+            m.BedId == "BED01" &&
+            m.CurrentReadiness == Bilreg.Domain.BedUsageContext.BedOperationalFeature.BedReadinessStatusEnum.CleaningRequired)), Times.Once);
+
+        // EMR20 gateway called for mother and both babies
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-MOM", false, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-BABY1", true, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG-BABY2", true, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
