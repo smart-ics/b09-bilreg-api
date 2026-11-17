@@ -19,7 +19,11 @@ public class MutasiBrgRepoTest
     private MutasiBrgRepo CreateSut() =>
         new(_mutasiBrgDalMock.Object, _mutasiBrgItemDalMock.Object);
 
-    private static MutasiBrgModel CreateSampleModel(string id = "MT2600001A", int itemCount = 1)
+    private static MutasiBrgModel CreateSampleModel(
+        string id = "MT2600001A",
+        int itemCount = 1,
+        MutasiBrgStateEnum state = MutasiBrgStateEnum.Draft,
+        string cancelReason = "")
     {
         var items = new List<MutasiBrgItemModel>();
         for (var i = 1; i <= itemCount; i++)
@@ -37,18 +41,19 @@ public class MutasiBrgRepoTest
         return new MutasiBrgModel(
             id,
             new DateTime(2026, 11, 10, 9, 0, 0),
-            MutasiBrgStateEnum.Draft,
+            state,
             new LayananReff("L01", "Gudang Farmasi"),
             new LayananReff("L02", "Depo Rawat Inap"),
             "OM001",
             "Catatan Kirim",
             "USR01",
             audit,
-            items
+            items,
+            cancelReason
         );
     }
 
-    private static MutasiBrgDto CreateSampleDto(string id = "MT2600001A")
+    private static MutasiBrgDto CreateSampleDto(string id = "MT2600001A", string cancelReason = "")
     {
         return new MutasiBrgDto(
             id,
@@ -66,7 +71,8 @@ public class MutasiBrgRepoTest
             "USR02",
             new DateTime(2026, 11, 10, 8, 30, 0),
             "",
-            new DateTime(3000, 1, 1)
+            new DateTime(3000, 1, 1),
+            cancelReason
         );
     }
 
@@ -204,6 +210,7 @@ public class MutasiBrgRepoTest
         model.OrderMutasiId.Should().Be("OM001");
         model.DispatchNote.Should().Be("Catatan Kirim");
         model.IssuerUserId.Should().Be("USR01");
+        model.CancelReason.Should().BeEmpty();
         model.ListItem.Should().HaveCount(2);
 
         var item1 = model.ListItem.ElementAt(0);
@@ -246,6 +253,55 @@ public class MutasiBrgRepoTest
     }
 
     [Fact]
+    public void LoadEntity_WhenCancelledWithCancelReason_ShouldMapCancelReasonToModel()
+    {
+        // Arrange
+        var headerDto = CreateSampleDto("MT2600003A", cancelReason: "Salah kirim depo tujuan") with
+        {
+            State = MutasiBrgStateEnum.Cancelled
+        };
+        _mutasiBrgDalMock
+            .Setup(x => x.GetData(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600003A")))
+            .Returns(headerDto);
+
+        _mutasiBrgItemDalMock
+            .Setup(x => x.ListData(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600003A")))
+            .Returns(new List<MutasiBrgItemDto>());
+
+        var sut = CreateSut();
+
+        // Act
+        var result = sut.LoadEntity(MutasiBrgModel.Key("MT2600003A"));
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        result.Value.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        result.Value.CancelReason.Should().Be("Salah kirim depo tujuan");
+    }
+
+    [Fact]
+    public void SaveChanges_WhenCancelledModelSaved_ShouldPassCancelReasonToDto()
+    {
+        // Arrange
+        var model = CreateSampleModel("MT2600001A", 1, MutasiBrgStateEnum.Cancelled, "Alasan pembatalan barang rusak");
+        _mutasiBrgDalMock
+            .Setup(x => x.GetData(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A")))
+            .Returns(CreateSampleDto("MT2600001A"));
+
+        var sut = CreateSut();
+
+        // Act
+        sut.SaveChanges(model);
+
+        // Assert
+        _mutasiBrgDalMock.Verify(x => x.Update(It.Is<MutasiBrgDto>(d =>
+            d.MutasiBrgId == "MT2600001A" &&
+            d.State == MutasiBrgStateEnum.Cancelled &&
+            d.CancelReason == "Alasan pembatalan barang rusak"
+        )), Times.Once);
+    }
+
+    [Fact]
     public void DeleteEntity_ShouldDeleteItemsAndHeader()
     {
         // Arrange
@@ -274,6 +330,11 @@ public class MutasiBrgRepoTest
                 MutasiBrgId = "MT2600002A",
                 State = MutasiBrgStateEnum.Dispatched,
                 DispatchNote = "Pengiriman CITO"
+            },
+            CreateSampleDto("MT2600003A", cancelReason: "Salah kirim unit") with
+            {
+                MutasiBrgId = "MT2600003A",
+                State = MutasiBrgStateEnum.Cancelled
             }
         };
 
@@ -287,16 +348,22 @@ public class MutasiBrgRepoTest
         var result = sut.ListData(periode).ToList();
 
         // Assert
-        result.Should().HaveCount(2);
+        result.Should().HaveCount(3);
 
         result[0].MutasiBrgId.Should().Be("MT2600001A");
         result[0].State.Should().Be(MutasiBrgStateEnum.Draft);
         result[0].LayananAsal.LayananId.Should().Be("L01");
         result[0].LayananTujuan.LayananId.Should().Be("L02");
+        result[0].CancelReason.Should().BeEmpty();
 
         result[1].MutasiBrgId.Should().Be("MT2600002A");
         result[1].State.Should().Be(MutasiBrgStateEnum.Dispatched);
         result[1].DispatchNote.Should().Be("Pengiriman CITO");
+        result[1].CancelReason.Should().BeEmpty();
+
+        result[2].MutasiBrgId.Should().Be("MT2600003A");
+        result[2].State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        result[2].CancelReason.Should().Be("Salah kirim unit");
     }
 
     [Fact]
@@ -346,6 +413,7 @@ public class MutasiBrgRepoTest
         result[0].MutasiBrgId.Should().Be("MT2600001A");
         result[0].State.Should().Be(MutasiBrgStateEnum.Dispatched);
         result[0].LayananTujuan.LayananId.Should().Be("L02");
+        result[0].CancelReason.Should().BeEmpty();
     }
 
     [Fact]

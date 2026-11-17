@@ -20,7 +20,8 @@ public record MutasiBrgDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate)
+    DateTime VodDate,
+    string CancelReason = "")
 {
     public static MutasiBrgDto FromModel(MutasiBrgModel model)
     {
@@ -40,7 +41,8 @@ public record MutasiBrgDto(
             model.AuditTrail.Modified.UserId,
             model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId,
-            model.AuditTrail.Voided.Timestamp
+            model.AuditTrail.Voided.Timestamp,
+            model.CancelReason
         );
     }
 
@@ -61,6 +63,7 @@ public record MutasiBrgDto(
             DispatchNote,
             IssuerUserId,
             auditTrail,
-            listItem?.ToList() ?? []);
+            listItem?.ToList() ?? [],
+            CancelReason);
     }
 }

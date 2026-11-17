@@ -76,7 +76,8 @@ public class MutasiBrgRepo : IMutasiBrgRepo
             new LayananReff(dto.LayananTujuanId, dto.LayananTujuanName),
             dto.OrderMutasiId,
             dto.DispatchNote,
-            dto.IssuerUserId
+            dto.IssuerUserId,
+            dto.CancelReason
         );
     }
 }
