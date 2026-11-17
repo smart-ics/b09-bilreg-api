@@ -17,7 +17,24 @@ public record MutasiBrgGetResponse(
     string OrderMutasiId,
     string DispatchNote,
     string IssuerUserId,
-    IEnumerable<MutasiBrgGetItemResponse> ListItem);
+    IEnumerable<MutasiBrgGetItemResponse> ListItem,
+    string CancelReason = "")
+{
+    public MutasiBrgGetResponse(
+        string mutasiBrgId,
+        string mutasiBrgDate,
+        string state,
+        LayananReff layananAsal,
+        LayananReff layananTujuan,
+        string orderMutasiId,
+        string dispatchNote,
+        string issuerUserId,
+        string cancelReason,
+        IEnumerable<MutasiBrgGetItemResponse> listItem)
+        : this(mutasiBrgId, mutasiBrgDate, state, layananAsal, layananTujuan, orderMutasiId, dispatchNote, issuerUserId, listItem, cancelReason)
+    {
+    }
+}
 
 public record MutasiBrgGetItemResponse(
     int NoUrut,
@@ -80,6 +97,7 @@ public class MutasiBrgGetHandler : IRequestHandler<MutasiBrgGetQuery, MutasiBrgG
             model.OrderMutasiId,
             model.DispatchNote,
             model.IssuerUserId,
+            model.CancelReason,
             items
         );
     }

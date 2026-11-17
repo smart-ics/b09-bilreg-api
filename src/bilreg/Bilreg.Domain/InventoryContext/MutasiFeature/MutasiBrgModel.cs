@@ -20,7 +20,8 @@ public class MutasiBrgModel : IMutasiBrgKey
         string dispatchNote,
         string issuerUserId,
         AuditTrailType auditTrail,
-        IEnumerable<MutasiBrgItemModel> listItem)
+        IEnumerable<MutasiBrgItemModel> listItem,
+        string cancelReason = "")
     {
         MutasiBrgId = mutasiBrgId ?? string.Empty;
         MutasiBrgDate = mutasiBrgDate;
@@ -32,6 +33,7 @@ public class MutasiBrgModel : IMutasiBrgKey
         IssuerUserId = issuerUserId ?? string.Empty;
         AuditTrail = auditTrail ?? AuditTrailType.Default;
         _listItem = listItem?.ToList() ?? [];
+        CancelReason = cancelReason ?? string.Empty;
     }
 
     public static MutasiBrgModel Default => new(
@@ -44,7 +46,8 @@ public class MutasiBrgModel : IMutasiBrgKey
         string.Empty,
         string.Empty,
         AuditTrailType.Default,
-        []);
+        [],
+        string.Empty);
 
     public static IMutasiBrgKey Key(string id) => new MutasiBrgKey(id);
 
@@ -83,7 +86,8 @@ public class MutasiBrgModel : IMutasiBrgKey
             dispatchNote?.Trim() ?? string.Empty,
             string.Empty,
             auditTrail,
-            []);
+            [],
+            string.Empty);
     }
 
     public static MutasiBrgModel Load(
@@ -96,7 +100,8 @@ public class MutasiBrgModel : IMutasiBrgKey
         string dispatchNote,
         string issuerUserId,
         AuditTrailType auditTrail,
-        IEnumerable<MutasiBrgItemModel> listItem)
+        IEnumerable<MutasiBrgItemModel> listItem,
+        string cancelReason = "")
     {
         return new MutasiBrgModel(
             mutasiBrgId,
@@ -108,7 +113,8 @@ public class MutasiBrgModel : IMutasiBrgKey
             dispatchNote,
             issuerUserId,
             auditTrail,
-            listItem);
+            listItem,
+            cancelReason);
     }
     #endregion
 
@@ -121,6 +127,7 @@ public class MutasiBrgModel : IMutasiBrgKey
     public string OrderMutasiId { get; private set; }
     public string DispatchNote { get; private set; }
     public string IssuerUserId { get; private set; }
+    public string CancelReason { get; private set; } = string.Empty;
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<MutasiBrgItemModel> ListItem => _listItem;
     #endregion
@@ -179,16 +186,26 @@ public class MutasiBrgModel : IMutasiBrgKey
         AuditTrail.Modif(issuerUserId, MutasiBrgDate);
     }
 
-    public void Cancel(string userId)
+    public void Cancel(string reason, string userId)
     {
         if (State != MutasiBrgStateEnum.Dispatched)
             throw new InvalidOperationException($"Pembatalan hanya diizinkan jika status Dispatched. Status saat ini: {State}");
 
-        if (string.IsNullOrWhiteSpace(userId))
-            throw new ArgumentException("UserId pembatal tidak boleh kosong", nameof(userId));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason), "Alasan pembatalan tidak boleh kosong");
 
+        if (reason.Trim().Length < 5)
+            throw new ArgumentException("Alasan pembatalan minimal 5 karakter", nameof(reason));
+
+        CancelReason = reason.Trim();
         State = MutasiBrgStateEnum.Cancelled;
         AuditTrail.Batal(userId.Trim(), DateTime.Now);
+    }
+
+    [Obsolete("Use Cancel(reason, userId) instead.")]
+    public void Cancel(string userId)
+    {
+        Cancel("Dibatalkan oleh pengguna", userId);
     }
 
     public void UpdateDispatchNote(string note)

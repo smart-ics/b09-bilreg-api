@@ -1,9 +1,11 @@
 using System.Data.SqlClient;
 using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -16,6 +18,7 @@ public class MutasiBrgCancelCommandTest
     private readonly Mock<IMutasiBrgRepo> _mutasiBrgRepoMock = new();
     private readonly Mock<IMutasiBrgMovementService> _movementServiceMock = new();
     private readonly Mock<ISqlDatabase> _sqlDatabaseMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
     private readonly Mock<IOrderMutasiRepo> _orderMutasiRepoMock = new();
 
     public MutasiBrgCancelCommandTest()
@@ -30,6 +33,7 @@ public class MutasiBrgCancelCommandTest
             _mutasiBrgRepoMock.Object,
             _movementServiceMock.Object,
             _sqlDatabaseMock.Object,
+            _auditRepoMock.Object,
             _orderMutasiRepoMock.Object);
 
     private static MutasiBrgModel CreateDispatchedMutasi(
@@ -67,16 +71,21 @@ public class MutasiBrgCancelCommandTest
             .Returns(MayBe.From(mutasi));
 
         var sut = CreateSut();
-        var command = new MutasiBrgCancelCommand("MT2600001A", "USER_CANCEL", "Salah kirim");
+        var command = new MutasiBrgCancelCommand("MT2600001A", "USER_CANCEL", "Salah kirim barang");
 
         // Act
         await sut.Handle(command, CancellationToken.None);
 
         // Assert
         mutasi.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        mutasi.CancelReason.Should().Be("Salah kirim barang");
         _sqlDatabaseMock.Verify(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()), Times.Once);
         _movementServiceMock.Verify(x => x.RestoreStock(mutasi, It.IsAny<SqlConnection>(), It.IsAny<SqlTransaction>()), Times.Once);
         _mutasiBrgRepoMock.Verify(x => x.SaveChanges(mutasi), Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
+            a.ActionType == "VOID" &&
+            a.Reason == "Salah kirim barang" &&
+            a.EntityId == "MT2600001A")), Times.Once);
     }
 
     [Fact]
@@ -114,6 +123,7 @@ public class MutasiBrgCancelCommandTest
 
         // Assert
         mutasi.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        mutasi.CancelReason.Should().Be("Batalkan kiriman");
         orderMutasi.State.Should().Be(OrderMutasiStateEnum.Approved);
         _orderMutasiRepoMock.Verify(x => x.SaveChanges(orderMutasi), Times.Once);
         _mutasiBrgRepoMock.Verify(x => x.SaveChanges(mutasi), Times.Once);
@@ -128,7 +138,7 @@ public class MutasiBrgCancelCommandTest
             .Returns(MayBe<MutasiBrgModel>.None);
 
         var sut = CreateSut();
-        var command = new MutasiBrgCancelCommand("NON_EXISTENT", "USER01");
+        var command = new MutasiBrgCancelCommand("NON_EXISTENT", "USER01", "Alasan pembatalan valid");
 
         // Act
         var act = () => sut.Handle(command, CancellationToken.None);
@@ -154,7 +164,7 @@ public class MutasiBrgCancelCommandTest
             .Returns(MayBe.From(mutasi));
 
         var sut = CreateSut();
-        var command = new MutasiBrgCancelCommand("MT2600001A", "USER01");
+        var command = new MutasiBrgCancelCommand("MT2600001A", "USER01", "Alasan pembatalan valid");
 
         // Act
         var act = () => sut.Handle(command, CancellationToken.None);
@@ -178,7 +188,7 @@ public class MutasiBrgCancelCommandTest
             .Throws(new InvalidOperationException("Gagal restore stok"));
 
         var sut = CreateSut();
-        var command = new MutasiBrgCancelCommand("MT2600001A", "USER01");
+        var command = new MutasiBrgCancelCommand("MT2600001A", "USER01", "Alasan pembatalan valid");
 
         // Act
         var act = () => sut.Handle(command, CancellationToken.None);
@@ -191,15 +201,33 @@ public class MutasiBrgCancelCommandTest
     }
 
     [Theory]
-    [InlineData("", "USER01")]
-    [InlineData("   ", "USER01")]
-    [InlineData("MT2600001A", "")]
-    [InlineData("MT2600001A", "   ")]
-    public async Task Handle_WhenInputInvalid_ShouldThrowArgumentException(string mutasiId, string userId)
+    [InlineData("", "USER01", "Alasan valid")]
+    [InlineData("   ", "USER01", "Alasan valid")]
+    [InlineData("MT2600001A", "", "Alasan valid")]
+    [InlineData("MT2600001A", "   ", "Alasan valid")]
+    public async Task Handle_WhenInputInvalid_ShouldThrowArgumentException(string mutasiId, string userId, string reason)
     {
         // Arrange
         var sut = CreateSut();
-        var command = new MutasiBrgCancelCommand(mutasiId, userId);
+        var command = new MutasiBrgCancelCommand(mutasiId, userId, reason);
+
+        // Act
+        var act = () => sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("MT2600001A", "USER01", null)]
+    [InlineData("MT2600001A", "USER01", "")]
+    [InlineData("MT2600001A", "USER01", "   ")]
+    [InlineData("MT2600001A", "USER01", "1234")]
+    public async Task Handle_WhenReasonInvalid_ShouldThrowArgumentException(string id, string user, string? reason)
+    {
+        // Arrange
+        var sut = CreateSut();
+        var command = new MutasiBrgCancelCommand(id, user, reason!);
 
         // Act
         var act = () => sut.Handle(command, CancellationToken.None);
