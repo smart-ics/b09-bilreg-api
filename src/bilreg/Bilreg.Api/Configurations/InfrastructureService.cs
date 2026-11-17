@@ -312,6 +312,8 @@ public static class InfrastructureService
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
         services.AddScoped<ILabDisciplineDal, LabDisciplineDal>();
         services.AddScoped<ILabDisciplineRepo, LabDisciplineRepo>();
+        services.AddScoped<ILabAntibioticDal, LabAntibioticDal>();
+        services.AddScoped<ILabAntibioticRepo, LabAntibioticRepo>();
         services.AddScoped<ILabTestGroupDal, LabTestGroupDal>();
         services.AddScoped<ILabTestGroupRepo, LabTestGroupRepo>();
 
