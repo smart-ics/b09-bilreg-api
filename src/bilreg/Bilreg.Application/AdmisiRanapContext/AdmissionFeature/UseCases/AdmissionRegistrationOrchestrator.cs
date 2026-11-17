@@ -583,7 +583,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                     var activeMotherReg = regsIbu
                         .Where(r => r.JenisReg == JenisRegEnum.RegInap)
                         .OrderByDescending(r => r.RegDate)
-                        .FirstOrDefault();
+                        .FirstOrDefault(r => IsObstetriInpatientReg(r.RegId));
 
                     if (activeMotherReg is not null)
                     {
@@ -603,11 +603,25 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             if (activeMother.JenisReg != JenisRegEnum.RegInap)
                 throw new InvalidOperationException($"Register Ibu '{regIbuId}' bukan registrasi rawat inap.");
 
+            var motherRegOpt = _regRepo.LoadEntity(RegModel.Key(regIbuId));
+            if (!motherRegOpt.HasValue)
+                throw new InvalidOperationException($"Registrasi ibu '{regIbuId}' tidak ditemukan.");
+
+            if (motherRegOpt.Value.JenisInap?.JenisInapId != InpatientAgePolicy.JENIS_INAP_OBSTETRI)
+                throw new InvalidOperationException("JENIS INAP IBU invalid: Registrasi ibu harus berjenis inap Obstetri.");
+
             return (JenisInapType.Perinatal, regIbuId);
         }
 
         var jenisInap = JenisInapType.FromId(jenisInapId);
         return (jenisInap, string.Empty);
+    }
+
+    private bool IsObstetriInpatientReg(string regId)
+    {
+        var regOpt = _regRepo.LoadEntity(RegModel.Key(regId));
+        return regOpt.HasValue &&
+               regOpt.Value.JenisInap?.JenisInapId == InpatientAgePolicy.JENIS_INAP_OBSTETRI;
     }
 
     private LayananType ResolveLayananFromBangsal(string bangsalId)
