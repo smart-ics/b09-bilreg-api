@@ -65,6 +65,22 @@ public class PpaController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet("perawat")]
+    public async Task<IActionResult> ListPerawat()
+    {
+        var query = new PpaListPerawatQuery();
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet("pegawai")]
+    public async Task<IActionResult> ListPegawai([FromQuery] string? keyword = null)
+    {
+        var query = new PpaListPegawaiQuery(keyword);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet]
     [Route("list")]
     public async Task<IActionResult> ListPpa([FromQuery] IEnumerable<string> listSatTugas)

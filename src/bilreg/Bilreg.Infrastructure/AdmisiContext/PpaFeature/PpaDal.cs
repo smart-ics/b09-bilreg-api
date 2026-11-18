@@ -16,6 +16,7 @@ public interface IPpaDal :
     IDelete<IPpaKey>,
     IGetData<PpaDto, IPpaKey>,
     IGetData<PpaDto, IContactFinder>,
+    IListData<PpaDto>,
     IListData<PpaLayananDto, IProfesiKey, IEnumerable<ILayananKey>>,
     IListData<PpaDto, IProfesiKey>,
     IListData<PpaDto, IEnumerable<ISatTugasKey>>
