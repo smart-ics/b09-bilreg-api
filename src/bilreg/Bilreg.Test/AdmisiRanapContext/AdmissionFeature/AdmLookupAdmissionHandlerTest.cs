@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -52,6 +53,8 @@ public class AdmLookupAdmissionHandlerTest
         item.BangsalId.Should().Be("B001");
         item.BangsalName.Should().Be("Bangsal A");
         item.AdmissionDate.Should().Be(new DateTime(2026, 7, 7));
+        item.JenisInapId.Should().Be(InpatientAgePolicy.JENIS_INAP_OBSTETRI);
+        item.JenisInapName.Should().Be("Obstetri");
 
         _admissionRepoMock.Verify(x => x.ListData(It.Is<AdmissionListFilter>(f =>
             f.Status == AdmissionStatusEnum.Admitted &&
@@ -85,7 +88,34 @@ public class AdmLookupAdmissionHandlerTest
             f.Search == null)), Times.Once);
     }
 
-    private static AdmissionModel CreateTestModel(string regId, string pasienId, string pasienName) =>
+    [Fact]
+    public async Task GivenAdmissionsWithDifferentJenisInap_WhenHandled_ThenMapsJenisInapIdAndNameAccurately()
+    {
+        // Arrange
+        var obstetriAdmission = CreateTestModel("RG00001234", "P0001", "Ny. Obstetri", JenisInapType.Obstetri);
+        var umumAdmission = CreateTestModel("RG00001235", "P0002", "Ny. Umum", JenisInapType.Umum);
+        _admissionRepoMock
+            .Setup(x => x.ListData(It.IsAny<AdmissionListFilter>()))
+            .Returns([obstetriAdmission, umumAdmission]);
+
+        var query = new AdmLookupAdmissionQry(AdmissionStatusEnum.Admitted);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Items.Should().HaveCount(2);
+        result.Items[0].JenisInapId.Should().Be("2");
+        result.Items[0].JenisInapName.Should().Be("Obstetri");
+        result.Items[1].JenisInapId.Should().Be("1");
+        result.Items[1].JenisInapName.Should().Be("Umum");
+    }
+
+    private static AdmissionModel CreateTestModel(
+        string regId,
+        string pasienId,
+        string pasienName,
+        JenisInapType? jenisInap = null) =>
         new(
             regId,
             AdmissionStatusEnum.Admitted,
@@ -96,5 +126,7 @@ public class AdmLookupAdmissionHandlerTest
             new BangsalReff("B001", "Bangsal A"),
             new DateTime(2026, 7, 7),
             AuditTrailType.Create("user1", new DateTime(2026, 7, 7)),
-            AdmissionSourceEnum.Legacy);
+            AdmissionSourceEnum.Legacy,
+            "-",
+            jenisInap ?? JenisInapType.Obstetri);
 }
