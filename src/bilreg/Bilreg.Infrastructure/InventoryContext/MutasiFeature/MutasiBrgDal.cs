@@ -46,13 +46,15 @@ public class MutasiBrgDal : IMutasiBrgDal
                 LayananAsalId, LayananAsalName,
                 LayananTujuanId, LayananTujuanName,
                 OrderMutasiId, DispatchNote, IssuerUserId,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
+                CancelReason)
             VALUES (
                 @MutasiBrgId, @MutasiBrgDate, @State,
                 @LayananAsalId, @LayananAsalName,
                 @LayananTujuanId, @LayananTujuanName,
                 @OrderMutasiId, @DispatchNote, @IssuerUserId,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
+                @CancelReason)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@MutasiBrgId", dto.MutasiBrgId, SqlDbType.VarChar);
@@ -71,6 +73,7 @@ public class MutasiBrgDal : IMutasiBrgDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@CancelReason", dto.CancelReason, SqlDbType.VarChar);
 
         conn.Execute(sql, dp, trans);
     }
@@ -99,7 +102,8 @@ public class MutasiBrgDal : IMutasiBrgDal
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
-                VodDate = @VodDate
+                VodDate = @VodDate,
+                CancelReason = @CancelReason
             WHERE 
                 MutasiBrgId = @MutasiBrgId
             """;
@@ -120,6 +124,7 @@ public class MutasiBrgDal : IMutasiBrgDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@CancelReason", dto.CancelReason, SqlDbType.VarChar);
 
         conn.Execute(sql, dp, trans);
     }
@@ -157,7 +162,8 @@ public class MutasiBrgDal : IMutasiBrgDal
                 OrderMutasiId, DispatchNote, IssuerUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
-                ISNULL(VodDate, '3000-01-01') AS VodDate
+                ISNULL(VodDate, '3000-01-01') AS VodDate,
+                ISNULL(CancelReason, '') AS CancelReason
             FROM 
                 BILRG_MutasiBrg
             WHERE 
@@ -179,7 +185,8 @@ public class MutasiBrgDal : IMutasiBrgDal
                 OrderMutasiId, DispatchNote, IssuerUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
-                ISNULL(VodDate, '3000-01-01') AS VodDate
+                ISNULL(VodDate, '3000-01-01') AS VodDate,
+                ISNULL(CancelReason, '') AS CancelReason
             FROM 
                 BILRG_MutasiBrg
             WHERE 
@@ -205,7 +212,8 @@ public class MutasiBrgDal : IMutasiBrgDal
                 OrderMutasiId, DispatchNote, IssuerUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
-                ISNULL(VodDate, '3000-01-01') AS VodDate
+                ISNULL(VodDate, '3000-01-01') AS VodDate,
+                ISNULL(CancelReason, '') AS CancelReason
             FROM 
                 BILRG_MutasiBrg
             WHERE 

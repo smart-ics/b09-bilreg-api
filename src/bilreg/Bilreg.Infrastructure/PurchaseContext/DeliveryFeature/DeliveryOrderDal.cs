@@ -128,11 +128,14 @@ public class DeliveryOrderDal : IDeliveryOrderDal
         var isVoided = dto.TglVoid.Year < 3000 && dto.TglVoid != default;
         var tglVoidStr = isVoided ? dto.TglVoid.ToString("yyyy-MM-dd") : DefaultVoidDate;
         var jamVoidStr = isVoided ? (string.IsNullOrWhiteSpace(dto.JamVoid) ? dto.TglVoid.ToString("HH:mm:ss") : dto.JamVoid) : DefaultVoidTime;
-        var updTgl = dto.UpdTgl != default && dto.UpdTgl.Year < 3000 ? dto.UpdTgl : DateTime.Now;
+        var isModified = dto.UpdTgl != default && dto.UpdTgl.Year < 3000 && !string.IsNullOrWhiteSpace(dto.UpdUsr);
+        var updTglStr = isModified ? dto.UpdTgl.ToString("yyyy-MM-dd") : DefaultVoidDate;
+        var updJamStr = isModified ? dto.UpdTgl.ToString("HH:mm:ss") : DefaultVoidTime;
+        var updUsrStr = isModified ? dto.UpdUsr : string.Empty;
 
         var jamTrs = dto.DoDate != default && dto.DoDate.TimeOfDay != TimeSpan.Zero
             ? dto.DoDate.ToString("HH:mm:ss")
-            : updTgl.ToString("HH:mm:ss");
+            : (isModified ? dto.UpdTgl.ToString("HH:mm:ss") : DateTime.Now.ToString("HH:mm:ss"));
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", dto.DoId ?? string.Empty, SqlDbType.VarChar);
@@ -149,9 +152,9 @@ public class DeliveryOrderDal : IDeliveryOrderDal
         dp.AddParam("@fn_total", dto.Total, SqlDbType.Decimal);
         dp.AddParam("@fb_pembelian_bebas", dto.PembelianBebas, SqlDbType.Bit);
         dp.AddParam("@fs_keterangan", dto.Keterangan ?? string.Empty, SqlDbType.VarChar);
-        dp.AddParam("@UPDTGL", updTgl.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@UPDJAM", updTgl.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@UPDUSR", dto.UpdUsr ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@UPDTGL", updTglStr, SqlDbType.VarChar);
+        dp.AddParam("@UPDJAM", updJamStr, SqlDbType.VarChar);
+        dp.AddParam("@UPDUSR", updUsrStr, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

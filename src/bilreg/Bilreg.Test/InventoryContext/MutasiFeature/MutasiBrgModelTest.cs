@@ -192,6 +192,7 @@ public class MutasiBrgModelTest
         sut.OrderMutasiId.Should().Be("ORD-123");
         sut.DispatchNote.Should().Be("Pengiriman logistik farmasi mingguan");
         sut.IssuerUserId.Should().BeEmpty();
+        sut.CancelReason.Should().BeEmpty();
         sut.ListItem.Should().BeEmpty();
         sut.AuditTrail.Created.UserId.Should().Be("USR01");
     }
@@ -438,12 +439,13 @@ public class MutasiBrgModelTest
         sut.Dispatch("USR_LOGISTIK");
 
         // Act
-        sut.Cancel("USR_SUPERVISOR");
+        sut.Cancel("Salah kirim barang ke poli lain", "USER01");
 
         // Assert
         sut.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        sut.CancelReason.Should().Be("Salah kirim barang ke poli lain");
         sut.AuditTrail.IsVoided.Should().BeTrue();
-        sut.AuditTrail.Voided.UserId.Should().Be("USR_SUPERVISOR");
+        sut.AuditTrail.Voided.UserId.Should().Be("USER01");
     }
 
     [Fact]
@@ -454,7 +456,7 @@ public class MutasiBrgModelTest
         sut.AddItem(CreateSampleItem());
 
         // Act
-        var act = () => sut.Cancel("USR_SUPERVISOR");
+        var act = () => sut.Cancel("Salah kirim barang ke poli lain", "USR_SUPERVISOR");
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
@@ -468,10 +470,10 @@ public class MutasiBrgModelTest
         var sut = CreateSut();
         sut.AddItem(CreateSampleItem());
         sut.Dispatch("USR_LOGISTIK");
-        sut.Cancel("USR_SUPERVISOR");
+        sut.Cancel("Salah kirim barang ke poli lain", "USR_SUPERVISOR");
 
         // Act
-        var act = () => sut.Cancel("ANOTHER_SUPERVISOR");
+        var act = () => sut.Cancel("Perubahan jadwal mutasi poli", "ANOTHER_SUPERVISOR");
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
@@ -490,11 +492,49 @@ public class MutasiBrgModelTest
         sut.Dispatch("USR_LOGISTIK");
 
         // Act
-        var act = () => sut.Cancel(invalidUserId!);
+        var act = () => sut.Cancel("Salah kirim barang ke poli lain", invalidUserId!);
+
+        // Assert
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Cancel_NullOrWhiteSpaceReason_ShouldThrowArgumentException(string? invalidReason)
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK");
+
+        // Act
+        var act = () => sut.Cancel(invalidReason!, "USER01");
 
         // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*UserId pembatal*");
+            .WithMessage("*Alasan pembatalan tidak boleh kosong*");
+    }
+
+    [Theory]
+    [InlineData("1234")]
+    [InlineData("a")]
+    [InlineData("abcd")]
+    [InlineData(" ab ")]
+    public void Cancel_ReasonLessThan5Chars_ShouldThrowArgumentException(string shortReason)
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK");
+
+        // Act
+        var act = () => sut.Cancel(shortReason, "USER01");
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Alasan pembatalan minimal 5 karakter*");
     }
 
     #endregion
@@ -523,7 +563,8 @@ public class MutasiBrgModelTest
             "Catatan persisten",
             "ISSUER_PERSISTED",
             auditTrail,
-            items);
+            items,
+            "Salah kirim barang ke poli lain");
 
         // Assert
         model.MutasiBrgId.Should().Be("MT2600001A");
@@ -534,6 +575,7 @@ public class MutasiBrgModelTest
         model.OrderMutasiId.Should().Be("ORD-PERSISTED");
         model.DispatchNote.Should().Be("Catatan persisten");
         model.IssuerUserId.Should().Be("ISSUER_PERSISTED");
+        model.CancelReason.Should().Be("Salah kirim barang ke poli lain");
         model.ListItem.Should().HaveCount(2);
     }
 

@@ -102,8 +102,7 @@ public class DeliveryOrderModelTest
             qtyDiterima: 90,
             qtyDitolak: 10,
             alasanTolak: "Kemasan penyok",
-            isBonus: false,
-            hasJaminanRetur: false);
+            isBonus: false);
 
         // Assert
         inspection.QtyKirim.Should().Be(100);
@@ -156,6 +155,25 @@ public class DeliveryOrderModelTest
         act.Should().Throw<ArgumentException>()
             .WithMessage("*tidak boleh bernilai negatif*");
     }
+
+    [Theory]
+    [InlineData("SJ-RET-01", true)]
+    [InlineData("SJ-12345", true)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    [InlineData(null, false)]
+    public void HasJaminanRetur_ComputedCorrectlyBasedOnNoSuratJaminan(string? suratJaminan, bool expected)
+    {
+        var inspection = DeliveryInspectionType.Create(10, 10, 0, "", false, suratJaminan ?? "");
+        inspection.HasJaminanRetur.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Inspection_PoNoUrut_AssignedCorrectly()
+    {
+        var inspection = DeliveryInspectionType.Create(10, 10, 0, "", false, "", poNoUrut: 3);
+        inspection.PoNoUrut.Should().Be(3);
+    }
     #endregion
 
     #region Invariant 2 & 3: Expiry Date & Vendor Return Guarantee
@@ -200,7 +218,7 @@ public class DeliveryOrderModelTest
         var sut = CreateSut();
         var shortEd = _baseDate.AddMonths(10);
         var inspection = DeliveryInspectionType.Create(
-            10, 10, 0, "", isBonus: false, hasJaminanRetur: false, noSuratJaminan: "");
+            10, 10, 0, "", isBonus: false, noSuratJaminan: "");
 
         // Act
         var act = () => sut.AddItem(
@@ -211,20 +229,23 @@ public class DeliveryOrderModelTest
             .WithMessage("*kurang dari 18 bulan*wajib menyertakan surat jaminan retur*");
     }
 
-    [Fact]
-    public void AddItem_ShortShelfLifeUnder18MonthsWithFlagButEmptyLetterNo_ShouldThrowArgumentException()
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AddItem_ShortShelfLifeUnder18MonthsWithEmptyLetterNo_ShouldThrowArgumentException(string emptyLetterNo)
     {
         // Arrange
         var sut = CreateSut();
         var shortEd = _baseDate.AddMonths(10);
+        var inspection = DeliveryInspectionType.Create(
+            10, 10, 0, "", isBonus: false, noSuratJaminan: emptyLetterNo);
 
-        // Act: delivery inspection constructor without letter no
-        var act = () => DeliveryInspectionType.Create(
-            10, 10, 0, "", isBonus: false, hasJaminanRetur: true, noSuratJaminan: "  ");
+        // Act & Assert
+        var act = () => sut.AddItem(
+            _brg1, _satuanBox, 10, 50000, 0, 11, "LOT001", shortEd, inspection, _baseDate);
 
-        // Assert
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*Nomor surat jaminan retur wajib diisi*");
+            .WithMessage("*kurang dari 18 bulan*wajib menyertakan surat jaminan retur*");
     }
 
     [Fact]
@@ -234,7 +255,7 @@ public class DeliveryOrderModelTest
         var sut = CreateSut();
         var shortEd = _baseDate.AddMonths(10);
         var inspection = DeliveryInspectionType.Create(
-            10, 10, 0, "", isBonus: false, hasJaminanRetur: true, noSuratJaminan: "SJ-RET-KF/2026/09");
+            10, 10, 0, "", isBonus: false, noSuratJaminan: "SJ-RET-KF/2026/09");
 
         // Act
         sut.AddItem(_brg1, _satuanBox, 10, 50000, 0, 11, "LOT001", shortEd, inspection, _baseDate);
@@ -253,7 +274,7 @@ public class DeliveryOrderModelTest
         var sut = CreateSut();
         var longEd = _baseDate.AddMonths(24);
         var inspection = DeliveryInspectionType.Create(
-            10, 10, 0, "", isBonus: false, hasJaminanRetur: false, noSuratJaminan: "");
+            10, 10, 0, "", isBonus: false, noSuratJaminan: "");
 
         // Act
         sut.AddItem(_brg1, _satuanBox, 10, 50000, 0, 11, "LOT001", longEd, inspection, _baseDate);

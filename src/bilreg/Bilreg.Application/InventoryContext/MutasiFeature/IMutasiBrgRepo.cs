@@ -22,4 +22,5 @@ public record MutasiBrgHeaderView(
     LayananReff LayananTujuan,
     string OrderMutasiId,
     string DispatchNote,
-    string IssuerUserId) : IMutasiBrgKey;
+    string IssuerUserId,
+    string CancelReason = "") : IMutasiBrgKey;

@@ -19,7 +19,8 @@ public class MutasiBrgDalTest
         string id = "MT2600001A",
         MutasiBrgStateEnum state = MutasiBrgStateEnum.Draft,
         string layananTujuanId = "L002",
-        DateTime? date = null)
+        DateTime? date = null,
+        string cancelReason = "")
     {
         return new MutasiBrgDto(
             MutasiBrgId: id,
@@ -37,7 +38,8 @@ public class MutasiBrgDalTest
             UpdUser: "USR02",
             UpdDate: new DateTime(2026, 11, 10, 9, 30, 0),
             VodUser: "",
-            VodDate: new DateTime(3000, 1, 1)
+            VodDate: new DateTime(3000, 1, 1),
+            CancelReason: cancelReason
         );
     }
 
@@ -57,12 +59,13 @@ public class MutasiBrgDalTest
         using var trans = TransHelper.NewScope();
         var data = FakerData();
         _sut.Insert(data);
-        _sut.Update(data with { State = MutasiBrgStateEnum.Dispatched, DispatchNote = "Updated Note" });
+        _sut.Update(data with { State = MutasiBrgStateEnum.Cancelled, DispatchNote = "Updated Note", CancelReason = "Salah kirim depo" });
 
         var actual = _sut.GetData(FakerKey());
         actual.Should().NotBeNull();
-        actual.State.Should().Be(MutasiBrgStateEnum.Dispatched);
+        actual.State.Should().Be(MutasiBrgStateEnum.Cancelled);
         actual.DispatchNote.Should().Be("Updated Note");
+        actual.CancelReason.Should().Be("Salah kirim depo");
     }
 
     [Fact]
@@ -80,7 +83,7 @@ public class MutasiBrgDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = FakerData();
+        var expected = FakerData(cancelReason: "Alasan pembatalan");
         _sut.Insert(expected);
 
         var actual = _sut.GetData(FakerKey());
@@ -93,22 +96,42 @@ public class MutasiBrgDalTest
         actual.State.Should().Be(expected.State);
         actual.DispatchNote.Should().Be(expected.DispatchNote);
         actual.IssuerUserId.Should().Be(expected.IssuerUserId);
+        actual.CancelReason.Should().Be(expected.CancelReason);
+    }
+
+    [Fact]
+    public void InsertAndGet_WithCancelReason_ShouldPersistAndReadCancelReason()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = FakerData("MT2600005A", state: MutasiBrgStateEnum.Cancelled, cancelReason: "Alasan pembatalan valid");
+        _sut.Insert(expected);
+
+        var actual = _sut.GetData(FakerKey("MT2600005A"));
+
+        actual.Should().NotBeNull();
+        actual.CancelReason.Should().Be("Alasan pembatalan valid");
+        actual.State.Should().Be(MutasiBrgStateEnum.Cancelled);
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var data1 = FakerData("MT2600001A", date: new DateTime(2026, 11, 10, 10, 0, 0));
-        var data2 = FakerData("MT2600002A", date: new DateTime(2026, 11, 11, 12, 0, 0));
+        var data1 = FakerData("MT2600001A", date: new DateTime(2026, 11, 10, 10, 0, 0), cancelReason: "Alasan 1");
+        var data2 = FakerData("MT2600002A", date: new DateTime(2026, 11, 11, 12, 0, 0), cancelReason: "");
         _sut.Insert(data1);
         _sut.Insert(data2);
 
         var filter = new Periode(new DateTime(2026, 11, 10), new DateTime(2026, 11, 12));
         var list = _sut.ListData(filter).ToList();
 
-        list.Should().Contain(x => x.MutasiBrgId == "MT2600001A");
-        list.Should().Contain(x => x.MutasiBrgId == "MT2600002A");
+        var item1 = list.FirstOrDefault(x => x.MutasiBrgId == "MT2600001A");
+        item1.Should().NotBeNull();
+        item1!.CancelReason.Should().Be("Alasan 1");
+
+        var item2 = list.FirstOrDefault(x => x.MutasiBrgId == "MT2600002A");
+        item2.Should().NotBeNull();
+        item2!.CancelReason.Should().BeEmpty();
     }
 
     [Fact]
@@ -180,11 +203,26 @@ public class MutasiBrgDalTest
         dto.OrderMutasiId.Should().Be("OM_RT");
         dto.DispatchNote.Should().Be("Catatan");
         dto.State.Should().Be(MutasiBrgStateEnum.Draft);
+        dto.CancelReason.Should().BeEmpty();
 
         var reconstituted = dto.ToModel([item]);
         reconstituted.MutasiBrgId.Should().Be(model.MutasiBrgId);
         reconstituted.LayananAsal.LayananId.Should().Be(model.LayananAsal.LayananId);
         reconstituted.LayananTujuan.LayananId.Should().Be(model.LayananTujuan.LayananId);
+        reconstituted.CancelReason.Should().BeEmpty();
+        reconstituted.ListItem.Should().HaveCount(1);
+
+        // Test with CancelReason after Dispatch and Cancel
+        model.Dispatch("USER1");
+        model.Cancel("Salah kirim depo tujuan", "USER1");
+
+        var dtoCancelled = MutasiBrgDto.FromModel(model);
+        dtoCancelled.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        dtoCancelled.CancelReason.Should().Be("Salah kirim depo tujuan");
+
+        var reconstitutedCancelled = dtoCancelled.ToModel([item]);
+        reconstitutedCancelled.State.Should().Be(MutasiBrgStateEnum.Cancelled);
+        reconstitutedCancelled.CancelReason.Should().Be("Salah kirim depo tujuan");
         reconstituted.ListItem.Should().HaveCount(1);
     }
 }

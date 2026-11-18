@@ -8,9 +8,7 @@ public record DeliveryInspectionType
         decimal qtyDitolak,
         string alasanTolak,
         bool isBonus,
-        bool hasJaminanRetur,
         string noSuratJaminan,
-        string poId = "",
         int poNoUrut = 0)
     {
         QtyKirim = qtyKirim;
@@ -18,9 +16,7 @@ public record DeliveryInspectionType
         QtyDitolak = qtyDitolak;
         AlasanTolak = alasanTolak ?? string.Empty;
         IsBonus = isBonus;
-        HasJaminanRetur = hasJaminanRetur;
         NoSuratJaminan = noSuratJaminan ?? string.Empty;
-        PoId = poId ?? string.Empty;
         PoNoUrut = poNoUrut;
     }
 
@@ -30,9 +26,7 @@ public record DeliveryInspectionType
         decimal qtyDitolak,
         string alasanTolak,
         bool isBonus = false,
-        bool hasJaminanRetur = false,
         string noSuratJaminan = "",
-        string poId = "",
         int poNoUrut = 0)
     {
         if (qtyKirim < 0)
@@ -49,18 +43,13 @@ public record DeliveryInspectionType
         if (qtyDitolak > 0 && string.IsNullOrWhiteSpace(alasanTolak))
             throw new ArgumentException("Alasan tolak wajib diisi apabila kuantitas ditolak lebih dari 0.", nameof(alasanTolak));
 
-        if (hasJaminanRetur && string.IsNullOrWhiteSpace(noSuratJaminan))
-            throw new ArgumentException("Nomor surat jaminan retur wajib diisi apabila memiliki jaminan retur.", nameof(noSuratJaminan));
-
         return new DeliveryInspectionType(
             qtyKirim,
             qtyDiterima,
             qtyDitolak,
             qtyDitolak > 0 ? alasanTolak.Trim() : (alasanTolak?.Trim() ?? string.Empty),
             isBonus,
-            hasJaminanRetur,
-            hasJaminanRetur ? noSuratJaminan.Trim() : (noSuratJaminan?.Trim() ?? string.Empty),
-            poId?.Trim() ?? string.Empty,
+            noSuratJaminan?.Trim() ?? string.Empty,
             poNoUrut);
     }
 
@@ -69,10 +58,9 @@ public record DeliveryInspectionType
     public decimal QtyDitolak { get; init; }
     public string AlasanTolak { get; init; }
     public bool IsBonus { get; init; }
-    public bool HasJaminanRetur { get; init; }
+    public bool HasJaminanRetur => !string.IsNullOrWhiteSpace(NoSuratJaminan);
     public string NoSuratJaminan { get; init; }
-    public string PoId { get; init; }
     public int PoNoUrut { get; init; }
 
-    public static DeliveryInspectionType Default => new(0, 0, 0, string.Empty, false, false, string.Empty);
+    public static DeliveryInspectionType Default => new(0, 0, 0, string.Empty, false, string.Empty, 0);
 }

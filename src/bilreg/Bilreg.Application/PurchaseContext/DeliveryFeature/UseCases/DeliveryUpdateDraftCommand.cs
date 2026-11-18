@@ -226,9 +226,7 @@ public class DeliveryUpdateDraftHandler : IRequestHandler<DeliveryUpdateDraftCom
                 item.QtyDitolak,
                 item.AlasanTolak,
                 item.IsBonus,
-                item.HasJaminanRetur,
                 item.NoSuratJaminan,
-                poId,
                 item.PoNoUrut);
 
             var brg = new BrgReff(item.BrgId, string.IsNullOrWhiteSpace(item.BrgName) ? item.BrgId : item.BrgName);

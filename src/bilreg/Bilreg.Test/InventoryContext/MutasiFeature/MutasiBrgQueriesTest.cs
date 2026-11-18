@@ -20,7 +20,8 @@ public class MutasiBrgQueriesTest
         string id = "MT2600001A",
         MutasiBrgStateEnum state = MutasiBrgStateEnum.Draft,
         DateTime? date = null,
-        int itemCount = 2)
+        int itemCount = 2,
+        string cancelReason = "")
     {
         var items = new List<MutasiBrgItemModel>();
         for (var i = 1; i <= itemCount; i++)
@@ -45,7 +46,8 @@ public class MutasiBrgQueriesTest
             "Pengiriman darurat",
             "USR01",
             audit,
-            items
+            items,
+            cancelReason
         );
     }
 
@@ -87,6 +89,7 @@ public class MutasiBrgQueriesTest
         result.MutasiBrgId.Should().Be("MT2600001A");
         result.MutasiBrgDate.Should().Be("2026-11-10 09:15:30");
         result.State.Should().Be("Draft");
+        result.CancelReason.Should().BeEmpty();
         result.LayananAsal.LayananId.Should().Be("L01");
         result.LayananAsal.LayananName.Should().Be("Gudang Farmasi Sentral");
         result.LayananTujuan.LayananId.Should().Be("L02");
@@ -153,6 +156,26 @@ public class MutasiBrgQueriesTest
 
         // ASSERT
         result.State.Should().Be("Cancelled");
+    }
+
+    [Fact]
+    public async Task GetQuery_GivenCancelledState_MapsCancelReasonCorrectly()
+    {
+        // ARRANGE
+        var model = CreateSampleModel("MT2600001A", MutasiBrgStateEnum.Cancelled, cancelReason: "Salah kirim barang ke poli");
+        _mutasiBrgRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<IMutasiBrgKey>()))
+            .Returns(MayBe.From(model));
+
+        var handler = new MutasiBrgGetHandler(_mutasiBrgRepoMock.Object);
+        var query = new MutasiBrgGetQuery("MT2600001A");
+
+        // ACT
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // ASSERT
+        result.State.Should().Be("Cancelled");
+        result.CancelReason.Should().Be("Salah kirim barang ke poli");
     }
 
     [Fact]

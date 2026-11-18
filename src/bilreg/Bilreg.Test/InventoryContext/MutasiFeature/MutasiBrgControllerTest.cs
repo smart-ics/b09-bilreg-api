@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.InventoryContext.MutasiFeature;
 using Bilreg.Application.InventoryContext.MutasiFeature;
@@ -115,6 +116,52 @@ public class MutasiBrgControllerTest
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be("Done");
         _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void Cancel_DeserializeFromJson_WithReason_MapsCorrectly()
+    {
+        // ARRANGE
+        var json = """
+        {
+            "mutasiBrgId": "MT2600001A",
+            "userId": "USR1",
+            "reason": "Alasan pembatalan valid"
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // ACT
+        var result = JsonSerializer.Deserialize<MutasiBrgCancelCommand>(json, options);
+
+        // ASSERT
+        result.Should().NotBeNull();
+        result!.MutasiBrgId.Should().Be("MT2600001A");
+        result.UserId.Should().Be("USR1");
+        result.Reason.Should().Be("Alasan pembatalan valid");
+    }
+
+    [Fact]
+    public void Cancel_DeserializeFromJson_WithEmptyReason_MapsCorrectly()
+    {
+        // ARRANGE
+        var json = """
+        {
+            "mutasiBrgId": "MTA8V64C3A",
+            "userId": "TESTER01",
+            "reason": ""
+        }
+        """;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // ACT
+        var result = JsonSerializer.Deserialize<MutasiBrgCancelCommand>(json, options);
+
+        // ASSERT
+        result.Should().NotBeNull();
+        result!.MutasiBrgId.Should().Be("MTA8V64C3A");
+        result.UserId.Should().Be("TESTER01");
+        result.Reason.Should().BeEmpty();
     }
 
     [Fact]

@@ -17,6 +17,7 @@ BEGIN
 
         OrderMutasiId       VARCHAR(26)     NOT NULL CONSTRAINT DF_BILRG_MutasiBrg_OrderMutasiId DEFAULT(''),
         DispatchNote        VARCHAR(255)    NOT NULL CONSTRAINT DF_BILRG_MutasiBrg_DispatchNote DEFAULT(''),
+        CancelReason        VARCHAR(255)    NOT NULL CONSTRAINT DF_BILRG_MutasiBrg_CancelReason DEFAULT(''),
         IssuerUserId        VARCHAR(50)     NOT NULL CONSTRAINT DF_BILRG_MutasiBrg_IssuerUserId DEFAULT(''),
 
         CrtDate             DATETIME        NOT NULL CONSTRAINT DF_BILRG_MutasiBrg_CrtDate DEFAULT('3000-01-01'),

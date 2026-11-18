@@ -65,9 +65,7 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
                     inspectionDto.QtyDitolak,
                     inspectionDto.AlasanTolak,
                     inspectionDto.IsBonus,
-                    inspectionDto.HasJaminanRetur,
                     inspectionDto.NoSuratJaminan,
-                    inspectionDto.PoId,
                     inspectionDto.PoNoUrut
                 );
             }
@@ -79,9 +77,7 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
                     0m,
                     string.Empty,
                     false,
-                    false,
                     string.Empty,
-                    orderDto.PoId,
                     0
                 );
             }
@@ -121,7 +117,7 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
         {
             status = DeliveryOrderStatusEnum.Confirmed;
         }
-        else if (listInspectionDtos.Any(x => string.Equals(x.Status, nameof(DeliveryOrderStatusEnum.Voided), StringComparison.OrdinalIgnoreCase) || x.VoidedAt.HasValue))
+        else if (listInspectionDtos.Any(x => string.Equals(x.Status, nameof(DeliveryOrderStatusEnum.Voided), StringComparison.OrdinalIgnoreCase)))
         {
             status = DeliveryOrderStatusEnum.Voided;
         }
@@ -150,19 +146,19 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
 
         var crtDate = orderDto.CrtTgl.Year < 3000 && orderDto.CrtTgl != default ? orderDto.CrtTgl : orderDto.DoDate;
         var createdAudit = new AuditInfoType(orderDto.CrtUsr, crtDate);
-        var modifiedAudit = orderDto.UpdTgl.Year < 3000 && orderDto.UpdTgl != default
+        var modifiedAudit = !string.IsNullOrWhiteSpace(orderDto.UpdUsr) && orderDto.UpdTgl.Year < 3000 && orderDto.UpdTgl != default
             ? new AuditInfoType(orderDto.UpdUsr, orderDto.UpdTgl)
             : AuditInfoType.Default;
-        var voidedAudit = orderDto.TglVoid.Year < 3000 && orderDto.TglVoid != default
+        var voidedAudit = !string.IsNullOrWhiteSpace(orderDto.PetugasVoid) && orderDto.TglVoid.Year < 3000 && orderDto.TglVoid != default
             ? new AuditInfoType(orderDto.PetugasVoid, orderDto.TglVoid)
             : AuditInfoType.Default;
 
         var auditTrail = new AuditTrailType(createdAudit, AuditInfoType.Default, AuditInfoType.Default);
-        if (modifiedAudit != AuditInfoType.Default)
+        if (!modifiedAudit.IsEmpty)
         {
             auditTrail.Modif(modifiedAudit.UserId, modifiedAudit.Timestamp);
         }
-        if (voidedAudit != AuditInfoType.Default)
+        if (!voidedAudit.IsEmpty)
         {
             auditTrail.Batal(voidedAudit.UserId, voidedAudit.Timestamp);
         }
@@ -322,23 +318,11 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
     private static DeliveryInspectionDto MapToInspectionDto(DeliveryOrderModel model, DeliveryOrderItemType item)
     {
         var isConfirmed = model.Status == DeliveryOrderStatusEnum.Confirmed;
-        var isVoided = model.Status == DeliveryOrderStatusEnum.Voided;
 
         DateTime? confirmedAt = isConfirmed && model.Confirmed.Timestamp != default && model.Confirmed.Timestamp.Year < 3000
             ? model.Confirmed.Timestamp
             : null;
         var confirmedBy = isConfirmed ? model.Confirmed.UserId : string.Empty;
-
-        DateTime? voidedAt = isVoided && model.AuditTrail.Voided.Timestamp != default && model.AuditTrail.Voided.Timestamp.Year < 3000
-            ? model.AuditTrail.Voided.Timestamp
-            : null;
-        var voidedBy = isVoided ? model.AuditTrail.Voided.UserId : string.Empty;
-
-        var isModified = model.AuditTrail.Modified != null &&
-                         model.AuditTrail.Modified.Timestamp != default &&
-                         model.AuditTrail.Modified.Timestamp.Year < 3000;
-        var updatedAt = isModified ? model.AuditTrail.Modified!.Timestamp : (model.AuditTrail.Created.Timestamp != default ? model.AuditTrail.Created.Timestamp : DateTime.Now);
-        var updatedBy = isModified ? model.AuditTrail.Modified!.UserId : (model.AuditTrail.Created.UserId ?? string.Empty);
 
         return new DeliveryInspectionDto
         {
@@ -346,24 +330,16 @@ public class DeliveryOrderRepo : IDeliveryOrderRepo
             NoUrut = item.NoUrut,
             BrgId = item.Brg.BrgId,
             BrgName = item.Brg.BrgName,
-            PoId = item.Inspection.PoId,
             PoNoUrut = item.Inspection.PoNoUrut,
             QtyKirim = item.Inspection.QtyKirim,
             QtyDiterima = item.Inspection.QtyDiterima,
             QtyDitolak = item.Inspection.QtyDitolak,
             AlasanTolak = item.Inspection.AlasanTolak,
             IsBonus = item.Inspection.IsBonus,
-            HasJaminanRetur = item.Inspection.HasJaminanRetur,
             NoSuratJaminan = item.Inspection.NoSuratJaminan,
             Status = model.Status.ToString(),
             ConfirmedAt = confirmedAt,
-            ConfirmedBy = confirmedBy,
-            VoidedAt = voidedAt,
-            VoidedBy = voidedBy,
-            CreatedAt = model.AuditTrail.Created.Timestamp != default ? model.AuditTrail.Created.Timestamp : DateTime.Now,
-            CreatedBy = model.AuditTrail.Created.UserId ?? string.Empty,
-            UpdatedAt = updatedAt,
-            UpdatedBy = updatedBy
+            ConfirmedBy = confirmedBy
         };
     }
 }
