@@ -205,13 +205,8 @@ public class TataRekeningApplicationMapperTest
         breakdown.SisaTagihanKasir.Should().Be(299_850m);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("BYKAS")]
-    [InlineData("bykas")]
-    [InlineData("-")]
-    public void ToPaymentType_WhenPaymentIsByKasAndCoaIdIsInvalidOrByKas_FallsBackTo1499901(string dummyCoaId)
+    [Fact]
+    public void ToPaymentType_WhenPaymentIsByKas_ResolvesTo1499901()
     {
         // Arrange
         var input = new PaymentAllocationInputDto(
@@ -219,9 +214,7 @@ public class TataRekeningApplicationMapperTest
             PaymentName: "KAS",
             IsTipeJaminan: false,
             NilaiJasa: 100_000m,
-            NilaiObat: 50_000m,
-            CoaId: dummyCoaId,
-            CoaName: "KAS");
+            NilaiObat: 50_000m);
 
         // Act
         var result = TataRekeningApplicationMapper.ToPaymentType(input);
@@ -233,49 +226,7 @@ public class TataRekeningApplicationMapperTest
     }
 
     [Fact]
-    public void ToPaymentType_WhenPaymentIsByKasAndCoaIdIs1499901WithEmptyName_FillsStandardCoaName()
-    {
-        // Arrange
-        var input = new PaymentAllocationInputDto(
-            PaymentId: "BYKAS",
-            PaymentName: "KAS",
-            IsTipeJaminan: false,
-            NilaiJasa: 100_000m,
-            NilaiObat: 50_000m,
-            CoaId: "1499901",
-            CoaName: "");
-
-        // Act
-        var result = TataRekeningApplicationMapper.ToPaymentType(input);
-
-        // Assert
-        result.Coa.CoaId.Should().Be("1499901");
-        result.Coa.CoaName.Should().Be("Rekening Piutang Kasir Perantara");
-    }
-
-    [Fact]
-    public void ToPaymentType_WhenPaymentIsByKasAndValidCustomCoa_PreservesCustomCoa()
-    {
-        // Arrange
-        var input = new PaymentAllocationInputDto(
-            PaymentId: "BYKAS",
-            PaymentName: "KAS",
-            IsTipeJaminan: false,
-            NilaiJasa: 100_000m,
-            NilaiObat: 50_000m,
-            CoaId: "1110001",
-            CoaName: "Kasir Rawat Jalan");
-
-        // Act
-        var result = TataRekeningApplicationMapper.ToPaymentType(input);
-
-        // Assert
-        result.Coa.CoaId.Should().Be("1110001");
-        result.Coa.CoaName.Should().Be("Kasir Rawat Jalan");
-    }
-
-    [Fact]
-    public void ToPaymentType_WhenPaymentIsNotByKas_PreservesInputCoa()
+    public void ToPaymentType_WhenPaymentIsByPri_ResolvesTo1321000()
     {
         // Arrange
         var input = new PaymentAllocationInputDto(
@@ -283,9 +234,7 @@ public class TataRekeningApplicationMapperTest
             PaymentName: "Hutang Pribadi",
             IsTipeJaminan: false,
             NilaiJasa: 80_000m,
-            NilaiObat: 20_000m,
-            CoaId: "1321000",
-            CoaName: "Piutang Pasien Pribadi");
+            NilaiObat: 20_000m);
 
         // Act
         var result = TataRekeningApplicationMapper.ToPaymentType(input);
@@ -294,5 +243,47 @@ public class TataRekeningApplicationMapperTest
         result.Payment.PaymentId.Should().Be("BYPRI");
         result.Coa.CoaId.Should().Be("1321000");
         result.Coa.CoaName.Should().Be("Piutang Pasien Pribadi");
+    }
+
+    [Theory]
+    [InlineData("BYDPU")]
+    [InlineData("BYDPK")]
+    public void ToPaymentType_WhenPaymentIsDeposit_ResolvesTo4210000(string depositPaymentId)
+    {
+        // Arrange
+        var input = new PaymentAllocationInputDto(
+            PaymentId: depositPaymentId,
+            PaymentName: "Deposit",
+            IsTipeJaminan: false,
+            NilaiJasa: 50_000m,
+            NilaiObat: 0m);
+
+        // Act
+        var result = TataRekeningApplicationMapper.ToPaymentType(input);
+
+        // Assert
+        result.Payment.PaymentId.Should().Be(depositPaymentId);
+        result.Coa.CoaId.Should().Be("4210000");
+        result.Coa.CoaName.Should().Be("Uang Titipan Pasien");
+    }
+
+    [Fact]
+    public void ToPaymentType_WhenCustomCoaProvided_PreservesCustomCoa()
+    {
+        // Arrange
+        var input = new PaymentAllocationInputDto(
+            PaymentId: "ADM00",
+            PaymentName: "Asuransi Demo",
+            IsTipeJaminan: true,
+            NilaiJasa: 100_000m,
+            NilaiObat: 50_000m);
+        var customCoa = new Bilreg.Domain.PaymentContext.TrsBillingFeature.CoaType("1322000", "Piutang BPJS");
+
+        // Act
+        var result = TataRekeningApplicationMapper.ToPaymentType(input, customCoa);
+
+        // Assert
+        result.Coa.CoaId.Should().Be("1322000");
+        result.Coa.CoaName.Should().Be("Piutang BPJS");
     }
 }

@@ -134,7 +134,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
             {
                 payments = new[]
                 {
-                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m, "COA-01", "COA")
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m)
                 }
             });
 

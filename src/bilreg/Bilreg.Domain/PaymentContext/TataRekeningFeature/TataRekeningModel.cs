@@ -544,6 +544,51 @@ public record TataRekeningModel : IRegKey
                     $"Nilai alokasi negatif hanya diizinkan untuk tipe pembayaran Kasir (BYKAS), ditemukan pada '{payment.Payment.PaymentName}' ({payment.Payment.PaymentId}).");
         }
 
+        var totalTagihan = _listTrsBill.Sum(x => x.FinancialTotal);
+        var totalDpu = listPayment
+            .Where(x => string.Equals(x.Payment.PaymentId, PaymentType.ByDpu.PaymentId, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
+        var totalDpk = listPayment
+            .Where(x => string.Equals(x.Payment.PaymentId, PaymentType.ByDpk.PaymentId, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
+        var totalHutangDanJaminan = listPayment
+            .Where(x => string.Equals(x.Payment.PaymentId, PaymentType.ByPri.PaymentId, StringComparison.OrdinalIgnoreCase) || x.Payment.IsTipeJaminan)
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
+        var byKasTotal = listPayment
+            .Where(x => string.Equals(x.Payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
+
+        if (totalDpk > totalTagihan)
+            throw new ArgumentException(
+                $"Total alokasi Deposit Khusus ({totalDpk}) tidak boleh melebihi total tagihan ({totalTagihan}).",
+                nameof(listPayment));
+
+        var hasNegativeByKas = listPayment.Any(x =>
+            string.Equals(x.Payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase) &&
+            (x.NilaiJasa < 0 || x.NilaiObat < 0)) || byKasTotal < 0;
+
+        if (hasNegativeByKas)
+        {
+            if (totalDpu <= 0)
+                throw new ArgumentException(
+                    "Alokasi negatif pada Kasir (BYKAS) hanya diizinkan jika terdapat Deposit Umum (BYDPU > 0).",
+                    nameof(listPayment));
+
+            if (byKasTotal < 0 && Math.Abs(byKasTotal) > totalDpu)
+                throw new ArgumentException(
+                    $"Nilai alokasi negatif Kasir ({-byKasTotal}) tidak boleh melebihi total Deposit Umum ({totalDpu}).",
+                    nameof(listPayment));
+        }
+
+        var netDpuApplied = hasNegativeByKas && byKasTotal < 0
+            ? Math.Max(0m, totalDpu - Math.Abs(byKasTotal))
+            : totalDpu;
+        var maxHutangDanJaminan = Math.Max(0m, totalTagihan - (netDpuApplied + totalDpk));
+        if (totalHutangDanJaminan > maxHutangDanJaminan)
+            throw new ArgumentException(
+                $"Total alokasi Hutang dan Jaminan ({totalHutangDanJaminan}) tidak boleh melebihi sisa Kurang Bayar ({maxHutangDanJaminan}).",
+                nameof(listPayment));
+
         var totalJasaPayment = listPayment.Sum(x => x.NilaiJasa);
         var totalObatPayment = listPayment.Sum(x => x.NilaiObat);
         var totalJasaTrans = TotalBillByModul(BillModulGroup.Jasa);
@@ -588,45 +633,65 @@ public record TataRekeningModel : IRegKey
         var petugasVerif = FinalizationInfo.PetugasVerif;
         var allocationDate = FinalizationInfo.FinalizationDate;
 
-        foreach (var item in _listTataRekeningPayment)
-        {
-            AllocateFinalizationToModuleGroup(
-                item, item.NilaiJasa, BillModulGroup.Jasa, totalJasaTrans, trsBayarId, petugasVerif, allocationDate);
+        AllocateFinalizationToModuleGroup(
+            BillModulGroup.Jasa, totalJasaTrans, trsBayarId, petugasVerif, allocationDate);
 
-            AllocateFinalizationToModuleGroup(
-                item, item.NilaiObat, BillModulGroup.Obat, totalObatTrans, trsBayarId, petugasVerif, allocationDate);
-        }
+        AllocateFinalizationToModuleGroup(
+            BillModulGroup.Obat, totalObatTrans, trsBayarId, petugasVerif, allocationDate);
     }
 
     private void AllocateFinalizationToModuleGroup(
-        TataRekeningPaymentType item,
-        decimal modulAllocation,
         BillModulGroup modulGroup,
         decimal modulTotal,
         string trsBayarId,
         string petugasVerif,
         DateTime allocationDate)
     {
-        if (modulAllocation == 0)
+        var isJasa = modulGroup == BillModulGroup.Jasa;
+        var activeItems = _listTataRekeningPayment
+            .Where(x => (isJasa ? x.NilaiJasa : x.NilaiObat) != 0)
+            .ToList();
+
+        if (activeItems.Count == 0)
             return;
 
         if (modulTotal == 0)
             throw new InvalidOperationException(
-                $"Alokasi {modulGroup} ({modulAllocation}) tidak dapat didistribusikan karena tidak ada bill {modulGroup}.");
+                $"Alokasi {modulGroup} tidak dapat didistribusikan karena tidak ada bill {modulGroup}.");
 
         var bills = _listTrsBill.Where(x => x.ModulGroup == modulGroup).ToList();
-        var allocated = 0m;
+        if (bills.Count == 0)
+            throw new InvalidOperationException(
+                $"Alokasi {modulGroup} tidak dapat didistribusikan karena tidak ada bill {modulGroup}.");
 
-        for (var i = 0; i < bills.Count; i++)
+        for (var i = 0; i < activeItems.Count; i++)
         {
-            var bill = bills[i];
-            var share = i == bills.Count - 1
-                ? modulAllocation - allocated
-                : Math.Round(modulAllocation * bill.FinancialTotal / modulTotal, 2, MidpointRounding.AwayFromZero);
+            var item = activeItems[i];
+            var modulAllocation = isJasa ? item.NilaiJasa : item.NilaiObat;
 
-            bill.FinalizeAllocation(
-                item.Payment, share, petugasVerif, trsBayarId, allocationDate);
-            allocated += share;
+            if (i < activeItems.Count - 1)
+            {
+                var allocated = 0m;
+                for (var j = 0; j < bills.Count; j++)
+                {
+                    var bill = bills[j];
+                    var share = j == bills.Count - 1
+                        ? modulAllocation - allocated
+                        : Math.Round(modulAllocation * bill.FinancialTotal / modulTotal, 2, MidpointRounding.AwayFromZero);
+
+                    bill.FinalizeAllocation(item.Payment, share, petugasVerif, trsBayarId, allocationDate);
+                    allocated += share;
+                }
+            }
+            else
+            {
+                for (var j = 0; j < bills.Count; j++)
+                {
+                    var bill = bills[j];
+                    var share = bill.FinancialTotal - bill.ListFinalization.Sum(x => x.Nilai);
+                    bill.FinalizeAllocation(item.Payment, share, petugasVerif, trsBayarId, allocationDate);
+                }
+            }
         }
     }
 

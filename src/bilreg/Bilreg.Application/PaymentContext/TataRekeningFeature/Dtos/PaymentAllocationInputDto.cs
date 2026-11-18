@@ -5,6 +5,5 @@ public record PaymentAllocationInputDto(
     string PaymentName,
     bool IsTipeJaminan,
     decimal NilaiJasa,
-    decimal NilaiObat,
-    string CoaId,
-    string CoaName);
+    decimal NilaiObat);
+

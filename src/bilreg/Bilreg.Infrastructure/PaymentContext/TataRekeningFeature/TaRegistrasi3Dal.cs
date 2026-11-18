@@ -85,11 +85,11 @@ public class TaRegistrasi3Dal : ITaRegistrasi3Dal
             fs_kd_bayar = item.fs_kd_bayar,
             fn_jasa = item.fn_jasa,
             fn_obat = item.fn_obat,
-            fs_kd_rek = NormalizeKasirCoa(item.fs_kd_bayar, item.fs_kd_rek)
+            fs_kd_rek = NormalizeCoa(item.fs_kd_bayar, item.fs_kd_rek, item.fb_subsidi)
         }));
     }
 
-    private static string NormalizeKasirCoa(string paymentId, string coaId)
+    private static string NormalizeCoa(string paymentId, string coaId, bool isTipeJaminan)
     {
         if (string.Equals(paymentId, "BYKAS", StringComparison.OrdinalIgnoreCase))
         {
@@ -98,6 +98,34 @@ public class TaRegistrasi3Dal : ITaRegistrasi3Dal
                 coaId.Trim() == "-")
             {
                 return DefaultKasirCoaId;
+            }
+        }
+        else if (string.Equals(paymentId, "BYPRI", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), "BYPRI", StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                return "1321000";
+            }
+        }
+        else if (string.Equals(paymentId, "BYDPU", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(paymentId, "BYDPK", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), paymentId, StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                return "4210000";
+            }
+        }
+        else if (isTipeJaminan || (paymentId is not ("BYKAS" or "BYPRI" or "BYDPU" or "BYDPK" or "BYVCH")))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), paymentId, StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                return "1323000";
             }
         }
 

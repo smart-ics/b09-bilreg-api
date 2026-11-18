@@ -101,4 +101,15 @@ public class TaRegistrasi3DtoTest
         model.Coa.Should().Be(CoaType.Default);
         model.Payment.PaymentName.Should().Be(PaymentType.ByPri.PaymentName);
     }
+
+    [Fact]
+    public void ToModel_WhenPaymentIsByKasAndNameEmpty_ResolvesToPaymentTypeByKasName()
+    {
+        var dto = new TaRegistrasi3Dto("REG-001", "BYKAS", "", 10_000m, 0m, "", false);
+
+        var model = dto.ToModel();
+
+        model.Payment.PaymentName.Should().Be("Kasir (Bayar Sendiri)");
+        model.Payment.PaymentName.Should().Be(PaymentType.ByKas.PaymentName);
+    }
 }

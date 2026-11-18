@@ -15,6 +15,7 @@ CREATE TABLE ta_jaminan
     fs_piut_obat_rawat               VARCHAR(20) NOT NULL CONSTRAINT DF_ta_jaminan_fs_piut_obat_rawat DEFAULT(''),
     fs_kd_rek_ppdp_jasa_ri           VARCHAR(20) NOT NULL CONSTRAINT DF_ta_jaminan_fs_kd_rek_ppdp_jasa_ri DEFAULT(''),
     fs_kd_rek_ppdp_obat_ri           VARCHAR(20) NOT NULL CONSTRAINT DF_ta_jaminan_fs_kd_rek_ppdp_obat_ri DEFAULT(''),
+    fs_piut_pulang                   VARCHAR(20) NOT NULL CONSTRAINT DF_ta_jaminan_fs_piut_pulang DEFAULT(''),
 
     CONSTRAINT PK_ta_jaminan PRIMARY KEY CLUSTERED(fs_kd_jaminan)
 )
