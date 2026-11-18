@@ -1,6 +1,7 @@
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -9,6 +10,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration
     .AddJsonFile("appsettings.json", false, true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true);
+
+// Disable client certificate requirement on HTTPS for development
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureHttpsDefaults(httpsOptions =>
+    {
+        httpsOptions.ClientCertificateMode = ClientCertificateMode.NoCertificate;
+    });
+});
 
 builder.Services
     .AddDomain(builder.Configuration)
@@ -28,6 +38,8 @@ app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)
     .UseMiddleware<ErrorHandlerMiddleware>();
 
+// Disable HTTPS redirection entirely for development to avoid mTLS issues
+// The HTTPS port still works but doesn't require client certificates now
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
