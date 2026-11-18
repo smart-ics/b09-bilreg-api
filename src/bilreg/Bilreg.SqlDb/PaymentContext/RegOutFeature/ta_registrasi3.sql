@@ -6,6 +6,6 @@
     fn_obat     DECIMAL(18,0) NOT NULL CONSTRAINT DF_ta_registrasi3_fn_obat DEFAULT(0),
     fs_kd_rek   VARCHAR(20) NOT NULL CONSTRAINT DF_ta_registrasi3_fs_kd_rek DEFAULT(''),
 
-    CONSTRAINT PK_ta_registrasi3 PRIMARY KEY CLUSTERED(fs_kd_reg)
+    CONSTRAINT PK_ta_registrasi3 PRIMARY KEY CLUSTERED(fs_kd_reg, fs_kd_bayar)
 )
 GO

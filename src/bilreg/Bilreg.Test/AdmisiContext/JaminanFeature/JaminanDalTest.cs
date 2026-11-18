@@ -12,7 +12,7 @@ public class JaminanDalTest
 
     private static JaminanDto Faker()
         => new JaminanDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J", 
-            "", "", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "A1", "B1", "C1", "D1");
+            "", "", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "A1", "B1", "C1", "D1", "E1", "F1");
 
     private static IJaminanKey FakerKey()
         => JaminanType.Default with { JaminanId = "A" };
@@ -47,6 +47,8 @@ public class JaminanDalTest
         actual.Should().BeEquivalentTo(Faker(),
             opt => opt
                 .Excluding(x => x.fs_kd_pos)
+                .Excluding(x => x.fs_kd_tipe_brg_rawat_jalan)
+                .Excluding(x => x.fs_kd_tipe_brg_rawat_inap)
                 .Excluding(x => x.fs_nm_cara_bayar_dk)
                 .Excluding(x => x.fs_nm_grup_jaminan)
                 .Excluding(x => x.fs_nm_tarif_tipe_rawat_jalan)
@@ -55,6 +57,7 @@ public class JaminanDalTest
                 .Excluding(x => x.fs_nm_piut_obat_rawat)
                 .Excluding(x => x.fs_nm_rek_ppdp_jasa_ri)
                 .Excluding(x => x.fs_nm_rek_ppdp_obat_ri)
+                .Excluding(x => x.fs_nm_piut_pulang)
                 .Excluding(x => x.fs_nm_tipe_brg_rawat_jalan)
                 .Excluding(x => x.fs_nm_tipe_brg_rawat_inap)
                 );
@@ -69,6 +72,8 @@ public class JaminanDalTest
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
                 .Excluding(x => x.fs_kd_pos)
+                .Excluding(x => x.fs_kd_tipe_brg_rawat_jalan)
+                .Excluding(x => x.fs_kd_tipe_brg_rawat_inap)
                 .Excluding(x => x.fs_nm_cara_bayar_dk)
                 .Excluding(x => x.fs_nm_grup_jaminan)
                 .Excluding(x => x.fs_nm_tarif_tipe_rawat_jalan)
@@ -77,8 +82,32 @@ public class JaminanDalTest
                 .Excluding(x => x.fs_nm_piut_obat_rawat)
                 .Excluding(x => x.fs_nm_rek_ppdp_jasa_ri)
                 .Excluding(x => x.fs_nm_rek_ppdp_obat_ri)
+                .Excluding(x => x.fs_nm_piut_pulang)
                 .Excluding(x => x.fs_nm_tipe_brg_rawat_jalan)
                 .Excluding(x => x.fs_nm_tipe_brg_rawat_inap)
                 );
+    }
+
+    [Fact]
+    public void GetDataTest_ShouldIncludePiutangPulang()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = Faker() with { fs_piut_pulang = "1323000" };
+        _sut.Insert(expected);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().NotBeNull();
+        actual.fs_piut_pulang.Should().Be("1323000");
+    }
+
+    [Fact]
+    public void UpdateTest_ShouldPersistPiutangPulang()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var updated = Faker() with { fs_piut_pulang = "1323001" };
+        _sut.Update(updated);
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().NotBeNull();
+        actual.fs_piut_pulang.Should().Be("1323001");
     }
 }

@@ -14,17 +14,53 @@ public record TaRegistrasi3Dto(
 {
     public const string DefaultKasirCoaId = "1499901";
     public const string DefaultKasirCoaName = "Rekening Piutang Kasir Perantara";
+    public const string DefaultPribadiCoaId = "1321000";
+    public const string DefaultPribadiCoaName = "Piutang Pasien Pribadi";
+    public const string DefaultDepositCoaId = "4210000";
+    public const string DefaultDepositCoaName = "Uang Titipan Pasien";
+    public const string DefaultJaminanCoaId = "1323000";
+    public const string DefaultJaminanCoaName = "Piutang Jaminan";
 
     public static TaRegistrasi3Dto FromModel(string regId, TataRekeningPaymentType model)
     {
         var coaId = model.Coa?.CoaId ?? string.Empty;
-        if (string.Equals(model.Payment.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
+        var paymentId = model.Payment.PaymentId;
+
+        if (string.Equals(paymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(coaId) ||
                 string.Equals(coaId.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
                 coaId.Trim() == "-")
             {
                 coaId = DefaultKasirCoaId;
+            }
+        }
+        else if (string.Equals(paymentId, PaymentType.ByPri.PaymentId, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), "BYPRI", StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                coaId = DefaultPribadiCoaId;
+            }
+        }
+        else if (string.Equals(paymentId, PaymentType.ByDpu.PaymentId, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(paymentId, PaymentType.ByDpk.PaymentId, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), paymentId, StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                coaId = DefaultDepositCoaId;
+            }
+        }
+        else if (model.Payment.IsTipeJaminan || (paymentId is not ("BYKAS" or "BYPRI" or "BYDPU" or "BYVCH" or "BYDPK")))
+        {
+            if (string.IsNullOrWhiteSpace(coaId) ||
+                string.Equals(coaId.Trim(), paymentId, StringComparison.OrdinalIgnoreCase) ||
+                coaId.Trim() == "-")
+            {
+                coaId = DefaultJaminanCoaId;
             }
         }
 
@@ -61,6 +97,18 @@ public record TaRegistrasi3Dto(
             {
                 coaName = DefaultKasirCoaName;
             }
+        }
+        else if (coaId?.Trim() == DefaultPribadiCoaId)
+        {
+            coaName = DefaultPribadiCoaName;
+        }
+        else if (coaId?.Trim() == DefaultDepositCoaId)
+        {
+            coaName = DefaultDepositCoaName;
+        }
+        else if (coaId?.Trim() == DefaultJaminanCoaId)
+        {
+            coaName = DefaultJaminanCoaName;
         }
 
         var coa = string.IsNullOrWhiteSpace(coaId)

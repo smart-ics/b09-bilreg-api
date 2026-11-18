@@ -1,4 +1,7 @@
+using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.DepositFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
@@ -11,6 +14,17 @@ internal static class TataRekeningApplicationMapper
 {
     public const string DefaultKasirCoaId = "1499901";
     public const string DefaultKasirCoaName = "Rekening Piutang Kasir Perantara";
+    public const string DefaultPribadiCoaId = "1321000";
+    public const string DefaultPribadiCoaName = "Piutang Pasien Pribadi";
+    public const string DefaultDepositCoaId = "4210000";
+    public const string DefaultDepositCoaName = "Uang Titipan Pasien";
+    public const string DefaultJaminanCoaId = "1323000";
+    public const string DefaultJaminanCoaName = "Piutang Jaminan";
+
+    public static readonly CoaType CoaKasir = new(DefaultKasirCoaId, DefaultKasirCoaName);
+    public static readonly CoaType CoaPribadi = new(DefaultPribadiCoaId, DefaultPribadiCoaName);
+    public static readonly CoaType CoaDeposit = new(DefaultDepositCoaId, DefaultDepositCoaName);
+    public static readonly CoaType CoaJaminanDefault = new(DefaultJaminanCoaId, DefaultJaminanCoaName);
 
     public static TataRekeningSummaryDto ToSummaryDto(TataRekeningModel model) =>
         new(
@@ -50,34 +64,102 @@ internal static class TataRekeningApplicationMapper
             request.TargetRegId,
             request.Status);
 
-    public static TataRekeningPaymentType ToPaymentType(PaymentAllocationInputDto input)
+    public static CoaType ResolveDefaultCoa(PaymentAllocationInputDto input)
     {
-        var coaId = input.CoaId;
-        var coaName = input.CoaName;
-
         if (string.Equals(input.PaymentId, PaymentType.ByKas.PaymentId, StringComparison.OrdinalIgnoreCase))
+            return CoaKasir;
+
+        if (string.Equals(input.PaymentId, PaymentType.ByPri.PaymentId, StringComparison.OrdinalIgnoreCase))
+            return CoaPribadi;
+
+        if (string.Equals(input.PaymentId, PaymentType.ByDpu.PaymentId, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(input.PaymentId, PaymentType.ByDpk.PaymentId, StringComparison.OrdinalIgnoreCase))
+            return CoaDeposit;
+
+        if (input.IsTipeJaminan)
+            return CoaJaminanDefault;
+
+        return CoaType.Default;
+    }
+
+    public static CoaType ResolvePaymentCoa(
+        PaymentAllocationInputDto payment,
+        ITipeJaminanRepo? tipeJaminanRepo,
+        IJaminanRepo? jaminanRepo)
+    {
+        var isStandard = payment.PaymentId is "BYKAS" or "BYPRI" or "BYDPU" or "BYDPK" or "BYVCH";
+        if (!isStandard || payment.IsTipeJaminan)
         {
-            if (string.IsNullOrWhiteSpace(coaId) ||
-                string.Equals(coaId.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
-                coaId.Trim() == "-")
+            if (tipeJaminanRepo is not null && jaminanRepo is not null)
             {
-                coaId = DefaultKasirCoaId;
-                coaName = DefaultKasirCoaName;
+                var tipeJaminanMayBe = tipeJaminanRepo.LoadEntity(TipeJaminanType.Key(payment.PaymentId));
+                var coaFromJaminan = tipeJaminanMayBe.Match<CoaType?>(
+                    onSome: tj =>
+                    {
+                        if (tj.Jaminan is not null && !string.IsNullOrWhiteSpace(tj.Jaminan.JaminanId) && tj.Jaminan.JaminanId != "-")
+                        {
+                            var jaminanMayBe = jaminanRepo.LoadEntity(tj.Jaminan);
+                            return jaminanMayBe.Match<CoaType?>(
+                                onSome: j =>
+                                {
+                                    var piutangPulang = j.Rekening?.PiutangPulang;
+                                    if (piutangPulang is not null &&
+                                        !string.IsNullOrWhiteSpace(piutangPulang.CoaId) &&
+                                        piutangPulang.CoaId != "-")
+                                    {
+                                        return piutangPulang;
+                                    }
+                                    return null;
+                                },
+                                onNone: () => null);
+                        }
+                        return null;
+                    },
+                    onNone: () => null);
+
+                if (coaFromJaminan is not null)
+                    return coaFromJaminan;
             }
-            else if (string.IsNullOrWhiteSpace(coaName) ||
-                     string.Equals(coaName.Trim(), "KAS", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(coaName.Trim(), "BYKAS", StringComparison.OrdinalIgnoreCase) ||
-                     coaName.Trim() == "-")
-            {
-                coaName = DefaultKasirCoaName;
-            }
+
+            return CoaJaminanDefault;
+        }
+
+        return ResolveDefaultCoa(payment);
+    }
+
+    public static TataRekeningPaymentType ToPaymentType(PaymentAllocationInputDto input) =>
+        ToPaymentType(input, (Func<PaymentAllocationInputDto, CoaType>?)null);
+
+    public static TataRekeningPaymentType ToPaymentType(PaymentAllocationInputDto input, CoaType? resolvedCoa)
+    {
+        var coa = resolvedCoa;
+        if (coa is null || coa == CoaType.Default || string.IsNullOrWhiteSpace(coa.CoaId) || coa.CoaId == "-")
+        {
+            coa = ResolveDefaultCoa(input);
         }
 
         return new(
             new PaymentType(input.PaymentId, input.PaymentName, input.IsTipeJaminan),
             input.NilaiJasa,
             input.NilaiObat,
-            new CoaType(coaId ?? string.Empty, coaName ?? string.Empty));
+            coa);
+    }
+
+    public static TataRekeningPaymentType ToPaymentType(
+        PaymentAllocationInputDto input,
+        Func<PaymentAllocationInputDto, CoaType>? coaResolver)
+    {
+        var coa = coaResolver?.Invoke(input);
+        if (coa is null || coa == CoaType.Default || string.IsNullOrWhiteSpace(coa.CoaId) || coa.CoaId == "-")
+        {
+            coa = ResolveDefaultCoa(input);
+        }
+
+        return new(
+            new PaymentType(input.PaymentId, input.PaymentName, input.IsTipeJaminan),
+            input.NilaiJasa,
+            input.NilaiObat,
+            coa);
     }
 
     public static PaymentType? ToSubsidyPayer(FinancialAdjustmentInputDto input)

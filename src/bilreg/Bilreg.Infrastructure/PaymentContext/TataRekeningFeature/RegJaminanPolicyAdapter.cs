@@ -1,4 +1,6 @@
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -7,15 +9,17 @@ namespace Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 
 /// <summary>
 /// Infrastructure adapter implementing <see cref="IRegJaminanPolicy"/> by querying
-/// the authoritative Admission context (<see cref="IRegRepo"/>).
+/// the authoritative Admission context (<see cref="IRegRepo"/> and <see cref="ITipeJaminanRepo"/>).
 /// </summary>
 public sealed class RegJaminanPolicyAdapter : IRegJaminanPolicy
 {
     private readonly IRegRepo _regRepo;
+    private readonly ITipeJaminanRepo _tipeJaminanRepo;
 
-    public RegJaminanPolicyAdapter(IRegRepo regRepo)
+    public RegJaminanPolicyAdapter(IRegRepo regRepo, ITipeJaminanRepo tipeJaminanRepo)
     {
         _regRepo = regRepo ?? throw new ArgumentNullException(nameof(regRepo));
+        _tipeJaminanRepo = tipeJaminanRepo ?? throw new ArgumentNullException(nameof(tipeJaminanRepo));
     }
 
     public bool IsJaminanValidForReg(string regId, string paymentId)
@@ -38,10 +42,14 @@ public sealed class RegJaminanPolicyAdapter : IRegJaminanPolicy
                 if (reg.RegVoidAudit != AuditInfoType.Default)
                     return false;
 
-                if (reg.TipeJaminan is null || string.IsNullOrWhiteSpace(reg.TipeJaminan.TipeJaminanId))
+                // "00000" (Bayar Sendiri / UMUM) is not a jaminan/insurance payment
+                if (string.Equals(cleanPaymentId, "00000", StringComparison.OrdinalIgnoreCase))
                     return false;
 
-                return string.Equals(reg.TipeJaminan.TipeJaminanId, cleanPaymentId, StringComparison.OrdinalIgnoreCase);
+                var jaminanMayBe = _tipeJaminanRepo.LoadEntity(TipeJaminanType.Key(cleanPaymentId));
+                return jaminanMayBe.Match(
+                    onSome: jaminan => jaminan.IsAktif,
+                    onNone: () => false);
             },
             onNone: () => false);
     }
