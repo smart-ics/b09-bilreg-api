@@ -311,4 +311,25 @@ public class IgdTindakanAddHandlerTest
         var act = async () => await sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task Handle_WhenBarangWithEmptyPetugasMedisId_SavesWithDefaultPpa()
+    {
+        var visit = CreateTestVisit();
+        _visitRepo
+            .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
+            .Returns(MayBe.From(visit));
+
+        var cmd = new IgdTindakanAddCmd(
+            IgdVisitId, "", "BRG001", "CIPROFLOXACIN INFUS", 1, (int)ActivityTindakanIgd.Barang, UserId);
+        var sut = CreateSut();
+
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        result.IgdVisitId.Should().Be(IgdVisitId);
+        _ppaRepo.Verify(r => r.LoadEntity(It.IsAny<IPpaKey>()), Times.Never);
+        _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t =>
+            t.Aktifitas == ActivityTindakanIgd.Barang &&
+            t.Ppa.PpaId == PpaType.Default.PpaId)), Times.Once);
+    }
 }

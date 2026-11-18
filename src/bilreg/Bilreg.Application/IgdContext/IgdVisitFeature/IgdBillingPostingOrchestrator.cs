@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BrgContext.BrgFeature;
+using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
@@ -41,6 +42,7 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly ILogger<IgdBillingPostingOrchestrator> _logger;
+    private readonly IBrgPricingService? _brgPricingService;
 
     public IgdBillingPostingOrchestrator(
         INilaiTarifRepo nilaiTarifRepo,
@@ -56,7 +58,8 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
-        ILogger<IgdBillingPostingOrchestrator> logger)
+        ILogger<IgdBillingPostingOrchestrator> logger,
+        IBrgPricingService? brgPricingService = null)
     {
         _nilaiTarifRepo = nilaiTarifRepo;
         _tarifRepo = tarifRepo;
@@ -72,6 +75,7 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
         _logger = logger;
+        _brgPricingService = brgPricingService;
     }
 
     public async Task<bool> PostTindakanAsync(
@@ -97,6 +101,36 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                     onSome: x => x,
                     onNone: () => throw new KeyNotFoundException($"Jaminan '{expectedJaminanId}' not found")
                 );
+
+            var occurredAt = tindakan.Audit.Timestamp == default ? DateTime.Now : tindakan.Audit.Timestamp;
+            var userId = string.IsNullOrWhiteSpace(tindakan.Audit.UserId) ? "SYSTEM" : tindakan.Audit.UserId;
+
+            if (tindakan.Aktifitas == ActivityTindakanIgd.Barang)
+            {
+                var subtotal = _brgPricingService != null
+                    ? _brgPricingService.CalculateItemPrice(
+                        tindakan.ReffId,
+                        tindakan.Qty,
+                        reg.TipeJaminan.TipeJaminanId,
+                        reg.Layanan.LayananId).Nilai.Total
+                    : 0m;
+
+                var brgBill = SaveBarangBill(
+                    reg,
+                    jaminan,
+                    tindakan.ReffId,
+                    tindakan.Descriptions,
+                    tindakan.Qty,
+                    subtotal,
+                    tindakan.TindakanIgdId,
+                    occurredAt,
+                    userId);
+
+                tindakan.MarkAsPosted(tindakan.TindakanIgdId, brgBill.TrsBillingId, occurredAt);
+                _tindakanIgdRepo.SaveChanges(tindakan);
+
+                return await Task.FromResult(true);
+            }
 
             var tarifKey = TarifType.Key(tindakan.ReffId);
             var tarif = _tarifRepo.LoadEntity(tarifKey)
@@ -128,8 +162,6 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                 .Select(x => new KomponenPpaView(x, ppa))
                 .ToList();
 
-            var occurredAt = tindakan.Audit.Timestamp == default ? DateTime.Now : tindakan.Audit.Timestamp;
-            var userId = string.IsNullOrWhiteSpace(tindakan.Audit.UserId) ? "SYSTEM" : tindakan.Audit.UserId;
             var bedId = (visit.BedId == "-" || string.IsNullOrWhiteSpace(visit.BedId)) ? string.Empty : visit.BedId;
 
             var tdk = TindakanModel.FromReg(
@@ -182,86 +214,19 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                     onNone: () => throw new KeyNotFoundException($"Jaminan '{expectedJaminanId}' not found")
                 );
 
-            var brg = _brgRepo.LoadEntity(new BrgKey(bhp.BhpItemId));
-            var groupRek = GroupRekType.Default;
-            if (brg.HasValue)
-            {
-                var groupRekKey = GroupRekType.Key(brg.Value.GroupRek.GroupRekId);
-                groupRek = _groupRekRepo.LoadEntity(groupRekKey).GetValueOrDefault(GroupRekType.Default);
-            }
-
-            var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
-                ? jaminan.Rekening.PpdpObatRanap
-                : jaminan.Rekening.PpdpObatRajal;
-
-            var rekPdpt = (reg.JenisReg != JenisRegEnum.RegInap && !string.IsNullOrWhiteSpace(groupRek.RekJualRajal.CoaId) && groupRek.RekJualRajal.CoaId != "-")
-                ? groupRek.RekJualRajal
-                : (!string.IsNullOrWhiteSpace(groupRek.RekJual.CoaId) && groupRek.RekJual.CoaId != "-")
-                    ? groupRek.RekJual
-                    : (reg.JenisReg == JenisRegEnum.RegInap ? jaminan.Rekening.PpdpObatRanap : jaminan.Rekening.PpdpObatRajal);
-
-            var bill2Coa = new TrsBill2CoaType(
-                rekPpdp,
-                rekPdpt,
-                groupRek.RekPersediaan,
-                CoaType.Default,
-                CoaType.Default,
-                groupRek.RekDisc);
-
-            var groupRekId = groupRek.GroupRekId != "-" ? groupRek.GroupRekId : "BHP";
-            var groupRekName = groupRek.GroupRekName != "-" ? groupRek.GroupRekName : "BHP";
-            var komponen = new TrsBill2KomponenType(groupRekId, groupRekName);
-
-            var ppa = reg.Dokter;
-            var bill2Event = new TrsBill2TransEventType(
-                0,
-                komponen,
-                TrsBillJenisBayarType.Pdp,
-                bhp.Subtotal,
-                ppa,
-                bill2Coa);
-
             var occurredAt = bhp.Audit.Timestamp == default ? DateTime.Now : bhp.Audit.Timestamp;
             var userId = string.IsNullOrWhiteSpace(bhp.Audit.UserId) ? "SYSTEM" : bhp.Audit.UserId;
-            var audit = AuditTrailType.Create(userId, occurredAt);
 
-            var ketBilling = new TrsBillKetType(
-                bhp.BhpItemName,
-                "",
+            var bill = SaveBarangBill(
+                reg,
+                jaminan,
                 bhp.BhpItemId,
+                bhp.BhpItemName,
                 bhp.Qty,
-                bhp.BhpIgdId);
-
-            var nilai = new TrsBillNilaiType(bhp.Subtotal, 0, 0, 0);
-            var rekapCetak = new RekapCetakReff(groupRek.RekapCetakId != "-" ? groupRek.RekapCetakId : string.Empty, "");
-
-            var bill = new TrsBillType(
+                bhp.Subtotal,
                 bhp.BhpIgdId,
-                BillModulGroup.Obat,
                 occurredAt,
-                reg.ToReff(),
-                reg.Layanan,
-                reg.Kelas,
-                audit.Created,
-                rekapCetak,
-                nilai,
-                ketBilling,
-                [bill2Event],
-                [],
-                []);
-
-            var isNewTataRekening = false;
-            var tataRekening = _tataRekeningRepo.LoadEntity(reg).Match(
-                onSome: m => m,
-                onNone: () =>
-                {
-                    isNewTataRekening = true;
-                    return TataRekeningModel.Create(reg.RegId);
-                });
-            if (isNewTataRekening)
-                _tataRekeningRepo.SaveChanges(tataRekening);
-
-            _trsBillingRepo.SaveChanges(bill);
+                userId);
 
             bhp.MarkAsPosted(bill.TrsBillingId, occurredAt);
             _bhpIgdRepo.SaveChanges(bhp);
@@ -274,6 +239,98 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                 bhp.BhpIgdId, visit.IgdVisitId);
             return false;
         }
+    }
+
+    private TrsBillType SaveBarangBill(
+        RegModel reg,
+        JaminanType jaminan,
+        string brgId,
+        string itemName,
+        decimal qty,
+        decimal subtotal,
+        string billId,
+        DateTime occurredAt,
+        string userId)
+    {
+        var brg = _brgRepo.LoadEntity(new BrgKey(brgId));
+        var groupRek = GroupRekType.Default;
+        if (brg.HasValue)
+        {
+            var groupRekKey = GroupRekType.Key(brg.Value.GroupRek.GroupRekId);
+            groupRek = _groupRekRepo.LoadEntity(groupRekKey).GetValueOrDefault(GroupRekType.Default);
+        }
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpObatRanap
+            : jaminan.Rekening.PpdpObatRajal;
+
+        var rekPdpt = (reg.JenisReg != JenisRegEnum.RegInap && !string.IsNullOrWhiteSpace(groupRek.RekJualRajal.CoaId) && groupRek.RekJualRajal.CoaId != "-")
+            ? groupRek.RekJualRajal
+            : (!string.IsNullOrWhiteSpace(groupRek.RekJual.CoaId) && groupRek.RekJual.CoaId != "-")
+                ? groupRek.RekJual
+                : (reg.JenisReg == JenisRegEnum.RegInap ? jaminan.Rekening.PpdpObatRanap : jaminan.Rekening.PpdpObatRajal);
+
+        var bill2Coa = new TrsBill2CoaType(
+            rekPpdp,
+            rekPdpt,
+            groupRek.RekPersediaan,
+            CoaType.Default,
+            CoaType.Default,
+            groupRek.RekDisc);
+
+        var groupRekId = groupRek.GroupRekId != "-" ? groupRek.GroupRekId : "BHP";
+        var groupRekName = groupRek.GroupRekName != "-" ? groupRek.GroupRekName : "BHP";
+        var komponen = new TrsBill2KomponenType(groupRekId, groupRekName);
+
+        var ppa = reg.Dokter;
+        var bill2Event = new TrsBill2TransEventType(
+            0,
+            komponen,
+            TrsBillJenisBayarType.Pdp,
+            subtotal,
+            ppa,
+            bill2Coa);
+
+        var audit = AuditTrailType.Create(userId, occurredAt);
+
+        var ketBilling = new TrsBillKetType(
+            itemName,
+            "",
+            brgId,
+            qty,
+            billId);
+
+        var nilai = new TrsBillNilaiType(subtotal, 0, 0, 0);
+        var rekapCetak = new RekapCetakReff(groupRek.RekapCetakId != "-" ? groupRek.RekapCetakId : string.Empty, "");
+
+        var bill = new TrsBillType(
+            billId,
+            BillModulGroup.Obat,
+            occurredAt,
+            reg.ToReff(),
+            reg.Layanan,
+            reg.Kelas,
+            audit.Created,
+            rekapCetak,
+            nilai,
+            ketBilling,
+            [bill2Event],
+            [],
+            []);
+
+        var isNewTataRekening = false;
+        var tataRekening = _tataRekeningRepo.LoadEntity(reg).Match(
+            onSome: m => m,
+            onNone: () =>
+            {
+                isNewTataRekening = true;
+                return TataRekeningModel.Create(reg.RegId);
+            });
+        if (isNewTataRekening)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+        return bill;
     }
 
     public async Task<bool> SyncAllPendingForVisitAsync(
