@@ -190,7 +190,7 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
             .ToList();
         var result = await _mediator.Send(new CreateKioskCmd(
             body.StationId, body.DisplayName, body.LocationName, body.Active,
-            body.PrinterProxyPort, body.Notes, servicePoints, Actor()), ct);
+            body.PrinterProxyPort, body.Notes, servicePoints, Actor(), body.DepoFarmasiId), ct);
         return Ok(new JSendOk(result));
     }
 
@@ -202,7 +202,7 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
     {
         var result = await _mediator.Send(new UpdateKioskCmd(
             stationId, body.DisplayName, body.LocationName, body.PrinterProxyPort,
-            body.Notes, body.RowVersion, Actor()), ct);
+            body.Notes, body.RowVersion, Actor(), body.DepoFarmasiId), ct);
         return Ok(new JSendOk(result));
     }
 
@@ -311,13 +311,15 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         bool Active = true,
         int PrinterProxyPort = 5050,
         string? Notes = null,
-        List<KioskServicePointMapBody>? ServicePoints = null);
+        List<KioskServicePointMapBody>? ServicePoints = null,
+        string? DepoFarmasiId = null);
     public sealed record UpdateKioskBody(
         string DisplayName,
         string? LocationName,
         int PrinterProxyPort,
         string RowVersion,
-        string? Notes = null);
+        string? Notes = null,
+        string? DepoFarmasiId = null);
     public sealed record ReplaceKioskServicePointsBody(
         string RowVersion,
         List<KioskServicePointMapBody>? ServicePoints);

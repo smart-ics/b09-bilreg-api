@@ -1,0 +1,10 @@
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+
+IF COL_LENGTH('BILRG_AdmQueueKiosk', 'DepoFarmasiId') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AdmQueueKiosk
+        ADD DepoFarmasiId VARCHAR(26) NOT NULL
+            CONSTRAINT DF_BILRG_AdmQueueKiosk_DepoFarmasiId DEFAULT('');
+END
+GO

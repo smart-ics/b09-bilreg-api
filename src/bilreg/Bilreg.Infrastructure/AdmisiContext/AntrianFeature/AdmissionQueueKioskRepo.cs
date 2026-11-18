@@ -19,6 +19,7 @@ public sealed class AdmissionQueueKioskDto
     public bool IsActive { get; set; }
     public int PrinterProxyPort { get; set; }
     public string Notes { get; set; } = string.Empty;
+    public string DepoFarmasiId { get; set; } = string.Empty;
     public long RowVersion { get; set; }
     public string CrtUser { get; set; } = string.Empty;
     public DateTime CrtDate { get; set; }
@@ -52,7 +53,7 @@ public sealed class AdmissionQueueKioskDal : IAdmissionQueueKioskDal
     {
         const string sql = """
             SELECT StationId, DisplayName, LocationName, IsActive, PrinterProxyPort,
-                   Notes, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate
+                   Notes, DepoFarmasiId, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate
             FROM BILRG_AdmQueueKiosk WHERE StationId = @StationId
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -75,7 +76,7 @@ public sealed class AdmissionQueueKioskDal : IAdmissionQueueKioskDal
     {
         const string sql = """
             SELECT StationId, DisplayName, LocationName, IsActive, PrinterProxyPort,
-                   Notes, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate
+                   Notes, DepoFarmasiId, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate
             FROM BILRG_AdmQueueKiosk
             ORDER BY DisplayName
             """;
@@ -102,10 +103,10 @@ public sealed class AdmissionQueueKioskDal : IAdmissionQueueKioskDal
         const string sql = """
             INSERT INTO BILRG_AdmQueueKiosk
                 (StationId, DisplayName, LocationName, IsActive, PrinterProxyPort,
-                 Notes, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate)
+                 Notes, DepoFarmasiId, RowVersion, CrtUser, CrtDate, UpdUser, UpdDate)
             VALUES
                 (@StationId, @DisplayName, @LocationName, @IsActive, @PrinterProxyPort,
-                 @Notes, @RowVersion, @CrtUser, @CrtDate, @UpdUser, @UpdDate)
+                 @Notes, @DepoFarmasiId, @RowVersion, @CrtUser, @CrtDate, @UpdUser, @UpdDate)
             """;
         conn.Execute(sql, dto, tx);
         ReplaceServicePoints(conn, tx, dto.StationId, servicePoints);
@@ -123,8 +124,8 @@ public sealed class AdmissionQueueKioskDal : IAdmissionQueueKioskDal
         const string sql = """
             UPDATE BILRG_AdmQueueKiosk
             SET DisplayName=@DisplayName, LocationName=@LocationName, IsActive=@IsActive,
-                PrinterProxyPort=@PrinterProxyPort, Notes=@Notes, RowVersion=@RowVersion,
-                UpdUser=@UpdUser, UpdDate=@UpdDate
+                PrinterProxyPort=@PrinterProxyPort, Notes=@Notes, DepoFarmasiId=@DepoFarmasiId,
+                RowVersion=@RowVersion, UpdUser=@UpdUser, UpdDate=@UpdDate
             WHERE StationId=@StationId AND RowVersion=@ExpectedRowVersion
             """;
         var affected = conn.Execute(sql, new
@@ -135,6 +136,7 @@ public sealed class AdmissionQueueKioskDal : IAdmissionQueueKioskDal
             dto.IsActive,
             dto.PrinterProxyPort,
             dto.Notes,
+            dto.DepoFarmasiId,
             dto.RowVersion,
             dto.UpdUser,
             dto.UpdDate,
@@ -264,7 +266,8 @@ public sealed class AdmissionQueueKioskRepo : IAdmissionQueueKioskRepo
             dto.CrtUser,
             dto.CrtDate,
             dto.UpdUser,
-            dto.UpdDate);
+            dto.UpdDate,
+            dto.DepoFarmasiId);
 
     private static AdmissionQueueKioskDto ToDto(AdmissionQueueKioskModel model) => new()
     {
@@ -274,6 +277,7 @@ public sealed class AdmissionQueueKioskRepo : IAdmissionQueueKioskRepo
         IsActive = model.Active,
         PrinterProxyPort = model.PrinterProxyPort,
         Notes = model.Notes,
+        DepoFarmasiId = model.DepoFarmasiId,
         RowVersion = model.RowVersion,
         CrtUser = model.CreatedBy,
         CrtDate = model.CreatedAt,

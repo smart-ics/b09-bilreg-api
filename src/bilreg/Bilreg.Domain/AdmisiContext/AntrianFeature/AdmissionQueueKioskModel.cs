@@ -21,7 +21,8 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
         string createdBy,
         DateTime createdAt,
         string updatedBy,
-        DateTime updatedAt)
+        DateTime updatedAt,
+        string? depoFarmasiId = "")
     {
         StationId = NormalizeKey(stationId);
         DisplayName = NormalizeRequired(displayName, nameof(displayName));
@@ -29,6 +30,7 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
         Active = active;
         PrinterProxyPort = NormalizePort(printerProxyPort);
         Notes = notes?.Trim() ?? string.Empty;
+        DepoFarmasiId = depoFarmasiId?.Trim() ?? string.Empty;
         ServicePoints = NormalizeServicePoints(servicePoints);
         RowVersion = rowVersion;
         CreatedBy = createdBy ?? string.Empty;
@@ -43,6 +45,7 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
     public bool Active { get; private init; }
     public int PrinterProxyPort { get; private init; }
     public string Notes { get; private init; }
+    public string DepoFarmasiId { get; private init; }
     public IReadOnlyList<AdmissionKioskServicePointMapping> ServicePoints { get; private init; }
     public long RowVersion { get; private init; }
     public string CreatedBy { get; private init; }
@@ -59,11 +62,12 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
         string notes,
         IEnumerable<AdmissionKioskServicePointMapping> servicePoints,
         string userId,
-        DateTime now)
+        DateTime now,
+        string? depoFarmasiId = "")
     {
         var model = new AdmissionQueueKioskModel(
             stationId, displayName, locationName, active, printerProxyPort, notes,
-            servicePoints.ToList(), 1, userId, now, userId, now);
+            servicePoints.ToList(), 1, userId, now, userId, now, depoFarmasiId);
         model.EnsureActiveMappingValid();
         return model;
     }
@@ -80,9 +84,10 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
         string createdBy,
         DateTime createdAt,
         string updatedBy,
-        DateTime updatedAt) =>
+        DateTime updatedAt,
+        string? depoFarmasiId = "") =>
         new(stationId, displayName, locationName, active, printerProxyPort, notes,
-            servicePoints.ToList(), rowVersion, createdBy, createdAt, updatedBy, updatedAt);
+            servicePoints.ToList(), rowVersion, createdBy, createdAt, updatedBy, updatedAt, depoFarmasiId);
 
     public static IAdmissionQueueKioskKey Key(string stationId) =>
         new AdmissionQueueKioskKey(NormalizeKey(stationId));
@@ -94,19 +99,23 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
         string notes,
         long expectedRowVersion,
         string userId,
-        DateTime now)
+        DateTime now,
+        string? depoFarmasiId = "")
     {
         EnsureRowVersion(expectedRowVersion);
-        return this with
+        var next = this with
         {
             DisplayName = NormalizeRequired(displayName, nameof(displayName)),
             LocationName = locationName?.Trim() ?? string.Empty,
             PrinterProxyPort = NormalizePort(printerProxyPort),
             Notes = notes?.Trim() ?? string.Empty,
+            DepoFarmasiId = depoFarmasiId?.Trim() ?? string.Empty,
             RowVersion = RowVersion + 1,
             UpdatedBy = userId,
             UpdatedAt = now
         };
+        next.EnsureActiveMappingValid();
+        return next;
     }
 
     public AdmissionQueueKioskModel ReplaceServicePoints(
@@ -157,14 +166,14 @@ public sealed record AdmissionQueueKioskModel : IAdmissionQueueKioskKey
     {
         if (!Active)
             throw new InvalidOperationException($"Kiosk '{StationId}' is inactive.");
-        if (ServicePoints.Count == 0)
-            throw new InvalidOperationException($"Kiosk '{StationId}' has no service point mapping.");
+        if (ServicePoints.Count == 0 && string.IsNullOrWhiteSpace(DepoFarmasiId))
+            throw new InvalidOperationException($"Kiosk '{StationId}' has no service point mapping or Depo Farmasi.");
     }
 
     private void EnsureActiveMappingValid()
     {
-        if (Active && ServicePoints.Count == 0)
-            throw new InvalidOperationException($"Active kiosk '{StationId}' requires at least one service point.");
+        if (Active && ServicePoints.Count == 0 && string.IsNullOrWhiteSpace(DepoFarmasiId))
+            throw new InvalidOperationException($"Active kiosk '{StationId}' requires at least one service point or Depo Farmasi.");
     }
 
     private void EnsureRowVersion(long expectedRowVersion)

@@ -47,6 +47,83 @@ public class AdmissionDeviceConfigurationDomainTest
         var stale = () => model.Update("Kiosk", "", 5050, "", 9, "u2", DateTime.UtcNow);
         stale.Should().Throw<InvalidOperationException>().WithMessage("*stale*");
     }
+
+    [Fact]
+    public void ActiveKiosk_WithServicePointOnly_IsValidAndCanBoot()
+    {
+        var model = AdmissionQueueKioskModel.Create(
+            "kiosk-adm", "Kiosk Admisi", "Lobby", true, 5050, "",
+            [new AdmissionKioskServicePointMapping("REG", 0)],
+            "u1", DateTime.UtcNow);
+
+        model.DepoFarmasiId.Should().BeEmpty();
+        var act = () => model.EnsureCanBoot();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ActiveKiosk_WithDepoFarmasiOnly_IsValidAndCanBoot()
+    {
+        var model = AdmissionQueueKioskModel.Create(
+            "kiosk-far", "Kiosk Farmasi", "Apotek", true, 5050, "",
+            Array.Empty<AdmissionKioskServicePointMapping>(),
+            "u1", DateTime.UtcNow, " DEPO-FAR-01 ");
+
+        model.DepoFarmasiId.Should().Be("DEPO-FAR-01");
+        model.ServicePoints.Should().BeEmpty();
+        var act = () => model.EnsureCanBoot();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ActiveKiosk_HybridWithServicePointAndDepoFarmasi_IsValidAndCanBoot()
+    {
+        var model = AdmissionQueueKioskModel.Create(
+            "kiosk-hyb", "Kiosk Hybrid", "Lobby", true, 5050, "",
+            [new AdmissionKioskServicePointMapping("REG", 0)],
+            "u1", DateTime.UtcNow, "DEPO-FAR-01");
+
+        model.ServicePoints.Should().HaveCount(1);
+        model.DepoFarmasiId.Should().Be("DEPO-FAR-01");
+        var act = () => model.EnsureCanBoot();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ActiveKiosk_WithoutServicePointAndDepoFarmasi_ThrowsInvalidOperation()
+    {
+        var createAct = () => AdmissionQueueKioskModel.Create(
+            "kiosk-empty", "Kiosk Empty", "", true, 5050, "",
+            Array.Empty<AdmissionKioskServicePointMapping>(),
+            "u1", DateTime.UtcNow, "   ");
+        createAct.Should().Throw<InvalidOperationException>()
+            .WithMessage("*requires at least one service point or Depo Farmasi*");
+
+        var loaded = AdmissionQueueKioskModel.Load(
+            "kiosk-empty", "Kiosk Empty", "", true, 5050, "",
+            Array.Empty<AdmissionKioskServicePointMapping>(),
+            1, "u1", DateTime.UtcNow, "u1", DateTime.UtcNow, "");
+        var bootAct = () => loaded.EnsureCanBoot();
+        bootAct.Should().Throw<InvalidOperationException>()
+            .WithMessage("*no service point mapping or Depo Farmasi*");
+    }
+
+    [Fact]
+    public void Kiosk_Update_UpdatesDepoFarmasiIdAndValidatesInvariant()
+    {
+        var model = AdmissionQueueKioskModel.Create(
+            "kiosk-far", "Kiosk Farmasi", "Apotek", true, 5050, "",
+            Array.Empty<AdmissionKioskServicePointMapping>(),
+            "u1", DateTime.UtcNow, "DEPO-FAR-01");
+
+        var updated = model.Update("Kiosk Farmasi 2", "Apotek Lt 2", 5051, "note", 1, "u2", DateTime.UtcNow, " DEPO-FAR-02 ");
+        updated.DepoFarmasiId.Should().Be("DEPO-FAR-02");
+        updated.RowVersion.Should().Be(2);
+
+        var clearDepoAct = () => updated.Update("Kiosk Farmasi 2", "Apotek Lt 2", 5051, "note", 2, "u2", DateTime.UtcNow, "");
+        clearDepoAct.Should().Throw<InvalidOperationException>()
+            .WithMessage("*requires at least one service point or Depo Farmasi*");
+    }
     [Fact]
     public void Workstation_Update_RejectsStaleRowVersion()
     {

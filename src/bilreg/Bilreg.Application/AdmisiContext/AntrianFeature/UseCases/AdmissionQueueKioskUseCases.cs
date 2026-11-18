@@ -19,7 +19,8 @@ public sealed record AdmissionQueueKioskDtoResponse(
     string? CreatedBy,
     string? UpdatedAt,
     string? UpdatedBy,
-    string RowVersion);
+    string RowVersion,
+    string DepoFarmasiId = "");
 
 public sealed record KioskBootConfigDtoResponse(
     string DeviceId,
@@ -29,7 +30,8 @@ public sealed record KioskBootConfigDtoResponse(
     IReadOnlyList<string> ServicePointIds,
     int PrinterProxyPort,
     string? UpdatedAt,
-    string? RowVersion);
+    string? RowVersion,
+    string DepoFarmasiId = "");
 
 public sealed record CreateKioskCmd(
     string StationId,
@@ -39,7 +41,8 @@ public sealed record CreateKioskCmd(
     int PrinterProxyPort,
     string? Notes,
     IReadOnlyList<AdmissionKioskServicePointDtoResponse> ServicePoints,
-    string UserId) : IRequest<AdmissionQueueKioskDtoResponse>;
+    string UserId,
+    string? DepoFarmasiId = "") : IRequest<AdmissionQueueKioskDtoResponse>;
 
 public sealed record UpdateKioskCmd(
     string StationId,
@@ -48,7 +51,8 @@ public sealed record UpdateKioskCmd(
     int PrinterProxyPort,
     string? Notes,
     string RowVersion,
-    string UserId) : IRequest<AdmissionQueueKioskDtoResponse>;
+    string UserId,
+    string? DepoFarmasiId = "") : IRequest<AdmissionQueueKioskDtoResponse>;
 
 public sealed record ReplaceKioskServicePointsCmd(
     string StationId,
@@ -81,7 +85,8 @@ public static class KioskConfigurationMapping
         model.CreatedBy,
         model.UpdatedAt.ToString("O"),
         model.UpdatedBy,
-        model.RowVersion.ToString());
+        model.RowVersion.ToString(),
+        model.DepoFarmasiId);
 }
 
 public sealed class CreateKioskHandler : IRequestHandler<CreateKioskCmd, AdmissionQueueKioskDtoResponse>
@@ -117,7 +122,8 @@ public sealed class CreateKioskHandler : IRequestHandler<CreateKioskCmd, Admissi
                 request.ServicePoints.Select(x =>
                     new AdmissionKioskServicePointMapping(x.ServicePointId, x.SortOrder)),
                 request.UserId,
-                _clock.Now);
+                _clock.Now,
+                request.DepoFarmasiId ?? string.Empty);
             _repo.SaveChanges(model);
             return Task.FromResult(KioskConfigurationMapping.ToDto(model));
         }
@@ -171,13 +177,18 @@ public sealed class UpdateKioskHandler : IRequestHandler<UpdateKioskCmd, Admissi
                 request.Notes ?? string.Empty,
                 DeviceConfigurationMapping.ParseRowVersion(request.RowVersion),
                 request.UserId,
-                _clock.Now);
+                _clock.Now,
+                request.DepoFarmasiId ?? string.Empty);
             _repo.SaveChanges(model);
             return Task.FromResult(KioskConfigurationMapping.ToDto(model));
         }
         catch (InvalidOperationException ex) when (IsStale(ex))
         {
             throw Concurrency(ex.Message);
+        }
+        catch (InvalidOperationException ex) when (CreateKioskHandler.IsMappingError(ex))
+        {
+            throw CreateKioskHandler.MappingRequired(ex.Message);
         }
     }
 
@@ -335,6 +346,7 @@ public sealed class GetKioskBootConfigHandler : IRequestHandler<GetKioskBootConf
             kiosk.ServicePoints.Select(x => x.ServicePointId).ToList(),
             kiosk.PrinterProxyPort,
             kiosk.UpdatedAt.ToString("O"),
-            kiosk.RowVersion.ToString()));
+            kiosk.RowVersion.ToString(),
+            kiosk.DepoFarmasiId));
     }
 }

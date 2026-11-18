@@ -9,6 +9,7 @@ CREATE TABLE BILRG_AdmQueueKiosk
     IsActive         BIT           NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_IsActive DEFAULT(1),
     PrinterProxyPort INT           NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_PrinterProxyPort DEFAULT(5050),
     Notes             NVARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_Notes DEFAULT(''),
+    DepoFarmasiId     VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_DepoFarmasiId DEFAULT(''),
     RowVersion        BIGINT        NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_RowVersion DEFAULT(1),
     CrtUser           VARCHAR(50)   NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_CrtUser DEFAULT(''),
     CrtDate           DATETIME      NOT NULL CONSTRAINT DF_BILRG_AdmQueueKiosk_CrtDate DEFAULT('3000-01-01'),
