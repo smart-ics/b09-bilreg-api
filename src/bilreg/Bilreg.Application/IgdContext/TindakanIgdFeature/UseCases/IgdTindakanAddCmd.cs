@@ -52,20 +52,24 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
     public async Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
-        Guard.Against.NullOrWhiteSpace(request.PetugasMedisId, nameof(request.PetugasMedisId));
+        Guard.Against.Null(request.Aktifitas, nameof(request.Aktifitas));
+        var aktifitas = (ActivityTindakanIgd)request.Aktifitas;
+        if (aktifitas == ActivityTindakanIgd.Tindakan)
+            Guard.Against.NullOrWhiteSpace(request.PetugasMedisId, nameof(request.PetugasMedisId));
         Guard.Against.NullOrWhiteSpace(request.ReffId, nameof(request.ReffId));
         Guard.Against.NullOrWhiteSpace(request.Descriptions, nameof(request.Descriptions));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NegativeOrZero(request.Qty, nameof(request.Qty));
-        Guard.Against.Null(request.Aktifitas, nameof(request.Aktifitas));
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
-        var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PetugasMedisId)).GetValueOrThrow($"Petugas Medis {request.PetugasMedisId} not found");
+        var ppa = string.IsNullOrWhiteSpace(request.PetugasMedisId)
+            ? PpaType.Default
+            : _ppaRepo.LoadEntity(PpaType.Key(request.PetugasMedisId)).GetValueOrThrow($"Petugas Medis {request.PetugasMedisId} not found");
 
         var occurredAt = _tglJamProvider.Now;
         var tindakan = TindakanIgdModel.Create
             (visit, request.ReffId, request.Descriptions, request.Qty, 
-            (ActivityTindakanIgd)request.Aktifitas, ppa, request.UserId, occurredAt);
+            aktifitas, ppa, request.UserId, occurredAt);
         visit.RecordTindakanEvent(tindakan, tindakan.Audit);
 
         IgdTindakanAddResponse response;
