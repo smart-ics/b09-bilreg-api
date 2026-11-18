@@ -68,8 +68,12 @@ public record JaminanRekeningType(
     CoaType PpdpJasaRanap, CoaType PpdpObatRanap,
     CoaType PiutangPulang)
 {
-    public JaminanRekeningType(CoaType ppdpJasaRajal, CoaType ppdpObatRajal, CoaType ppdpJasaRanap, CoaType ppdpObatRanap)
-        : this(ppdpJasaRajal, ppdpObatRajal, ppdpJasaRanap, ppdpObatRanap, CoaType.Default)
+    public JaminanRekeningType(
+        CoaType PpdpJasaRajal,
+        CoaType PpdpObatRajal,
+        CoaType PpdpJasaRanap,
+        CoaType PpdpObatRanap)
+        : this(PpdpJasaRajal, PpdpObatRajal, PpdpJasaRanap, PpdpObatRanap, CoaType.Default)
     {
     }
 

@@ -283,7 +283,8 @@ public class TrsBillFactoryTindakanTest
                 PpdpJasaRajal: new CoaType("1101", "PpdpJasaRajal"),
                 PpdpObatRajal: new CoaType("1103", "PpdpObatRajal"),
                 PpdpJasaRanap: new CoaType("1102", "PpdpJasaRanap"),
-                PpdpObatRanap: new CoaType("1104", "PpdpObatRanap"))
+                PpdpObatRanap: new CoaType("1104", "PpdpObatRanap"),
+                PiutangPulang: new CoaType("1105", "PiutangPulang"))
         };
 
         var tindakan = new TindakanModel(
