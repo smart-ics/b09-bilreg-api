@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
@@ -28,6 +30,9 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IBillingLockValidationService _billingLockValidator;
+    private readonly ITindakanBarangRepo? _tindakanBarangRepo;
+    private readonly ITindakanStokPendingRepo? _tindakanStokPendingRepo;
+    private readonly IPakaiBrgInternalService? _pakaiBrgInternalService;
 
     public TindakanVoidHandler(ITindakanRepo tdkRepo,
         ITataRekeningRepo tataRekeningRepo,
@@ -35,7 +40,10 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         ITglJamProvider tglJamProvider, 
         ITrsBillingRepo trsBillingRepo, 
         IJurnalRepo jurnalRepo,
-        IBillingLockValidationService billingLockValidator)
+        IBillingLockValidationService billingLockValidator,
+        ITindakanBarangRepo? tindakanBarangRepo = null,
+        ITindakanStokPendingRepo? tindakanStokPendingRepo = null,
+        IPakaiBrgInternalService? pakaiBrgInternalService = null)
     {
         _tdkRepo = tdkRepo;
         _tataRekeningRepo = tataRekeningRepo;
@@ -44,6 +52,19 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         _trsBillingRepo = trsBillingRepo;
         _jurnalRepo = jurnalRepo;
         _billingLockValidator = billingLockValidator;
+        _tindakanBarangRepo = tindakanBarangRepo;
+        _tindakanStokPendingRepo = tindakanStokPendingRepo;
+        _pakaiBrgInternalService = pakaiBrgInternalService;
+    }
+
+    public TindakanVoidHandler(ITindakanRepo tdkRepo,
+        ITataRekeningRepo tataRekeningRepo,
+        IAuditRepo auditRepo, 
+        ITglJamProvider tglJamProvider, 
+        ITrsBillingRepo trsBillingRepo, 
+        IJurnalRepo jurnalRepo)
+        : this(tdkRepo, tataRekeningRepo, auditRepo, tglJamProvider, trsBillingRepo, jurnalRepo, new NullBillingLockValidationService(), null, null, null)
+    {
     }
 
     public TindakanVoidHandler(ITindakanRepo tdkRepo,
@@ -51,7 +72,7 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         ITrsBillingRepo trsBillingRepo, 
         IJurnalRepo jurnalRepo,
         ITataRekeningRepo tataRekeningRepo)
-        : this(tdkRepo, tataRekeningRepo, auditRepo, tglJamProvider, trsBillingRepo, jurnalRepo, new NullBillingLockValidationService())
+        : this(tdkRepo, tataRekeningRepo, auditRepo, tglJamProvider, trsBillingRepo, jurnalRepo, new NullBillingLockValidationService(), null, null, null)
     {
     }
 
@@ -99,7 +120,6 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
             {
                 tataRekening.EnsureCanDeleteBill();
             }
-            _tataRekeningRepo.SaveChanges(tataRekening);
         }
 
         _tdkRepo.SaveChanges(tdk);
@@ -113,6 +133,55 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
         if (!string.Equals(billIdToDelete, tdk.TindakanId, StringComparison.OrdinalIgnoreCase))
         {
             _jurnalRepo.DeleteEntity(JurnalType.Key(tdk.TindakanId));
+        }
+
+        // Cascading void for BOM items, stock, and bills
+        if (_tindakanBarangRepo != null)
+        {
+            var bomItems = _tindakanBarangRepo.ListByTindakanId(tdk.TindakanId)
+                .Where(x => !x.IsVoid)
+                .ToList();
+            if (bomItems.Count > 0)
+            {
+                // 1. Mark pending void
+                _tindakanStokPendingRepo?.MarkVoidByTindakanId(tdk.TindakanId, occurredAt, request.UserId);
+
+                // 2. Void unique PakaiBrgId
+                if (_pakaiBrgInternalService != null)
+                {
+                    var uniquePakaiIds = bomItems
+                        .Select(x => x.PakaiBrgId)
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Distinct()
+                        .ToList();
+
+                    foreach (var pakaiId in uniquePakaiIds)
+                    {
+                        await _pakaiBrgInternalService.VoidFromTindakan(
+                            new PakaiBrgVoidFromTindakanCommand(pakaiId, request.UserId, request.VoidReason),
+                            cancellationToken);
+                    }
+                }
+
+                // 3. Delete barang TrsBilling & Jurnal
+                foreach (var item in bomItems.Where(x => !string.IsNullOrWhiteSpace(x.TrsBillingId)))
+                {
+                    if (tataRekening != null)
+                    {
+                        try { tataRekening.DeleteBill(item.TrsBillingId); } catch { /* ignore if not present in list */ }
+                    }
+                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(item.TrsBillingId));
+                    _jurnalRepo.DeleteEntity(JurnalType.Key(item.TrsBillingId));
+                }
+
+                // 4. Mark BILRG_TindakanBarang void
+                _tindakanBarangRepo.MarkVoid(tdk.TindakanId, request.UserId);
+            }
+        }
+
+        if (tataRekening != null)
+        {
+            _tataRekeningRepo.SaveChanges(tataRekening);
         }
 
         var audit = CreateAudit(tdk, snapshotJson, request);

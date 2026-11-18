@@ -33,7 +33,8 @@ public class TarifDal : ITarifDal
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
                  ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
-                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak_tarif
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak_tarif,
+                 ISNULL(a.fb_charge_brg, 0) AS fb_charge_brg
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
@@ -59,7 +60,8 @@ public class TarifDal : ITarifDal
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
                  ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
-                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif,
+                 ISNULL(a.fb_charge_brg, 0) AS fb_charge_brg
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
@@ -81,7 +83,8 @@ public class TarifDal : ITarifDal
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
                  ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
-                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif,
+                 ISNULL(a.fb_charge_brg, 0) AS fb_charge_brg
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 

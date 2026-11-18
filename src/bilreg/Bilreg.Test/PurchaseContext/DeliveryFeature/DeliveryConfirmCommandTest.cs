@@ -120,9 +120,7 @@ public class DeliveryConfirmCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: poId,
             poNoUrut: 1);
 
         model.AddItem(
@@ -145,9 +143,7 @@ public class DeliveryConfirmCommandTest
                 qtyDitolak: 0m,
                 alasanTolak: "",
                 isBonus: true,
-                hasJaminanRetur: false,
                 noSuratJaminan: "",
-                poId: poId,
                 poNoUrut: 0);
 
             model.AddItem(
@@ -379,9 +375,7 @@ public class DeliveryConfirmCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: PoId,
             poNoUrut: 1);
 
         model.AddItem(
@@ -468,9 +462,7 @@ public class DeliveryConfirmCommandTest
             qtyDitolak: 10m,
             alasanTolak: "Kemasan Rusak",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: PoId,
             poNoUrut: 1);
 
         model.AddItem(
@@ -622,9 +614,7 @@ public class DeliveryConfirmCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: PoId,
             poNoUrut: 1);
 
         model.AddItem(
@@ -698,9 +688,7 @@ public class DeliveryConfirmCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: PoId,
             poNoUrut: 1);
 
         model.AddItem(
@@ -814,7 +802,7 @@ public class DeliveryConfirmCommandTest
             taxPercentage: 11m,
             noBatch: "BATCH-FUR-01",
             tglEd: _now.AddMonths(24),
-            inspection: DeliveryInspectionType.Create(30m, 30m, 0m, "", false, false, "", testPoId, 1),
+            inspection: DeliveryInspectionType.Create(30m, 30m, 0m, "", false, "", 1),
             referenceDate: _now);
 
         // Item 1, Batch 2: 20 BOX
@@ -827,7 +815,7 @@ public class DeliveryConfirmCommandTest
             taxPercentage: 11m,
             noBatch: "BATCH-FUR-02",
             tglEd: _now.AddMonths(30),
-            inspection: DeliveryInspectionType.Create(20m, 20m, 0m, "", false, false, "", testPoId, 1),
+            inspection: DeliveryInspectionType.Create(20m, 20m, 0m, "", false, "", 1),
             referenceDate: _now);
 
         // Item 2, Batch 1: 10 BOX
@@ -840,7 +828,7 @@ public class DeliveryConfirmCommandTest
             taxPercentage: 11m,
             noBatch: "BATCH-DIG-01",
             tglEd: _now.AddMonths(18),
-            inspection: DeliveryInspectionType.Create(10m, 10m, 0m, "", false, false, "", testPoId, 2),
+            inspection: DeliveryInspectionType.Create(10m, 10m, 0m, "", false, "", 2),
             referenceDate: _now);
 
         _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == testDoId)))
@@ -934,7 +922,7 @@ public class DeliveryConfirmCommandTest
             taxPercentage: 11m,
             noBatch: "BATCH-A1",
             tglEd: _now.AddMonths(24),
-            inspection: DeliveryInspectionType.Create(10m, 8m, 2m, "Kemasan Rusak", false, false, "", testPoId, 1),
+            inspection: DeliveryInspectionType.Create(10m, 8m, 2m, "Kemasan Rusak", false, "", 1),
             referenceDate: _now);
 
         // Item 2: Kirim 5, Diterima 5, Ditolak 0
@@ -947,7 +935,7 @@ public class DeliveryConfirmCommandTest
             taxPercentage: 11m,
             noBatch: "BATCH-B1",
             tglEd: _now.AddMonths(24),
-            inspection: DeliveryInspectionType.Create(5m, 5m, 0m, "", false, false, "", testPoId, 2),
+            inspection: DeliveryInspectionType.Create(5m, 5m, 0m, "", false, "", 2),
             referenceDate: _now);
 
         _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == testDoId)))
@@ -1004,12 +992,12 @@ public class DeliveryConfirmCommandTest
         draftModel.AddItem(
             new BrgReff("BRG001", "Item 1"), new SatuanType("BOX", "BOX"),
             10, 50000m, 0m, 11m, "B01", _now.AddMonths(24),
-            DeliveryInspectionType.Create(5m, 5m, 0m, "", false, false, "", testPoId, 1), _now);
+            DeliveryInspectionType.Create(5m, 5m, 0m, "", false, "", 1), _now);
 
         draftModel.AddItem(
             new BrgReff("BRG002", "Item 2"), new SatuanType("BOX", "BOX"),
             10, 50000m, 0m, 11m, "B02", _now.AddMonths(24),
-            DeliveryInspectionType.Create(5m, 5m, 0m, "", false, false, "", testPoId, 2), _now);
+            DeliveryInspectionType.Create(5m, 5m, 0m, "", false, "", 2), _now);
 
         _repoMock.Setup(r => r.LoadEntity(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == testDoId)))
             .Returns(MayBe<DeliveryOrderModel>.Some(draftModel));

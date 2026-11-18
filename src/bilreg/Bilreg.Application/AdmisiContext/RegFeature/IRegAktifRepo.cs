@@ -16,5 +16,6 @@ public interface IRegAktifRepo :
     IListData<RegSearchRegView, string>
 {
     bool IsPasienAktif(IPasienKey pasien);
+    bool IsPasienAktif(IPasienKey pasien, JenisRegEnum jenisReg);
     IEnumerable<RegAktifModel> ListDataRajalIgd();
 }

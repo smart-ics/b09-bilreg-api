@@ -5,6 +5,7 @@ using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.PurchaseContext.DeliveryFeature;
 using Bilreg.Domain.PurchaseContext.PurchaseOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -60,9 +61,7 @@ public class DeliveryVoidDraftCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: "PO26100001",
             poNoUrut: 1);
 
         var item = DeliveryOrderItemType.Create(
@@ -119,7 +118,7 @@ public class DeliveryVoidDraftCommandTest
     {
         // ARRANGE: create model and confirm it
         var confirmedModel = CreateSampleModel(DeliveryOrderStatusEnum.Draft);
-        var inspection = DeliveryInspectionType.Create(10m, 10m, 0m, "", false, false, "", "PO1", 1);
+        var inspection = DeliveryInspectionType.Create(10m, 10m, 0m, "", false, "", 1);
         confirmedModel.AddItem(
             new BrgReff("BRG01", "Barang 1"),
             new SatuanType("BOX", "BOX"),
@@ -198,5 +197,207 @@ public class DeliveryVoidDraftCommandTest
 
         // ASSERT
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenVoidDraftExecuted_IntegrationWithRepo_UpdatesDalWithVoidedStatusAndPreservesAuditParameters()
+    {
+        // ARRANGE: Set up real repo with mocked DALs
+        var orderDalMock = new Mock<IDeliveryOrderDal>();
+        var itemDalMock = new Mock<IDeliveryOrderItemDal>();
+        var inspectionDalMock = new Mock<IDeliveryInspectionDal>();
+
+        var refDate = new DateTime(2026, 10, 15, 10, 0, 0);
+        var orderDto = new DeliveryOrderDto
+        {
+            DoId = DoId,
+            DoDate = refDate,
+            PetugasId = "CREATOR01",
+            PoId = "PO26100001",
+            SuratJalanNo = "SJ-TEST-12345",
+            LayananId = "GDFAR",
+            LayananName = "Gudang Farmasi Utama",
+            SupplierId = "SUP001",
+            SupplierName = "PT Kimia Farma",
+            Total = 100000m,
+            Keterangan = "Draft penerimaan",
+            PembelianBebas = false,
+            TglVoid = new DateTime(3000, 1, 1),
+            JamVoid = "00:00:00",
+            PetugasVoid = string.Empty,
+            CrtTgl = refDate,
+            CrtUsr = "CREATOR01",
+            UpdTgl = new DateTime(3000, 1, 1),
+            UpdUsr = string.Empty
+        };
+
+        var itemDto = new DeliveryOrderItemDto
+        {
+            DoId = DoId,
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Paracetamol 500mg",
+            SatuanId = "BOX",
+            SatuanName = "BOX",
+            Konversi = 10,
+            Harga = 50000m,
+            Diskon = 0m,
+            Qty = 10m,
+            SubTotal = 500000m,
+            Tax = 55000m,
+            Total = 555000m,
+            NoBatch = "LOT-001",
+            TglEd = refDate.AddMonths(24),
+            IsVoid = false,
+            Het = 60000m
+        };
+
+        var inspectionDto = new DeliveryInspectionDto
+        {
+            DoId = DoId,
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Paracetamol 500mg",
+            PoNoUrut = 1,
+            QtyKirim = 10m,
+            QtyDiterima = 10m,
+            QtyDitolak = 0m,
+            AlasanTolak = string.Empty,
+            IsBonus = false,
+            NoSuratJaminan = string.Empty,
+            Status = nameof(DeliveryOrderStatusEnum.Draft)
+        };
+
+        orderDalMock.Setup(d => d.GetData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns(orderDto);
+        itemDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns([itemDto]);
+        inspectionDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns([inspectionDto]);
+
+        var repo = new DeliveryOrderRepo(orderDalMock.Object, itemDalMock.Object, inspectionDalMock.Object);
+        var sut = new DeliveryVoidDraftHandler(repo, _clockMock.Object);
+        var command = new DeliveryVoidDraftCommand(DoId, UserId, _now);
+
+        // ACT
+        var response = await sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.DeliveryOrderId.Should().Be(DoId);
+        response.Status.Should().Be("Voided");
+
+        // Verify DAL update receives Voided status and does not corrupt UpdTgl / UpdUsr
+        orderDalMock.Verify(d => d.Update(It.Is<DeliveryOrderDto>(dto =>
+            dto.DoId == DoId &&
+            dto.PetugasVoid == UserId &&
+            dto.TglVoid == _now &&
+            dto.JamVoid == _now.ToString("HH:mm:ss") &&
+            dto.UpdTgl.Year == 3000 &&
+            string.IsNullOrEmpty(dto.UpdUsr)
+        )), Times.Once);
+
+        // Verify inspection DAL receives Voided status for items
+        inspectionDalMock.Verify(d => d.Insert(It.Is<List<DeliveryInspectionDto>>(list =>
+            list.All(i => i.Status == nameof(DeliveryOrderStatusEnum.Voided))
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPreviouslyModifiedDraftVoided_IntegrationWithRepo_PreservesOriginalModificationAudit()
+    {
+        // ARRANGE: Draft that was legitimately modified previously
+        var orderDalMock = new Mock<IDeliveryOrderDal>();
+        var itemDalMock = new Mock<IDeliveryOrderItemDal>();
+        var inspectionDalMock = new Mock<IDeliveryInspectionDal>();
+
+        var refDate = new DateTime(2026, 10, 15, 10, 0, 0);
+        var modDate = new DateTime(2026, 10, 15, 11, 30, 0);
+        var orderDto = new DeliveryOrderDto
+        {
+            DoId = DoId,
+            DoDate = refDate,
+            PetugasId = "CREATOR01",
+            PoId = "PO26100001",
+            SuratJalanNo = "SJ-TEST-12345",
+            LayananId = "GDFAR",
+            LayananName = "Gudang Farmasi Utama",
+            SupplierId = "SUP001",
+            SupplierName = "PT Kimia Farma",
+            Total = 100000m,
+            Keterangan = "Draft penerimaan yang pernah diedit",
+            PembelianBebas = false,
+            TglVoid = new DateTime(3000, 1, 1),
+            JamVoid = "00:00:00",
+            PetugasVoid = string.Empty,
+            CrtTgl = refDate,
+            CrtUsr = "CREATOR01",
+            UpdTgl = modDate,
+            UpdUsr = "EDITOR01"
+        };
+
+        var itemDto = new DeliveryOrderItemDto
+        {
+            DoId = DoId,
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Paracetamol 500mg",
+            SatuanId = "BOX",
+            SatuanName = "BOX",
+            Konversi = 10,
+            Harga = 50000m,
+            Diskon = 0m,
+            Qty = 10m,
+            SubTotal = 500000m,
+            Tax = 55000m,
+            Total = 555000m,
+            NoBatch = "LOT-001",
+            TglEd = refDate.AddMonths(24),
+            IsVoid = false,
+            Het = 60000m
+        };
+
+        var inspectionDto = new DeliveryInspectionDto
+        {
+            DoId = DoId,
+            NoUrut = 1,
+            BrgId = "BRG001",
+            BrgName = "Paracetamol 500mg",
+            PoNoUrut = 1,
+            QtyKirim = 10m,
+            QtyDiterima = 10m,
+            QtyDitolak = 0m,
+            AlasanTolak = string.Empty,
+            IsBonus = false,
+            NoSuratJaminan = string.Empty,
+            Status = nameof(DeliveryOrderStatusEnum.Draft)
+        };
+
+        orderDalMock.Setup(d => d.GetData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns(orderDto);
+        itemDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns([itemDto]);
+        inspectionDalMock.Setup(d => d.ListData(It.Is<IDeliveryOrderKey>(k => k.DeliveryOrderId == DoId)))
+            .Returns([inspectionDto]);
+
+        var repo = new DeliveryOrderRepo(orderDalMock.Object, itemDalMock.Object, inspectionDalMock.Object);
+        var sut = new DeliveryVoidDraftHandler(repo, _clockMock.Object);
+        var command = new DeliveryVoidDraftCommand(DoId, UserId, _now);
+
+        // ACT
+        var response = await sut.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        response.Should().NotBeNull();
+        response.Status.Should().Be("Voided");
+
+        // Verify DAL update receives Voided status while preserving original modification audit (UpdTgl & UpdUsr)
+        orderDalMock.Verify(d => d.Update(It.Is<DeliveryOrderDto>(dto =>
+            dto.DoId == DoId &&
+            dto.PetugasVoid == UserId &&
+            dto.TglVoid == _now &&
+            dto.UpdTgl == modDate &&
+            dto.UpdUsr == "EDITOR01"
+        )), Times.Once);
     }
 }

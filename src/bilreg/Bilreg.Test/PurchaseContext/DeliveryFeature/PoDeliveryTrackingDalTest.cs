@@ -103,22 +103,20 @@ public class PoDeliveryTrackingDalTest
     {
         const string sql = """
             INSERT INTO BILRG_DoInspeksi (
-                DoId, NoUrut, BrgId, PoId, PoNoUrut,
+                DoId, NoUrut, BrgId, PoNoUrut,
                 QtyKirim, QtyDiterima, QtyDitolak, AlasanTolak,
-                IsBonus, HasJaminanRetur, NoSuratJaminan, Status,
-                ConfirmedAt, ConfirmedBy, VoidedAt, VoidedBy,
-                CreatedAt, CreatedBy, UpdatedAt, UpdatedBy
+                IsBonus, NoSuratJaminan, Status,
+                ConfirmedAt, ConfirmedBy
             ) VALUES (
-                @DoId, @NoUrut, '1.DUMI.2', @PoId, 1,
+                @DoId, @NoUrut, '1.DUMI.2', 1,
                 10, 10, 0, '',
-                0, 0, '', @Status,
-                '3000-01-01', '', '3000-01-01', '',
-                '2026-10-15', 'TEST', '3000-01-01', ''
+                0, '', @Status,
+                NULL, ''
             );
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_dbOptions.Value));
-        conn.Execute(sql, new { DoId = doId, NoUrut = noUrut, PoId = poId, Status = status });
+        conn.Execute(sql, new { DoId = doId, NoUrut = noUrut, Status = status });
     }
 
     [Fact]
@@ -137,7 +135,7 @@ public class PoDeliveryTrackingDalTest
         var item1 = actual.First(x => x.NoUrut == 1);
         item1.PoId.Should().Be(poId);
         item1.BrgId.Should().Be("1.DUMI.2");
-        item1.SatuanKecilId.Should().Be("BOK");
+        item1.SatuanKecilId.Should().Be("RCT");
         item1.QtyPo.Should().Be(10);
         item1.QtyDo.Should().Be(3);
         item1.SisaQty.Should().Be(7);
@@ -255,7 +253,7 @@ public class PoDeliveryTrackingDalTest
         var actual = _sut.ListPendingPoItems().ToList();
 
         actual.Should().Contain(x => x.PoId == recentPoId);
-        actual.First(x => x.PoId == recentPoId).SatuanKecilId.Should().Be("BOK");
+        actual.First(x => x.PoId == recentPoId).SatuanKecilId.Should().Be("RCT");
         actual.Should().NotContain(x => x.PoId == oldPoId);
     }
 

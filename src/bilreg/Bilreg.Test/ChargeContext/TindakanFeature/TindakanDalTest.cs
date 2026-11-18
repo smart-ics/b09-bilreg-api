@@ -155,7 +155,7 @@ public class TindakanDalTest
     public void ListTdkJual_WhenCalled_ReturnsUnionOfTindakanAndBarangOrdered()
     {
         using var trans = TransHelper.NewScope();
-        var dto = Faker();
+        var dto = Faker() with { RegId = "RG_TDK_01" };
         _sut.Insert(dto);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
@@ -200,7 +200,7 @@ public class TindakanDalTest
             );
         """, new { RegId = dto.RegId });
 
-        var actual = _sut.ListTdkJual(FakerRegKey()).ToList();
+        var actual = _sut.ListTdkJual(RegModel.Key("RG_TDK_01")).ToList();
 
         actual.Should().HaveCount(2);
         // DU001-01 is 2025-12-31 10:30:00, Tindakan TND001 is 2025-12-30
@@ -214,8 +214,145 @@ public class TindakanDalTest
         actual[0].PasienId.Should().Be("MR001");
         actual[0].LayananName.Should().Be("Poli Penyakit Dalam");
 
-        actual[1].TransaksiId.Should().Be("TND001");
+        actual[1].TransaksiId.Should().Be(dto.TindakanId);
         actual[1].Tipe.Should().Be("TINDAKAN");
-        actual[1].DiskripsiId.Should().Be("TRF001");
+        actual[1].DiskripsiId.Should().Be(dto.TarifId);
+    }
+
+    [Fact]
+    public void ListTdkJual_WithChargedBomItems_IncludesActiveChargedBomAndExcludesVoidOrUncharged()
+    {
+        using var trans = TransHelper.NewScope();
+        var regKey = RegModel.Key("RG_BOM_01");
+        var dtoActive = Faker() with { TindakanId = "TND_BOM_01", RegId = "RG_BOM_01", TindakanDate = new DateTime(2025, 12, 30, 8, 0, 0) };
+        var dtoVoided = Faker() with { TindakanId = "TND_BOM_02", RegId = "RG_BOM_01", TindakanDate = new DateTime(2025, 12, 30, 8, 30, 0), VodDate = new DateTime(2025, 12, 30, 9, 0, 0), VodUser = "USR_VOD" };
+        _sut.Insert(dtoActive);
+        _sut.Insert(dtoVoided);
+
+        var tbDal = new TindakanBarangDal(ConnStringHelper.GetTestEnv());
+
+        // 1. Charged BOM item, active on active tindakan -> SHOULD BE INCLUDED
+        var chargedItem = new TindakanBarangDto
+        {
+            TindakanBarangId = "TB001",
+            TindakanId = dtoActive.TindakanId,
+            NoUrut = 1,
+            BrgId = "BRG01",
+            SatuanBomId = "PCS",
+            QtyBom = 2m,
+            SatuanKecilId = "PCS",
+            QtyKecilRequested = 2m,
+            QtyKecilDeducted = 2m,
+            QtyKecilPending = 0m,
+            IsChargeBarang = true,
+            HargaJualTotal = 30000m,
+            PakaiBrgId = "PK001",
+            TrsBillingId = "TND_BOM_01-B01",
+            IsVoid = false,
+            CRTTGL = "2025-12-30",
+            CRTJAM = "08:00:00",
+            CRTUSR = "USR001",
+            UPDTGL = "3000-01-01",
+            UPDJAM = "00:00:00"
+        };
+
+        // 2. Uncharged BOM item (IsChargeBarang = 0) -> SHOULD BE EXCLUDED
+        var unchargedItem = new TindakanBarangDto
+        {
+            TindakanBarangId = "TB002",
+            TindakanId = dtoActive.TindakanId,
+            NoUrut = 2,
+            BrgId = "BRG02",
+            SatuanBomId = "ROL",
+            QtyBom = 1m,
+            SatuanKecilId = "ROL",
+            QtyKecilRequested = 1m,
+            QtyKecilDeducted = 1m,
+            QtyKecilPending = 0m,
+            IsChargeBarang = false,
+            HargaJualTotal = 0m,
+            PakaiBrgId = "PK002",
+            TrsBillingId = "",
+            IsVoid = false,
+            CRTTGL = "2025-12-30",
+            CRTJAM = "08:00:00",
+            CRTUSR = "USR001",
+            UPDTGL = "3000-01-01",
+            UPDJAM = "00:00:00"
+        };
+
+        // 3. Voided BOM item (IsVoid = 1) -> SHOULD BE EXCLUDED
+        var voidedItem = new TindakanBarangDto
+        {
+            TindakanBarangId = "TB003",
+            TindakanId = dtoActive.TindakanId,
+            NoUrut = 3,
+            BrgId = "BRG03",
+            SatuanBomId = "PCS",
+            QtyBom = 1m,
+            SatuanKecilId = "PCS",
+            QtyKecilRequested = 1m,
+            QtyKecilDeducted = 1m,
+            QtyKecilPending = 0m,
+            IsChargeBarang = true,
+            HargaJualTotal = 15000m,
+            PakaiBrgId = "PK003",
+            TrsBillingId = "TND_BOM_01-B03",
+            IsVoid = true,
+            CRTTGL = "2025-12-30",
+            CRTJAM = "08:00:00",
+            CRTUSR = "USR001",
+            UPDTGL = "3000-01-01",
+            UPDJAM = "00:00:00"
+        };
+
+        // 4. Charged BOM item on voided parent tindakan -> SHOULD BE EXCLUDED
+        var voidedParentItem = new TindakanBarangDto
+        {
+            TindakanBarangId = "TB004",
+            TindakanId = dtoVoided.TindakanId,
+            NoUrut = 1,
+            BrgId = "BRG04",
+            SatuanBomId = "PCS",
+            QtyBom = 1m,
+            SatuanKecilId = "PCS",
+            QtyKecilRequested = 1m,
+            QtyKecilDeducted = 1m,
+            QtyKecilPending = 0m,
+            IsChargeBarang = true,
+            HargaJualTotal = 10000m,
+            PakaiBrgId = "PK004",
+            TrsBillingId = "TND_BOM_02-B01",
+            IsVoid = false,
+            CRTTGL = "2025-12-30",
+            CRTJAM = "08:30:00",
+            CRTUSR = "USR001",
+            UPDTGL = "3000-01-01",
+            UPDJAM = "00:00:00"
+        };
+
+        tbDal.Insert([chargedItem, unchargedItem, voidedItem, voidedParentItem]);
+
+        var actual = _sut.ListTdkJual(regKey).ToList();
+
+        // Must contain dtoActive tindakan and chargedItem
+        actual.Should().Contain(x => x.TransaksiId == dtoActive.TindakanId && x.Tipe == "TINDAKAN");
+
+        var bomRow = actual.FirstOrDefault(x => x.TransaksiId == "TND_BOM_01-B01");
+        bomRow.Should().NotBeNull();
+        bomRow!.Tipe.Should().Be("BARANG");
+        bomRow.DiskripsiId.Should().Be("BRG01");
+        bomRow.Qty.Should().Be(2);
+        bomRow.Total.Should().Be(30000m);
+        bomRow.RegId.Should().Be("RG_BOM_01");
+
+        // Must NOT contain uncharged, voided item, or items from voided parent
+        actual.Should().NotContain(x => x.TransaksiId == "TB002");
+        actual.Should().NotContain(x => x.DiskripsiId == "BRG02");
+        actual.Should().NotContain(x => x.TransaksiId == "TND_BOM_01-B03");
+        actual.Should().NotContain(x => x.DiskripsiId == "BRG03");
+        actual.Should().NotContain(x => x.TransaksiId == "TND_BOM_02-B01");
+        actual.Should().NotContain(x => x.DiskripsiId == "BRG04");
+        actual.Should().NotContain(x => x.TransaksiId == dtoVoided.TindakanId);
     }
 }

@@ -24,7 +24,8 @@ public record AdmissionModel : IRegKey
         DateTime admissionDate,
         AuditTrailType auditTrail,
         AdmissionSourceEnum admissionSource = AdmissionSourceEnum.Admission,
-        string inpatientOrderId = EMPTY_REF_ID)
+        string inpatientOrderId = EMPTY_REF_ID,
+        JenisInapType? jenisInap = null)
     {
         RegId = regId;
         AdmissionStatus = admissionStatus;
@@ -41,6 +42,7 @@ public record AdmissionModel : IRegKey
         Bangsal = bangsal;
         AdmissionDate = admissionDate;
         AuditTrail = auditTrail;
+        JenisInap = jenisInap ?? JenisInapType.Empty;
     }
 
     #region CREATION
@@ -124,7 +126,8 @@ public record AdmissionModel : IRegKey
             admittedAt,
             AuditTrailType.Create(auditUserId, admittedAt),
             AdmissionSourceEnum.Legacy,
-            EMPTY_REF_ID);
+            EMPTY_REF_ID,
+            reg.JenisInap);
     }
 
     public static AdmissionModel Default => new(
@@ -157,6 +160,7 @@ public record AdmissionModel : IRegKey
     public BangsalReff Bangsal { get; init; }
     public DateTime AdmissionDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
+    public JenisInapType JenisInap { get; init; }
 
     #endregion
 
@@ -267,7 +271,8 @@ public record AdmissionModel : IRegKey
             AdmissionDate,
             audit,
             AdmissionSource,
-            InpatientOrderId);
+            InpatientOrderId,
+            JenisInap);
 
     #endregion
 }

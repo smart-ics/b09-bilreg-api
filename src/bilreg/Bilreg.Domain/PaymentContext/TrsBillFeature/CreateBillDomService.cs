@@ -1,6 +1,8 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -60,6 +62,24 @@ public interface ICreateBillDomService
         IEnumerable<KomponenType> listReffKomp,
         RekapCetakType? rekapCetak = null,
         DateTime createdAt = default);
+
+    TrsBillType FromTindakanBarang(
+        TataRekeningModel tataRekening,
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
+
+    TrsBillType FromBhpRanap(
+        TataRekeningModel tataRekening,
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -80,6 +100,19 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp, createdAt);
+    }
+
+    public TrsBillType FromTindakanBarang(
+        TataRekeningModel tataRekening,
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromTindakanBarang(tindakan, barang, reg, jaminan, groupRek, createdAt);
     }
 
     public TrsBillType FromLabOrderItem(TataRekeningModel tataRekening, LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
@@ -114,6 +147,19 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromAmbulanceUsage(transport, reg, jaminan, listReffKomp, rekapCetak, createdAt);
+    }
+
+    public TrsBillType FromBhpRanap(
+        TataRekeningModel tataRekening,
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromBhpRanap(bhp, reg, layanan, jaminan, groupRek, createdAt);
     }
 
     private static void ValidateReg(TataRekeningModel tataRekening, string regId)

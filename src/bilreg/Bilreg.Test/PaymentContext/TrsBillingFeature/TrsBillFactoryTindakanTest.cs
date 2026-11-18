@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -248,5 +249,97 @@ public class TrsBillFactoryTindakanTest
         dokterTrans.Nilai.Should().Be(0m); // Waived doctor fee
 
         result.ListTransaction.Sum(x => x.Nilai).Should().Be(result.Nilai.Total);
+    }
+
+    [Fact]
+    public void GivenTindakanBarang_WhenCreateFromTindakanBarang_ThenCreatesBillWithModuleObatAndCorrectIds()
+    {
+        // Arrange
+        var reg = new RegModel(
+            "REG-01",
+            new DateOnly(2026, 10, 16),
+            new AuditInfoType("USER-01", new DateTime(2026, 10, 16, 8, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegJalan,
+            PasienModel.Default.ToReff(),
+            new TipeJaminanReff("J0101", "BPJS Kesehatan"),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            []);
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = "J01",
+            JaminanName = "BPJS",
+            Rekening = new JaminanRekeningType(
+                PpdpJasaRajal: new CoaType("1101", "PpdpJasaRajal"),
+                PpdpObatRajal: new CoaType("1103", "PpdpObatRajal"),
+                PpdpJasaRanap: new CoaType("1102", "PpdpJasaRanap"),
+                PpdpObatRanap: new CoaType("1104", "PpdpObatRanap"))
+        };
+
+        var tindakan = new TindakanModel(
+            "TDK-001",
+            new DateTime(2026, 10, 16, 10, 0, 0),
+            "",
+            reg.ToReff(),
+            LayananType.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            TipeTarifType.Default.ToReff(),
+            new TarifReff("TRF-01", "Paket Operasi"),
+            [],
+            AuditTrailType.Create("USER-01", new DateTime(2026, 10, 16, 10, 0, 0)),
+            qty: 1);
+
+        var barang = new TindakanBarangType(
+            TindakanBarangId: "TBG-01",
+            TindakanId: "TDK-001",
+            NoUrut: 1,
+            BrgId: "BRG-01",
+            SatuanBomId: "PCS",
+            QtyBom: 2m,
+            SatuanKecilId: "PCS",
+            QtyKecilRequested: 2m,
+            QtyKecilDeducted: 2m,
+            QtyKecilPending: 0m,
+            IsChargeBarang: true,
+            HargaJualTotal: 50000m,
+            PakaiBrgId: "PK-01",
+            TrsBillingId: "TDK-001-B01",
+            IsVoid: false,
+            BrgName: "Kasa Steril");
+
+        var groupRek = new GroupRekType(
+            "GR-01",
+            "Farmasi Alkes",
+            GroupRekDkType.Default,
+            "RC-01",
+            new CoaType("4101", "RekJual"),
+            new CoaType("4102", "RekJualRajal"),
+            new CoaType("4103", "RekDisc"),
+            new CoaType("2101", "RekTax"),
+            new CoaType("1105", "RekPersediaan"));
+
+        // Act
+        var result = TrsBillFactory.CreateFromTindakanBarang(tindakan, barang, reg, jaminan, groupRek, new DateTime(2026, 10, 16, 10, 0, 0));
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be("TDK-001-B01");
+        result.TrsBillingId.Length.Should().BeLessThanOrEqualTo(14);
+        result.ModulGroup.Should().Be(BillModulGroup.Obat);
+        result.Keterangan.TrsMainId.Should().Be("TDK-001");
+        result.Nilai.Total.Should().Be(50000m);
+        result.ListTransaction.Should().HaveCount(1);
+        result.ListTransaction.First().Coa.Ppdp.CoaId.Should().Be("1103"); // PpdpObatRajal
+        result.ListTransaction.First().Coa.Pdpt.CoaId.Should().Be("4102"); // RekJualRajal
     }
 }

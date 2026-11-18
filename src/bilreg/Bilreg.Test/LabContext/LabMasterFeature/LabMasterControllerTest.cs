@@ -52,6 +52,10 @@ public class LabMasterControllerTest
         var saveTestGroup = typeof(LabMasterController).GetMethod(nameof(LabMasterController.SaveTestGroup));
         saveTestGroup.Should().NotBeNull();
         saveTestGroup!.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("test-groups");
+
+        var listAntibiotics = typeof(LabMasterController).GetMethod(nameof(LabMasterController.ListAntibiotics));
+        listAntibiotics.Should().NotBeNull();
+        listAntibiotics!.GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("antibiotics");
     }
 
     [Fact]
@@ -114,6 +118,41 @@ public class LabMasterControllerTest
             .ReturnsAsync(response);
 
         var result = await _sut.SaveTestGroup(cmd);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(response);
+    }
+
+    [Fact]
+    public async Task ListAntibiotics_GivenNullQuery_ShouldReturnOkWithData()
+    {
+        var response = new List<LabAntibioticListResponse>
+        {
+            new("101", "Amikacin", "30 ug", "<=14", "15-16", ">=17", 1),
+            new("102", "Amoxicillin", "20/10 ug", "<=19", "20-21", ">=22", 2)
+        };
+        _mediatorMock.Setup(m => m.Send(It.Is<LabAntibioticListQuery>(q => q.Search == null), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var result = await _sut.ListAntibiotics(null);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(response);
+    }
+
+    [Fact]
+    public async Task ListAntibiotics_GivenSearchQuery_ShouldReturnOkWithData()
+    {
+        var response = new List<LabAntibioticListResponse>
+        {
+            new("101", "Amikacin", "30 ug", "<=14", "15-16", ">=17", 1)
+        };
+        _mediatorMock.Setup(m => m.Send(It.Is<LabAntibioticListQuery>(q => q.Search == "Amikacin"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var result = await _sut.ListAntibiotics("Amikacin");
 
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
