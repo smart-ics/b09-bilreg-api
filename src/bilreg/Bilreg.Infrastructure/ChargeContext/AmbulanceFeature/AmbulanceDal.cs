@@ -43,7 +43,7 @@ public class AmbulanceDal : IAmbulanceDal
         dp.AddParam("@fn_abonemen", model.Abonement, SqlDbType.Decimal);
         dp.AddParam("@fs_no_polisi", model.NoPolisi, SqlDbType.VarChar);
         dp.AddParam("@fs_tipe_armada", model.TipeArmada, SqlDbType.VarChar);
-        dp.AddParam("@fs_status_armada", model.StatusArmada, SqlDbType.VarChar);
+        dp.AddParam("@fs_status_armada", model.StatusArmada.ToString(), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -68,7 +68,7 @@ public class AmbulanceDal : IAmbulanceDal
         dp.AddParam("@fn_abonemen", model.Abonement, SqlDbType.Decimal);
         dp.AddParam("@fs_no_polisi", model.NoPolisi, SqlDbType.VarChar);
         dp.AddParam("@fs_tipe_armada", model.TipeArmada, SqlDbType.VarChar);
-        dp.AddParam("@fs_status_armada", model.StatusArmada, SqlDbType.VarChar);
+        dp.AddParam("@fs_status_armada", model.StatusArmada.ToString(), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

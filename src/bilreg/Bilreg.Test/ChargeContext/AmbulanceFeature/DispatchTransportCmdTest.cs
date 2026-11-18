@@ -131,7 +131,7 @@ public class DispatchTransportCmdTest
     {
         // Arrange
         var transport = CreateRequestedTransport("TP004");
-        var ambulance = new AmbulanceModel("AMB-01", "Ambulance 1", statusArmada: "Maintenance");
+        var ambulance = new AmbulanceModel("AMB-01", "Ambulance 1", statusArmada: AmbulanceStatusEnum.Maintenance);
 
         _trsTransportRepoMock
             .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP004")))

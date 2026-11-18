@@ -60,7 +60,7 @@ public class DispatchTransportHandler : IRequestHandler<DispatchTransportCmd, Di
             onSome: a => a,
             onNone: () => throw new KeyNotFoundException($"Master ambulans dengan id '{request.AmbulanceId}' tidak ditemukan."));
 
-        if (string.Equals(ambulance.StatusArmada, "Maintenance", StringComparison.OrdinalIgnoreCase))
+        if (ambulance.StatusArmada == AmbulanceStatusEnum.Maintenance)
             throw new InvalidOperationException($"Ambulans '{request.AmbulanceId}' tidak dapat ditugaskan karena berstatus Maintenance.");
 
         var noPolisi = !string.IsNullOrWhiteSpace(request.NoPolisi)

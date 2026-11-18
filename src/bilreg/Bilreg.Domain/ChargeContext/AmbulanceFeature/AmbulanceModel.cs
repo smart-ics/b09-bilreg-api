@@ -9,7 +9,7 @@ public class AmbulanceModel : IAmbulanceKey
     public decimal Abonement { get; protected set; } = decimal.Zero;
     public string NoPolisi { get; protected set; } = string.Empty;
     public string TipeArmada { get; protected set; } = "Transport";
-    public string StatusArmada { get; protected set; } = "Available";
+    public AmbulanceStatusEnum StatusArmada { get; protected set; } = AmbulanceStatusEnum.Available;
     public List<AmbulanceKomponenModel> ListKomponen { get; protected set; } = [];
     public List<TransportTujuanModel> ListTujuan { get; protected set; } = [];
 
@@ -19,13 +19,28 @@ public class AmbulanceModel : IAmbulanceKey
         string name,
         string noPolisi = "",
         string tipeArmada = "Transport",
-        string statusArmada = "Available")
+        AmbulanceStatusEnum statusArmada = AmbulanceStatusEnum.Available)
     {
         AmbulanceId = id;
         AmbulanceName = name;
         NoPolisi = noPolisi ?? string.Empty;
         TipeArmada = string.IsNullOrWhiteSpace(tipeArmada) ? "Transport" : tipeArmada;
-        StatusArmada = string.IsNullOrWhiteSpace(statusArmada) ? "Available" : statusArmada;
+        StatusArmada = statusArmada;
+    }
+
+    public AmbulanceModel(
+        string id,
+        string name,
+        string noPolisi,
+        string tipeArmada,
+        string statusArmada)
+        : this(
+            id,
+            name,
+            noPolisi,
+            tipeArmada,
+            Enum.TryParse<AmbulanceStatusEnum>(statusArmada, true, out var parsed) ? parsed : AmbulanceStatusEnum.Available)
+    {
     }
 
     // BEHAVIOUR
@@ -35,10 +50,12 @@ public class AmbulanceModel : IAmbulanceKey
     public void SetAbonement(decimal abonement) => Abonement = abonement;
     public void SetNoPolisi(string noPolisi) => NoPolisi = noPolisi ?? string.Empty;
     public void SetTipeArmada(string tipeArmada) => TipeArmada = string.IsNullOrWhiteSpace(tipeArmada) ? "Transport" : tipeArmada;
-    public void SetStatusArmada(string statusArmada) => StatusArmada = string.IsNullOrWhiteSpace(statusArmada) ? "Available" : statusArmada;
-    public void SetAvailable() => StatusArmada = "Available";
-    public void SetInUse() => StatusArmada = "InUse";
-    public void SetMaintenance() => StatusArmada = "Maintenance";
+    public void SetStatusArmada(AmbulanceStatusEnum statusArmada) => StatusArmada = statusArmada;
+    public void SetStatusArmada(string statusArmada)
+        => StatusArmada = Enum.TryParse<AmbulanceStatusEnum>(statusArmada, true, out var parsed) ? parsed : AmbulanceStatusEnum.Available;
+    public void SetAvailable() => StatusArmada = AmbulanceStatusEnum.Available;
+    public void SetInUse() => StatusArmada = AmbulanceStatusEnum.InUse;
+    public void SetMaintenance() => StatusArmada = AmbulanceStatusEnum.Maintenance;
 
     public void Add(AmbulanceKomponenModel komponen) => ListKomponen.Add(komponen);
 

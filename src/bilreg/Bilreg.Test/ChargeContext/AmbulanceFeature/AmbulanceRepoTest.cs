@@ -161,6 +161,6 @@ public class AmbulanceRepoTest
         model.Abonement.Should().Be(50000m);
         model.NoPolisi.Should().Be("AB 1234 CD");
         model.TipeArmada.Should().Be("ALS");
-        model.StatusArmada.Should().Be("Maintenance");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.Maintenance);
     }
 }

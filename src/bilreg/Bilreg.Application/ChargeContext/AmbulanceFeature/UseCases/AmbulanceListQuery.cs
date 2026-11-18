@@ -48,7 +48,7 @@ public class AmbulanceListHandler :
                 ambulance.Abonement,
                 ambulance.NoPolisi,
                 ambulance.TipeArmada,
-                ambulance.StatusArmada,
+                ambulance.StatusArmada.ToString(),
                 listKomponen,
                 listTujuan);
         }).ToList();

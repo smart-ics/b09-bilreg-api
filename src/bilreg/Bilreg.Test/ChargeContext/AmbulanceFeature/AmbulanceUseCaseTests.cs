@@ -56,7 +56,7 @@ public class AmbulanceUseCaseTests
         existing.AmbulanceName.Should().Be("Updated Name");
         existing.NoPolisi.Should().Be("B 9999 YY");
         existing.TipeArmada.Should().Be("Jenazah");
-        existing.StatusArmada.Should().Be("Maintenance");
+        existing.StatusArmada.Should().Be(AmbulanceStatusEnum.Maintenance);
         existing.Abonement.Should().Be(75000m);
         _ambulanceRepoMock.Verify(x => x.SaveChanges(existing), Times.Once);
     }

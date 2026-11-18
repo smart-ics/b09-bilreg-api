@@ -17,7 +17,7 @@ public class AmbulanceModelTest
         model.AmbulanceName.Should().Be("Ambulans 01");
         model.NoPolisi.Should().BeEmpty();
         model.TipeArmada.Should().Be("Transport");
-        model.StatusArmada.Should().Be("Available");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.Available);
         model.IsAktif.Should().BeTrue();
         model.Abonement.Should().Be(0m);
         model.ListKomponen.Should().BeEmpty();
@@ -33,7 +33,7 @@ public class AmbulanceModelTest
             name: "Ambulans Emergency ALS",
             noPolisi: "B 9999 AMB",
             tipeArmada: "ALS",
-            statusArmada: "Available"
+            statusArmada: AmbulanceStatusEnum.Available
         );
 
         // Assert
@@ -41,7 +41,7 @@ public class AmbulanceModelTest
         model.AmbulanceName.Should().Be("Ambulans Emergency ALS");
         model.NoPolisi.Should().Be("B 9999 AMB");
         model.TipeArmada.Should().Be("ALS");
-        model.StatusArmada.Should().Be("Available");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.Available);
     }
 
     [Fact]
@@ -52,13 +52,13 @@ public class AmbulanceModelTest
 
         // Act & Assert
         model.SetInUse();
-        model.StatusArmada.Should().Be("InUse");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.InUse);
 
         model.SetMaintenance();
-        model.StatusArmada.Should().Be("Maintenance");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.Maintenance);
 
         model.SetAvailable();
-        model.StatusArmada.Should().Be("Available");
+        model.StatusArmada.Should().Be(AmbulanceStatusEnum.Available);
     }
 
     [Fact]
