@@ -69,9 +69,9 @@ public class ResepRepo : IResepRepo
         return result;
     }
 
-    public IEnumerable<ResepModel> SearchActiveUnbilled(string query, DateOnly date)
+    public IEnumerable<ResepModel> SearchActive(string query, DateOnly date)
     {
-        var listDto = _resepDal.SearchActiveUnbilled(query, date.ToString("yyyy-MM-dd"))?.ToList() ?? [];
+        var listDto = _resepDal.SearchActive(query, date.ToString("yyyy-MM-dd"))?.ToList() ?? [];
         var result = new List<ResepModel>();
 
         foreach (var dto in listDto)

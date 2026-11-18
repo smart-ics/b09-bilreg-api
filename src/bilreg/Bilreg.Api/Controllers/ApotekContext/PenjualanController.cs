@@ -267,7 +267,7 @@ public class PenjualanController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/apotek/penjualan/search-resep: Pencarian universal e-resep aktif hari ini yang belum tertagih.
+    /// GET /api/v1/apotek/penjualan/search-resep: Pencarian universal e-resep aktif hari ini (termasuk status tertagih/belum tertagih).
     /// Multi-parameter: No RM, No Registrasi, Nama Pasien, No Resep.
     /// </summary>
     [HttpGet("search-resep")]

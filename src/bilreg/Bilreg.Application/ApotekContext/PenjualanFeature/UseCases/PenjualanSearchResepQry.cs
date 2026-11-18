@@ -13,7 +13,7 @@ namespace Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
 #region Query DTOs
 
 /// <summary>
-/// Query pencarian universal e-resep aktif hari ini yang belum tertagih (TD-05).
+/// Query pencarian universal e-resep aktif hari ini (termasuk status tertagih/belum tertagih) (TD-05).
 /// Mendukung multi-parameter: No RM, No Registrasi, Nama Pasien, No Resep.
 /// </summary>
 public record PenjualanSearchResepQry(
@@ -22,7 +22,7 @@ public record PenjualanSearchResepQry(
 ) : IRequest<IReadOnlyList<PenjualanSearchResepResponse>>;
 
 /// <summary>
-/// Respons detail data resep e-resep beserta status telaah klinis terkini dan info antrean.
+/// Respons detail data resep e-resep beserta status telaah klinis terkini, info antrean, dan status penagihan.
 /// </summary>
 public record PenjualanSearchResepResponse(
     string ResepId,
@@ -57,6 +57,8 @@ public record PenjualanSearchResepResponse(
     int NoUrut,
     bool PasienHadir,
     DateTime? PasienHadirAt,
+    // Status Penagihan
+    bool IsBilled,
     // Daftar Rincian Obat
     IReadOnlyList<PenjualanSearchResepItemResponse> Items
 );
@@ -86,7 +88,7 @@ public record PenjualanSearchResepItemResponse(
 #region Query Handler
 
 /// <summary>
-/// Handler untuk query pencarian universal e-resep aktif belum tertagih.
+/// Handler untuk query pencarian universal e-resep aktif beserta status penagihan.
 /// </summary>
 public class PenjualanSearchResepHandler : IRequestHandler<PenjualanSearchResepQry, IReadOnlyList<PenjualanSearchResepResponse>>
 {
@@ -110,7 +112,7 @@ public class PenjualanSearchResepHandler : IRequestHandler<PenjualanSearchResepQ
     public Task<IReadOnlyList<PenjualanSearchResepResponse>> Handle(PenjualanSearchResepQry request, CancellationToken cancellationToken)
     {
         var targetDate = request.Date ?? DateOnly.FromDateTime(DateTime.Today);
-        var reseps = _resepRepo.SearchActiveUnbilled(request.Query ?? string.Empty, targetDate);
+        var reseps = _resepRepo.SearchActive(request.Query ?? string.Empty, targetDate);
 
         var result = new List<PenjualanSearchResepResponse>();
 
@@ -119,12 +121,11 @@ public class PenjualanSearchResepHandler : IRequestHandler<PenjualanSearchResepQ
             if (resep.IsVoid)
                 continue;
 
-            // Pastikan belum tertagih pada tb_trs_dobill_umum
+            // Cek status penagihan pada tb_trs_dobill_umum (non-void)
             var existingSales = _penjualanRepo.ListByResep(resep.ResepId)
                 .Where(x => !x.IsVoid)
                 .ToList();
-            if (existingSales.Count > 0)
-                continue;
+            bool isBilled = existingSales.Count > 0;
 
             // Pemuatan status telaah klinis terkini
             var telaahOpt = _telaahRepo.LoadByResep(resep.ResepId);
@@ -262,6 +263,7 @@ public class PenjualanSearchResepHandler : IRequestHandler<PenjualanSearchResepQ
                 NoUrut: noUrut,
                 PasienHadir: pasienHadir,
                 PasienHadirAt: pasienHadirAt,
+                IsBilled: isBilled,
                 Items: items
             ));
         }

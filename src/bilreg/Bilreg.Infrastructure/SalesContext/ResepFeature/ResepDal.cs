@@ -22,7 +22,7 @@ public interface IResepDal :
     IListData<ResepDto, IRegKey>
 {
     new IEnumerable<ResepDto> FindPotentialDuplicate(string pasienId, DateTime date, IEnumerable<string> brgIds);
-    IEnumerable<ResepDto> SearchActiveUnbilled(string query, string dateYmd);
+    IEnumerable<ResepDto> SearchActive(string query, string dateYmd);
 }
 
 public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
@@ -297,7 +297,7 @@ public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
         return FindPotentialDuplicate(pasienId, date, brgIds);
     }
 
-    public IEnumerable<ResepDto> SearchActiveUnbilled(string query, string dateYmd)
+    public IEnumerable<ResepDto> SearchActive(string query, string dateYmd)
     {
         var trimmedQuery = query?.Trim() ?? string.Empty;
         var likeQuery = $"%{trimmedQuery}%";
@@ -308,12 +308,6 @@ public class ResepDal : IResepDal, IResepVoidDal, IResepCreateDal
                 aa.fb_resep = 1
                 AND (aa.fd_tgl_void = '3000-01-01' OR aa.fd_tgl_void = '' OR aa.fd_tgl_void IS NULL)
                 AND aa.fd_tgl_trs = @Date
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM tb_trs_dobill_umum du
-                    WHERE du.fs_kd_resep = aa.fs_kd_trs
-                      AND (du.fd_tgl_void = '3000-01-01' OR du.fd_tgl_void = '' OR du.fd_tgl_void IS NULL)
-                )
                 AND (
                     @Query = ''
                     OR aa.fs_kd_trs LIKE @LikeQuery

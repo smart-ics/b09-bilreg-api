@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ApotekContext.DispensingFeature;
 using Bilreg.Application.ApotekContext.DispensingFeature.UseCases;
+using Bilreg.Application.ApotekContext.PenjualanFeature;
 using Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature.UseCases;
@@ -72,6 +73,7 @@ public class PharmacyQueueMapDemandHandler : IRequestHandler<PharmacyQueueMapDem
     private readonly IMediator? _mediator;
     private readonly ISalesOrderRepo? _salesOrderRepo;
     private readonly ITrackerPharmacyPort? _trackerPort;
+    private readonly IPenjualanRepo? _penjualanRepo;
 
     public PharmacyQueueMapDemandHandler(
         IPharmacyQueueMappingRepo mappingRepo,
@@ -84,7 +86,8 @@ public class PharmacyQueueMapDemandHandler : IRequestHandler<PharmacyQueueMapDem
         IRegRepo? regRepo = null,
         IMediator? mediator = null,
         ISalesOrderRepo? salesOrderRepo = null,
-        ITrackerPharmacyPort? trackerPort = null)
+        ITrackerPharmacyPort? trackerPort = null,
+        IPenjualanRepo? penjualanRepo = null)
     {
         _mappingRepo = mappingRepo;
         _queueEntryRepo = queueEntryRepo;
@@ -97,6 +100,7 @@ public class PharmacyQueueMapDemandHandler : IRequestHandler<PharmacyQueueMapDem
         _mediator = mediator;
         _salesOrderRepo = salesOrderRepo;
         _trackerPort = trackerPort;
+        _penjualanRepo = penjualanRepo;
     }
 
     public async Task<PharmacyQueueMapDemandResponse> Handle(
@@ -139,6 +143,10 @@ public class PharmacyQueueMapDemandHandler : IRequestHandler<PharmacyQueueMapDem
             {
                 var resep = _resepRepo.LoadEntity(ResepModel.Key(id))
                     .GetValueOrThrow($"Resep '{id}' tidak ditemukan.");
+
+                if (_penjualanRepo != null && _penjualanRepo.ListByResep(id).Any(x => !x.IsVoid))
+                    throw new ApotekDomainException($"Resep '{id}' sudah ditagih dan tidak dapat dipetakan ke antrean.");
+
                 resepList.Add(resep);
             }
         }

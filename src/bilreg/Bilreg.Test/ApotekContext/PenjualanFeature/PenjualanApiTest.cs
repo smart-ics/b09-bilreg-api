@@ -645,6 +645,50 @@ public class PenjualanApiTest
         data.GetArrayLength().Should().Be(1);
         data[0].GetProperty("resepId").GetString().Should().Be("RSP501");
         data[0].GetProperty("pasienName").GetString().Should().Be("Pasien Uji Cari");
+        data[0].GetProperty("isBilled").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task API19_SearchResep_returns_billed_prescriptions_with_isBilled_true()
+    {
+        // Arrange
+        var reg = SeedReg("REG502", "00000", pasienName: "Pasien Sudah Ditagih");
+        var resep = SeedResep("RSP502", reg, ("BRG01", "Paracetamol 500mg", 10m));
+        var pItem = PenjualanItemModel.Create(
+            noUrut: 1,
+            penjualanItemId: "DU2600050201",
+            brgId: "BRG01",
+            brgName: "Paracetamol 500mg",
+            satuanId: "TAB",
+            satuanName: "Tablet",
+            qty: 10m,
+            hargaSatuan: 5000m);
+        var penjualan = PenjualanModel.CreateFromTelaah(
+            resepId: "RSP502",
+            regId: "REG502",
+            pasienName: "Pasien Sudah Ditagih",
+            dokterId: "DOK01",
+            layananId: "FAR01",
+            layananResepId: "FAR01",
+            tipeJaminanId: "00000",
+            kelasId: "3",
+            petugasId: "u",
+            penjualanDate: DateTime.Today,
+            items: [pItem],
+            penjualanId: "DU26000502");
+        _factory.Harness.PenjualanRepo.SaveChanges(penjualan);
+
+        var client = _factory.CreateAuthenticatedClient();
+
+        // Act
+        var response = await client.GetAsync("/api/v1/apotek/penjualan/search-resep?q=RSP502");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var data = await Data(response);
+        data.GetArrayLength().Should().Be(1);
+        data[0].GetProperty("resepId").GetString().Should().Be("RSP502");
+        data[0].GetProperty("isBilled").GetBoolean().Should().BeTrue();
     }
 
     #endregion

@@ -44,6 +44,7 @@ public class PenjualanSearchResepHandlerTest
         item.PasienId.Should().Be("MR001");
         item.PasienName.Should().Be("Budi Santoso");
         item.RegId.Should().Be("REG01");
+        item.IsBilled.Should().BeFalse();
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class PenjualanSearchResepHandlerTest
     }
 
     [Fact]
-    public async Task Prescription_already_billed_in_dobill_umum_is_excluded_from_search_results()
+    public async Task Prescription_already_billed_in_dobill_umum_is_included_with_is_billed_true()
     {
         // Arrange
         var resep = SeedResep("KP010", "REG10", "MR010", "Pasien Billed", ("B01", "Drug A", 10m));
@@ -125,8 +126,51 @@ public class PenjualanSearchResepHandlerTest
         // Act
         var result = await _sut.Handle(new PenjualanSearchResepQry("MR010"), default);
 
-        // Assert: Harus tereksklusi karena sudah tertagih
-        result.Should().BeEmpty();
+        // Assert: Tetap disertakan dengan IsBilled == true
+        result.Should().ContainSingle();
+        result[0].ResepId.Should().Be("KP010");
+        result[0].IsBilled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Prescription_with_only_voided_penjualan_is_included_with_is_billed_false()
+    {
+        // Arrange
+        SeedResep("KP011", "REG11", "MR011", "Pasien Void Bill", ("B01", "Drug B", 5m));
+
+        var pItem = PenjualanItemModel.Create(
+            noUrut: 1,
+            penjualanItemId: "DU2400000201",
+            brgId: "B01",
+            brgName: "Drug B",
+            satuanId: "TAB",
+            satuanName: "Tablet",
+            qty: 5,
+            hargaSatuan: 500);
+
+        var duModel = PenjualanModel.CreateFromTelaah(
+            resepId: "KP011",
+            regId: "REG11",
+            pasienName: "Pasien Void Bill",
+            dokterId: "DOK01",
+            layananId: "FAR01",
+            layananResepId: "FAR01",
+            tipeJaminanId: "00000",
+            kelasId: "3",
+            petugasId: "u",
+            penjualanDate: DateTime.Today,
+            items: new[] { pItem },
+            penjualanId: "DU24000002");
+        duModel.Void("u", DateTime.Now, "Batal tagih", tataRekeningAllows: true);
+        _penjualanRepo.SaveChanges(duModel);
+
+        // Act
+        var result = await _sut.Handle(new PenjualanSearchResepQry("MR011"), default);
+
+        // Assert: Voided PenjualanModel tidak menandai resep sebagai billed
+        result.Should().ContainSingle();
+        result[0].ResepId.Should().Be("KP011");
+        result[0].IsBilled.Should().BeFalse();
     }
 
     [Fact]

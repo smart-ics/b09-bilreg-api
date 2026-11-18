@@ -93,7 +93,7 @@ public class InMemoryResepRepo : IResepRepo, Bilreg.Application.SalesContext.Res
         Store.Values.Where(x => x.Register.RegId == filter.RegId);
     public void LockPrescription(string resepId) => LockedPrescriptions.Add(resepId);
     public bool HasBeenProcessed(string resepId) => LockedPrescriptions.Contains(resepId);
-    public IEnumerable<ResepModel> SearchActiveUnbilled(string query, DateOnly date)
+    public IEnumerable<ResepModel> SearchActive(string query, DateOnly date)
     {
         var q = query?.Trim() ?? string.Empty;
         return Store.Values

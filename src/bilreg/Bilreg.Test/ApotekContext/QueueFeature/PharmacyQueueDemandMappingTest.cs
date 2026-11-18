@@ -6,6 +6,7 @@ using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.TelaahResepFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ApotekContext.PenjualanFeature;
 using Bilreg.Domain.ApotekContext.QueueFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.TelaahResepFeature;
@@ -13,6 +14,7 @@ using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Test.ApotekContext.PenjualanFeature;
 using Bilreg.Test.ApotekContext.Support;
 using FluentAssertions;
 using MediatR;
@@ -35,6 +37,7 @@ public class PharmacyQueueDemandMappingTest
     private readonly Mock<IMediator> _mediator = new();
     private readonly Mock<ISalesOrderRepo> _salesOrderRepo = new();
     private readonly Mock<ITrackerPharmacyPort> _trackerPort = new();
+    private readonly InMemoryPenjualanRepo _penjualanRepo = new();
 
     private readonly PharmacyQueueMapDemandHandler _mapHandler;
     private readonly PharmacyQueueFlagPasienHadirHandler _flagHandler;
@@ -52,7 +55,8 @@ public class PharmacyQueueDemandMappingTest
             _regRepo.Object,
             _mediator.Object,
             _salesOrderRepo.Object,
-            _trackerPort.Object);
+            _trackerPort.Object,
+            _penjualanRepo);
 
         _flagHandler = new PharmacyQueueFlagPasienHadirHandler(
             _mappingRepo,
@@ -469,7 +473,103 @@ public class PharmacyQueueDemandMappingTest
         entry.ApotekPhase.Should().Be(ApotekPhaseEnum.PENERIMAAN);
     }
 
+    [Fact]
+    public async Task MapDemand_WhenResepAlreadyBilled_ThrowsApotekDomainExceptionAndDoesNotPersistOrPublish()
+    {
+        // Arrange
+        const QueueDemandKindEnum demandKind = QueueDemandKindEnum.Resep;
+        var entry = ApotekQueueEntryModel.Create("ANT-BILLED", 20, "SP01", "A");
+        _queueEntryRepo.Setup(x => x.Get("ANT-BILLED", 20)).Returns(MayBe.From(entry));
+
+        var sp = PharmacyServicePointModel.Create("SP01", "DEP-RAJAL", "Layanan A", "A");
+        _servicePointRepo.Setup(x => x.Get("SP01")).Returns(MayBe.From(sp));
+
+        SeedResep("KP_BILLED_01");
+        SeedPenjualan("DU24000001", "KP_BILLED_01");
+
+        var cmd = new PharmacyQueueMapDemandCmd(
+            AntrianId: "ANT-BILLED",
+            NoUrut: 20,
+            DemandKind: demandKind,
+            DemandId: "KP_BILLED_01",
+            UserId: "officer1");
+
+        // Act
+        var act = () => _mapHandler.Handle(cmd, default);
+
+        // Assert
+        await act.Should().ThrowAsync<ApotekDomainException>()
+            .WithMessage("*KP_BILLED_01*sudah ditagih*");
+        _mappingRepo.GetByDemand(demandKind, "KP_BILLED_01").HasValue.Should().BeFalse();
+        _queueEntryRepo.Verify(x => x.SaveChanges(It.IsAny<ApotekQueueEntryModel>()), Times.Never);
+        _publisher.Verify(x => x.PublishWorklistRefresh(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MapDemand_WhenPriorPenjualanIsVoided_MapsSuccessfully()
+    {
+        // Arrange
+        var entry = ApotekQueueEntryModel.Create("ANT-VOIDED", 21, "SP01", "A");
+        _queueEntryRepo.Setup(x => x.Get("ANT-VOIDED", 21)).Returns(MayBe.From(entry));
+
+        var sp = PharmacyServicePointModel.Create("SP01", "DEP-RAJAL", "Layanan A", "A");
+        _servicePointRepo.Setup(x => x.Get("SP01")).Returns(MayBe.From(sp));
+
+        SeedResep("KP_VOIDED_01");
+        SeedPenjualan("DU24000002", "KP_VOIDED_01", isVoid: true);
+
+        var cmd = new PharmacyQueueMapDemandCmd(
+            AntrianId: "ANT-VOIDED",
+            NoUrut: 21,
+            DemandKind: QueueDemandKindEnum.Resep,
+            DemandId: "KP_VOIDED_01",
+            UserId: "officer1");
+
+        // Act
+        var resp = await _mapHandler.Handle(cmd, default);
+
+        // Assert
+        resp.Success.Should().BeTrue();
+        var saved = _mappingRepo.GetByDemand(QueueDemandKindEnum.Resep, "KP_VOIDED_01");
+        saved.HasValue.Should().BeTrue();
+        saved.Value.AntrianId.Should().Be("ANT-VOIDED");
+        saved.Value.NoUrut.Should().Be(21);
+        _publisher.Verify(x => x.PublishWorklistRefresh("DEP-RAJAL", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #region Helpers
+
+    private void SeedPenjualan(string penjualanId, string resepId, bool isVoid = false)
+    {
+        var pItem = PenjualanItemModel.Create(
+            noUrut: 1,
+            penjualanItemId: $"{penjualanId}01",
+            brgId: "BRG01",
+            brgName: "Test Drug",
+            satuanId: "TAB",
+            satuanName: "Tablet",
+            qty: 10,
+            hargaSatuan: 500);
+
+        var duModel = PenjualanModel.CreateFromTelaah(
+            resepId: resepId,
+            regId: "REG01",
+            pasienName: "Pasien Test",
+            dokterId: "DOK01",
+            layananId: "FAR01",
+            layananResepId: "FAR01",
+            tipeJaminanId: "00000",
+            kelasId: "3",
+            petugasId: "officer1",
+            penjualanDate: DateTime.Today,
+            items: new[] { pItem },
+            penjualanId: penjualanId);
+
+        if (isVoid)
+            duModel.Void("officer1", DateTime.Now, "Batal", tataRekeningAllows: true);
+
+        _penjualanRepo.SaveChanges(duModel);
+    }
 
     private void SeedResep(
         string resepId,
