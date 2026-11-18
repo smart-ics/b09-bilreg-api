@@ -18,7 +18,12 @@ public record RequestTransportCmd(
     string JaminanId = "",
     string Keterangan = "",
     string? TrsTransportId = null,
-    DateTime? TglTrs = null) : IRequest<RequestTransportResponse>;
+    DateTime? TglTrs = null,
+    string? AmbulanceId = null,
+    string? DriverId = null,
+    string? NoPolisi = null,
+    string? PerawatId = null,
+    string? DokterId = null) : IRequest<RequestTransportResponse>;
 
 public record RequestTransportResponse(
     string TrsTransportId,
@@ -86,7 +91,12 @@ public class RequestTransportHandler : IRequestHandler<RequestTransportCmd, Requ
             lokasiAsal: request.LokasiAsal,
             lokasiTujuan: request.LokasiTujuan,
             jaminanId: request.JaminanId,
-            keterangan: request.Keterangan);
+            keterangan: request.Keterangan,
+            ambulanceId: request.AmbulanceId ?? string.Empty,
+            driverId: request.DriverId ?? string.Empty,
+            noPolisi: request.NoPolisi ?? string.Empty,
+            perawatId: request.PerawatId ?? string.Empty,
+            dokterId: request.DokterId ?? string.Empty);
 
         _trsTransportRepo.SaveChanges(transport);
 

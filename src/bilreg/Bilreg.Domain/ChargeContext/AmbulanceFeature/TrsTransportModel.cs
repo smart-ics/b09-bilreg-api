@@ -114,7 +114,12 @@ public class TrsTransportModel : ITrsTransportKey
         string lokasiAsal = "",
         string lokasiTujuan = "",
         string jaminanId = "",
-        string keterangan = "")
+        string keterangan = "",
+        string ambulanceId = "",
+        string driverId = "",
+        string noPolisi = "",
+        string perawatId = "",
+        string dokterId = "")
     {
         var id = string.IsNullOrWhiteSpace(trsTransportId)
             ? NunaId.NewLegacyCompact(ID_PREFIX)
@@ -132,6 +137,11 @@ public class TrsTransportModel : ITrsTransportKey
             LokasiTujuan = lokasiTujuan ?? string.Empty,
             JaminanId = jaminanId ?? string.Empty,
             Keterangan = keterangan ?? string.Empty,
+            AmbulanceId = ambulanceId ?? string.Empty,
+            DriverId = driverId ?? string.Empty,
+            NoPolisi = noPolisi ?? string.Empty,
+            PerawatId = perawatId ?? string.Empty,
+            DokterId = dokterId ?? string.Empty,
             Status = TransportStatusEnum.Requested,
             IsNonReg = string.IsNullOrWhiteSpace(regId)
         };
