@@ -7,6 +7,7 @@ using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
@@ -319,6 +320,225 @@ public class CreateBillDomServiceTest
         Action act = () => _sut.FromPenjualanItem(tataRekening, penjualan, item, reg, jaminan, groupRek);
 
         act.Should().Throw<ArgumentException>().WithParameterName("tataRekening");
+    }
+
+    [Fact]
+    public void GivenOpenedTataRekening_WhenFromAmbulanceUsage_ThenCreatesBillWithMappedItemsAndCoa()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-01");
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP001",
+            new DateTime(2026, 6, 15, 10, 0, 0),
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01",
+            konstanta: 1.5m,
+            lokasiAsal: "RS",
+            lokasiTujuan: "RS Rujukan",
+            keterangan: "Antar Pasien Rujukan");
+
+        var item1 = new TrsTransportItemModel("TP001", "KOMP-01", 100_000m, 1m, "DOKTER1", 10_000m);
+        var item2 = new TrsTransportItemModel("TP001", "KOMP-02", 50_000m, 2m, "PERAWAT1", 0m);
+        transport.AddItem(item1);
+        transport.AddItem(item2);
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId,
+            Rekening = new JaminanRekeningType(
+                new CoaType("PPDP-RAJAL", ""), new CoaType("PPDP-OBAT-RAJAL", ""),
+                new CoaType("PPDP-RANAP", ""), new CoaType("PPDP-OBAT-RANAP", ""))
+        };
+
+        var groupKomp = GroupKomponenType.Default;
+        var listReffKomp = new List<KomponenType>
+        {
+            new("KOMP-01", "Sewa Ambulans", groupKomp, new CoaType("PDPT-01", ""), new CoaType("DISC-01", ""), []),
+            new("KOMP-02", "Jasa Pendamping", groupKomp, new CoaType("PDPT-02", ""), new CoaType("DISC-02", ""), [])
+        };
+
+        var rekapCetak = RekapCetakType.Default with { RekapCetakId = "RK-AMB" };
+
+        var result = _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, listReffKomp, rekapCetak);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be("TP001");
+        result.ModulGroup.Should().Be(BillModulGroup.Jasa);
+        result.Reg.RegId.Should().Be(reg.RegId);
+        result.Keterangan.TrsMainId.Should().Be("TP001");
+        result.Keterangan.Keterangan.Should().Be("Antar Pasien Rujukan");
+        result.Keterangan.Keterangan2.Should().Be("RS Rujukan");
+        result.RekapCetak.RekapCetakId.Should().Be("RK-AMB");
+
+        result.Nilai.SubTotal.Should().Be(200_000m);
+        result.Nilai.Diskon.Should().Be(10_000m);
+        result.Nilai.Total.Should().Be(190_000m);
+
+        result.ListTransaction.Should().HaveCount(2);
+
+        var ev1 = result.ListTransaction.First();
+        ev1.Komponen.BillKompId.Should().Be("KOMP-01");
+        ev1.Komponen.BillKompName.Should().Be("Sewa Ambulans");
+        ev1.Nilai.Should().Be(90_000m);
+        ev1.PetugasMedis.PpaId.Should().Be("DOKTER1");
+        ev1.Coa.Ppdp.CoaId.Should().Be("PPDP-RAJAL");
+        ev1.Coa.Pdpt.CoaId.Should().Be("PDPT-01");
+        ev1.Coa.Disc.CoaId.Should().Be("DISC-01");
+
+        var ev2 = result.ListTransaction.Last();
+        ev2.Komponen.BillKompId.Should().Be("KOMP-02");
+        ev2.Komponen.BillKompName.Should().Be("Jasa Pendamping");
+        ev2.Nilai.Should().Be(100_000m);
+        ev2.PetugasMedis.PpaId.Should().Be("PERAWAT1");
+        ev2.Coa.Ppdp.CoaId.Should().Be("PPDP-RAJAL");
+        ev2.Coa.Pdpt.CoaId.Should().Be("PDPT-02");
+    }
+
+    [Fact]
+    public void GivenCancelledTransportWithStandbyFee_WhenFromAmbulanceUsage_ThenCreatesBillWithStandbyItem()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-02");
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP002",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01",
+            konstanta: 1m);
+
+        transport.Dispatch("AMB01", "DRV01", "B1234XYZ", 100m);
+        transport.Cancel("Dibatalkan keluarga", biayaBatal: 75_000m);
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId,
+            Rekening = new JaminanRekeningType(
+                new CoaType("PPDP-RAJAL", ""), new CoaType("PPDP-OBAT-RAJAL", ""),
+                new CoaType("PPDP-RANAP", ""), new CoaType("PPDP-OBAT-RANAP", ""))
+        };
+
+        var result = _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, []);
+
+        result.Should().NotBeNull();
+        result.Nilai.Total.Should().Be(75_000m);
+        result.ListTransaction.Should().HaveCount(1);
+        result.ListTransaction.First().Komponen.BillKompId.Should().Be("STANDBY");
+        result.ListTransaction.First().Nilai.Should().Be(75_000m);
+    }
+
+    [Fact]
+    public void GivenClosedTataRekening_WhenFromAmbulanceUsage_ThenThrowsInvalidOperationException()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-03");
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+        tataRekening.Close();
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP003",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01");
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId
+        };
+
+        Action act = () => _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, []);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*OPEN*");
+    }
+
+    [Fact]
+    public void GivenDifferentReg_WhenFromAmbulanceUsage_ThenThrowsArgumentException()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-04");
+        var tataRekening = TataRekeningModel.Create("REG-OTHER");
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP004",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01");
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId
+        };
+
+        Action act = () => _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, []);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("tataRekening");
+    }
+
+    [Fact]
+    public void GivenNonRegAmbulance_WhenFromAmbulanceUsage_ThenThrowsArgumentException()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-05");
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP005",
+            DateTime.Now,
+            regId: "",
+            tujuanTransportId: "TJ01");
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId
+        };
+
+        Action act = () => _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, []);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*non-registrasi*");
+    }
+
+    [Fact]
+    public void GivenMismatchedRegId_WhenFromAmbulanceUsage_ThenThrowsArgumentException()
+    {
+        var reg = CreateRegWithKomponen("REG-AMB-06");
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP006",
+            DateTime.Now,
+            regId: "REG-MISMATCH",
+            tujuanTransportId: "TJ01");
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId
+        };
+
+        Action act = () => _sut.FromAmbulanceUsage(tataRekening, transport, reg, jaminan, []);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*tidak sesuai dengan registrasi*");
     }
 
     [Fact]

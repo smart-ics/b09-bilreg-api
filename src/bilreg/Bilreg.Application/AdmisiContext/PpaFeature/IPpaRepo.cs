@@ -10,6 +10,7 @@ public interface IPpaRepo :
     ILoadEntity<PpaType, IPpaKey>,
     ILoadEntity<PpaType, IContactFinder>,
     IDeleteEntity<IPpaKey>,
+    IListData<PpaView>,
     IListData<PpaLayananView, IProfesiKey, IEnumerable<ILayananKey>>,
     IListData<PpaView, IProfesiKey>,
     IListData<PpaView, IEnumerable<ISatTugasKey>>
