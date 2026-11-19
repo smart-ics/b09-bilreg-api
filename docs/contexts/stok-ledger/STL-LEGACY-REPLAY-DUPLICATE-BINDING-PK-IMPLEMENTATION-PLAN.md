@@ -93,7 +93,7 @@ Notes:
 
 Title: Migrasi Indeks `BILRG_StokMutasi` ke Indeks Non-Unik dan Pembaruan Schema Fixture
 
-Implementation Status: NOT-STARTED
+Implementation Status: IMPLEMENTED
 Review Status: NOT-REVIEWED
 
 Objective: Mengubah skrip DDL `BILRG_StokMutasi.sql`, `BILRG_StockLedgerV2_Rollback.sql`, `StockLedgerV2SchemaFixture.cs`, dan pengujian `StokMutasiDalTest.cs` agar menghapus indeks unik `UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId` (baik yang tanpa filter maupun dengan filter) dan menggantinya dengan indeks non-unik `IX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId` secara idempoten.
