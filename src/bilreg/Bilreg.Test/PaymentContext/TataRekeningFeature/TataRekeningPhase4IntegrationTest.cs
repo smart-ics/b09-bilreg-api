@@ -160,7 +160,7 @@ public class TataRekeningPhase4IntegrationTest
         }
     }
 
-    private static void TryDeleteHeader(IBilrgTataRekeningDal dal, string regId)
+    private static void TryDeleteHeader(Bilreg.Infrastructure.PaymentContext.TataRekeningFeature.IBilrgTataRekeningDal dal, string regId)
     {
         try
         {
