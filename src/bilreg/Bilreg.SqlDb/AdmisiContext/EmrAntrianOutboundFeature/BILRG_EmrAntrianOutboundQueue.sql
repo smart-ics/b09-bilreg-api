@@ -19,5 +19,5 @@ GO
 
 CREATE UNIQUE INDEX UX_BILRG_EmrAntrianOutboundQueue_ActiveSource
     ON BILRG_EmrAntrianOutboundQueue(SourceId, MessageType)
-    WHERE QueueStatus IN (0, 1, 2);
+    WHERE QueueStatus IN (0, 1);
 GO

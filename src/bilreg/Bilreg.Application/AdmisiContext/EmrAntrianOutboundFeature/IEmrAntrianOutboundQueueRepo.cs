@@ -11,5 +11,7 @@ public interface IEmrAntrianOutboundQueueRepo :
     IEnumerable<EmrAntrianOutboundQueueModel> ListProcessable(int batchSize);
 
     MayBe<EmrAntrianOutboundQueueModel> FindActiveBySource(string sourceId, string messageType);
+    MayBe<EmrAntrianOutboundQueueModel> FindPendingOrProcessingBySource(string sourceId, string messageType);
+    MayBe<EmrAntrianOutboundQueueModel> FindLatestFailedBySource(string sourceId, string messageType);
     void DeleteBySource(string sourceId);
 }
