@@ -1,5 +1,5 @@
 using Ardalis.GuardClauses;
-using Nuna.Lib.AutoNumberHelper;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
@@ -39,7 +39,7 @@ public class StockLegacyBindingModel : IStockLegacyBindingKey
         Guard.Against.NullOrWhiteSpace(trsReffId);
 
         return new StockLegacyBindingModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             BindingKindEnum.MutasiBuku,
             stokMutasiId,
             stokLokasiId ?? string.Empty,
@@ -60,7 +60,7 @@ public class StockLegacyBindingModel : IStockLegacyBindingKey
         Guard.Against.NullOrWhiteSpace(trsReffId);
 
         return new StockLegacyBindingModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             BindingKindEnum.LokasiStok,
             stokMutasiId ?? string.Empty,
             stokLokasiId,
