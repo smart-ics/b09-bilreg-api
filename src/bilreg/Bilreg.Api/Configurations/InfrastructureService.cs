@@ -63,6 +63,7 @@ using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
+using Bilreg.Infrastructure.PaymentContext.KasirFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
@@ -312,6 +313,7 @@ public static class InfrastructureService
         services.AddBrgFeature();
         services.AddScoped<IBrgHargaJualDal, BrgHargaJualDal>();
         services.AddTataRekeningFeature();
+        services.AddKasirFeature();
         services.AddScoped<ITrsDirectDal, TrsDirectDal>();
         services.AddScoped<Bilreg.Application.PaymentContext.TrsBillingFeature.ITrsDirectDal, TrsDirectDal>();
         services.AddScoped<IJurnalDal, JurnalDal>();
