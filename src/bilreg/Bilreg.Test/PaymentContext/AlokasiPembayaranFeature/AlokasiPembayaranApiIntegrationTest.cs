@@ -40,7 +40,7 @@ public class AlokasiPembayaranApiIntegrationTest : IClassFixture<TataRekeningWeb
             {
                 payments = new[]
                 {
-                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 100_000m, 0m)
                 },
                 finalizationDate = "2026-11-03T10:00:00"
             });
@@ -112,7 +112,7 @@ public class AlokasiPembayaranApiIntegrationTest : IClassFixture<TataRekeningWeb
                 {
                     payments = new[]
                     {
-                        new PaymentAllocationInputDto("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+                        new PaymentAllocationInputDto("BYKAS", "KAS", false, 100_000m, 0m)
                     }
                 });
 
@@ -151,7 +151,7 @@ public class AlokasiPembayaranApiIntegrationTest : IClassFixture<TataRekeningWeb
             {
                 payments = new[]
                 {
-                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m, "COA-01", "COA")
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m)
                 }
             });
 

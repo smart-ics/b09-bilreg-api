@@ -370,7 +370,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
         tataRekening.CompleteFinancialVerification("kasir-01", FinalizationDate);
 
         Action act = () => tataRekening.AllocateFinancialResponsibility(
-            [BuildPayment(Bpjs, 1_001m, 0m)]);
+            [BuildPayment(Kas, 1_001m, 0m)]);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");

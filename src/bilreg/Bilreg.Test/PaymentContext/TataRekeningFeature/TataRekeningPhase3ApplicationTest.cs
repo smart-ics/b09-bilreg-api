@@ -41,6 +41,7 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IJurnalDal> _jurnalDal = new();
     private readonly Mock<ITataRekeningCancellationLogRepo> _cancellationLogRepo = new();
     private readonly Mock<IDownstreamSettlementInspector> _settlementInspector = new();
+    private readonly Mock<IRegAktifRepo> _regAktifRepo = new();
     private readonly FixedCurrentUserContext _currentUser =
         new(TataRekeningDomainTestHelper.DefaultPetugasVerif, TataRekeningSupervisorRole.VerifikatorSupervisor);
 
@@ -284,7 +285,7 @@ public class TataRekeningPhase3ApplicationTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -312,13 +313,15 @@ public class TataRekeningPhase3ApplicationTest
 
         var handler = new FinalizeFinancialResponsibilityHandler(
             _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
-            new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>()));
+            new FinancialVerificationDomainService(Mock.Of<IRoomChargeCompletenessQuery>()),
+            _regAktifRepo.Object);
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
+        _regAktifRepo.Verify(r => r.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
     }
 
     [Fact]
@@ -332,7 +335,7 @@ public class TataRekeningPhase3ApplicationTest
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 60_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
 
-        var reg = RegModel.Default;
+        var reg = (RegModel)RegModel.Key(RegId);
         reg.SetKeluar("UserId", TestDate);
         SetupRegLoad(RegId, reg);
 
@@ -340,7 +343,8 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object,
             _cancellationLogRepo.Object, _settlementInspector.Object,
             _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
-            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
+            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object,
+            _regAktifRepo.Object);
 
         var result = await handler.Handle(
             new CancelFinalizationCommand(RegId, "UserId", "SPV-01", "Koreksi alokasi pembayaran"),
@@ -348,6 +352,7 @@ public class TataRekeningPhase3ApplicationTest
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
+        _regAktifRepo.Verify(r => r.SaveChanges(It.Is<RegAktifModel>(m => m.RegId == RegId)), Times.Once);
     }
 
     #endregion

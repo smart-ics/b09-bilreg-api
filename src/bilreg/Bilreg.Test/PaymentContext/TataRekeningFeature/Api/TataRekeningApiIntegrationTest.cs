@@ -1,11 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
+using Moq;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 
@@ -134,7 +136,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
             {
                 payments = new[]
                 {
-                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m, "COA-01", "COA")
+                    new PaymentAllocationInputDto("BYKAS", "KAS", false, 50_000m, 0m)
                 }
             });
 
@@ -262,6 +264,49 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
             new { reason = "", userId = "TEST-USER", supervisorUserId = "SPV-01" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task API17_GivenAnonymous_WhenGetQueue_ThenReturns200WithQueueData()
+    {
+        _factory.Harness.BilrgTataRekeningDal
+            .Setup(x => x.ListDataQueue(null))
+            .Returns(new List<TataRekeningQueueDto>
+            {
+                new("REG001", new DateTime(2026, 11, 18), "MR01", "0", "LYN01", "DR01", "JAM01", "Pasien A", "1990-01-01", "L", "Poli", "Dr A", "BPJS", 0)
+            });
+
+        var client = _factory.CreateUnauthenticatedClient();
+        var response = await client.GetAsync("/api/tatarekening/queue");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await ParseDataJson(response);
+        json.GetArrayLength().Should().Be(1);
+        json[0].GetProperty("regId").GetString().Should().Be("REG001");
+        json[0].GetProperty("pasienName").GetString().Should().Be("Pasien A");
+        json[0].GetProperty("jenisRegString").GetString().Should().Be("Rawat Jalan");
+    }
+
+    [Fact]
+    public async Task API18_GivenJenisRegFilter_WhenGetQueue_ThenPassesFilterToDal()
+    {
+        _factory.Harness.BilrgTataRekeningDal
+            .Setup(x => x.ListDataQueue(1))
+            .Returns(new List<TataRekeningQueueDto>
+            {
+                new("REG002", new DateTime(2026, 11, 18), "MR02", "1", "LYN02", "DR02", "JAM02", "Pasien B", "1985-05-15", "P", "Bangsal", "Dr B", "Umum", 1)
+            });
+
+        var client = _factory.CreateUnauthenticatedClient();
+        var response = await client.GetAsync("/api/tatarekening/queue?jenisReg=1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await ParseDataJson(response);
+        json.GetArrayLength().Should().Be(1);
+        json[0].GetProperty("regId").GetString().Should().Be("REG002");
+        json[0].GetProperty("pasienName").GetString().Should().Be("Pasien B");
+        json[0].GetProperty("jenisRegString").GetString().Should().Be("Rawat Inap");
+        _factory.Harness.BilrgTataRekeningDal.Verify(x => x.ListDataQueue(1), Times.Once);
     }
 
     private async Task<JsonElement> ParseDataJson(HttpResponseMessage response)

@@ -28,6 +28,7 @@ public class FinalizeFinancialResponsibilityHandler
     private readonly ICurrentUserContext _currentUser;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IFinancialVerificationDomainService? _financialVerificationService;
+    private readonly IRegAktifRepo? _regAktifRepo;
 
     public FinalizeFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -36,7 +37,8 @@ public class FinalizeFinancialResponsibilityHandler
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider,
-        IFinancialVerificationDomainService? financialVerificationService = null)
+        IFinancialVerificationDomainService? financialVerificationService = null,
+        IRegAktifRepo? regAktifRepo = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
@@ -45,6 +47,7 @@ public class FinalizeFinancialResponsibilityHandler
         _currentUser = currentUser;
         _tglJamProvider = tglJamProvider;
         _financialVerificationService = financialVerificationService;
+        _regAktifRepo = regAktifRepo;
     }
 
     public FinalizeFinancialResponsibilityHandler(
@@ -54,7 +57,7 @@ public class FinalizeFinancialResponsibilityHandler
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider,
         IFinancialVerificationDomainService financialVerificationService)
-        : this(tataRekeningRepo, trsBillingRepo, null!, unitOfWork, currentUser, tglJamProvider, financialVerificationService)
+        : this(tataRekeningRepo, trsBillingRepo, null!, unitOfWork, currentUser, tglJamProvider, financialVerificationService, null)
     {
     }
 
@@ -103,6 +106,7 @@ public class FinalizeFinancialResponsibilityHandler
                 .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
             reg.SetKeluar(petugasVerif, occurredAt);
             _regRepo.SaveChanges(reg);
+            _regAktifRepo?.Delete(request);
         }
 
         scope.Complete();

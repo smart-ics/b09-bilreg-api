@@ -10,6 +10,7 @@ using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -43,6 +44,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
     private readonly IRegBiayaRepo? _regBiayaRepo;
     private readonly ITrsDirectDal? _trsDirectDal;
     private readonly IJurnalDal? _jurnalDal;
+    private readonly IRegAktifRepo? _regAktifRepo;
 
     public CancelFinalizationHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -56,7 +58,8 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         ITglJamProvider tglJamProvider,
         IRegBiayaRepo regBiayaRepo,
         ITrsDirectDal trsDirectDal,
-        IJurnalDal jurnalDal)
+        IJurnalDal jurnalDal,
+        IRegAktifRepo? regAktifRepo = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
@@ -70,6 +73,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         _regBiayaRepo = regBiayaRepo;
         _trsDirectDal = trsDirectDal;
         _jurnalDal = jurnalDal;
+        _regAktifRepo = regAktifRepo;
     }
 
     public CancelFinalizationHandler(
@@ -81,7 +85,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider)
         : this(tataRekeningRepo, trsBillingRepo, regRepo, auditRepo, null!, null!, unitOfWork, currentUser, tglJamProvider,
-            null!, null!, null!)
+            null!, null!, null!, null)
     {
     }
 
@@ -97,7 +101,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         ITrsDirectDal trsDirectDal,
         IJurnalDal jurnalDal)
         : this(tataRekeningRepo, trsBillingRepo, regRepo, auditRepo, null!, null!, unitOfWork, currentUser, tglJamProvider,
-            regBiayaRepo, trsDirectDal, jurnalDal)
+            regBiayaRepo, trsDirectDal, jurnalDal, null)
     {
     }
 
@@ -111,7 +115,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         ICurrentUserContext currentUser,
         ITglJamProvider tglJamProvider)
         : this(tataRekeningRepo, trsBillingRepo, null!, auditRepo, cancellationLogRepo, settlementInspector, unitOfWork, currentUser, tglJamProvider,
-            null!, null!, null!)
+            null!, null!, null!, null)
     {
     }
 
@@ -165,6 +169,10 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
                 .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
             reg.CancelKeluar(request.UserId, _tglJamProvider.Now);
             _regRepo.SaveChanges(reg);
+            if (_regAktifRepo is not null && reg.RegVoidAudit == AuditInfoType.Default)
+            {
+                _regAktifRepo.SaveChanges(RegAktifModel.CreateFromReg(reg));
+            }
         }
 
         var cancelledAt = _tglJamProvider.Now;
