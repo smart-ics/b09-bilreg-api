@@ -151,12 +151,21 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         var patientId = !string.IsNullOrWhiteSpace(reg?.Pasien?.PasienId) && reg.Pasien.PasienId != "-"
             ? reg.Pasien.PasienId
             : request.PatientId;
+        var patientName = !string.IsNullOrWhiteSpace(reg?.Pasien?.PasienName) && reg.Pasien.PasienName != "-"
+            ? reg.Pasien.PasienName
+            : request.PatientName;
+        var birthDateYmd = reg?.Pasien?.TglLahir != null && reg.Pasien.TglLahir.Year != 3000
+            ? reg.Pasien.TglLahir.ToString("yyyy-MM-dd")
+            : request.BirthDateYmd;
+        var gender = !string.IsNullOrWhiteSpace(reg?.Pasien?.Gender) && reg.Pasien.Gender != "-"
+            ? reg.Pasien.Gender
+            : request.Gender;
         var snapshot = LabOrderCreateHelper.BuildSnapshot(
             request.RegId,
             patientId,
-            request.PatientName,
-            request.BirthDateYmd,
-            request.Gender,
+            patientName,
+            birthDateYmd,
+            gender,
             audit.Timestamp);
         var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
 
