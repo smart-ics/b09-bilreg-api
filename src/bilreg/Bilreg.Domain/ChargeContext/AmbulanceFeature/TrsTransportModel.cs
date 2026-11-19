@@ -119,7 +119,8 @@ public class TrsTransportModel : ITrsTransportKey
         string driverId = "",
         string noPolisi = "",
         string perawatId = "",
-        string dokterId = "")
+        string dokterId = "",
+        decimal totalJarakKm = 0m)
     {
         var id = string.IsNullOrWhiteSpace(trsTransportId)
             ? NunaId.NewLegacyCompact(ID_PREFIX)
@@ -152,7 +153,7 @@ public class TrsTransportModel : ITrsTransportKey
         }
         else
         {
-            model.SetMetodeJarak();
+            model.SetMetodeJarak(totalJarakKm);
         }
 
         return model;
@@ -304,13 +305,32 @@ public class TrsTransportModel : ITrsTransportKey
         Konstanta = konstanta;
     }
 
-    public void SetMetodeJarak()
+    public void SetMetodeJarak(decimal totalJarakKm = 0m)
     {
         AssertNotTerminalState();
+
+        if (totalJarakKm < 0m)
+            throw new ArgumentException("Total jarak tidak boleh bernilai negatif.", nameof(totalJarakKm));
 
         MetodeTarif = ChargingMethodEnum.Jarak;
         TujuanTransportId = string.Empty;
         Konstanta = 0m;
+        if (totalJarakKm > 0m)
+        {
+            StartOdometer = 0m;
+            EndOdometer = totalJarakKm;
+        }
+    }
+
+    public void SetJarakManual(decimal totalJarakKm)
+    {
+        AssertNotTerminalState();
+
+        if (totalJarakKm < 0m)
+            throw new ArgumentException("Total jarak tidak boleh bernilai negatif.", nameof(totalJarakKm));
+
+        StartOdometer = 0m;
+        EndOdometer = totalJarakKm;
     }
     #endregion
 
@@ -380,6 +400,9 @@ public class TrsTransportModel : ITrsTransportKey
 
     public void Cancel(string alasanBatal, decimal biayaBatal = 0m, string petugasVoidId = "", DateTime? cancelTime = null)
     {
+        if (IsPostedBilling)
+            throw new InvalidOperationException("Transaksi transport yang sudah dibebankan ke Billing pasien tidak dapat dibatalkan dari operasional.");
+
         if (Status == TransportStatusEnum.Completed)
             throw new InvalidOperationException("Transaksi yang sudah Completed tidak dapat dibatalkan langsung. Lakukan prosedur koreksi Tata Rekening.");
 
@@ -428,8 +451,8 @@ public class TrsTransportModel : ITrsTransportKey
 
     public void SetPostedBilling()
     {
-        if (Status != TransportStatusEnum.Completed && !(Status == TransportStatusEnum.Cancelled && BiayaBatal > 0))
-            throw new InvalidOperationException("Hanya transaksi dengan status Completed atau Cancelled dengan biaya pembatalan yang dapat ditandai Posted Billing.");
+        if (Status == TransportStatusEnum.Cancelled && BiayaBatal <= 0)
+            throw new InvalidOperationException("Hanya transaksi aktif atau transaksi batal dengan biaya pembatalan yang dapat ditandai Posted Billing.");
 
         IsPostedBilling = true;
     }

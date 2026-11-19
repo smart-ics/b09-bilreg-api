@@ -283,4 +283,34 @@ public class CancelTransportCmdTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Completed tidak dapat dibatalkan langsung*");
     }
+
+    [Fact]
+    public async Task GivenPostedBillingTransport_WhenCancelled_ThenThrowsInvalidOperationException()
+    {
+        // Arrange
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP025",
+            DateTime.Now,
+            regId: "REG-01",
+            tujuanTransportId: "TJ-01");
+
+        transport.SetPostedBilling();
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP025")))
+            .Returns(MayBe.From(transport));
+
+        var cmd = new CancelTransportCmd("TP025", "Batal setelah masuk billing");
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*sudah dibebankan ke Billing pasien tidak dapat dibatalkan*");
+    }
 }

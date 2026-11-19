@@ -70,6 +70,17 @@ public class TrsTransportController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("charge-billing")]
+    [HttpPost("{id}/charge-billing")]
+    public async Task<IActionResult> ChargeBilling(string? id = null, [FromBody] ChargeTransportCmd? cmd = null)
+    {
+        var finalCmd = cmd != null && !string.IsNullOrWhiteSpace(cmd.TrsTransportId)
+            ? (!string.IsNullOrWhiteSpace(id) ? cmd with { TrsTransportId = id } : cmd)
+            : new ChargeTransportCmd(id ?? string.Empty, cmd?.PetugasId ?? string.Empty, cmd?.ChargeTime);
+        var result = await _mediator.Send(finalCmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {
