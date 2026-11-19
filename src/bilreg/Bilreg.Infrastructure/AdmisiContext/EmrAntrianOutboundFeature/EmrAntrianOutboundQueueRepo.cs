@@ -37,6 +37,18 @@ public class EmrAntrianOutboundQueueRepo : IEmrAntrianOutboundQueueRepo
         return dto is null ? MayBe<EmrAntrianOutboundQueueModel>.None : MayBe.From(dto.ToModel());
     }
 
+    public MayBe<EmrAntrianOutboundQueueModel> FindPendingOrProcessingBySource(string sourceId, string messageType)
+    {
+        var dto = _dal.FindPendingOrProcessingBySource(sourceId, messageType);
+        return dto is null ? MayBe<EmrAntrianOutboundQueueModel>.None : MayBe.From(dto.ToModel());
+    }
+
+    public MayBe<EmrAntrianOutboundQueueModel> FindLatestFailedBySource(string sourceId, string messageType)
+    {
+        var dto = _dal.FindLatestFailedBySource(sourceId, messageType);
+        return dto is null ? MayBe<EmrAntrianOutboundQueueModel>.None : MayBe.From(dto.ToModel());
+    }
+
     public void DeleteBySource(string sourceId)
     {
         _dal.DeleteBySourceId(sourceId);

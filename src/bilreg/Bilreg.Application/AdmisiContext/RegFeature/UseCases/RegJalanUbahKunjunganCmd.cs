@@ -1,3 +1,5 @@
+using System.Globalization;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
@@ -63,6 +65,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
+    private readonly EmrAntrianOutboundEnqueueService? _emrOutboundEnqueue;
 
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -87,7 +90,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider,
-        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null,
+        EmrAntrianOutboundEnqueueService? emrOutboundEnqueue = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -113,6 +117,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
         _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
+        _emrOutboundEnqueue = emrOutboundEnqueue;
     }
     public async Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
@@ -211,6 +216,24 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         SaveBillTdk(billTdk);
         SaveJurnalReg(jurnalReg);
         SaveJurnalTdk(jurnalTindakan);
+
+        if (!isSameSchedule && _emrOutboundEnqueue is not null)
+        {
+            var emrRawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            var prefix = string.IsNullOrWhiteSpace(emrRawPrefix) ? "-" : emrRawPrefix.Trim();
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId,
+                "-",
+                reg.Pasien.PasienId,
+                reg.Pasien.PasienName,
+                reg.Layanan.LayananId,
+                reg.Dokter.PpaId,
+                reg.RegDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                schedule.LegacyJadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                noAntrian,
+                prefix);
+            _emrOutboundEnqueue.EnqueueOrUpdateAddReg(emrPayload, occurredAt);
+        }
 
         trans.Complete();
         #endregion
