@@ -64,7 +64,11 @@ public class LabOrderCreateFromEmrHandlerTest
             _labOrderDal.Object);
     }
 
-    private static RegModel CreateTestReg(string regId = "REG001", bool isDischarged = false, bool isVoided = false)
+    private static RegModel CreateTestReg(
+        string regId = "REG001",
+        bool isDischarged = false,
+        bool isVoided = false,
+        PasienReff? pasien = null)
     {
         return new RegModel(
             regId,
@@ -74,7 +78,7 @@ public class LabOrderCreateFromEmrHandlerTest
             AuditInfoType.Default,
             isVoided ? new AuditInfoType("voider", DateTime.Now) : AuditInfoType.Default,
             JenisRegEnum.RegJalan,
-            PasienModel.Default.ToReff(),
+            pasien ?? PasienModel.Default.ToReff(),
             TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(),
             KelasType.Default.ToReff(),
@@ -138,9 +142,49 @@ public class LabOrderCreateFromEmrHandlerTest
         persisted.Items.First().TestDefinitionId.Should().Be("LTD0001");
         persisted.Items.First().Urgency.Should().Be(LabOrderUrgencyEnum.Cito);
         persisted.Items.First().IsCito.Should().BeTrue();
+        persisted.Patient.PatientId.Should().Be("MR0001");
+        persisted.Patient.PatientName.Should().Be("Pasien Tes");
+        persisted.Patient.BirthDate.Should().Be(new DateTime(1990, 5, 15));
+        persisted.Patient.Gender.Should().Be("L");
+        persisted.Patient.AgeAtOrder.Should().Be(34);
 
         _resolution.Verify(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()), Times.Once);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_RegHasOfficialPatientData_ReconcilesSnapshotWithRegPasienData()
+    {
+        var officialPasien = new PasienReff(
+            "MR-OFFICIAL",
+            "Ibu Kartini",
+            new DateOnly(1985, 4, 12),
+            "P");
+        var activeReg = CreateTestReg("REG001", pasien: officialPasien);
+        _regRepo.Setup(r => r.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(activeReg));
+
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var cmd = ValidCmd() with
+        {
+            PatientId = "MR-INACCURATE",
+            PatientName = "Nama Salah",
+            BirthDateYmd = "2000-01-01",
+            Gender = "L"
+        };
+
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        persisted.Should().NotBeNull();
+        persisted!.Patient.PatientId.Should().Be("MR-OFFICIAL");
+        persisted.Patient.PatientName.Should().Be("Ibu Kartini");
+        persisted.Patient.BirthDate.Should().Be(new DateTime(1985, 4, 12));
+        persisted.Patient.Gender.Should().Be("P");
+        persisted.Patient.AgeAtOrder.Should().Be(40);
     }
 
     [Fact]
