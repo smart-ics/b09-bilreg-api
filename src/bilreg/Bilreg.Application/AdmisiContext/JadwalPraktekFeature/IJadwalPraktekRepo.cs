@@ -16,5 +16,5 @@ public interface IJadwalPraktekRepo :
     IListData<JadwalPraktekType, IGroupSpesialisKey>
 {
     void Migrasi();
-
+    string GetJamMulaiFromReal(string dokterId, int fnHari, string jamMulaiReal);
 }
