@@ -69,7 +69,7 @@ Review Status: NOT-REVIEWED
 Title: Implementasi `MonotonicNunaId` Bebas `Thread.Sleep` dan Adopsi pada Model Domain Stock Ledger serta Pakai Barang
 
 Implementation Status: IMPLEMENTED
-Review Status: NOT-REVIEWED
+Review Status: GO
 
 Objective: Menyediakan pembangkit ID Base36 monotonik thread-safe (`MonotonicNunaId`) di `Bilreg.Domain` yang menjamin keunikan dan urutan leksikografis naik (`StringComparer.Ordinal`) tanpa `Thread.Sleep` untuk format 12-karakter (`New`) maupun 10-karakter (`NewLegacyCompact`, termasuk dukungan parameter opsional `minExclusiveId`), serta menerapkannya pada `StockBatchModel`, `LocationStockBalanceModel`, `StockMovementModel`, `StockLegacyBindingModel`, dan `PakaiBrgModel`.
 
