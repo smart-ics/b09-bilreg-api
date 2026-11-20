@@ -29,7 +29,8 @@ public record IgdVisitGetResponse(
     string BedIgdId,
     bool IsVoided,
     IEnumerable<TriageItem> ListTriage,
-    IEnumerable<EventItem> ListEvent);
+    IEnumerable<EventItem> ListEvent,
+    bool HasPendingBilling = false);
 
 public record TriageItem(
     int NoTriage,
@@ -98,7 +99,8 @@ public class IgdVisitGetHandler : IRequestHandler<IgdVisitGetQuery, IgdVisitGetR
             BedIgdId: visit.BedId,
             IsVoided: visit.IsVoided,
             ListTriage: listTriage.ToList(),
-            ListEvent: listEvent.ToList());
+            ListEvent: listEvent.ToList(),
+            HasPendingBilling: visit.HasPendingBilling);
 
         return Task.FromResult(response);
     }
