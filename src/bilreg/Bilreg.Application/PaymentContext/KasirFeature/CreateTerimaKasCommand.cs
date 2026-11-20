@@ -3,6 +3,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Bilreg.Domain.Shared;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.KasirFeature;
@@ -224,7 +225,7 @@ public class CreateTerimaKasHandler : IRequestHandler<CreateTerimaKasCommand, Cr
         }
 
         // Rule 4: Eksekusi transaksi atomik
-        using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+        using (var scope = TransHelper.NewScope())
         {
             // 4a. Simpan model kasir baru (BILRG_TrsKasir & BILRG_TrsKasirPayment)
             _trsKasirRepo.Save(model);

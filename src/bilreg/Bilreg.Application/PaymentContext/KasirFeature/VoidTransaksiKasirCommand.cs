@@ -3,6 +3,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Bilreg.Domain.Shared;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.KasirFeature;
@@ -78,10 +79,7 @@ public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirComma
             : request.SupervisorUserId.Trim();
 
         // Rule 3: Eksekusi void dalam satu transaksi atomik
-        using var scope = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled);
+        using var scope = TransHelper.NewScope();
 
         model.Void(petugasVoid, request.AlasanVoid, _tglJamProvider.Now);
         _trsKasirRepo.Save(model);

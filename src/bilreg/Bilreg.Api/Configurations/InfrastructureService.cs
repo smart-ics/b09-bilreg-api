@@ -38,6 +38,8 @@ using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.User;
+using Bilreg.Infrastructure.Shared.User;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -197,6 +199,7 @@ public static class InfrastructureService
             .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
             .AddScoped<ITransferReceivableService, TransferReceivableService>()
             .AddScoped<IUsmanGetTokenService,  UsmanGetTokenService>()
+            .AddScoped<IUsmanGetUserService, UsmanGetUserService>()
             .AddScoped<ISmassTokenService, SmassTokenService>()
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
