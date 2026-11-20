@@ -1,5 +1,6 @@
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
@@ -38,6 +39,7 @@ public interface IAddBillAppService
         TarifType tarif,
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
         DateTime createdAt = default);
 
     TrsBillType FromPenjualanItem(
@@ -113,11 +115,12 @@ public sealed class AddBillAppService : IAddBillAppService
         TarifType tarif,
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
         DateTime createdAt = default)
     {
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromLabOrderItem(tataRekening, labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif,
-            listReffKomp, createdAt);
+            listReffKomp, layanan, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);
