@@ -145,7 +145,9 @@ public class LabResultScaffoldService : ILabResultScaffoldService
         if (valueList.Count == 0)
             throw new ArgumentException("At least one result value is required.", nameof(values));
 
-        var scaffoldById = scaffold.ToDictionary(x => x.ComponentId, StringComparer.Ordinal);
+        var scaffoldById = scaffold
+            .GroupBy(x => x.ComponentId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var scaffoldByCode = scaffold
             .Where(x => !string.IsNullOrWhiteSpace(x.ComponentCode))
             .ToLookup(x => x.ComponentCode, StringComparer.OrdinalIgnoreCase);
@@ -256,31 +258,70 @@ public class LabResultScaffoldService : ILabResultScaffoldService
         IReadOnlyList<LabResultScaffoldLine> scaffold,
         List<LabResultRecordItemInputDto> explicitList)
     {
-        var scaffoldById = scaffold.ToDictionary(x => x.ComponentId, StringComparer.Ordinal);
-        var scaffoldByCode = scaffold
+        var scaffoldComponentIds = scaffold
+            .Select(x => x.ComponentId)
+            .ToHashSet(StringComparer.Ordinal);
+        var scaffoldComponentCodes = scaffold
             .Where(x => !string.IsNullOrWhiteSpace(x.ComponentCode))
-            .ToLookup(x => x.ComponentCode, StringComparer.OrdinalIgnoreCase);
-
-        var explicitByCode = explicitList
-            .Where(x => !string.IsNullOrWhiteSpace(x.ComponentCode))
-            .ToDictionary(x => x.ComponentCode!.Trim(), StringComparer.OrdinalIgnoreCase);
+            .Select(x => x.ComponentCode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var isPaOrMicroScaffold = scaffold.Any(s =>
             s.ComponentCode.StartsWith("PA_", StringComparison.OrdinalIgnoreCase) ||
             s.ComponentCode.StartsWith("MIC_", StringComparison.OrdinalIgnoreCase));
 
         var captures = new List<LabResultItemCapture>();
-        var matchedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var matchedIndices = new HashSet<int>();
 
         foreach (var line in scaffold)
         {
-            explicitByCode.TryGetValue(line.ComponentCode, out var explicitItem);
-            if (explicitItem is null && !string.IsNullOrWhiteSpace(line.ComponentId))
-                explicitByCode.TryGetValue(line.ComponentId, out explicitItem);
-
-            if (explicitItem is not null)
+            // 1. First priority: match by (TestId, ComponentCode) or (TestId, ComponentId)
+            var matchIndex = -1;
+            for (var i = 0; i < explicitList.Count; i++)
             {
-                matchedCodes.Add(explicitItem.ComponentCode ?? line.ComponentCode);
+                if (matchedIndices.Contains(i)) continue;
+
+                var exp = explicitList[i];
+                var expTestId = exp.TestId?.Trim();
+                var expCode = exp.ComponentCode?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(expTestId) &&
+                    expTestId.Equals(line.TestDefinitionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(expCode) &&
+                        (expCode.Equals(line.ComponentCode, StringComparison.OrdinalIgnoreCase) ||
+                         expCode.Equals(line.ComponentId, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        matchIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // 2. Second priority: fallback match by ComponentCode or ComponentId without TestId constraint
+            if (matchIndex == -1)
+            {
+                for (var i = 0; i < explicitList.Count; i++)
+                {
+                    if (matchedIndices.Contains(i)) continue;
+
+                    var exp = explicitList[i];
+                    var expCode = exp.ComponentCode?.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(expCode) &&
+                        (expCode.Equals(line.ComponentCode, StringComparison.OrdinalIgnoreCase) ||
+                         expCode.Equals(line.ComponentId, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        matchIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            if (matchIndex != -1)
+            {
+                matchedIndices.Add(matchIndex);
+                var explicitItem = explicitList[matchIndex];
 
                 var rawFallback = explicitItem.Value ?? explicitItem.OptionValue ?? explicitItem.NarrativeValue ?? explicitItem.TextValue ?? explicitItem.NumericValue?.ToString();
                 var parsed = ParseValue(line.ResultType, rawFallback);
@@ -344,16 +385,20 @@ public class LabResultScaffoldService : ILabResultScaffoldService
             }
         }
 
-        foreach (var item in explicitList)
+        for (var i = 0; i < explicitList.Count; i++)
         {
+            if (matchedIndices.Contains(i))
+                continue;
+
+            var item = explicitList[i];
             var code = item.ComponentCode?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(code) || matchedCodes.Contains(code))
+            if (string.IsNullOrWhiteSpace(code))
                 continue;
 
             var isDynamic = code.StartsWith("AST_", StringComparison.OrdinalIgnoreCase)
                 || code.StartsWith("AST", StringComparison.OrdinalIgnoreCase);
 
-            if (!isDynamic && !scaffoldByCode.Contains(code) && !scaffoldById.ContainsKey(code))
+            if (!isDynamic && !scaffoldComponentCodes.Contains(code) && !scaffoldComponentIds.Contains(code))
                 throw new InvalidOperationException($"LAB_RESULT_UNKNOWN_LINE: ComponentId '{code}' is not on the server scaffold.");
 
             var resultType = item.ResultType.HasValue && Enum.IsDefined(typeof(LabResultTypeEnum), item.ResultType.Value)

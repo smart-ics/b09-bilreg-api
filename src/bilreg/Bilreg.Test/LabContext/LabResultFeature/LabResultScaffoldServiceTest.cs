@@ -210,4 +210,53 @@ public class LabResultScaffoldServiceTest
         ast1.OptionValue.Should().Be("S");
         ast1.TextValue.Should().Be("MIC: <= 1");
     }
+
+    [Fact]
+    public void BuildCaptures_WithExplicitItems_WhenOrderHasMultipleTestsSharingComponent_CapturesCorrectValuesWithoutDuplicateKeyException()
+    {
+        // Test 1: Hemoglobin standalone (LTD0016)
+        var itemHb = LabOrderItemModel.Create(
+            "LTD0016", "LAB0103002", "HEMOGLOBIN (Hb.)", "TR1", "T-HB", "HEMOGLOBIN (Hb.)",
+            VacutainerTypeEnum.Edta, "Darah", 1);
+        var lineHb = LabOrderTestSupport.ResolvedLine(itemHb, components:
+            [LabOrderTestSupport.SampleComponent("MLC0001", "HB", "Hemoglobin", LabResultTypeEnum.Numeric)]);
+
+        // Test 2: CBC panel which also contains Hemoglobin (LTD004B)
+        var itemCbc = LabOrderItemModel.Create(
+            "LTD004B", "LAB0221005", "CBC", "TR2", "T-CBC", "CBC",
+            VacutainerTypeEnum.Edta, "Darah", 1);
+        var lineCbc = LabOrderTestSupport.ResolvedLine(itemCbc, components:
+        [
+            LabOrderTestSupport.SampleComponent("MLC0001", "HB", "Hemoglobin", LabResultTypeEnum.Numeric),
+            LabOrderTestSupport.SampleComponent("MLC000D", "HCT", "Hematocrit", LabResultTypeEnum.Numeric),
+            LabOrderTestSupport.SampleComponent("MLC0004", "PLT", "Platelet", LabResultTypeEnum.Numeric)
+        ]);
+
+        var order = LabOrderTestSupport.CreateEmrOrder(lines: [lineHb, lineCbc]);
+        var scaffold = _sut.BuildFromOrder(order);
+
+        // Scaffold should have 4 lines, two of which have ComponentId MLC0001 / Code HB
+        scaffold.Should().HaveCount(4);
+        scaffold.Count(s => s.ComponentId == "MLC0001").Should().Be(2);
+
+        var explicitItems = new List<LabResultRecordItemInputDto>
+        {
+            new(TestId: "LTD0016", TestName: "HEMOGLOBIN (Hb.)", ComponentCode: "HB", ComponentName: "Hemoglobin", ResultType: 1, NumericValue: 18m),
+            new(TestId: "LTD004B", TestName: "CBC", ComponentCode: "HB", ComponentName: "Hemoglobin", ResultType: 1, NumericValue: 16m),
+            new(TestId: "LTD004B", TestName: "CBC", ComponentCode: "HCT", ComponentName: "Hematocrit", ResultType: 1, NumericValue: 41m),
+            new(TestId: "LTD004B", TestName: "CBC", ComponentCode: "PLT", ComponentName: "Platelet", ResultType: 1, NumericValue: 200m)
+        };
+
+        var captures = _sut.BuildCaptures(scaffold, [], explicitItems);
+
+        captures.Should().HaveCount(4);
+        var hbStandalone = captures.First(c => c.TestId == "LTD0016" && c.ComponentCode == "HB");
+        hbStandalone.NumericValue.Should().Be(18m);
+
+        var hbCbc = captures.First(c => c.TestId == "LTD004B" && c.ComponentCode == "HB");
+        hbCbc.NumericValue.Should().Be(16m);
+
+        var hctCbc = captures.First(c => c.TestId == "LTD004B" && c.ComponentCode == "HCT");
+        hctCbc.NumericValue.Should().Be(41m);
+    }
 }
