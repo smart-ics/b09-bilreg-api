@@ -3,6 +3,7 @@ using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
+using Bilreg.Infrastructure.InventoryContext.StokFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using MediatR;
@@ -170,6 +171,56 @@ public class PostDispenseIssueConsequenceHandlerTest
                 NoBatch: "NB-DI1"),
             default);
         seeded.Outcome.Should().Be(PostGoodsReceiptOutcomeEnum.Success);
+    }
+
+    [Fact]
+    public async Task Handle_MultiRowTbStokLayer_DepletesAcrossRowsCleanly()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string doId = "DODISPM01";
+        const string brgId = "BRGDISPM0001";
+        var stokDal = new tb_stok_dal(_db);
+        stokDal.Insert(new tb_stok_dto("STDISP0001", brgId, LayananId, "", doId, TglEdLate.ToString("yyyy-MM-dd"), "NB-D", 2, 2, 50m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+        stokDal.Insert(new tb_stok_dto("STDISP0002", brgId, LayananId, "", doId, TglEdLate.ToString("yyyy-MM-dd"), "NB-D", 3, 3, 50m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+
+        var batch = StockBatchModel.Create(brgId, doId, 50m, new DateTime(2026, 6, 1, 8, 0, 0), "PO01");
+        batch.IncreaseLokasi(LayananId, TglEdLate, 5, "NB-D");
+        _batchRepo.SaveChanges(batch, UserId);
+
+        var sut = CreateDispenseHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        var result = await sut.Handle(
+            new PostDispenseIssueConsequenceCommand(brgId, LayananId, 4m, "TRSDISP_M1", TglMutasi, UserId, TglEdLate),
+            default);
+
+        result.Outcome.Should().Be(PostDispenseIssueOutcomeEnum.Success);
+        result.Lines.Should().HaveCount(2);
+
+        var legacyBalances = _legacyRead.ListBalances(brgId, doId).ToList();
+        legacyBalances.Should().ContainSingle(b => b.LegacyStokId == "STDISP0002" && b.QtySisa == 1);
+    }
+
+    [Fact]
+    public async Task Handle_MultiItemSameTrsReffId_ProcessesSecondBrgIdWithoutPartialIdempotencyError()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string brg2 = "BRGDISP00002";
+        var receipt = CreateReceiptHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        await receipt.Handle(new PostGoodsReceiptConsequenceCommand(BrgId, "DODISP_A", LayananId, 10, 50m, "TRSD_RA", TglMutasi, UserId, TglEdLate), default);
+        await receipt.Handle(new PostGoodsReceiptConsequenceCommand(brg2, "DODISP_B", LayananId, 10, 60m, "TRSD_RB", TglMutasi, UserId, TglEdLate), default);
+
+        var sut = CreateDispenseHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        const string sharedDispenseId = "TRSD_MULTI";
+
+        var r1 = await sut.Handle(new PostDispenseIssueConsequenceCommand(BrgId, LayananId, 2m, sharedDispenseId, TglMutasi, UserId, TglEdLate), default);
+        var r2 = await sut.Handle(new PostDispenseIssueConsequenceCommand(brg2, LayananId, 3m, sharedDispenseId, TglMutasi, UserId, TglEdLate), default);
+
+        r1.Outcome.Should().Be(PostDispenseIssueOutcomeEnum.Success);
+        r2.Outcome.Should().Be(PostDispenseIssueOutcomeEnum.Success);
+        _mutasiRepo.ListByTrsReffId(sharedDispenseId).Should().HaveCount(2);
     }
 
     private PostDispenseIssueConsequenceHandler CreateDispenseHandler(

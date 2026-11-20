@@ -1,8 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -93,7 +93,9 @@ public class PostSaleIssueConsequenceHandler
 
         var (movementKind, legacyKindString) = MapSaleKind(request.SaleKind);
 
-        var priorMutasi = _mutasiRepo.ListByTrsReffId(request.TrsReffId).ToList();
+        var priorMutasi = _mutasiRepo.ListByTrsReffId(request.TrsReffId)
+            .Where(x => string.Equals(x.BrgId, request.BrgId, StringComparison.Ordinal))
+            .ToList();
         if (priorMutasi.Count > 0)
         {
             if (priorMutasi.Any(x => x.MovementKind != movementKind))
@@ -247,61 +249,31 @@ public class PostSaleIssueConsequenceHandler
                 remaining -= sliceQty;
                 legacyDepletions[match.LegacyStokId] = legacyDepletions.GetValueOrDefault(match.LegacyStokId) + sliceQty;
 
-                string legacyBukuId;
-                do
-                {
-                    legacyBukuId = NunaId.NewLegacyCompact("BK");
-                    if (usedBukuIds.Contains(legacyBukuId) ||
-                        (watermarkToBeat != null && string.Compare(legacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0))
-                    {
-                        Thread.Sleep(5);
-                    }
-                } while (!usedBukuIds.Add(legacyBukuId) ||
-                         (watermarkToBeat != null && string.Compare(legacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0));
-
+                var legacyBukuId = MonotonicNunaId.NewLegacyCompact("BK", watermarkToBeat);
                 watermarkToBeat = legacyBukuId;
 
-                StockMovementModel mutasi;
-                do
-                {
-                    mutasi = StockMovementModel.CreateOutbound(
-                        after.StokLokasiId,
-                        batch.StokBatchId,
-                        request.BrgId,
-                        line.BrgMasukReffId,
-                        request.LayananId,
-                        line.TglEd,
-                        request.TrsReffId,
-                        movementKind,
-                        qtyOut: sliceQty,
-                        hpp: hpp,
-                        tglMutasi: request.TglMutasi,
-                        poReffId: batch.PoReffId);
-
-                    if (usedMutasiIds.Contains(mutasi.StokMutasiId))
-                    {
-                        Thread.Sleep(5);
-                    }
-                } while (!usedMutasiIds.Add(mutasi.StokMutasiId));
+                var mutasi = StockMovementModel.CreateOutbound(
+                    after.StokLokasiId,
+                    batch.StokBatchId,
+                    request.BrgId,
+                    line.BrgMasukReffId,
+                    request.LayananId,
+                    line.TglEd,
+                    request.TrsReffId,
+                    movementKind,
+                    qtyOut: sliceQty,
+                    hpp: hpp,
+                    tglMutasi: request.TglMutasi,
+                    poReffId: batch.PoReffId);
 
                 mutasiInserts.Add(mutasi);
 
-                StockLegacyBindingModel binding;
-                do
-                {
-                    Thread.Sleep(5);
-                    binding = StockLegacyBindingModel.CreateMutasiBuku(
-                        mutasi.StokMutasiId,
-                        legacyBukuId,
-                        request.TrsReffId,
-                        after.StokLokasiId,
-                        match.LegacyStokId);
-
-                    if (usedBindingIds.Contains(binding.BindingId))
-                    {
-                        Thread.Sleep(5);
-                    }
-                } while (!usedBindingIds.Add(binding.BindingId));
+                var binding = StockLegacyBindingModel.CreateMutasiBuku(
+                    mutasi.StokMutasiId,
+                    legacyBukuId,
+                    request.TrsReffId,
+                    after.StokLokasiId,
+                    match.LegacyStokId);
 
                 bindingInserts.Add(binding);
 

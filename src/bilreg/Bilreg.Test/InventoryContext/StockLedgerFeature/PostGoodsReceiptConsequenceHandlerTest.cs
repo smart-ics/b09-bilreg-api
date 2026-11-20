@@ -279,6 +279,32 @@ public class PostGoodsReceiptConsequenceHandlerTest
         inboundOp.Request.SatuanId.Should().Be("BH");
     }
 
+    [Fact]
+    public async Task Handle_AllowAdditiveLine_AddsBonusLineForSameDoBrgIdAndTglEd()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        var sut = CreateHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        var regular = NewCommand(trsReffId: DoId, qty: 10, hpp: 100m);
+        var bonus = NewCommand(trsReffId: DoId, qty: 2, hpp: 0m) with { AllowAdditiveLine = true };
+
+        var first = await sut.Handle(regular, default);
+        first.Outcome.Should().Be(PostGoodsReceiptOutcomeEnum.Success);
+
+        var second = await sut.Handle(bonus, default);
+        second.Outcome.Should().Be(PostGoodsReceiptOutcomeEnum.Success);
+        second.StokMutasiId.Should().NotBe(first.StokMutasiId);
+
+        var batch = _batchRepo.LoadByNaturalKey(BrgId, DoId).Value;
+        batch.QtySisa.Should().Be(12);
+        batch.ListLokasi.Should().ContainSingle(x => x.LayananId == LayananId && x.TglEd == TglEd && x.QtySisa == 12);
+
+        _mutasiRepo.ListByTrsReffId(DoId)
+            .Where(x => x.MovementKind == MovementKindEnum.GoodsReceipt)
+            .Should().HaveCount(2);
+    }
+
     private PostGoodsReceiptConsequenceHandler CreateHandler(
         EnsureFreshnessOutcomeEnum gateOutcome,
         string inconsistencyReason = "",

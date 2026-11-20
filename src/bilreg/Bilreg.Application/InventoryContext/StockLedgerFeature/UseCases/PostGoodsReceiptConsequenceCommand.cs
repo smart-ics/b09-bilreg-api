@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -23,7 +23,8 @@ public record PostGoodsReceiptConsequenceCommand(
     DateTime? TglEd = null,
     string? PoReffId = null,
     string? NoBatch = null,
-    string? SatuanId = null) : IRequest<PostGoodsReceiptConsequenceResult>;
+    string? SatuanId = null,
+    bool AllowAdditiveLine = false) : IRequest<PostGoodsReceiptConsequenceResult>;
 
 public enum PostGoodsReceiptOutcomeEnum
 {
@@ -121,7 +122,8 @@ public class PostGoodsReceiptConsequenceHandler
             existingLokasi = batch.ListLokasi.FirstOrDefault(x =>
                 x.LayananId == request.LayananId && x.TglEd == tglEd);
 
-            if (existingLokasi is not null
+            if (!request.AllowAdditiveLine
+                && existingLokasi is not null
                 && _mutasiRepo.Exists(
                     request.TrsReffId,
                     MovementKindEnum.GoodsReceipt,
@@ -130,30 +132,32 @@ public class PostGoodsReceiptConsequenceHandler
                 var prior = _mutasiRepo.ListByTrsReffId(request.TrsReffId)
                     .FirstOrDefault(x =>
                         x.MovementKind == MovementKindEnum.GoodsReceipt
-                        && x.StokLokasiId == existingLokasi.StokLokasiId);
+                        && x.StokLokasiId == existingLokasi.StokLokasiId
+                        && x.QtyIn == request.Qty
+                        && x.Hpp == request.Hpp);
 
-                var legacyBuku = string.Empty;
-                var legacyStok = string.Empty;
                 if (prior is not null)
                 {
+                    var legacyBuku = string.Empty;
+                    var legacyStok = string.Empty;
                     var bindingMaybe = _bindingRepo.FindByStokMutasiId(prior.StokMutasiId);
                     if (bindingMaybe.HasValue)
                     {
                         legacyBuku = bindingMaybe.Value.LegacyBukuId;
                         legacyStok = bindingMaybe.Value.LegacyStokId;
                     }
-                }
 
-                return new PostGoodsReceiptConsequenceResult(
-                    PostGoodsReceiptOutcomeEnum.Idempotent,
-                    prior?.StokMutasiId ?? string.Empty,
-                    existingLokasi.StokLokasiId,
-                    batch.StokBatchId,
-                    legacyBuku,
-                    legacyStok,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty);
+                    return new PostGoodsReceiptConsequenceResult(
+                        PostGoodsReceiptOutcomeEnum.Idempotent,
+                        prior.StokMutasiId,
+                        existingLokasi.StokLokasiId,
+                        batch.StokBatchId,
+                        legacyBuku,
+                        legacyStok,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty);
+                }
             }
         }
         else
@@ -172,8 +176,8 @@ public class PostGoodsReceiptConsequenceHandler
             request.Qty,
             request.NoBatch);
 
-        var legacyBukuId = NunaId.NewLegacyCompact("BK");
-        var legacyStokId = NunaId.NewLegacyCompact("ST");
+        var legacyBukuId = MonotonicNunaId.NewLegacyCompact("BK");
+        var legacyStokId = MonotonicNunaId.NewLegacyCompact("ST");
 
         var mutasi = StockMovementModel.CreateInbound(
             lokasi.StokLokasiId,
