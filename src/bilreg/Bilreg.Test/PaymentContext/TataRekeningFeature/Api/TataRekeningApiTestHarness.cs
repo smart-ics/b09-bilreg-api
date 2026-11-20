@@ -37,6 +37,7 @@ public sealed class TataRekeningApiTestHarness
     public Mock<ITataRekeningCancellationLogRepo> CancellationLogRepo { get; } = new();
     public Mock<IDownstreamSettlementInspector> SettlementInspector { get; } = new();
     public Mock<IRegAktifRepo> RegAktifRepo { get; } = new();
+    public Mock<IBilrgTataRekeningDal> BilrgTataRekeningDal { get; } = new();
 
     public TataRekeningApiTestHarness()
     {
@@ -61,6 +62,7 @@ public sealed class TataRekeningApiTestHarness
         CancellationLogRepo.Reset();
         SettlementInspector.Reset();
         RegAktifRepo.Reset();
+        BilrgTataRekeningDal.Reset();
         UnitOfWork.Setup(u => u.Begin()).Returns(UnitOfWorkScope.Object);
         RegBiayaRepo.Setup(r => r.ListData(It.IsAny<IRegKey>())).Returns([]);
     }
@@ -82,6 +84,7 @@ public sealed class TataRekeningApiTestHarness
         RemoveAndRegister(services, () => harness.CancellationLogRepo.Object);
         RemoveAndRegister(services, () => harness.SettlementInspector.Object);
         RemoveAndRegister(services, () => harness.RegAktifRepo.Object);
+        RemoveAndRegister(services, () => harness.BilrgTataRekeningDal.Object);
         RemoveAndRegister(services, () => (ICurrentUserContext)new FixedCurrentUserContext(
             TestAuthHandler.UserId, TataRekeningSupervisorRole.VerifikatorSupervisor));
         RemoveAndRegister(services, () => (IRegRelationPolicy)TataRekeningDomainTestHelper.PermissiveRegRelationPolicy);

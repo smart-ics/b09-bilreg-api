@@ -1,0 +1,1 @@
+global using TataRekeningQueueDto = Bilreg.Application.PaymentContext.TataRekeningFeature.TataRekeningQueueDto;

@@ -6,7 +6,8 @@ public record RegRegAktifListQuery : IRequest<IEnumerable<RegRegAktifListRespons
 
 public record RegRegAktifListResponse(string RegId, string RegDate, string PasienId,
     string PasienName, string JenisReg, string JenisRegString, string LayananId,
-    string LayananName, string DokterId, string DokterName, int StatusTataRekening = 0);
+    string LayananName, string DokterId, string DokterName, int StatusTataRekening = 0,
+    string TglLahir = "", string Gender = "");
 
 public class RegRegAktifHandler : IRequestHandler<RegRegAktifListQuery, IEnumerable<RegRegAktifListResponse>>
 {
@@ -26,7 +27,9 @@ public class RegRegAktifHandler : IRequestHandler<RegRegAktifListQuery, IEnumera
             ((int)x.JenisReg).ToString(), x.JenisReg.ToString(), 
             x.Layanan.LayananId, x.Layanan.LayananName, 
             x.Dokter.PpaId, x.Dokter.PpaName,
-            x.StatusTataRekening));
+            x.StatusTataRekening,
+            x.Pasien.TglLahir.ToString("yyyy-MM-dd"),
+            x.Pasien.Gender));
 
         return Task.FromResult(resutl);
     }

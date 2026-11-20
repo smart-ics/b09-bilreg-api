@@ -91,4 +91,7 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
             x.GroupSpesialisId, x.GroupSpesialisName, x.RuangName, x.PrefixAntrian))?.ToList()??[];
         listDto.ForEach(x => _dal.Insert(x));
     }
+
+    public string GetJamMulaiFromReal(string dokterId, int fnHari, string jamMulaiReal)
+        => _jadwalFoDal.GetJamMulaiFromReal(dokterId, fnHari, jamMulaiReal);
 }
