@@ -1,5 +1,7 @@
+using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 
@@ -7,7 +9,10 @@ namespace Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 
 public interface IJadwalFoDal :
     IListData<JadwalFoDto>
-{ }
+{
+    string GetJamMulaiFromReal(string dokterId, int fnHari, string jamMulaiReal);
+}
+
 public class JadwalFoDal : IJadwalFoDal
 {
     private readonly DatabaseOptions _opt;
@@ -15,6 +20,26 @@ public class JadwalFoDal : IJadwalFoDal
     public JadwalFoDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
+    }
+
+    public string GetJamMulaiFromReal(string dokterId, int fnHari, string jamMulaiReal)
+    {
+        const string sql = """
+            SELECT TOP 1 fs_jam_mulai 
+            FROM ta_jadwal_dokter 
+            WHERE fs_kd_dokter = @dokterId 
+              AND fn_hari = @fnHari 
+              AND (fs_jam_mulai_real = @jamMulaiReal OR fs_jam_mulai = @jamMulaiReal)
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@dokterId", dokterId, SqlDbType.VarChar);
+        dp.AddParam("@fnHari", fnHari, SqlDbType.Int);
+        dp.AddParam("@jamMulaiReal", jamMulaiReal, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.ExecuteScalar<string>(sql, dp);
+        return result?.Trim() ?? string.Empty;
     }
 
     public IEnumerable<JadwalFoDto> ListData()

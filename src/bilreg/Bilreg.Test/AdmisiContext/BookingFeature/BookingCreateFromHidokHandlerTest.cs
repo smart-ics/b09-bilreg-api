@@ -74,6 +74,8 @@ public class BookingCreateFromHidokHandlerTest
 
         _featureResolver.SetupGet(x => x.UseResolver).Returns(false);
         _jadwalRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+        _jadwalRepo.Setup(x => x.GetJamMulaiFromReal("DR1", (int)tglBerobat.DayOfWeek + 1, "08:00"))
+            .Returns("08:00");
 
         var antrian = new AntrianModel(
             "AN1", tglBerobat, jamMulai, new TimeOnly(12, 0),
@@ -126,6 +128,93 @@ public class BookingCreateFromHidokHandlerTest
         result.Should().NotBeNull();
         result.NoAntrian.Should().Be(5);
         _bookingRepo.Verify(x => x.SaveChanges(It.IsAny<BookingModel>()), Times.Once);
+        _antrianRepo.Verify(x => x.SaveChanges(It.IsAny<AntrianModel>()), Times.Once);
+        _trackerRepo.Verify(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()), Times.Once);
+
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint("LY1", "DR1", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenJamMulaiRealDifferentFromFormal_TranslatesJamMulaiAndCreatesBookingSuccessfully()
+    {
+        // Arrange
+        var tglBerobat = new DateOnly(2025, 10, 24);
+        var jamMulaiFormal = new TimeOnly(8, 0);
+        var jamMulaiRealStr = "08:30";
+        var dokter = PpaType.Default with { PpaId = "DR1", PpaName = "Dr. Budi" };
+        var layanan = LayananType.Default with { LayananId = "LY1", LayananName = "Poli Umum" };
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "JP1",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = jamMulaiFormal,
+            JamSelesai = new TimeOnly(12, 0),
+            Dokter = dokter.ToReff(),
+            Layanan = layanan.ToReff()
+        };
+
+        _ppaRepo.Setup(x => x.LoadEntity(It.IsAny<ContactFinder>()))
+            .Returns(MayBe.From(dokter));
+
+        _featureResolver.SetupGet(x => x.UseResolver).Returns(false);
+        _jadwalRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+        _jadwalRepo.Setup(x => x.GetJamMulaiFromReal("DR1", (int)tglBerobat.DayOfWeek + 1, "08:30"))
+            .Returns("08:00");
+
+        var antrian = new AntrianModel(
+            "AN1", tglBerobat, jamMulaiFormal, new TimeOnly(12, 0),
+            AntrianModel.GenSequenceTag(tglBerobat, jadwal), "desc",
+            new ServicePointType(dokter.PpaId.Replace(' ', '$'), "desc"),
+            [], null!);
+        _antrianRepo.Setup(x => x.ListData(tglBerobat)).Returns([]);
+        _antrianFactory
+            .Setup(x => x.Create(tglBerobat, It.IsAny<JadwalPraktekType>()))
+            .Returns(antrian);
+
+        var person = new PersonInfoType("ANI", new DateOnly(2000, 1, 2), "P",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var fakeTracker = PasienTrackerModel.Create(
+            new PersonType(person.PersonName, person.TglLahir),
+            tglBerobat, "BOOKING", "BK1", new DateTime(2025, 10, 24, 8, 0, 0));
+        var entry = AntrianEntryModel.Create(5, person, fakeTracker, "BK1", "BOK", new DateTime(2025, 10, 24, 8, 0, 0));
+
+        _queueAdapter
+            .Setup(x => x.AcceptExternalNumber(
+                It.IsAny<AntrianModel>(),
+                5,
+                It.IsAny<PasienTrackerModel>(),
+                It.IsAny<string>(),
+                "BOK",
+                It.IsAny<DateTime>()))
+            .Returns(entry);
+
+        var cmd = new BookingCreateFromHidokCommand(
+            PasienId: "",
+            PasienName: "ANI",
+            TglLahir: "2000-01-02",
+            Gender: "P",
+            Alamat: "Jl Merdeka",
+            NoTelp: "0812345",
+            DokterEmail: "budi@hospital.com",
+            TglBerobat: "2025-10-24",
+            JamMulai: "08:30",
+            NoAntrian: 5,
+            AsuransiName: "BPJS",
+            NoPeserta: "000123456",
+            NoRujukan: "RUJ001",
+            ReffId: "HIDOK-99",
+            UserId: "user1");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.BookingId.Should().NotBeNullOrWhiteSpace();
+        result.NoAntrian.Should().Be(5);
+        _bookingRepo.Verify(x => x.SaveChanges(It.Is<BookingModel>(b => b.JamPraktek == new TimeOnly(8, 0))), Times.Once);
         _antrianRepo.Verify(x => x.SaveChanges(It.IsAny<AntrianModel>()), Times.Once);
         _trackerRepo.Verify(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()), Times.Once);
 
