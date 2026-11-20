@@ -162,6 +162,7 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
         using var trans = TransHelper.NewScope();
 
         // 6a. Post Goods Receipt Consequence (UC-STL-001) for each item with QtyDiterima > 0
+        var seenItemKeys = new HashSet<(string BrgId, DateTime TglEd)>();
         foreach (var item in model.ListItem)
         {
             if (item.Inspection.QtyDiterima > 0)
@@ -181,6 +182,8 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
                     ? (!string.IsNullOrWhiteSpace(matchedQuota?.SatuanKecilId) ? matchedQuota.SatuanKecilId : item.Satuan.SatuanId)
                     : item.Satuan.SatuanId;
 
+                var allowAdditiveLine = !seenItemKeys.Add((item.Brg.BrgId, item.TglEd));
+
                 var stockCmd = new PostGoodsReceiptConsequenceCommand(
                     BrgId: item.Brg.BrgId,
                     BrgMasukReffId: model.DeliveryOrderId,
@@ -193,7 +196,8 @@ public class DeliveryConfirmHandler : IRequestHandler<DeliveryConfirmCommand, De
                     TglEd: item.TglEd,
                     PoReffId: string.IsNullOrWhiteSpace(itemPoId) ? null : itemPoId,
                     NoBatch: item.NoBatch,
-                    SatuanId: satuanPersediaan);
+                    SatuanId: satuanPersediaan,
+                    AllowAdditiveLine: allowAdditiveLine);
 
                 var stockResult = await _mediator.Send(stockCmd, cancellationToken);
                 if (stockResult == null || stockResult.Outcome == PostGoodsReceiptOutcomeEnum.AbortedInconsistent)

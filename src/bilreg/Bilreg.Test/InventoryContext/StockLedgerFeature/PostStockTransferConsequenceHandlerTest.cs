@@ -3,6 +3,7 @@ using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
+using Bilreg.Infrastructure.InventoryContext.StokFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using MediatR;
@@ -376,6 +377,40 @@ public class PostStockTransferConsequenceHandlerTest
         newBatch.ListLokasi.Should().ContainSingle(x =>
             x.LayananId == SourceLayananId && x.QtySisa == 8);
         newBatch.ListLokasi.Should().NotContain(x => x.LayananId == DestLayananId);
+    }
+
+    [Fact]
+    public async Task Handle_MultiRowTbStokLayer_DepletesAcrossRowsCleanly()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string doId = "DOXFERM01";
+        const string brgId = "BRGXFERM0001";
+        var stokDal = new tb_stok_dal(_db);
+        stokDal.Insert(new tb_stok_dto("STXFER0001", brgId, SourceLayananId, "", doId, TglEd.ToString("yyyy-MM-dd"), "NB-E", 2, 2, 40m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+        stokDal.Insert(new tb_stok_dto("STXFER0002", brgId, SourceLayananId, "", doId, TglEd.ToString("yyyy-MM-dd"), "NB-E", 3, 3, 40m, "2026-06-01", "08:00:00", "DM01", "2026-06-01", "08:00:00", "PCS", "", ""));
+
+        var batch = StockBatchModel.Create(brgId, doId, 40m, new DateTime(2026, 6, 1, 8, 0, 0), "PO01");
+        batch.IncreaseLokasi(SourceLayananId, TglEd, 5, "NB-E");
+        _batchRepo.SaveChanges(batch, UserId);
+
+        var sut = CreateTransferHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        var result = await sut.Handle(
+            new PostStockTransferConsequenceCommand(brgId, 4m, SourceLayananId, DestLayananId, "TRSXFER_M1", TglMutasi, UserId, TglEd),
+            default);
+
+        result.Outcome.Should().Be(PostStockTransferOutcomeEnum.Success);
+        result.Lines.Should().HaveCount(2);
+
+        var updatedBatch = _batchRepo.LoadByNaturalKey(brgId, doId).Value;
+        updatedBatch.ListLokasi.Should().Contain(x => x.LayananId == SourceLayananId && x.QtySisa == 1);
+        updatedBatch.ListLokasi.Should().Contain(x => x.LayananId == DestLayananId && x.QtySisa == 4);
+
+        var legacyBalances = _legacyRead.ListBalances(brgId, doId)
+            .Where(b => b.LayananId == SourceLayananId)
+            .ToList();
+        legacyBalances.Should().ContainSingle(b => b.LegacyStokId == "STXFER0002" && b.QtySisa == 1);
     }
 
     private async Task SeedReceipt(

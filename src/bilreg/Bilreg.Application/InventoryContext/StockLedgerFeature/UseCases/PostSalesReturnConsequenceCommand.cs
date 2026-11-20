@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -177,8 +177,8 @@ public class PostSalesReturnConsequenceHandler
             request.Qty,
             request.NoBatch);
 
-        var legacyBukuId = NunaId.NewLegacyCompact("BK");
-        var legacyStokId = NunaId.NewLegacyCompact("ST");
+        var legacyBukuId = MonotonicNunaId.NewLegacyCompact("BK");
+        var legacyStokId = MonotonicNunaId.NewLegacyCompact("ST");
 
         var mutasi = StockMovementModel.CreateInbound(
             lokasi.StokLokasiId,

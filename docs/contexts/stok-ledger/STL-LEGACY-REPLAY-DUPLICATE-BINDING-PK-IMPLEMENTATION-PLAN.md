@@ -151,7 +151,7 @@ Notes:
 
 Title: Penyeragaman Handler Konsekuensi Stock Ledger (Bebas `Thread.Sleep`, Depleting `tb_stok` Multi-Baris, Idempotensi Multi-Item, dan Baris Bonus DO)
 
-Implementation Status: NOT-STARTED
+Implementation Status: IMPLEMENTED
 Review Status: NOT-REVIEWED
 
 Objective: Menghapus seluruh `Thread.Sleep(5)` pada seluruh handler `Post*ConsequenceCommand` dengan memanfaatkan `MonotonicNunaId`, mendukung pemotongan `tb_stok` multi-baris pada `PostStockTransferConsequenceHandler` dan `PostDispenseIssueConsequenceHandler`, memperbaiki filter idempotensi per `BrgId` pada penjualan dan dispensing multi-item, serta mencegah hilangnya stok barang bonus pada `PostGoodsReceiptConsequenceHandler` dan `DeliveryConfirmCommand` / `DeliveryDirectConfirmCommand`.
