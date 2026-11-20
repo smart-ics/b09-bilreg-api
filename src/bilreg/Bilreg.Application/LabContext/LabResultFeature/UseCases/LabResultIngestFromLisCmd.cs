@@ -91,8 +91,10 @@ public class LabResultIngestFromLisHandler : IRequestHandler<LabResultIngestFrom
             .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
 
         var existingDoc = _labResultDocumentRepo.LoadByOrderId(request.OrderId);
-        var existingItemByComponentId = existingDoc.HasValue
-            ? existingDoc.Value.Items.ToDictionary(x => x.ComponentId, StringComparer.OrdinalIgnoreCase)
+        var existingItemByTestAndComponentId = existingDoc.HasValue
+            ? existingDoc.Value.Items
+                .GroupBy(x => $"{x.TestId}|{x.ComponentId}", StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, LabResultItemModel>(StringComparer.OrdinalIgnoreCase);
 
         var resultItems = new List<LabResultItemModel>();
@@ -131,7 +133,7 @@ public class LabResultIngestFromLisHandler : IRequestHandler<LabResultIngestFrom
                     line.IsMandatory,
                     flag));
             }
-            else if (existingItemByComponentId.TryGetValue(line.ComponentId, out var existingItem) && HasValue(existingItem))
+            else if (existingItemByTestAndComponentId.TryGetValue($"{line.TestDefinitionId}|{line.ComponentId}", out var existingItem) && HasValue(existingItem))
             {
                 resultItems.Add(new LabResultItemModel(
                     itemNo++,
