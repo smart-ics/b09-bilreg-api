@@ -134,7 +134,8 @@ public class TrsBillFactory
     }
 
     public static TrsBillType CreateFromLabOrderItem(LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
-        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, DateTime createdAt = default)
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null, DateTime createdAt = default)
     {
         var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
             ? reg.TipeJaminan.TipeJaminanId[..3]
@@ -143,7 +144,7 @@ public class TrsBillFactory
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
         var audit = AuditTrailType.Create(labOrder.AuditTrail.Created.UserId, createdAt);
-        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, labOrder.OrderId);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
@@ -179,8 +180,12 @@ public class TrsBillFactory
         var nilai = new TrsBillNilaiType(nilaiTarif.Nilai, 0, 0, 0);
         var billId = $"{labOrder.OrderId}-{labOrderItem.ItemNo:D2}";
 
+        var effectiveLayanan = (layanan is not null && layanan.LayananId != "-")
+            ? layanan
+            : (reg.Layanan.LayananId != "-" ? reg.Layanan : LayananType.Default.ToReff());
+
         var result = new TrsBillType(billId, BillModulGroup.Jasa, DateTime.Now,
-            reg.ToReff(), LayananType.Default.ToReff(), nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
+            reg.ToReff(), effectiveLayanan, nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;
     }
