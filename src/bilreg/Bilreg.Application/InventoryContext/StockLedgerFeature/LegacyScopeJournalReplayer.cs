@@ -47,6 +47,9 @@ public sealed class LegacyScopeJournalReplayer
     {
         var batchDirty = false;
         var applied = 0;
+        var rebuildingMissingBatch = false;
+        var pendingMutasi = new List<StockMovementModel>();
+        var pendingBindings = new List<StockLegacyBindingModel>();
 
         foreach (var journal in journals)
         {
@@ -58,28 +61,6 @@ public sealed class LegacyScopeJournalReplayer
                     applied,
                     $"Unsupported legacy MovementKind '{journal.MovementKindString}' " +
                     $"on buku {journal.LegacyBukuId} (GAP-STL-003).");
-            }
-
-            if (_bindingRepo.FindByLegacyBukuId(journal.LegacyBukuId).HasValue)
-            {
-                // Binding without a batch baseline must not invent a replacement from later journals.
-                if (batch is null)
-                {
-                    var reloaded = _batchRepo.LoadByNaturalKey(brgId, brgMasukReffId);
-                    batch = reloaded.HasValue ? reloaded.Value : null;
-                }
-
-                if (batch is null)
-                {
-                    return Fail(
-                        batch: null,
-                        batchDirty: false,
-                        applied,
-                        $"Legacy journals exist for scope ({brgId}, {brgMasukReffId}) " +
-                        "but no StokBatch baseline is present (bindings without batch).");
-                }
-
-                continue;
             }
 
             if (journal.QtyIn <= 0 && journal.QtyOut <= 0)
@@ -98,6 +79,34 @@ public sealed class LegacyScopeJournalReplayer
                     batchDirty,
                     applied,
                     $"Legacy buku {journal.LegacyBukuId} has both QtyIn and QtyOut > 0.");
+            }
+
+            var hasExistingBinding = _bindingRepo.FindByLegacyBukuId(journal.LegacyBukuId).HasValue;
+            if (hasExistingBinding)
+            {
+                if (batch is null)
+                {
+                    var reloaded = _batchRepo.LoadByNaturalKey(brgId, brgMasukReffId);
+                    batch = reloaded.HasValue ? reloaded.Value : null;
+                }
+
+                if (batch is null)
+                {
+                    if (!allowCreateBatch || journal.QtyIn <= 0)
+                    {
+                        return Fail(
+                            batch: null,
+                            batchDirty: false,
+                            applied,
+                            $"Legacy journals exist for scope ({brgId}, {brgMasukReffId}) " +
+                            "but no StokBatch baseline is present (bindings without batch).");
+                    }
+
+                    rebuildingMissingBatch = true;
+                }
+
+                if (!rebuildingMissingBatch)
+                    continue;
             }
 
             if (batch is null)
@@ -173,15 +182,24 @@ public sealed class LegacyScopeJournalReplayer
                     $"Failed to apply legacy buku {journal.LegacyBukuId}: {ex.Message}");
             }
 
-            _mutasiRepo.Insert(mutasi);
-            _bindingRepo.Insert(StockLegacyBindingModel.CreateMutasiBuku(
-                mutasi.StokMutasiId,
-                journal.LegacyBukuId,
-                trsReffId,
-                lokasi.StokLokasiId));
+            if (!hasExistingBinding)
+            {
+                pendingMutasi.Add(mutasi);
+                pendingBindings.Add(StockLegacyBindingModel.CreateMutasiBuku(
+                    mutasi.StokMutasiId,
+                    journal.LegacyBukuId,
+                    trsReffId,
+                    lokasi.StokLokasiId));
+                applied++;
+            }
+
             batchDirty = true;
-            applied++;
         }
+
+        foreach (var mutasi in pendingMutasi)
+            _mutasiRepo.Insert(mutasi);
+        foreach (var binding in pendingBindings)
+            _bindingRepo.Insert(binding);
 
         return new ReplayResult(
             IsInconsistent: false,

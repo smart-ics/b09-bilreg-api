@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -90,6 +91,7 @@ public class HydrateScopeFromLegacyHandler
         var batchMaybe = _batchRepo.LoadByNaturalKey(request.BrgId, request.BrgMasukReffId);
         StockBatchModel? batch = batchMaybe.HasValue ? batchMaybe.Value : null;
 
+        using var trans = TransHelper.NewScope();
         var replay = _replayer.Apply(
             journals,
             request.BrgId,
@@ -100,6 +102,7 @@ public class HydrateScopeFromLegacyHandler
         if (replay.IsInconsistent)
         {
             _replayer.PersistInconsistent(scope, replay.Batch, replay.BatchDirty, replay.InconsistencyReason);
+            trans.Complete();
             return Task.FromResult(new HydrateScopeFromLegacyResult(
                 HydrateScopeOutcomeEnum.Inconsistent,
                 AlignmentStatusEnum.Inconsistent,
@@ -134,6 +137,7 @@ public class HydrateScopeFromLegacyHandler
                     $"Legacy journals exist for scope ({request.BrgId}, {request.BrgMasukReffId}) " +
                     "but no StokBatch baseline is present (bindings without batch).";
                 _replayer.PersistInconsistent(scope, batch: null, batchDirty: false, reason);
+                trans.Complete();
                 return Task.FromResult(new HydrateScopeFromLegacyResult(
                     HydrateScopeOutcomeEnum.Inconsistent,
                     AlignmentStatusEnum.Inconsistent,
@@ -146,6 +150,7 @@ public class HydrateScopeFromLegacyHandler
         }
 
         _scopeRepo.SaveChanges(scope);
+        trans.Complete();
 
         return Task.FromResult(new HydrateScopeFromLegacyResult(
             HydrateScopeOutcomeEnum.Success,

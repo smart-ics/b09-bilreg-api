@@ -4,6 +4,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -124,6 +125,7 @@ public class CatchUpScopeFromLegacyHandler
         // Empty-aligned hydrate leaves no batch; allow Create on first creatable inbound.
         // Bindings-only / outbound-only with no batch still ends Inconsistent via replayer.
         var batchMaybe = _batchRepo.LoadByNaturalKey(request.BrgId, request.BrgMasukReffId);
+        using var trans = TransHelper.NewScope();
         var replay = _replayer.Apply(
             pending,
             request.BrgId,
@@ -134,6 +136,7 @@ public class CatchUpScopeFromLegacyHandler
         if (replay.IsInconsistent)
         {
             _replayer.PersistInconsistent(scope, replay.Batch, replay.BatchDirty, replay.InconsistencyReason);
+            trans.Complete();
             return Task.FromResult(new CatchUpScopeFromLegacyResult(
                 CatchUpScopeOutcomeEnum.Inconsistent,
                 AlignmentStatusEnum.Inconsistent,
@@ -147,6 +150,7 @@ public class CatchUpScopeFromLegacyHandler
         var last = pending[^1];
         scope.AdvanceWatermark(last.TglMutasi, last.LegacyBukuId, DateTime.Now);
         _scopeRepo.SaveChanges(scope);
+        trans.Complete();
 
         return Task.FromResult(new CatchUpScopeFromLegacyResult(
             CatchUpScopeOutcomeEnum.Success,

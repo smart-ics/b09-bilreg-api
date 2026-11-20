@@ -191,7 +191,7 @@ public class HydrateScopeFromLegacyHandlerTest
     }
 
     [Fact]
-    public async Task Handle_BindingExists_WithoutBatch_MarksInconsistent()
+    public async Task Handle_OrphanBindingWithoutBatch_RecoversBatchInMemoryWithoutReinsertingBinding()
     {
         var tgl = new DateTime(2026, 3, 1, 10, 0, 0);
         _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(
@@ -205,26 +205,30 @@ public class HydrateScopeFromLegacyHandlerTest
             .Returns(MayBe.From(StockLegacyBindingModel.CreateMutasiBuku(
                 "STM000000001", "BK00000001", "DM1")));
 
+        StockBatchModel? savedBatch = null;
+        _batchRepo.Setup(x => x.SaveChanges(It.IsAny<StockBatchModel>()))
+            .Callback<StockBatchModel>(b => savedBatch = b);
         StockLegacyScopeModel? saved = null;
         _scopeRepo.Setup(x => x.SaveChanges(It.IsAny<StockLegacyScopeModel>()))
             .Callback<StockLegacyScopeModel>(s => saved = s);
 
         var result = await _sut.Handle(new HydrateScopeFromLegacyCommand(BrgId, DoId, UserId), default);
 
-        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Inconsistent);
-        result.AlignmentStatus.Should().Be(AlignmentStatusEnum.Inconsistent);
-        result.InconsistencyReason.Should().Contain("no StokBatch baseline");
+        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Success);
+        result.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
         result.AppliedJournalCount.Should().Be(0);
+        savedBatch.Should().NotBeNull();
+        savedBatch!.QtySisa.Should().Be(10);
+        savedBatch.ListLokasi.Should().ContainSingle(x => x.LayananId == "LY001" && x.QtySisa == 10);
         saved.Should().NotBeNull();
-        saved!.AlignmentStatus.Should().Be(AlignmentStatusEnum.Inconsistent);
+        saved!.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
         _mutasiRepo.Verify(x => x.Insert(It.IsAny<StockMovementModel>()), Times.Never);
-        _batchRepo.Verify(x => x.SaveChanges(It.IsAny<StockBatchModel>()), Times.Never);
-        _scopeRepo.Verify(x => x.SaveChanges(It.Is<StockLegacyScopeModel>(
-            s => s.AlignmentStatus == AlignmentStatusEnum.Aligned)), Times.Never);
+        _bindingRepo.Verify(x => x.Insert(It.IsAny<StockLegacyBindingModel>()), Times.Never);
+        _batchRepo.Verify(x => x.SaveChanges(It.IsAny<StockBatchModel>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_PartialBinding_WithoutBatch_RemainingJournals_MarksInconsistent()
+    public async Task Handle_OrphanBindingWithoutBatch_WithRemainingJournals_RecoversAndAppliesRemaining()
     {
         var t1 = new DateTime(2026, 3, 1, 10, 0, 0);
         var t2 = new DateTime(2026, 3, 2, 11, 0, 0);
@@ -243,24 +247,26 @@ public class HydrateScopeFromLegacyHandlerTest
             .Returns(MayBe.From(StockLegacyBindingModel.CreateMutasiBuku(
                 "STM000000001", "BK00000001", "DM1")));
 
+        StockBatchModel? savedBatch = null;
+        _batchRepo.Setup(x => x.SaveChanges(It.IsAny<StockBatchModel>()))
+            .Callback<StockBatchModel>(b => savedBatch = b);
         StockLegacyScopeModel? saved = null;
         _scopeRepo.Setup(x => x.SaveChanges(It.IsAny<StockLegacyScopeModel>()))
             .Callback<StockLegacyScopeModel>(s => saved = s);
 
         var result = await _sut.Handle(new HydrateScopeFromLegacyCommand(BrgId, DoId, UserId), default);
 
-        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Inconsistent);
-        result.AlignmentStatus.Should().Be(AlignmentStatusEnum.Inconsistent);
-        result.InconsistencyReason.Should().Contain("no StokBatch baseline");
-        result.InconsistencyReason.Should().Contain("bindings without batch");
-        result.AppliedJournalCount.Should().Be(0);
+        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Success);
+        result.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
+        result.AppliedJournalCount.Should().Be(1);
+        savedBatch.Should().NotBeNull();
+        savedBatch!.QtySisa.Should().Be(15);
         saved.Should().NotBeNull();
-        saved!.AlignmentStatus.Should().Be(AlignmentStatusEnum.Inconsistent);
-        _mutasiRepo.Verify(x => x.Insert(It.IsAny<StockMovementModel>()), Times.Never);
-        _batchRepo.Verify(x => x.SaveChanges(It.IsAny<StockBatchModel>()), Times.Never);
-        _bindingRepo.Verify(x => x.Insert(It.IsAny<StockLegacyBindingModel>()), Times.Never);
-        _scopeRepo.Verify(x => x.SaveChanges(It.Is<StockLegacyScopeModel>(
-            s => s.AlignmentStatus == AlignmentStatusEnum.Aligned)), Times.Never);
+        saved!.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
+        saved.LastLegacyBukuId.Should().Be("BK00000002");
+        _mutasiRepo.Verify(x => x.Insert(It.IsAny<StockMovementModel>()), Times.Once);
+        _bindingRepo.Verify(x => x.Insert(It.IsAny<StockLegacyBindingModel>()), Times.Once);
+        _batchRepo.Verify(x => x.SaveChanges(It.IsAny<StockBatchModel>()), Times.Once);
     }
 
     [Fact]
@@ -345,5 +351,95 @@ public class HydrateScopeFromLegacyHandlerTest
 
         result.Outcome.Should().Be(HydrateScopeOutcomeEnum.StaleNeedsCatchUp);
         _legacyRead.Verify(x => x.ListJournals(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_FailureAtKthJournal_DoesNotInsertAnyMutasiOrBinding()
+    {
+        var t1 = new DateTime(2026, 3, 1, 10, 0, 0);
+        var t2 = new DateTime(2026, 3, 2, 10, 0, 0);
+        var t3 = new DateTime(2026, 3, 3, 10, 0, 0);
+        _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(
+        [
+            new LegacyStockJournalReadModel(
+                "BK00000001", BrgId, DoId, "LY001", "", "",
+                QtyIn: 10, QtyOut: 0, Hpp: 1000, MovementKindString: "DO",
+                TrsReffId: "DM1", TglMutasi: t1, TglEd: StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel(
+                "BK00000002", BrgId, DoId, "LY001", "", "",
+                QtyIn: 0, QtyOut: 2, Hpp: 1000, MovementKindString: "PK",
+                TrsReffId: "PK1", TglMutasi: t2, TglEd: StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel(
+                "BK00000003", BrgId, DoId, "LY001", "", "",
+                QtyIn: 0, QtyOut: 99, Hpp: 1000, MovementKindString: "PK",
+                TrsReffId: "PK2", TglMutasi: t3, TglEd: StockLedgerSentinel.EmptyDate),
+        ]);
+
+        var result = await _sut.Handle(new HydrateScopeFromLegacyCommand(BrgId, DoId, UserId), default);
+
+        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Inconsistent);
+        result.InconsistencyReason.Should().Contain("BK00000003");
+        _mutasiRepo.Verify(x => x.Insert(It.IsAny<StockMovementModel>()), Times.Never);
+        _bindingRepo.Verify(x => x.Insert(It.IsAny<StockLegacyBindingModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_MultiLineSameTrsReffIdAndLocation_DoMtOutMtInDu_Succeeds()
+    {
+        var t1 = new DateTime(2026, 3, 1, 10, 0, 0);
+        var t2 = new DateTime(2026, 3, 2, 10, 0, 0);
+        var t3 = new DateTime(2026, 3, 3, 10, 0, 0);
+        var t4 = new DateTime(2026, 3, 4, 10, 0, 0);
+        _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(
+        [
+            new LegacyStockJournalReadModel("BK00000001", BrgId, DoId, "LY001", "", "", 10, 0, 1000, "DO", "DM1", t1, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000002", BrgId, DoId, "LY001", "", "", 5, 0, 1000, "DO", "DM1", t1, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000003", BrgId, DoId, "LY001", "", "", 0, 3, 1000, "MT_OUT", "MT1", t2, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000004", BrgId, DoId, "LY001", "", "", 0, 2, 1000, "MT_OUT", "MT1", t2, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000005", BrgId, DoId, "LY002", "", "", 3, 0, 1000, "MT_IN", "MT1", t3, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000006", BrgId, DoId, "LY002", "", "", 2, 0, 1000, "MT_IN", "MT1", t3, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000007", BrgId, DoId, "LY002", "", "", 0, 1, 1000, "DU", "DU1", t4, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000008", BrgId, DoId, "LY002", "", "", 0, 2, 1000, "DU", "DU1", t4, StockLedgerSentinel.EmptyDate),
+        ]);
+
+        var mutasis = new List<StockMovementModel>();
+        _mutasiRepo.Setup(x => x.Insert(It.IsAny<StockMovementModel>())).Callback<StockMovementModel>(mutasis.Add);
+        var bindings = new List<StockLegacyBindingModel>();
+        _bindingRepo.Setup(x => x.Insert(It.IsAny<StockLegacyBindingModel>())).Callback<StockLegacyBindingModel>(bindings.Add);
+
+        var result = await _sut.Handle(new HydrateScopeFromLegacyCommand(BrgId, DoId, UserId), default);
+
+        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Success);
+        result.AppliedJournalCount.Should().Be(8);
+        mutasis.Select(m => m.StokMutasiId).Distinct(StringComparer.Ordinal).Should().HaveCount(8);
+        bindings.Select(b => b.BindingId).Distinct(StringComparer.Ordinal).Should().HaveCount(8);
+    }
+
+    [Fact]
+    public async Task Handle_ManyConsecutiveJournals_ProducesUniqueIdsWithoutCollision()
+    {
+        var t0 = new DateTime(2026, 3, 1, 10, 0, 0);
+        var journals = new List<LegacyStockJournalReadModel>
+        {
+            new("BK00000001", BrgId, DoId, "LY001", "", "", 100, 0, 1000, "DO", "DM1", t0, StockLedgerSentinel.EmptyDate)
+        };
+        for (var i = 2; i <= 50; i++)
+        {
+            journals.Add(new LegacyStockJournalReadModel(
+                $"BK{i:D8}", BrgId, DoId, "LY001", "", "", 0, 1, 1000, "PK", $"PK{i:D6}", t0.AddSeconds(i), StockLedgerSentinel.EmptyDate));
+        }
+
+        _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(journals);
+        var mutasis = new List<StockMovementModel>();
+        _mutasiRepo.Setup(x => x.Insert(It.IsAny<StockMovementModel>())).Callback<StockMovementModel>(mutasis.Add);
+        var bindings = new List<StockLegacyBindingModel>();
+        _bindingRepo.Setup(x => x.Insert(It.IsAny<StockLegacyBindingModel>())).Callback<StockLegacyBindingModel>(bindings.Add);
+
+        var result = await _sut.Handle(new HydrateScopeFromLegacyCommand(BrgId, DoId, UserId), default);
+
+        result.Outcome.Should().Be(HydrateScopeOutcomeEnum.Success);
+        result.AppliedJournalCount.Should().Be(50);
+        mutasis.Select(m => m.StokMutasiId).Distinct(StringComparer.Ordinal).Should().HaveCount(50);
+        bindings.Select(b => b.BindingId).Distinct(StringComparer.Ordinal).Should().HaveCount(50);
     }
 }

@@ -53,6 +53,7 @@ public class LegacyStockReadPort : ILegacyStockReadPort
         return rows
             .Select(MapJournal)
             .OrderBy(x => x.TglMutasi)
+            .ThenBy(x => x.QtyIn > 0 ? 0 : 1)
             .ThenBy(x => x.LegacyBukuId, StringComparer.Ordinal)
             .ToList();
     }
