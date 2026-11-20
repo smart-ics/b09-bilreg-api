@@ -124,8 +124,8 @@ Review Status: NOT-REVIEWED
 
 Title: Pengurutan Deterministik `LegacyStockReadPort` dan Batas Transaksi Atomik pada `LegacyScopeJournalReplayer`, `Hydrate`, serta `CatchUp`
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Memastikan pembacaan jurnal legacy dari `tb_buku` selalu mengurutkan mutasi masuk (`QtyIn > 0`) sebelum mutasi keluar (`QtyOut > 0`) pada `TglMutasi` yang sama, serta memastikan `LegacyScopeJournalReplayer`, `HydrateScopeFromLegacyHandler`, dan `CatchUpScopeFromLegacyHandler` memvalidasi seluruh baris scope di memori sebelum menulis ke database di dalam satu batas transaksi atomik (`TransHelper.NewScope()`).
 

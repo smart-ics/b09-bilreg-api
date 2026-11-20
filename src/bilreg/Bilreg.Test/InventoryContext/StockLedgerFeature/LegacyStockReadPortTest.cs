@@ -38,11 +38,34 @@ public class LegacyStockReadPortTest
         var journals = _sut.ListJournals(BrgId, DoId);
 
         journals.Should().HaveCount(3);
-        journals.Select(x => x.LegacyBukuId).Should().Equal("BKSTL00001", "BKSTL00002", "BKSTL00003");
+        journals.Select(x => x.LegacyBukuId).Should().Equal("BKSTL00002", "BKSTL00001", "BKSTL00003");
         journals.Should().OnlyContain(x => x.BrgMasukReffId == DoId);
-        journals[0].QtyOut.Should().Be(2);
-        journals[1].QtyIn.Should().Be(5);
+        journals[0].QtyIn.Should().Be(5);
+        journals[1].QtyOut.Should().Be(2);
         journals[2].TglMutasi.Should().Be(new DateTime(2026, 3, 2, 9, 0, 0));
+    }
+
+    [Fact]
+    public void ListJournals_SameTglMutasi_OrdersInboundBeforeOutboundEvenWhenOutboundIdIsSmaller()
+    {
+        using var trans = TransHelper.NewScope();
+
+        _bukuDal.Insert(
+        [
+            Buku("BKSTL00101", BrgId, "LY001", DoId, "2026-03-05", "10:00:00", "2026-03-05 10:00:00",
+                QtyIn: 0, QtyOut: 3, Kind: "DU", Mutasi: "DU00000101"),
+            Buku("BKSTL00102", BrgId, "LY001", DoId, "2026-03-05", "10:00:00", "2026-03-05 10:00:00",
+                QtyIn: 10, QtyOut: 0, Kind: "DO", Mutasi: "DM00000102"),
+            Buku("BKSTL00103", BrgId, "LY001", DoId, "2026-03-05", "10:00:00", "2026-03-05 10:00:00",
+                QtyIn: 4, QtyOut: 0, Kind: "MT_IN", Mutasi: "MT00000103"),
+            Buku("BKSTL00100", BrgId, "LY001", DoId, "2026-03-05", "10:00:00", "2026-03-05 10:00:00",
+                QtyIn: 0, QtyOut: 2, Kind: "MT_OUT", Mutasi: "MT00000100"),
+        ]);
+
+        var journals = _sut.ListJournals(BrgId, DoId);
+
+        journals.Select(x => x.LegacyBukuId).Should().Equal(
+            "BKSTL00102", "BKSTL00103", "BKSTL00100", "BKSTL00101");
     }
 
     [Fact]
