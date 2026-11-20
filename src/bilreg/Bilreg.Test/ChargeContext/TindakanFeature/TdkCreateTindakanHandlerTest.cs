@@ -473,4 +473,90 @@ public class TdkCreateTindakanHandlerTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*BOM expansion failed*");
     }
+
+    [Fact]
+    public async Task Handle_WithBomProcessor_WhenFreshnessAbortedInconsistent_StillSucceedsAndRecordsPending()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+
+        var tarifBarangRepoMock = new Mock<ITarifBarangRepo>();
+        var brgRepoMock = new Mock<IBrgRepo>();
+        var stockBatchRepoMock = new Mock<Bilreg.Application.InventoryContext.StockLedgerFeature.IStockBatchRepo>();
+        var pakaiBrgServiceMock = new Mock<Bilreg.Application.InventoryContext.PakaiBrgFeature.IPakaiBrgInternalService>();
+        var tindakanBarangRepoMock = new Mock<ITindakanBarangRepo>();
+        var tindakanStokPendingRepoMock = new Mock<Bilreg.Application.InventoryContext.PakaiBrgFeature.ITindakanStokPendingRepo>();
+        var brgPricingServiceMock = new Mock<Bilreg.Application.BrgContext.PricingPolicyFeature.IBrgPricingService>();
+        var mediatorMock = new Mock<MediatR.IMediator>();
+
+        tarifBarangRepoMock
+            .Setup(x => x.ListData(It.IsAny<ITarifKey>()))
+            .Returns([new TarifBarangType("TRF-01", 1, "BRG01", "Spuit", "PCS", "Pcs", 1m)]);
+
+        var brgMock = new Mock<IBrg>();
+        brgMock.Setup(b => b.BrgId).Returns("BRG01");
+        brgMock.Setup(b => b.BrgName).Returns("Spuit");
+        brgMock.Setup(b => b.SatuanKecil).Returns(new SatuanType("PCS", "Pcs"));
+        brgMock.Setup(b => b.ListSatuan).Returns([]);
+        brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
+
+        stockBatchRepoMock
+            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN-01"))
+            .Returns([Bilreg.Domain.InventoryContext.StockLedgerFeature.LocationStockBalanceModel.Create(
+                "STB01", "BRG01", "DO01", "LYN-01", new DateTime(3000, 1, 1), DateTime.Now, 10m)]);
+
+        mediatorMock
+            .Setup(x => x.Send(
+                It.IsAny<Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases.EnsureFreshnessForScopesCommand>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases.EnsureFreshnessForScopesResult(
+                Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases.EnsureFreshnessOutcomeEnum.AbortedInconsistent,
+                "Scope corrupted", "BRG01", "DO01"));
+
+        var bomProcessor = new TindakanBomProcessor(
+            _tarifRepoMock.Object,
+            tarifBarangRepoMock.Object,
+            brgRepoMock.Object,
+            stockBatchRepoMock.Object,
+            pakaiBrgServiceMock.Object,
+            tindakanBarangRepoMock.Object,
+            tindakanStokPendingRepoMock.Object,
+            brgPricingServiceMock.Object,
+            mediatorMock.Object);
+
+        var sut = new TindakanCreateHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            null,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            bomProcessor);
+
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")], 1);
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Once);
+        tindakanStokPendingRepoMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<Bilreg.Domain.InventoryContext.PakaiBrgFeature.TindakanStokPendingType>>(
+                l => l.Count() == 1 && l.Single().BrgId == "BRG01" && l.Single().QtyPending == 1m), "USER-01"),
+            Times.Once);
+        pakaiBrgServiceMock.Verify(
+            x => x.CreateFromTindakan(It.IsAny<Bilreg.Application.InventoryContext.PakaiBrgFeature.PakaiBrgCreateFromTindakanCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
