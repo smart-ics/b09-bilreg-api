@@ -1,5 +1,5 @@
 using Ardalis.GuardClauses;
-using Nuna.Lib.AutoNumberHelper;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
@@ -52,7 +52,7 @@ public class LocationStockBalanceModel : IStokLokasiKey
             throw new ArgumentOutOfRangeException(nameof(qtySisa), "Remaining Quantity shall not become negative (BR-STL-010).");
 
         return new LocationStockBalanceModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             stokBatchId,
             brgId,
             brgMasukReffId,

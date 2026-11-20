@@ -1,5 +1,5 @@
 using Ardalis.GuardClauses;
-using Nuna.Lib.AutoNumberHelper;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
@@ -52,7 +52,7 @@ public class StockBatchModel : IStockBatchKey
             throw new ArgumentOutOfRangeException(nameof(hpp), "Hpp must not be negative.");
 
         return new StockBatchModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             brgId,
             brgMasukReffId,
             qtySisa: 0,
