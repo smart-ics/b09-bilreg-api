@@ -30,7 +30,8 @@ public static class StockLedgerV2SchemaFixture
 
             ExecuteScriptWhenMissing(conn, "BILRG_StokBatch", "BILRG_StokBatch.sql");
             ExecuteScriptWhenMissing(conn, "BILRG_StokLokasi", "BILRG_StokLokasi.sql");
-            ExecuteScriptWhenMissing(conn, "BILRG_StokMutasi", "BILRG_StokMutasi.sql");
+            // Always run BILRG_StokMutasi.sql so idempotent index migrations apply even when the table already exists.
+            ExecuteScript(conn, "BILRG_StokMutasi.sql");
             ExecuteScriptWhenMissing(conn, "BILRG_StokLegacyScope", "BILRG_StokLegacyScope.sql");
             ExecuteScriptWhenMissing(conn, "BILRG_StokLegacyBinding", "BILRG_StokLegacyBinding.sql");
 
@@ -49,6 +50,11 @@ public static class StockLedgerV2SchemaFixture
         if (exists != 0)
             return;
 
+        ExecuteScript(conn, fileName);
+    }
+
+    private static void ExecuteScript(SqlConnection conn, string fileName)
+    {
         var featurePath = Path.Combine(
             FindRepositoryRoot(),
             "src",

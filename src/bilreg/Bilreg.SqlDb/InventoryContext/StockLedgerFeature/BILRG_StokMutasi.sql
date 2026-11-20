@@ -32,14 +32,23 @@ BEGIN
 END
 GO
 
-IF NOT EXISTS (
+IF EXISTS (
     SELECT 1 FROM sys.indexes
     WHERE name = 'UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId'
       AND object_id = OBJECT_ID('BILRG_StokMutasi'))
 BEGIN
-    CREATE UNIQUE INDEX UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId
-        ON BILRG_StokMutasi (TrsReffId, MovementKind, StokLokasiId)
-        WHERE MovementKind IN (1, 2, 3, 8, 9, 10);
+    DROP INDEX UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId
+        ON BILRG_StokMutasi;
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId'
+      AND object_id = OBJECT_ID('BILRG_StokMutasi'))
+BEGIN
+    CREATE INDEX IX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId
+        ON BILRG_StokMutasi (TrsReffId, MovementKind, StokLokasiId);
 END
 GO
 

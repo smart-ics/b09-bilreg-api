@@ -44,6 +44,11 @@ IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BILRG_StokMutasi_StokLokas
     DROP INDEX IX_BILRG_StokMutasi_StokLokasiId_TglMutasi ON BILRG_StokMutasi;
 GO
 
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId'
+           AND object_id = OBJECT_ID('BILRG_StokMutasi'))
+    DROP INDEX IX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId ON BILRG_StokMutasi;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId'
            AND object_id = OBJECT_ID('BILRG_StokMutasi'))
     DROP INDEX UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId ON BILRG_StokMutasi;

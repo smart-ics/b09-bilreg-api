@@ -17,7 +17,8 @@ public class StokMutasiDalTest
     private static StokMutasiDto FakerDto(
         string mutasiId = "STMTEST00001",
         string lokasiId = "STLTEST00001",
-        string trsReffId = "TR00000001") =>
+        string trsReffId = "TR00000001",
+        MovementKindEnum movementKind = MovementKindEnum.GoodsReceipt) =>
         new(
             StokMutasiId: mutasiId,
             StokLokasiId: lokasiId,
@@ -27,7 +28,7 @@ public class StokMutasiDalTest
             LayananId: "LY001",
             TglEd: new DateTime(2027, 6, 30),
             TrsReffId: trsReffId,
-            MovementKind: (int)MovementKindEnum.GoodsReceipt,
+            MovementKind: (int)movementKind,
             QtyIn: 10,
             QtyOut: 0,
             Hpp: 100m,
@@ -55,18 +56,25 @@ public class StokMutasiDalTest
         list[0].Should().BeEquivalentTo(expected);
     }
 
-    [Fact]
-    public void Insert_DuplicateIdempotencyKey_Fails()
+    [Theory]
+    [InlineData(MovementKindEnum.GoodsReceipt)]
+    [InlineData(MovementKindEnum.TransferOut)]
+    [InlineData(MovementKindEnum.TransferIn)]
+    [InlineData(MovementKindEnum.SaleIssueDu)]
+    [InlineData(MovementKindEnum.SalesReturnRu)]
+    public void Insert_SameTrsReffIdMovementKindStokLokasiId_AllowsMultipleRows(MovementKindEnum movementKind)
     {
         StockLedgerV2SchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
 
-        var first = FakerDto("STMTEST00001");
-        var duplicate = FakerDto("STMTEST00002"); // same TrsReffId + Kind + StokLokasiId
+        var first = FakerDto("STMTEST00001", movementKind: movementKind);
+        var second = FakerDto("STMTEST00002", movementKind: movementKind);
 
         _sut.Insert(first);
-        var act = () => _sut.Insert(duplicate);
+        _sut.Insert(second);
 
-        act.Should().Throw<SqlException>();
+        var list = _sut.ListByTrsReffId(first.TrsReffId).ToList();
+        list.Should().HaveCount(2);
+        list.Should().BeEquivalentTo([first, second]);
     }
 }
