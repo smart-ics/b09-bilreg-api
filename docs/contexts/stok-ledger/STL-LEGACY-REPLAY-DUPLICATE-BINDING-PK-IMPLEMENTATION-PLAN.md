@@ -183,8 +183,8 @@ Review Status: NOT-REVIEWED
 
 Title: Pengamanan ID Monotonik, Konsolidasi Barang Kembar, dan Kebijakan *Fallback-to-Pending* pada `TindakanBomProcessor` serta `PakaiBrgInternalService`
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Memastikan `TindakanBomProcessor` dan `PakaiBrgInternalService` menggunakan `MonotonicNunaId` untuk `TBG`, `PND`, dan `PK`, mengonsolidasikan permintaan pemakaian langsung jika terdapat `BrgId` kembar dalam satu BOM, serta mengalihkan barang BOM ke antrean `BILRG_TindakanStokPending` (tanpa melempar eksepsi yang menggagalkan penyimpanan tindakan klinis) apabila freshness gate untuk barang tersebut mengembalikan `AbortedInconsistent` atau gagal menyinkronkan riwayat legacy.
 

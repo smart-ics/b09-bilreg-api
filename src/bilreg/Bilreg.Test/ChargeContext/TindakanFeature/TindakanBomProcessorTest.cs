@@ -331,7 +331,7 @@ public class TindakanBomProcessorTest
     }
 
     [Fact]
-    public async Task Process_WhenFreshnessGateAbortedInconsistent_ThrowsInvalidOperationException()
+    public async Task Process_WhenFreshnessGateAbortedInconsistent_FallsBackToPendingAndDoesNotThrow()
     {
         var tindakan = CreateSampleTindakan();
         var reg = CreateSampleReg();
@@ -356,10 +356,22 @@ public class TindakanBomProcessorTest
             .ReturnsAsync(new EnsureFreshnessForScopesResult(
                 EnsureFreshnessOutcomeEnum.AbortedInconsistent, "Scope corrupted", "BRG01", "DO01"));
 
-        var act = () => _sut.Process(tindakan, reg, "USER1");
+        var result = await _sut.Process(tindakan, reg, "USER1");
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Freshness gate gagal untuk barang 'BRG01': Scope corrupted*");
+        result.PakaiBrgId.Should().BeEmpty();
+        result.Items.Should().ContainSingle();
+        result.Items[0].QtyImmediateCut.Should().Be(0m);
+        result.Items[0].QtyPending.Should().Be(1m);
+        _pakaiBrgInternalServiceMock.Verify(
+            x => x.CreateFromTindakan(It.IsAny<PakaiBrgCreateFromTindakanCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _tindakanBarangRepoMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<TindakanBarangType>>(l => l.Count() == 1), "USER1"),
+            Times.Once);
+        _tindakanStokPendingRepoMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<TindakanStokPendingType>>(l =>
+                l.Count() == 1 && l.Single().BrgId == "BRG01" && l.Single().QtyPending == 1m), "USER1"),
+            Times.Once);
     }
 
     [Fact]
@@ -749,5 +761,155 @@ public class TindakanBomProcessorTest
             list.Count() == 2 &&
             list.Any(p => p.BrgId == "BRG02" && p.QtyPending == 2m) &&
             list.Any(p => p.BrgId == "BRG03" && p.QtyPending == 1m)), "USER1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Process_WithThreeBomItems_GeneratesUniqueTbgAndPndIds()
+    {
+        var tindakan = CreateSampleTindakan(qty: 1);
+        var reg = CreateSampleReg();
+
+        _tarifRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01" }));
+
+        _tarifBarangRepoMock
+            .Setup(x => x.ListData(It.IsAny<ITarifKey>()))
+            .Returns([
+                new TarifBarangType("TRF01", 1, "BRG01", "Spuit", "PCS", "Pcs", 1m),
+                new TarifBarangType("TRF01", 2, "BRG02", "Kassa", "PCS", "Pcs", 2m),
+                new TarifBarangType("TRF01", 3, "BRG03", "Alkohol", "PCS", "Pcs", 1m)
+            ]);
+
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(CreateMockBrg("BRG01", "Spuit", "PCS").Object));
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG02"))).Returns(MayBe.From(CreateMockBrg("BRG02", "Kassa", "PCS").Object));
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG03"))).Returns(MayBe.From(CreateMockBrg("BRG03", "Alkohol", "PCS").Object));
+
+        _stockBatchRepoMock.Setup(x => x.ListAllocationCandidates(It.IsAny<string>(), "LYN01")).Returns([]);
+
+        List<TindakanBarangType>? savedBarang = null;
+        _tindakanBarangRepoMock
+            .Setup(x => x.Insert(It.IsAny<IEnumerable<TindakanBarangType>>(), "USER1"))
+            .Callback<IEnumerable<TindakanBarangType>, string>((list, _) => savedBarang = list.ToList());
+
+        List<TindakanStokPendingType>? savedPending = null;
+        _tindakanStokPendingRepoMock
+            .Setup(x => x.Insert(It.IsAny<IEnumerable<TindakanStokPendingType>>(), "USER1"))
+            .Callback<IEnumerable<TindakanStokPendingType>, string>((list, _) => savedPending = list.ToList());
+
+        var result = await _sut.Process(tindakan, reg, "USER1");
+
+        result.Items.Should().HaveCount(3);
+        savedBarang.Should().NotBeNull().And.HaveCount(3);
+        savedPending.Should().NotBeNull().And.HaveCount(3);
+
+        var tbgIds = savedBarang!.Select(x => x.TindakanBarangId).ToList();
+        tbgIds.Distinct(StringComparer.Ordinal).Should().HaveCount(3);
+        tbgIds.Should().OnlyContain(id => id.Length == 12 && id.StartsWith("TBG", StringComparison.Ordinal));
+
+        var pndIds = savedPending!.Select(x => x.PendingId).ToList();
+        pndIds.Distinct(StringComparer.Ordinal).Should().HaveCount(3);
+        pndIds.Should().OnlyContain(id => id.Length == 12 && id.StartsWith("PND", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Process_WithDuplicateBrgIdInBom_ConsolidatesImmediateCutItems()
+    {
+        var tindakan = CreateSampleTindakan(qty: 1);
+        var reg = CreateSampleReg();
+
+        _tarifRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01" }));
+
+        _tarifBarangRepoMock
+            .Setup(x => x.ListData(It.IsAny<ITarifKey>()))
+            .Returns([
+                new TarifBarangType("TRF01", 1, "BRG01", "Spuit", "PCS", "Pcs", 2m),
+                new TarifBarangType("TRF01", 2, "BRG01", "Spuit", "PCS", "Pcs", 3m)
+            ]);
+
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01")))
+            .Returns(MayBe.From(CreateMockBrg("BRG01", "Spuit", "PCS").Object));
+
+        _stockBatchRepoMock
+            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+            .Returns([CreateStockLokasi("BRG01", "LYN01", 4m)]);
+
+        _pakaiBrgInternalServiceMock
+            .Setup(x => x.CreateFromTindakan(It.IsAny<PakaiBrgCreateFromTindakanCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PakaiBrgCreateFromTindakanResult("PK-DUP", DateTime.Now, 4000m, 1, []));
+
+        var result = await _sut.Process(tindakan, reg, "USER1");
+
+        result.Items.Should().HaveCount(2);
+        result.Items[0].QtyImmediateCut.Should().Be(2m);
+        result.Items[0].QtyPending.Should().Be(0m);
+        result.Items[1].QtyImmediateCut.Should().Be(2m);
+        result.Items[1].QtyPending.Should().Be(1m);
+
+        _pakaiBrgInternalServiceMock.Verify(x => x.CreateFromTindakan(
+            It.Is<PakaiBrgCreateFromTindakanCommand>(c =>
+                c.ListItem.Count() == 1 &&
+                c.ListItem.Single().BrgId == "BRG01" &&
+                c.ListItem.Single().Qty == 4m),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Process_WhenFreshnessGateThrowsException_LogsWarningAndFallsBackToPending()
+    {
+        var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<TindakanBomProcessor>>();
+        var sut = new TindakanBomProcessor(
+            _tarifRepoMock.Object,
+            _tarifBarangRepoMock.Object,
+            _brgRepoMock.Object,
+            _stockBatchRepoMock.Object,
+            _pakaiBrgInternalServiceMock.Object,
+            _tindakanBarangRepoMock.Object,
+            _tindakanStokPendingRepoMock.Object,
+            _brgPricingServiceMock.Object,
+            _mediatorMock.Object,
+            legacyStockReadPort: null,
+            logger: loggerMock.Object);
+
+        var tindakan = CreateSampleTindakan();
+        var reg = CreateSampleReg();
+
+        _tarifRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01" }));
+
+        _tarifBarangRepoMock
+            .Setup(x => x.ListData(It.IsAny<ITarifKey>()))
+            .Returns([new TarifBarangType("TRF01", 1, "BRG01", "Spuit", "PCS", "Pcs", 1m)]);
+
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01")))
+            .Returns(MayBe.From(CreateMockBrg("BRG01", "Spuit", "PCS").Object));
+
+        _stockBatchRepoMock
+            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+            .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<EnsureFreshnessForScopesCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Legacy sync failed"));
+
+        var result = await sut.Process(tindakan, reg, "USER1");
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].QtyImmediateCut.Should().Be(0m);
+        result.Items[0].QtyPending.Should().Be(1m);
+        _tindakanStokPendingRepoMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<TindakanStokPendingType>>(l => l.Count() == 1 && l.Single().QtyPending == 1m), "USER1"),
+            Times.Once);
+        loggerMock.Verify(
+            x => x.Log(
+                Microsoft.Extensions.Logging.LogLevel.Warning,
+                It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 }

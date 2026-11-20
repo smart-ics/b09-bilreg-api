@@ -11,8 +11,9 @@ using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
+using Microsoft.Extensions.Logging;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature;
 
@@ -28,6 +29,7 @@ public class TindakanBomProcessor : ITindakanBomProcessor
     private readonly IBrgPricingService _brgPricingService;
     private readonly IMediator _mediator;
     private readonly ILegacyStockReadPort? _legacyStockReadPort;
+    private readonly ILogger<TindakanBomProcessor>? _logger;
 
     public TindakanBomProcessor(
         ITarifRepo tarifRepo,
@@ -39,7 +41,8 @@ public class TindakanBomProcessor : ITindakanBomProcessor
         ITindakanStokPendingRepo tindakanStokPendingRepo,
         IBrgPricingService brgPricingService,
         IMediator mediator,
-        ILegacyStockReadPort? legacyStockReadPort = null)
+        ILegacyStockReadPort? legacyStockReadPort = null,
+        ILogger<TindakanBomProcessor>? logger = null)
     {
         _tarifRepo = tarifRepo;
         _tarifBarangRepo = tarifBarangRepo;
@@ -51,6 +54,7 @@ public class TindakanBomProcessor : ITindakanBomProcessor
         _brgPricingService = brgPricingService;
         _mediator = mediator;
         _legacyStockReadPort = legacyStockReadPort;
+        _logger = logger;
     }
 
     public async Task<TindakanBomResult> Process(
@@ -146,13 +150,13 @@ public class TindakanBomProcessor : ITindakanBomProcessor
                 hargaJualTotal));
         }
 
-        // 3. Freshness Gate
+        // 3. Freshness Gate (per BrgId; inconsistent or failed sync falls back to pending)
         var distinctBrgIds = resolvedItems
             .Select(x => x.Bom.BrgId)
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
-        var allScopes = new List<ScopeKeyDto>();
+        var failedFreshnessBrgIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var brgId in distinctBrgIds)
         {
             var candidates = _stockBatchRepo.ListAllocationCandidates(brgId, layananId).ToList();
@@ -160,21 +164,36 @@ public class TindakanBomProcessor : ITindakanBomProcessor
             var scopes = candidates
                 .Select(c => new ScopeKeyDto(brgId, c.BrgMasukReffId))
                 .Concat(activeDos.Select(doId => new ScopeKeyDto(brgId, doId)))
-                .Distinct();
-            allScopes.AddRange(scopes);
-        }
+                .Distinct()
+                .ToList();
 
-        var distinctScopes = allScopes.Distinct().ToList();
-        if (distinctScopes.Count > 0)
-        {
-            var freshnessResult = await _mediator.Send(
-                new EnsureFreshnessForScopesCommand(distinctScopes, userId),
-                cancellationToken);
+            if (scopes.Count == 0)
+                continue;
 
-            if (freshnessResult.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
+            try
             {
-                throw new InvalidOperationException(
-                    $"Freshness gate gagal untuk barang '{freshnessResult.FailedBrgId}': {freshnessResult.InconsistencyReason}");
+                var freshnessResult = await _mediator.Send(
+                    new EnsureFreshnessForScopesCommand(scopes, userId),
+                    cancellationToken);
+
+                if (freshnessResult.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
+                {
+                    failedFreshnessBrgIds.Add(brgId);
+                    _logger?.LogWarning(
+                        "Freshness gate inconsistent for BrgId '{BrgId}' on Tindakan '{TindakanId}': {Reason}. Falling back to BILRG_TindakanStokPending.",
+                        brgId,
+                        tindakan.TindakanId,
+                        freshnessResult.InconsistencyReason);
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                failedFreshnessBrgIds.Add(brgId);
+                _logger?.LogWarning(
+                    ex,
+                    "Freshness gate threw exception for BrgId '{BrgId}' on Tindakan '{TindakanId}'. Falling back to BILRG_TindakanStokPending.",
+                    brgId,
+                    tindakan.TindakanId);
             }
         }
 
@@ -184,7 +203,9 @@ public class TindakanBomProcessor : ITindakanBomProcessor
         {
             if (!availableStockByBrg.ContainsKey(item.Bom.BrgId))
             {
-                var total = _stockBatchRepo.ListAllocationCandidates(item.Bom.BrgId, layananId).Sum(c => c.QtySisa);
+                var total = failedFreshnessBrgIds.Contains(item.Bom.BrgId)
+                    ? 0m
+                    : _stockBatchRepo.ListAllocationCandidates(item.Bom.BrgId, layananId).Sum(c => c.QtySisa);
                 availableStockByBrg[item.Bom.BrgId] = total;
             }
         }
@@ -206,9 +227,10 @@ public class TindakanBomProcessor : ITindakanBomProcessor
         // 5. Publish tb_trs_pakai via IPakaiBrgInternalService if any qtyImmediateCut >= 1
         var immediateCutItems = calculatedItems
             .Where(x => x.QtyImmediateCut >= 1m)
-            .Select(x => new PakaiBrgCreateFromTindakanItem(
-                BrgId: x.Resolved.Bom.BrgId,
-                Qty: x.QtyImmediateCut))
+            .GroupBy(x => x.Resolved.Bom.BrgId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new PakaiBrgCreateFromTindakanItem(
+                BrgId: g.First().Resolved.Bom.BrgId,
+                Qty: g.Sum(x => x.QtyImmediateCut)))
             .ToList();
 
         string pakaiBrgId = string.Empty;
@@ -232,7 +254,7 @@ public class TindakanBomProcessor : ITindakanBomProcessor
 
         foreach (var calc in calculatedItems)
         {
-            var tindakanBarangId = NunaId.New("TBG");
+            var tindakanBarangId = MonotonicNunaId.New("TBG");
             var itemPakaiBrgId = calc.QtyImmediateCut >= 1m ? pakaiBrgId : string.Empty;
             var trsBillingId = isChargeBarang ? $"{tindakan.TindakanId}-B{calc.Resolved.Bom.NoUrut:D2}" : string.Empty;
 
@@ -257,7 +279,7 @@ public class TindakanBomProcessor : ITindakanBomProcessor
 
             if (calc.QtyPending > 0m)
             {
-                var pendingId = NunaId.New("PND");
+                var pendingId = MonotonicNunaId.New("PND");
                 var pending = new TindakanStokPendingType(
                     PendingId: pendingId,
                     TindakanId: tindakan.TindakanId,
