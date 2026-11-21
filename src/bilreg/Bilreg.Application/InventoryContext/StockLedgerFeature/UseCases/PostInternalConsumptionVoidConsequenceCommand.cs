@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
@@ -232,62 +232,32 @@ public class PostInternalConsumptionVoidConsequenceHandler
                 ? scopeForWatermark.LastLegacyBukuId
                 : null;
 
-            string voidLegacyBukuId;
-            do
-            {
-                voidLegacyBukuId = NunaId.NewLegacyCompact("BK");
-                if (usedBukuIds.Contains(voidLegacyBukuId) ||
-                    (watermarkToBeat != null && string.Compare(voidLegacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0))
-                {
-                    Thread.Sleep(5);
-                }
-            } while (!usedBukuIds.Add(voidLegacyBukuId) ||
-                     (watermarkToBeat != null && string.Compare(voidLegacyBukuId, watermarkToBeat, StringComparison.Ordinal) <= 0));
-
+            var voidLegacyBukuId = MonotonicNunaId.NewLegacyCompact("BK", watermarkToBeat);
             watermarkToBeat = voidLegacyBukuId;
 
-            StockMovementModel voidMutasi;
-            do
-            {
-                voidMutasi = StockMovementModel.CreateInbound(
-                    lokasi.StokLokasiId,
-                    batch.StokBatchId,
-                    original.BrgId,
-                    original.BrgMasukReffId,
-                    original.LayananId,
-                    original.TglEd,
-                    request.VoidTrsReffId,
-                    VoidKind,
-                    qtyIn: original.QtyOut,
-                    hpp: hpp,
-                    tglMutasi: request.TglMutasi,
-                    poReffId: original.PoReffId,
-                    reversesMutasiId: original.StokMutasiId);
-
-                if (usedMutasiIds.Contains(voidMutasi.StokMutasiId))
-                {
-                    Thread.Sleep(5);
-                }
-            } while (!usedMutasiIds.Add(voidMutasi.StokMutasiId));
+            var voidMutasi = StockMovementModel.CreateInbound(
+                lokasi.StokLokasiId,
+                batch.StokBatchId,
+                original.BrgId,
+                original.BrgMasukReffId,
+                original.LayananId,
+                original.TglEd,
+                request.VoidTrsReffId,
+                VoidKind,
+                qtyIn: original.QtyOut,
+                hpp: hpp,
+                tglMutasi: request.TglMutasi,
+                poReffId: original.PoReffId,
+                reversesMutasiId: original.StokMutasiId);
 
             mutasiInserts.Add(voidMutasi);
 
-            StockLegacyBindingModel voidBinding;
-            do
-            {
-                Thread.Sleep(5);
-                voidBinding = StockLegacyBindingModel.CreateMutasiBuku(
-                    voidMutasi.StokMutasiId,
-                    voidLegacyBukuId,
-                    request.VoidTrsReffId,
-                    lokasi.StokLokasiId,
-                    restoreStokId);
-
-                if (usedBindingIds.Contains(voidBinding.BindingId))
-                {
-                    Thread.Sleep(5);
-                }
-            } while (!usedBindingIds.Add(voidBinding.BindingId));
+            var voidBinding = StockLegacyBindingModel.CreateMutasiBuku(
+                voidMutasi.StokMutasiId,
+                voidLegacyBukuId,
+                request.VoidTrsReffId,
+                lokasi.StokLokasiId,
+                restoreStokId);
 
             bindingInserts.Add(voidBinding);
 
@@ -372,7 +342,7 @@ public class PostInternalConsumptionVoidConsequenceHandler
 
         return stillExists
             ? preferredLegacyStokId
-            : NunaId.NewLegacyCompact("ST");
+            : MonotonicNunaId.NewLegacyCompact("ST");
     }
 
     private void ValidateIdempotentReplay(

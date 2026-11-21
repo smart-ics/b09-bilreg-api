@@ -1,5 +1,5 @@
 using Ardalis.GuardClauses;
-using Nuna.Lib.AutoNumberHelper;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
@@ -70,7 +70,7 @@ public class StockMovementModel : IStokMutasiKey
             throw new ArgumentOutOfRangeException(nameof(qtyIn), "Inbound QtyIn must be positive (BR-STL-017).");
 
         return new StockMovementModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             stokLokasiId,
             stokBatchId,
             brgId,
@@ -112,7 +112,7 @@ public class StockMovementModel : IStokMutasiKey
             throw new ArgumentOutOfRangeException(nameof(qtyOut), "Outbound QtyOut must be positive (BR-STL-017).");
 
         return new StockMovementModel(
-            NunaId.New(IdPrefix),
+            MonotonicNunaId.New(IdPrefix),
             stokLokasiId,
             stokBatchId,
             brgId,

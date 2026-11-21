@@ -311,6 +311,28 @@ public class PostSaleIssueConsequenceHandlerTest
     }
 
     [Fact]
+    public async Task Handle_MultiItemSameTrsReffId_ProcessesSecondBrgIdWithoutPartialIdempotencyError()
+    {
+        StockLedgerV2SchemaFixture.EnsureSchema();
+        using var trans = TransHelper.NewScope();
+
+        const string brg2 = "BRGSTLF00002";
+        var receipt = CreateReceiptHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        await receipt.Handle(new PostGoodsReceiptConsequenceCommand(BrgId, "DOMULTI_A", LayananId, 10, 50m, "TRSM_A", TglMutasi, UserId, TglEdEarly), default);
+        await receipt.Handle(new PostGoodsReceiptConsequenceCommand(brg2, "DOMULTI_B", LayananId, 10, 60m, "TRSM_B", TglMutasi, UserId, TglEdEarly), default);
+
+        var sut = CreateSaleHandler(gateOutcome: EnsureFreshnessOutcomeEnum.Success);
+        const string sharedSaleId = "TRSS_MULTI";
+
+        var r1 = await sut.Handle(new PostSaleIssueConsequenceCommand(BrgId, LayananId, 3m, sharedSaleId, TglMutasi, UserId, SaleIssueKindEnum.Du, TglEdEarly), default);
+        var r2 = await sut.Handle(new PostSaleIssueConsequenceCommand(brg2, LayananId, 4m, sharedSaleId, TglMutasi, UserId, SaleIssueKindEnum.Du, TglEdEarly), default);
+
+        r1.Outcome.Should().Be(PostSaleIssueOutcomeEnum.Success);
+        r2.Outcome.Should().Be(PostSaleIssueOutcomeEnum.Success);
+        _mutasiRepo.ListByTrsReffId(sharedSaleId).Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Handle_ScopeInLegacyNotYetInV2_DiscoveredPassedToGateAndAllocatedAfterHydrate()
     {
         StockLedgerV2SchemaFixture.EnsureSchema();

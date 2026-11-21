@@ -5,8 +5,8 @@ using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -102,7 +102,7 @@ public class PakaiBrgCreateHandler : IRequestHandler<PakaiBrgCreateCommand, Paka
 
         // 4. Time Authority and Document ID Generation
         var now = _tglJamProvider.Now;
-        var pakaiBrgId = NunaId.NewLegacyCompact("PK");
+        var pakaiBrgId = MonotonicNunaId.NewLegacyCompact("PK");
 
         // 5. Atomic Stock Allocation and Document Persistence
         var pakaiItems = new List<PakaiBrgItemModel>();

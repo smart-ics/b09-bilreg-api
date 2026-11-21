@@ -428,4 +428,79 @@ public class CatchUpScopeFromLegacyHandlerTest
         result.InconsistencyReason.Should().Be("prior");
         _legacyRead.Verify(x => x.ListJournals(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Handle_FailureAtKthJournal_DoesNotInsertAnyMutasiOrBinding()
+    {
+        var scope = AlignedScope("BK00000001");
+        _scopeRepo.Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
+            .Returns(MayBe.From(scope));
+
+        var batch = ExistingBatch(10);
+        _batchRepo.Setup(x => x.LoadByNaturalKey(BrgId, DoId))
+            .Returns(MayBe.From(batch));
+
+        var t2 = Watermark.AddHours(1);
+        var t3 = Watermark.AddHours(2);
+        _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(
+        [
+            new LegacyStockJournalReadModel(
+                "BK00000001", BrgId, DoId, "LY001", "", "",
+                QtyIn: 10, QtyOut: 0, Hpp: 1000, MovementKindString: "DO",
+                TrsReffId: "DM1", TglMutasi: Watermark, TglEd: StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel(
+                "BK00000002", BrgId, DoId, "LY001", "", "",
+                QtyIn: 0, QtyOut: 2, Hpp: 1000, MovementKindString: "PK",
+                TrsReffId: "PK2", TglMutasi: t2, TglEd: StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel(
+                "BK00000003", BrgId, DoId, "LY001", "", "",
+                QtyIn: 0, QtyOut: 99, Hpp: 1000, MovementKindString: "PK",
+                TrsReffId: "PK3", TglMutasi: t3, TglEd: StockLedgerSentinel.EmptyDate),
+        ]);
+
+        var result = await _sut.Handle(new CatchUpScopeFromLegacyCommand(BrgId, DoId, UserId), default);
+
+        result.Outcome.Should().Be(CatchUpScopeOutcomeEnum.Inconsistent);
+        result.InconsistencyReason.Should().Contain("BK00000003");
+        _mutasiRepo.Verify(x => x.Insert(It.IsAny<StockMovementModel>()), Times.Never);
+        _bindingRepo.Verify(x => x.Insert(It.IsAny<StockLegacyBindingModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_MultiLineSameTrsReffIdAndLocation_MtOutMtInDu_Succeeds()
+    {
+        var scope = AlignedScope("BK00000001");
+        _scopeRepo.Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
+            .Returns(MayBe.From(scope));
+
+        var batch = ExistingBatch(10);
+        _batchRepo.Setup(x => x.LoadByNaturalKey(BrgId, DoId))
+            .Returns(MayBe.From(batch));
+
+        var t2 = Watermark.AddHours(1);
+        var t3 = Watermark.AddHours(2);
+        var t4 = Watermark.AddHours(3);
+        _legacyRead.Setup(x => x.ListJournals(BrgId, DoId)).Returns(
+        [
+            new LegacyStockJournalReadModel("BK00000001", BrgId, DoId, "LY001", "", "", 10, 0, 1000, "DO", "DM1", Watermark, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000002", BrgId, DoId, "LY001", "", "", 0, 3, 1000, "MT_OUT", "MT1", t2, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000003", BrgId, DoId, "LY001", "", "", 0, 2, 1000, "MT_OUT", "MT1", t2, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000004", BrgId, DoId, "LY002", "", "", 3, 0, 1000, "MT_IN", "MT1", t3, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000005", BrgId, DoId, "LY002", "", "", 2, 0, 1000, "MT_IN", "MT1", t3, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000006", BrgId, DoId, "LY002", "", "", 0, 1, 1000, "DU", "DU1", t4, StockLedgerSentinel.EmptyDate),
+            new LegacyStockJournalReadModel("BK00000007", BrgId, DoId, "LY002", "", "", 0, 2, 1000, "DU", "DU1", t4, StockLedgerSentinel.EmptyDate),
+        ]);
+
+        var mutasis = new List<StockMovementModel>();
+        _mutasiRepo.Setup(x => x.Insert(It.IsAny<StockMovementModel>())).Callback<StockMovementModel>(mutasis.Add);
+        var bindings = new List<StockLegacyBindingModel>();
+        _bindingRepo.Setup(x => x.Insert(It.IsAny<StockLegacyBindingModel>())).Callback<StockLegacyBindingModel>(bindings.Add);
+
+        var result = await _sut.Handle(new CatchUpScopeFromLegacyCommand(BrgId, DoId, UserId), default);
+
+        result.Outcome.Should().Be(CatchUpScopeOutcomeEnum.Success);
+        result.AppliedJournalCount.Should().Be(6);
+        mutasis.Select(m => m.StokMutasiId).Distinct(StringComparer.Ordinal).Should().HaveCount(6);
+        bindings.Select(b => b.BindingId).Distinct(StringComparer.Ordinal).Should().HaveCount(6);
+    }
 }

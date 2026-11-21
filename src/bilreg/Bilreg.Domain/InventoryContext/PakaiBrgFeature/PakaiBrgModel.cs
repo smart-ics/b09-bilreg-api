@@ -1,7 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.InventoryContext.PakaiBrgFeature;
 
@@ -57,7 +57,7 @@ public class PakaiBrgModel : IPakaiBrgKey
         string? pakaiBrgId = null)
     {
         var id = string.IsNullOrWhiteSpace(pakaiBrgId)
-            ? NunaId.NewLegacyCompact("PK")
+            ? MonotonicNunaId.NewLegacyCompact("PK")
             : pakaiBrgId;
 
         Guard.Against.Null(listItem, nameof(listItem));
