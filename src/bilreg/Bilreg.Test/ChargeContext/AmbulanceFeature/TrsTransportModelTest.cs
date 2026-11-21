@@ -362,22 +362,21 @@ public class TrsTransportModelTest
     }
 
     [Fact]
-    public void SetPostedBilling_OnlyAllowedWhenCompleted()
+    public void SetPostedBilling_AllowedWhenActive_NotAllowedWhenCancelledWithoutFee()
     {
         // Arrange
         var model = CreateDefaultWilayah();
 
-        // Act on Requested
-        var actRequested = () => model.SetPostedBilling();
-        actRequested.Should().Throw<InvalidOperationException>();
-
-        // Dispatch & Complete
-        model.Dispatch("AMB01", "DRV01", "B 1234 CD", 1000m);
-        model.Complete(1050m);
-
-        // Act on Completed
+        // Act on Requested - allowed for order-only charging
         model.SetPostedBilling();
         model.IsPostedBilling.Should().BeTrue();
+
+        // Cancelled without fee - rejected
+        var cancelledModel = CreateDefaultWilayah();
+        cancelledModel.Cancel("Alasan", 0m);
+        var actCancelled = () => cancelledModel.SetPostedBilling();
+        actCancelled.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Hanya transaksi aktif atau transaksi batal dengan biaya pembatalan*");
     }
 
     [Fact]
@@ -514,5 +513,144 @@ public class TrsTransportModelTest
         model.TotalJarakKm.Should().Be(25m);
         model.ListItems.Should().HaveCount(1);
         model.IsPostedBilling.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cancel_WhenPostedBilling_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var model = TrsTransportModel.Rehydrate(
+            trsTransportId: "TP26111901",
+            regId: "RG2026111901",
+            layananId: "IGD",
+            tglTrs: DateTime.Today,
+            petugasId: "USER01",
+            isVoid: false,
+            tglVoid: default,
+            petugasVoidId: "",
+            ambulanceId: "AMB01",
+            driverId: "",
+            noPolisi: "",
+            tujuanTransportId: "",
+            konstanta: 0m,
+            subTotal: 150000m,
+            diskon: 0m,
+            total: 150000m,
+            kas: 0m,
+            rekKasId: "",
+            bank: 0m,
+            rekBankId: "",
+            kartuKredit: 0m,
+            rekKartuKreditId: "",
+            noKartuKredit: "",
+            noBank: "",
+            jenisKartuKreditId: "",
+            jenisBankId: "",
+            sisa: 0m,
+            rekSisaId: "",
+            petugasKasirId: "",
+            kelasId: "",
+            trsChargeId: "",
+            trsDepositId: "",
+            trsKwitansiId: "",
+            genKeu: 0m,
+            tipeJaminanId: "",
+            pasienName: "Pasien A",
+            alm1Pasien: "",
+            alm2Pasien: "",
+            kotaPasien: "",
+            sex: "L",
+            keterangan: "",
+            status: TransportStatusEnum.Requested,
+            tipePerjalanan: TransportTypeEnum.OutboundReferral,
+            metodeTarif: ChargingMethodEnum.Jarak,
+            perawatId: "",
+            dokterId: "",
+            lokasiAsal: "IGD",
+            lokasiTujuan: "RS Lain",
+            tglRequest: DateTime.Today,
+            tglDispatch: null,
+            tglArrival: null,
+            tglReturn: null,
+            startOdometer: 0m,
+            endOdometer: 15m,
+            jaminanId: "JAM01",
+            isNonReg: false,
+            isPostedBilling: true,
+            alasanBatal: "",
+            biayaBatal: 0m
+        );
+
+        // Act
+        var act = () => model.Cancel("Dibatalkan operasional");
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("Transaksi transport yang sudah dibebankan ke Billing pasien tidak dapat dibatalkan dari operasional.");
+    }
+
+    [Fact]
+    public void Create_Jarak_WithManualDistance_SetsOdometersAndCalculatesTotalJarakKm()
+    {
+        // Act
+        var model = TrsTransportModel.Create(
+            tipePerjalanan: TransportTypeEnum.OutboundReferral,
+            metodeTarif: ChargingMethodEnum.Jarak,
+            layananId: "IGD",
+            petugasId: "USER01",
+            regId: "RG2026111901",
+            totalJarakKm: 27.5m
+        );
+
+        // Assert
+        model.MetodeTarif.Should().Be(ChargingMethodEnum.Jarak);
+        model.StartOdometer.Should().Be(0m);
+        model.EndOdometer.Should().Be(27.5m);
+        model.TotalJarakKm.Should().Be(27.5m);
+    }
+
+    [Fact]
+    public void SetMetodeJarak_WithManualDistance_SetsOdometersAndCalculatesTotalJarakKm()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+
+        // Act
+        model.SetMetodeJarak(18.2m);
+
+        // Assert
+        model.MetodeTarif.Should().Be(ChargingMethodEnum.Jarak);
+        model.StartOdometer.Should().Be(0m);
+        model.EndOdometer.Should().Be(18.2m);
+        model.TotalJarakKm.Should().Be(18.2m);
+    }
+
+    [Fact]
+    public void SetJarakManual_SetsOdometersAndCalculatesTotalJarakKm()
+    {
+        // Arrange
+        var model = CreateDefaultJarak();
+
+        // Act
+        model.SetJarakManual(32m);
+
+        // Assert
+        model.StartOdometer.Should().Be(0m);
+        model.EndOdometer.Should().Be(32m);
+        model.TotalJarakKm.Should().Be(32m);
+    }
+
+    [Fact]
+    public void SetJarakManual_NegativeDistance_ThrowsArgumentException()
+    {
+        // Arrange
+        var model = CreateDefaultJarak();
+
+        // Act
+        var act = () => model.SetJarakManual(-5m);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Total jarak tidak boleh bernilai negatif.*");
     }
 }

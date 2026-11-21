@@ -13,7 +13,6 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
-using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.IgdContext.BhpIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.TindakanIgdFeature;
@@ -33,14 +32,12 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
     private readonly IKomponenRepo _komponenRepo;
     private readonly IJaminanRepo _jaminanRepo;
     private readonly IPpaRepo _ppaRepo;
-    private readonly ITindakanRepo _tindakanRepo;
     private readonly ITindakanIgdRepo _tindakanIgdRepo;
     private readonly IBhpIgdRepo _bhpIgdRepo;
     private readonly IBrgRepo _brgRepo;
     private readonly IGroupRekRepo _groupRekRepo;
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
-    private readonly IAddBillAppService _addBillAppService;
     private readonly ILogger<IgdBillingPostingOrchestrator> _logger;
     private readonly IBrgPricingService? _brgPricingService;
 
@@ -50,14 +47,12 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         IKomponenRepo komponenRepo,
         IJaminanRepo jaminanRepo,
         IPpaRepo ppaRepo,
-        ITindakanRepo tindakanRepo,
         ITindakanIgdRepo tindakanIgdRepo,
         IBhpIgdRepo bhpIgdRepo,
         IBrgRepo brgRepo,
         IGroupRekRepo groupRekRepo,
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
-        IAddBillAppService addBillAppService,
         ILogger<IgdBillingPostingOrchestrator> logger,
         IBrgPricingService? brgPricingService = null)
     {
@@ -66,14 +61,12 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         _komponenRepo = komponenRepo;
         _jaminanRepo = jaminanRepo;
         _ppaRepo = ppaRepo;
-        _tindakanRepo = tindakanRepo;
         _tindakanIgdRepo = tindakanIgdRepo;
         _bhpIgdRepo = bhpIgdRepo;
         _brgRepo = brgRepo;
         _groupRekRepo = groupRekRepo;
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
-        _addBillAppService = addBillAppService;
         _logger = logger;
         _brgPricingService = brgPricingService;
     }
@@ -157,27 +150,19 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                     onNone: () => PpaType.Default with { PpaId = tindakan.Ppa.PpaId, PpaName = tindakan.Ppa.PpaName }
                 );
 
-            var listPpa = listKomp
-                .Where(x => x.ListSatTugas.Any())
-                .Select(x => new KomponenPpaView(x, ppa))
-                .ToList();
-
-            var bedId = (visit.BedId == "-" || string.IsNullOrWhiteSpace(visit.BedId)) ? string.Empty : visit.BedId;
-
-            var tdk = TindakanModel.FromReg(
+            var bill = SaveTindakanBill(
                 reg,
+                jaminan,
+                tarif,
                 nilaiTarif,
-                listPpa,
-                userId,
+                listKomp,
+                ppa,
+                tindakan.Qty,
+                tindakan.TindakanIgdId,
                 occurredAt,
-                pakaiBedId: bedId,
-                qty: tindakan.Qty);
+                userId);
 
-            _tindakanRepo.SaveChanges(tdk);
-
-            var bill = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
-
-            tindakan.MarkAsPosted(tdk.TindakanId, bill.TrsBillingId, occurredAt);
+            tindakan.MarkAsPosted(tindakan.TindakanIgdId, bill.TrsBillingId, occurredAt);
             _tindakanIgdRepo.SaveChanges(tindakan);
 
             return await Task.FromResult(true);
@@ -315,6 +300,103 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
             nilai,
             ketBilling,
             [bill2Event],
+            [],
+            []);
+
+        var isNewTataRekening = false;
+        var tataRekening = _tataRekeningRepo.LoadEntity(reg).Match(
+            onSome: m => m,
+            onNone: () =>
+            {
+                isNewTataRekening = true;
+                return TataRekeningModel.Create(reg.RegId);
+            });
+        if (isNewTataRekening)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+        return bill;
+    }
+
+    private TrsBillType SaveTindakanBill(
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp,
+        PpaType ppa,
+        decimal qty,
+        string billId,
+        DateTime occurredAt,
+        string userId)
+    {
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap
+            : jaminan.Rekening.PpdpJasaRajal;
+
+        var listReffKompFetched = listReffKomp.ToList();
+        var listBill2TransEvent = new List<TrsBill2TransEventType>();
+        var i = 0;
+
+        foreach (var item in nilaiTarif.ListKomponen)
+        {
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
+
+            var rekPdpt = (reffKomp != null && !string.IsNullOrWhiteSpace(reffKomp.RekPdpt.CoaId) && reffKomp.RekPdpt.CoaId != "-")
+                ? reffKomp.RekPdpt
+                : rekPpdp;
+
+            var rekDiskon = (reffKomp != null && !string.IsNullOrWhiteSpace(reffKomp.RekDiskon.CoaId) && reffKomp.RekDiskon.CoaId != "-")
+                ? reffKomp.RekDiskon
+                : CoaType.Default;
+
+            var bill2Coa = new TrsBill2CoaType(
+                rekPpdp,
+                rekPdpt,
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                rekDiskon);
+
+            var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
+            var itemSubtotal = item.Nilai * qty;
+
+            var bill2Event = new TrsBill2TransEventType(
+                i++,
+                komponen,
+                TrsBillJenisBayarType.Pdp,
+                itemSubtotal,
+                ppa.ToReff(),
+                bill2Coa);
+
+            listBill2TransEvent.Add(bill2Event);
+        }
+
+        var totalSubtotal = nilaiTarif.Nilai * qty;
+        var audit = AuditTrailType.Create(userId, occurredAt);
+
+        var ketBilling = new TrsBillKetType(
+            tarif.TarifName,
+            "",
+            tarif.TarifId,
+            qty,
+            billId);
+
+        var nilai = new TrsBillNilaiType(totalSubtotal, 0, 0, 0);
+        var rekapCetak = tarif.RekapCetak;
+
+        var bill = new TrsBillType(
+            billId,
+            BillModulGroup.Jasa,
+            occurredAt,
+            reg.ToReff(),
+            reg.Layanan,
+            reg.Kelas,
+            audit.Created,
+            rekapCetak,
+            nilai,
+            ketBilling,
+            listBill2TransEvent,
             [],
             []);
 

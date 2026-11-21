@@ -226,6 +226,97 @@ public class TrsTransportControllerTest
     }
 
     [Fact]
+    public void ChargeBilling_HasExpectedHttpAttributes()
+    {
+        // Act
+        var method = typeof(TrsTransportController).GetMethod(nameof(TrsTransportController.ChargeBilling));
+
+        // Assert
+        method.Should().NotBeNull();
+        var httpPostAttrs = method!.GetCustomAttributes(typeof(HttpPostAttribute), false).Cast<HttpPostAttribute>().ToList();
+        httpPostAttrs.Should().Contain(a => a.Template == "{id}/charge-billing");
+        httpPostAttrs.Should().Contain(a => a.Template == "charge-billing");
+    }
+
+    [Fact]
+    public async Task ChargeBilling_WithRouteIdOnly_SendsCommandToMediator_ReturnsOkWithResponse()
+    {
+        // Arrange
+        var expected = new ChargeTransportResponse("TP26110001", "Completed", 250000m, true);
+        ChargeTransportCmd? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<ChargeTransportCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<ChargeTransportResponse>, CancellationToken>((c, _) => capturedCmd = (ChargeTransportCmd)c)
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _sut.ChargeBilling("TP26110001");
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expected);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TrsTransportId.Should().Be("TP26110001");
+        _mediatorMock.Verify(x => x.Send(It.IsAny<ChargeTransportCmd>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChargeBilling_WithRouteIdAndBody_OverridesTrsTransportId_SendsCommandToMediator_ReturnsOk()
+    {
+        // Arrange
+        var cmd = new ChargeTransportCmd("", "USR01");
+        var expected = new ChargeTransportResponse("TP26110001", "Requested", 150000m, true);
+        ChargeTransportCmd? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<ChargeTransportCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<ChargeTransportResponse>, CancellationToken>((c, _) => capturedCmd = (ChargeTransportCmd)c)
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _sut.ChargeBilling("TP26110001", cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expected);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TrsTransportId.Should().Be("TP26110001");
+        capturedCmd.PetugasId.Should().Be("USR01");
+    }
+
+    [Fact]
+    public async Task ChargeBilling_WithBodyOnly_SendsCommandToMediator_ReturnsOk()
+    {
+        // Arrange
+        var cmd = new ChargeTransportCmd("TP26110001", "USR02");
+        var expected = new ChargeTransportResponse("TP26110001", "Dispatched", 300000m, true);
+        ChargeTransportCmd? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<ChargeTransportCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<ChargeTransportResponse>, CancellationToken>((c, _) => capturedCmd = (ChargeTransportCmd)c)
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _sut.ChargeBilling(null, cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expected);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TrsTransportId.Should().Be("TP26110001");
+        capturedCmd.PetugasId.Should().Be("USR02");
+    }
+
+    [Fact]
     public async Task Get_SendsQueryToMediator_ReturnsOkWithResponse()
     {
         // Arrange
