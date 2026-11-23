@@ -295,6 +295,21 @@ public class TrsKasirModel : ITrsKasirKey
                     "Nilai bayar tunai tidak boleh lebih kecil dari nilai kembalian");
             }
         }
+
+        var nonCashPayments = Payments
+            .Where(p => p.MetodeBayar != KasirConst.MetodeBayarTunai)
+            .Select(p => !string.IsNullOrWhiteSpace(p.KodeJenisPayment) ? p.KodeJenisPayment.Trim().ToUpperInvariant() : p.MetodeBayar.Trim().ToUpperInvariant())
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .ToList();
+
+        var duplicate = nonCashPayments
+            .GroupBy(k => k)
+            .FirstOrDefault(g => g.Count() > 1);
+
+        if (duplicate != null)
+        {
+            throw new BusinessValidationException($"Jenis pembayaran '{duplicate.Key}' tidak boleh digunakan lebih dari satu kali dalam satu transaksi");
+        }
     }
 
     private static DateTime ParseDateTime(string tglTrs, string jamTrs, string tglJamTrs)

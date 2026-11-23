@@ -27,7 +27,18 @@ public class CreateTerimaKasValidator : AbstractValidator<CreateTerimaKasCommand
 
         RuleFor(x => x.Payments)
             .NotNull().WithMessage("Rincian metode pembayaran wajib diisi minimal satu.")
-            .Must(p => p != null && p.Any()).WithMessage("Rincian metode pembayaran wajib diisi minimal satu.");
+            .Must(p => p != null && p.Any()).WithMessage("Rincian metode pembayaran wajib diisi minimal satu.")
+            .Must(payments =>
+            {
+                if (payments == null) return true;
+                var nonCash = payments
+                    .Where(p => !string.Equals(p.MetodeBayar?.Trim(), KasirConst.MetodeBayarTunai, StringComparison.OrdinalIgnoreCase))
+                    .Select(p => !string.IsNullOrWhiteSpace(p.KodeJenisPayment) ? p.KodeJenisPayment.Trim().ToUpperInvariant() : p.MetodeBayar?.Trim().ToUpperInvariant())
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .ToList();
+                return nonCash.Count == nonCash.Distinct().Count();
+            })
+            .WithMessage("Jenis pembayaran non-tunai tidak boleh digunakan lebih dari satu kali dalam satu transaksi.");
 
         RuleForEach(x => x.Payments).ChildRules(item =>
         {

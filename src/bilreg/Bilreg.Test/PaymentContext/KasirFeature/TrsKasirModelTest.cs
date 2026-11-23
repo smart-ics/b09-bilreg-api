@@ -325,4 +325,150 @@ public class TrsKasirModelTest
         actNoAlasan.Should().Throw<BusinessValidationException>()
             .WithMessage("*Alasan void wajib diisi*");
     }
+
+    [Fact]
+    public void CreateTerimaKas_WhenDuplicateNonCashPaymentWithKodeJenisPayment_ShouldThrowBusinessValidationException()
+    {
+        // Arrange
+        var payments = new[]
+        {
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarDebit,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "DEBIT_BCA"),
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarDebit,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "debit_bca")
+        };
+
+        // Act
+        var act = () => TrsKasirModel.CreateTerimaKas(
+            shiftId: "SH00000001",
+            kasirId: "KASIR-01",
+            regId: "REG-001",
+            pasienId: "RM-001",
+            pasienName: "Tn. Budi",
+            orderRef: "BILL-001",
+            keterangan: "Test duplicate non-cash with kode",
+            totalNilai: 100_000m,
+            payments: payments,
+            trsTime: Now);
+
+        // Assert
+        act.Should().Throw<BusinessValidationException>()
+            .WithMessage("*DEBIT_BCA*tidak boleh digunakan lebih dari satu kali*");
+    }
+
+    [Fact]
+    public void CreateTerimaKas_WhenDuplicateNonCashPaymentWithoutKodeJenisPayment_ShouldThrowBusinessValidationException()
+    {
+        // Arrange
+        var payments = new[]
+        {
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarDebit,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m),
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarDebit,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m)
+        };
+
+        // Act
+        var act = () => TrsKasirModel.CreateTerimaKas(
+            shiftId: "SH00000001",
+            kasirId: "KASIR-01",
+            regId: "REG-001",
+            pasienId: "RM-001",
+            pasienName: "Tn. Budi",
+            orderRef: "BILL-001",
+            keterangan: "Test duplicate non-cash without kode",
+            totalNilai: 100_000m,
+            payments: payments,
+            trsTime: Now);
+
+        // Assert
+        act.Should().Throw<BusinessValidationException>()
+            .WithMessage("*DEBIT*tidak boleh digunakan lebih dari satu kali*");
+    }
+
+    [Fact]
+    public void CreateTerimaKas_WhenValidMultiPaymentDifferentNonCash_ShouldSucceed()
+    {
+        // Arrange
+        var payments = new[]
+        {
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarTunai,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m),
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarDebit,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "DEBIT_BCA"),
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarQris,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "QRIS_BCA")
+        };
+
+        // Act
+        var sut = TrsKasirModel.CreateTerimaKas(
+            shiftId: "SH00000001",
+            kasirId: "KASIR-01",
+            regId: "REG-001",
+            pasienId: "RM-001",
+            pasienName: "Tn. Budi",
+            orderRef: "BILL-001",
+            keterangan: "Test distinct multi-payment",
+            totalNilai: 150_000m,
+            payments: payments,
+            trsTime: Now);
+
+        // Assert
+        sut.Should().NotBeNull();
+        sut.Payments.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void CreateKeluarKas_WhenDuplicateNonCashPayment_ShouldThrowBusinessValidationException()
+    {
+        // Arrange
+        var payments = new[]
+        {
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarTransfer,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "TRF_MANDIRI"),
+            TrsKasirPaymentType.Create(
+                metodeBayar: KasirConst.MetodeBayarTransfer,
+                nilaiBayar: 50_000m,
+                nilaiKembalian: 0m,
+                kodeJenisPayment: "TRF_MANDIRI")
+        };
+
+        // Act
+        var act = () => TrsKasirModel.CreateKeluarKas(
+            shiftId: "SH00000001",
+            kasirId: "KASIR-01",
+            regId: "REG-001",
+            pasienId: "RM-001",
+            pasienName: "Tn. Budi",
+            orderRef: "DEP-001",
+            keterangan: "Test duplicate non-cash keluar",
+            totalNilai: 100_000m,
+            payments: payments,
+            trsTime: Now);
+
+        // Assert
+        act.Should().Throw<BusinessValidationException>()
+            .WithMessage("*TRF_MANDIRI*tidak boleh digunakan lebih dari satu kali*");
+    }
 }

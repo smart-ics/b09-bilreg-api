@@ -15,7 +15,7 @@ public class TrsKasirRepo : ITrsKasirRepo
 
     public void SaveChanges(TrsKasirModel model)
     {
-        using var trans = TransHelper.NewScope();
+        using var trans = System.Transactions.Transaction.Current is null ? TransHelper.NewScope() : null;
 
         var existing = _trsKasirDal.GetData(model);
         var dto = TrsKasirDto.FromModel(model);
@@ -38,7 +38,7 @@ public class TrsKasirRepo : ITrsKasirRepo
             _trsKasirDal.InsertPayments(paymentDtos);
         }
 
-        trans.Complete();
+        trans?.Complete();
     }
 
     public void Save(TrsKasirModel model) => SaveChanges(model);

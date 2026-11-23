@@ -432,4 +432,102 @@ public class CreateTerimaKasCommandTest
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName.StartsWith("Payments[0].MetodeBayar"));
     }
+
+    [Fact]
+    public void GivenDuplicateNonCashPaymentByKodeJenisPayment_WhenValidate_ThenFailsWithDuplicateMessage()
+    {
+        var cmd = new CreateTerimaKasCommand(
+            ShiftId: "SH01",
+            KasirId: "KASIR-01",
+            RegId: "RG01",
+            PasienId: "RM01",
+            PasienName: "Budi",
+            OrderRef: "BL01",
+            Keterangan: "",
+            TotalNilai: 200_000m,
+            Payments: new[]
+            {
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m, KodeJenisPayment: "DEBIT_BCA"),
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m, KodeJenisPayment: "debit_bca")
+            });
+
+        var result = _validator.Validate(cmd);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Payments" &&
+            e.ErrorMessage.Contains("Jenis pembayaran non-tunai tidak boleh digunakan lebih dari satu kali"));
+    }
+
+    [Fact]
+    public void GivenDuplicateNonCashPaymentWithoutKodeJenisPayment_WhenValidate_ThenFailsWithDuplicateMessage()
+    {
+        var cmd = new CreateTerimaKasCommand(
+            ShiftId: "SH01",
+            KasirId: "KASIR-01",
+            RegId: "RG01",
+            PasienId: "RM01",
+            PasienName: "Budi",
+            OrderRef: "BL01",
+            Keterangan: "",
+            TotalNilai: 200_000m,
+            Payments: new[]
+            {
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m),
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m)
+            });
+
+        var result = _validator.Validate(cmd);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Payments" &&
+            e.ErrorMessage.Contains("Jenis pembayaran non-tunai tidak boleh digunakan lebih dari satu kali"));
+    }
+
+    [Fact]
+    public void GivenValidNonDuplicateMultiPayment_WhenValidate_ThenPasses()
+    {
+        var cmd = new CreateTerimaKasCommand(
+            ShiftId: "SH01",
+            KasirId: "KASIR-01",
+            RegId: "RG01",
+            PasienId: "RM01",
+            PasienName: "Budi",
+            OrderRef: "BL01",
+            Keterangan: "",
+            TotalNilai: 300_000m,
+            Payments: new[]
+            {
+                new PaymentItemInput(KasirConst.MetodeBayarTunai, 100_000m, 0m),
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m, KodeJenisPayment: "DEBIT_BCA"),
+                new PaymentItemInput(KasirConst.MetodeBayarQris, 100_000m, 0m, KodeJenisPayment: "QRIS_BCA")
+            });
+
+        var result = _validator.Validate(cmd);
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GivenDuplicateNonCashPayment_WhenHandled_ThenThrowsBusinessValidationException()
+    {
+        var shift = CreateOpenShift();
+        _kasirShiftRepoMock.Setup(x => x.GetKey(shift.ShiftId)).Returns(shift);
+
+        var cmd = new CreateTerimaKasCommand(
+            ShiftId: shift.ShiftId,
+            KasirId: "KASIR-01",
+            RegId: "RG01",
+            PasienId: "RM01",
+            PasienName: "Budi",
+            OrderRef: "BL01",
+            Keterangan: "",
+            TotalNilai: 200_000m,
+            Payments: new[]
+            {
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m, KodeJenisPayment: "DEBIT_BCA"),
+                new PaymentItemInput(KasirConst.MetodeBayarDebit, 100_000m, 0m, KodeJenisPayment: "DEBIT_BCA")
+            });
+
+        Func<Task> act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BusinessValidationException>()
+            .WithMessage("*DEBIT_BCA*tidak boleh digunakan lebih dari satu kali*");
+    }
 }

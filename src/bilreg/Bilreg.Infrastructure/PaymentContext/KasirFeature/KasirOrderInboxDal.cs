@@ -24,16 +24,6 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
             : targetDate.Trim();
 
         const string sql = """
-            WITH PendingBills AS (
-                SELECT fs_kd_trs, fs_kd_reg, fn_total, fd_tgl_trs
-                FROM ta_trs_billing
-                WHERE fd_tgl_trs = @TargetDate AND fn_total > 0
-                UNION
-                SELECT b.fs_kd_trs, b.fs_kd_reg, b.fn_total, b.fd_tgl_trs
-                FROM ta_trs_billing b
-                INNER JOIN BILRG_RegAktif ra ON b.fs_kd_reg = ra.RegId
-                WHERE b.fn_total > 0
-            )
             -- 1. Order Tagihan Pasien Selesai Layanan (ta_registrasi3 alokasi BYKAS)
             SELECT
                 reg3.fs_kd_reg AS OrderId,
@@ -62,14 +52,14 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
               AND (reg3.fn_jasa + reg3.fn_obat) > 0
               AND NOT EXISTS (
                   SELECT 1 FROM BILRG_TrsKasir k
-                  WHERE (k.OrderRef = reg3.fs_kd_reg OR k.RegId = reg3.fs_kd_reg)
+                  WHERE k.OrderRef = reg3.fs_kd_reg
                     AND k.JenisTrs = 'TERIMA'
                     AND k.StatusTrs = 'BERHASIL'
               )
 
             UNION ALL
 
-            -- 2. Order Setoran Deposit (Pasien Aktif di BILRG_RegAktif)
+            -- 2. Order Setoran Deposit (Pasien Belum Keluar - Rawat Inap)
             SELECT
                 dep.fs_kd_trs AS OrderId,
                 'PENERIMAAN' AS [Type],
@@ -83,7 +73,7 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
                 ISNULL(lay.fs_nm_layanan, '-') AS UnitName,
                 ISNULL(tj.fs_nm_tipe_jaminan, 'UMUM/MANDIRI') AS PenjaminName
             FROM ta_trs_deposit dep
-            INNER JOIN BILRG_RegAktif ra ON dep.fs_kd_reg = ra.RegId
+            INNER JOIN BILRG_RegAktif ra ON dep.fs_kd_reg = ra.RegId AND ra.JenisReg = '1'
             LEFT JOIN ta_registrasi reg ON dep.fs_kd_reg = reg.fs_kd_reg
             LEFT JOIN tc_mr mr ON reg.fs_mr = mr.fs_mr
             LEFT JOIN ta_layanan lay ON reg.fs_kd_layanan = lay.fs_kd_layanan
@@ -93,6 +83,7 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
               AND (dep.fs_kd_petugas_kasir = '' OR dep.fs_kd_petugas_kasir IS NULL)
               AND dep.fn_total_bayar = 0
               AND dep.fn_nilai_deposit > 0
+              AND (reg.fd_tgl_keluar IS NULL OR reg.fd_tgl_keluar = '' OR reg.fd_tgl_keluar = '3000-01-01')
               AND dep.fd_tgl_trs = @TargetDate
               AND NOT EXISTS (
                   SELECT 1 FROM BILRG_TrsKasir k
@@ -143,17 +134,28 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
                 b.fs_kd_reg AS RegId,
                 ISNULL(reg.fs_mr, '') AS NoRm,
                 ISNULL(mr.fs_nm_pasien, '') AS PasienName,
-                SUM(b.fn_total) AS TotalNilai,
+                (SUM(b.fn_total) - ISNULL(paid.TotalBayar, 0)) AS TotalNilai,
                 'MENUNGGU_BAYAR' AS [Status],
                 MAX(b.fd_tgl_trs) AS TglOrder,
                 ISNULL(lay.fs_nm_layanan, '-') AS UnitName,
                 ISNULL(tj.fs_nm_tipe_jaminan, 'UMUM/MANDIRI') AS PenjaminName
-            FROM PendingBills b
+            FROM ta_trs_billing b
+            INNER JOIN BILRG_RegAktif ra ON b.fs_kd_reg = ra.RegId AND ra.JenisReg <> '1'
             LEFT JOIN ta_registrasi reg ON b.fs_kd_reg = reg.fs_kd_reg
             LEFT JOIN tc_mr mr ON reg.fs_mr = mr.fs_mr
             LEFT JOIN ta_layanan lay ON reg.fs_kd_layanan = lay.fs_kd_layanan
             LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
-            WHERE (reg.fd_tgl_void = '3000-01-01' OR reg.fd_tgl_void IS NULL OR reg.fd_tgl_void = '')
+            OUTER APPLY (
+                SELECT ISNULL(SUM(k.TotalNilai), 0) AS TotalBayar
+                FROM BILRG_TrsKasir k
+                WHERE k.RegId = b.fs_kd_reg
+                  AND k.JenisTrs = 'TERIMA'
+                  AND k.StatusTrs = 'BERHASIL'
+            ) paid
+            WHERE b.fn_total > 0
+              AND (reg.fd_tgl_keluar IS NULL OR reg.fd_tgl_keluar = '' OR reg.fd_tgl_keluar = '3000-01-01')
+              AND (reg.fd_tgl_void = '3000-01-01' OR reg.fd_tgl_void IS NULL OR reg.fd_tgl_void = '')
+              AND (CONVERT(VARCHAR(10), ra.RegDate, 120) = @TargetDate OR reg.fd_tgl_masuk = @TargetDate)
               AND NOT EXISTS (
                   SELECT 1 FROM ta_registrasi3 reg3
                   WHERE reg3.fs_kd_reg = b.fs_kd_reg
@@ -162,7 +164,7 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
               AND NOT EXISTS (
                   SELECT 1 FROM BILRG_TrsKasirItem ki
                   INNER JOIN BILRG_TrsKasir k ON ki.TrsKasirId = k.TrsKasirId
-                  WHERE ki.BillId = b.fs_kd_trs
+                  WHERE (ki.BillId = b.fs_kd_trs OR (ki.RegId = b.fs_kd_reg AND ki.BillId = b.fs_kd_reg))
                     AND k.StatusTrs = 'BERHASIL'
               )
             GROUP BY
@@ -170,8 +172,9 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
                 reg.fs_mr,
                 mr.fs_nm_pasien,
                 lay.fs_nm_layanan,
-                tj.fs_nm_tipe_jaminan
-            HAVING SUM(b.fn_total) > 0
+                tj.fs_nm_tipe_jaminan,
+                paid.TotalBayar
+            HAVING (SUM(b.fn_total) - ISNULL(paid.TotalBayar, 0)) > 0
             ORDER BY TglOrder DESC, OrderId DESC
             """;
 
@@ -179,6 +182,6 @@ public class KasirOrderInboxDal : IKasirOrderInboxDal
         dp.AddParam("@TargetDate", tgl, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderKasirItemDto>(sql, dp);
+        return conn.Read<OrderKasirItemDto>(sql, dp) ?? Enumerable.Empty<OrderKasirItemDto>();
     }
 }
