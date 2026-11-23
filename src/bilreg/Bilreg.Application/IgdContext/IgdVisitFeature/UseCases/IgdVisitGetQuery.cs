@@ -49,7 +49,11 @@ public record TriageItem(
     DateTime OverrideDateTime,
     DateTime AssessmentDateTime,
     string AssessorUserId,
-    string Notes);
+    string Notes,
+    bool IsVoided,
+    string VoidUserId,
+    DateTime VoidDateTime,
+    string VoidReason);
 public record EventItem(int NoEvent, string EventKind, DateTime EventDateTime, string UserId, string Notes);
 
 public class IgdVisitGetHandler : IRequestHandler<IgdVisitGetQuery, IgdVisitGetResponse>
@@ -72,7 +76,8 @@ public class IgdVisitGetHandler : IRequestHandler<IgdVisitGetQuery, IgdVisitGetR
                 x.AirwaysScore, x.BreathingScore, x.BloodCirculationScore,
                 x.GcsEyeScore, x.GcsMotorScore, x.GcsVoiceScore,
                 x.IsManualOverrideBlack, x.OverrideByUserId, x.OverrideReason, x.OverrideDateTime,
-                x.AssessmentDateTime, x.AssessorUserId, x.Notes));
+                x.AssessmentDateTime, x.AssessorUserId, x.Notes,
+                x.IsVoided, x.VoidUserId, x.VoidDateTime, x.VoidReason));
         var listEvent = visit.ListEvent.Select(x =>
             new EventItem(x.NoEvent, x.EventKind.ToCode(), x.EventDateTime, x.UserId, x.Notes));
 

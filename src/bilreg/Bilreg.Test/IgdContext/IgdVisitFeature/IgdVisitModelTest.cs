@@ -401,4 +401,216 @@ public class IgdVisitModelTest
         visit.SetPendingBilling(false);
         visit.HasPendingBilling.Should().BeFalse();
     }
+
+    [Fact]
+    public void VoidTriage_WhenOnlyTriageVoided_ResetsActiveTriageStateAndEmitsEvent()
+    {
+        var t1 = new DateTime(2026, 1, 1, 8, 10, 0);
+        var tVoid = new DateTime(2026, 1, 1, 8, 20, 0);
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats2, "Awal", new AuditInfoType("U1", t1));
+
+        visit.VoidTriage(1, "  Salah pasien  ", new AuditInfoType("U2", tVoid));
+
+        visit.HasTriage.Should().BeFalse();
+        visit.Triage.Should().Be(IgdVisitTriageType.Default);
+        visit.TriageMethod.Should().Be(TriageMethodEnum.Unknown);
+        visit.TriageColor.Should().Be(TriageColorEnum.Unknown);
+        visit.LastTriageAt.Should().Be(new DateTime(3000, 1, 1));
+        visit.NextReTriageAt.Should().Be(new DateTime(3000, 1, 1));
+
+        var voidedEntry = visit.ListTriage.Single(x => x.NoTriage == 1);
+        voidedEntry.IsVoided.Should().BeTrue();
+        voidedEntry.VoidUserId.Should().Be("U2");
+        voidedEntry.VoidDateTime.Should().Be(tVoid);
+        voidedEntry.VoidReason.Should().Be("Salah pasien");
+
+        var voidEvt = visit.ListEvent.Last();
+        voidEvt.EventKind.Should().Be(IgdEventEnum.VoidTriage);
+        voidEvt.EventKind.ToCode().Should().Be("VOID_TRIAGE");
+        "VOID_TRIAGE".ToIgdEventEnum().Should().Be(IgdEventEnum.VoidTriage);
+        voidEvt.UserId.Should().Be("U2");
+        voidEvt.EventDateTime.Should().Be(tVoid);
+        voidEvt.Notes.Should().Be("Void Triage #1 (ATS2): Salah pasien");
+    }
+
+    [Fact]
+    public void VoidTriage_WhenLatestOfTwoVoided_RollsBackToPreviousActiveTriage()
+    {
+        var t1 = new DateTime(2026, 1, 1, 8, 10, 0);
+        var t2 = new DateTime(2026, 1, 1, 8, 30, 0);
+        var tVoid = new DateTime(2026, 1, 1, 8, 40, 0);
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "Triase 1", new AuditInfoType("U1", t1));
+        visit.AssessTriage(TriageLevelEnum.Ats2, "Triase 2", new AuditInfoType("U1", t2));
+
+        visit.VoidTriage(2, "Duplikat input", new AuditInfoType("U2", tVoid));
+
+        visit.HasTriage.Should().BeTrue();
+        visit.Triage.NoTriage.Should().Be(1);
+        visit.Triage.Level.Should().Be(TriageLevelEnum.Ats3);
+        visit.TriageMethod.Should().Be(TriageMethodEnum.Ats);
+        visit.TriageColor.Should().Be(TriageColorEnum.Yellow);
+        visit.LastTriageAt.Should().Be(t1);
+        visit.NextReTriageAt.Should().Be(t1.AddMinutes(30));
+
+        visit.ListTriage.Single(x => x.NoTriage == 1).IsVoided.Should().BeFalse();
+        visit.ListTriage.Single(x => x.NoTriage == 2).IsVoided.Should().BeTrue();
+    }
+
+    [Fact]
+    public void VoidTriage_WhenRollbackToOverrideBlack_SetsNextReTriageAtToSentinel()
+    {
+        var t1 = new DateTime(2026, 1, 1, 8, 10, 0);
+        var t2 = new DateTime(2026, 1, 1, 8, 30, 0);
+        var tVoid = new DateTime(2026, 1, 1, 8, 40, 0);
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(
+            assessment: TestAtsAssessment(),
+            method: TriageMethodEnum.Ats,
+            level: TriageLevelEnum.Ats2,
+            color: TriageColorEnum.Red,
+            notes: "DOA",
+            isManualOverrideBlack: true,
+            overrideByUserId: "DK01",
+            overrideReason: "Henti jantung irreversible",
+            nextReTriageAt: null,
+            audit: new AuditInfoType("U1", t1));
+        visit.AssessTriage(TriageLevelEnum.Ats3, "Salah retriage", new AuditInfoType("U1", t2));
+
+        visit.VoidTriage(2, "Salah input", new AuditInfoType("U2", tVoid));
+
+        visit.HasTriage.Should().BeTrue();
+        visit.Triage.NoTriage.Should().Be(1);
+        visit.TriageColor.Should().Be(TriageColorEnum.Black);
+        visit.NextReTriageAt.Should().Be(new DateTime(3000, 1, 1));
+    }
+
+    [Fact]
+    public void VoidTriage_WhenVisitOnBed_IsAllowedWithoutBlockingBed()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "Awal", TestAudit());
+        visit.AssignBed("B01", TestAudit());
+
+        visit.VoidTriage(1, "Perlu asesmen ulang", new AuditInfoType("U2", new DateTime(2026, 1, 1, 8, 30, 0)));
+
+        visit.HasTriage.Should().BeFalse();
+        visit.HasObserved.Should().BeTrue();
+        visit.BedId.Should().Be("B01");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("-")]
+    [InlineData(" - ")]
+    public void VoidTriage_WhenVoidReasonInvalid_ThrowsArgumentException(string? badReason)
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+
+        var act = () => visit.VoidTriage(1, badReason!, TestAudit());
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("-")]
+    public void VoidTriage_WhenUserIdInvalid_ThrowsArgumentException(string badUser)
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+
+        var act = () => visit.VoidTriage(1, "Salah input", new AuditInfoType(badUser, new DateTime(2026, 1, 1, 8, 10, 0)));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void VoidTriage_WhenVisitDischarged_ThrowsInvalidOperationException()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssignRegister((RegModel)RegModel.Key("R001")!, TestAudit());
+        visit.Discharge(TestAudit());
+
+        var act = () => visit.VoidTriage(1, "Salah input", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak dapat void triage*");
+    }
+
+    [Fact]
+    public void VoidTriage_WhenVisitVoided_ThrowsInvalidOperationException()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.Void(false, false, TestAudit());
+
+        var act = () => visit.VoidTriage(1, "Salah input", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak dapat void triage*");
+    }
+
+    [Fact]
+    public void VoidTriage_WhenVisitRedirected_ThrowsInvalidOperationException()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.RedirectToRawatJalan("RDR1", "Rajal", TestAudit());
+
+        var act = () => visit.VoidTriage(1, "Salah input", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak dapat void triage*");
+    }
+
+    [Fact]
+    public void VoidTriage_WhenNoTriageNotFound_ThrowsKeyNotFoundException()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+
+        var act = () => visit.VoidTriage(99, "Salah input", TestAudit());
+
+        act.Should().Throw<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public void VoidTriage_WhenAlreadyVoided_ThrowsInvalidOperationException()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.VoidTriage(1, "Pertama", TestAudit());
+
+        var act = () => visit.VoidTriage(1, "Kedua", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah di-void*");
+    }
+
+    [Fact]
+    public void AttachTriages_WhenAllVoided_SetsHasTriageFalse()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var voided = IgdVisitTriageType.Default with
+        {
+            NoTriage = 1,
+            Method = TriageMethodEnum.Ats,
+            Level = TriageLevelEnum.Ats2,
+            Color = TriageColorEnum.Red,
+            AssessmentDateTime = new DateTime(2026, 1, 1, 8, 10, 0),
+            IsVoided = true,
+            VoidUserId = "U2",
+            VoidDateTime = new DateTime(2026, 1, 1, 8, 20, 0),
+            VoidReason = "Salah input",
+        };
+
+        visit.AttachTriages([voided]);
+
+        visit.HasTriage.Should().BeFalse();
+        visit.Triage.Should().Be(IgdVisitTriageType.Default);
+        visit.ListTriage.Should().HaveCount(1);
+    }
 }

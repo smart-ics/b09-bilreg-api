@@ -32,13 +32,15 @@ public class IgdVisitTriageDal : IIgdVisitTriageDal
                 AirwaysScore, BreathingScore, BloodCirculationScore,
                 GcsEyeScore, GcsMotorScore, GcsVoiceScore,
                 IsManualOverrideBlack, OverrideByUserId, OverrideReason, OverrideDateTime,
-                AssessmentDateTime, AssessorUserId, Notes)
+                AssessmentDateTime, AssessorUserId, Notes,
+                IsVoided, VoidUserId, VoidDateTime, VoidReason)
             VALUES (
                 @IgdVisitId, @NoTriage, @TriageMethod, @TriageLevel, @TriageColor,
                 @AirwaysScore, @BreathingScore, @BloodCirculationScore,
                 @GcsEyeScore, @GcsMotorScore, @GcsVoiceScore,
                 @IsManualOverrideBlack, @OverrideByUserId, @OverrideReason, @OverrideDateTime,
-                @AssessmentDateTime, @AssessorUserId, @Notes)
+                @AssessmentDateTime, @AssessorUserId, @Notes,
+                @IsVoided, @VoidUserId, @VoidDateTime, @VoidReason)
             """;
 
         var dp = new DynamicParameters();
@@ -60,6 +62,10 @@ public class IgdVisitTriageDal : IIgdVisitTriageDal
         dp.AddParam("@AssessmentDateTime", dto.AssessmentDateTime, SqlDbType.DateTime);
         dp.AddParam("@AssessorUserId", dto.AssessorUserId, SqlDbType.VarChar);
         dp.AddParam("@Notes", dto.Notes, SqlDbType.VarChar);
+        dp.AddParam("@IsVoided", dto.IsVoided, SqlDbType.Bit);
+        dp.AddParam("@VoidUserId", dto.VoidUserId, SqlDbType.VarChar);
+        dp.AddParam("@VoidDateTime", dto.VoidDateTime, SqlDbType.DateTime);
+        dp.AddParam("@VoidReason", dto.VoidReason, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -84,7 +90,8 @@ public class IgdVisitTriageDal : IIgdVisitTriageDal
                 AirwaysScore, BreathingScore, BloodCirculationScore,
                 GcsEyeScore, GcsMotorScore, GcsVoiceScore,
                 IsManualOverrideBlack, OverrideByUserId, OverrideReason, OverrideDateTime,
-                AssessmentDateTime, AssessorUserId, Notes
+                AssessmentDateTime, AssessorUserId, Notes,
+                IsVoided, VoidUserId, VoidDateTime, VoidReason
             FROM BILRG_IgdVisitTriage
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY NoTriage
