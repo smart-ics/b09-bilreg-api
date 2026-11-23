@@ -122,6 +122,7 @@
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
+    <Folder Include="PaymentContext\KasirFeature\" />
     <Folder Include="BedUsageContext\RoomChargeFeature" />
     <Folder Include="LabContext\" />
     <Folder Include="LabContext\LabOrderFeature\" />
@@ -408,6 +409,12 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_KasirShift.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_LoketKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirItem.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment.sql" />
+    <None Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment_Alter.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
