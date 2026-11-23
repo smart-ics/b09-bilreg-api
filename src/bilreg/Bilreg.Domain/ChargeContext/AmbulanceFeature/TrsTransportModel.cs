@@ -482,6 +482,20 @@ public class TrsTransportModel : ITrsTransportKey
         RecalculateTotals();
     }
 
+    public void ReplaceItems(IEnumerable<TrsTransportItemModel> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        AssertNotTerminalState();
+
+        _listItems.Clear();
+        foreach (var item in items)
+        {
+            item.SetTrsTransportId(TrsTransportId);
+            _listItems.Add(item);
+        }
+        RecalculateTotals();
+    }
+
     public void RemoveItem(string detilTarifId)
     {
         AssertNotTerminalState();

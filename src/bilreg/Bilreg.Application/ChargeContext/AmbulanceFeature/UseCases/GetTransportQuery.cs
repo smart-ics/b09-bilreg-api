@@ -40,7 +40,8 @@ public record TransportGetResponse(
     string AlasanBatal,
     decimal BiayaBatal,
     string Keterangan,
-    IEnumerable<TransportItemResponse> ListItems);
+    IEnumerable<TransportItemResponse> ListItems,
+    bool IsVoid = false);
 
 public record TransportItemResponse(
     string DetilTarifId,
@@ -100,7 +101,8 @@ public static class TransportResponseMapper
             t.AlasanBatal,
             t.BiayaBatal,
             t.Keterangan,
-            items);
+            items,
+            t.IsVoid);
     }
 }
 

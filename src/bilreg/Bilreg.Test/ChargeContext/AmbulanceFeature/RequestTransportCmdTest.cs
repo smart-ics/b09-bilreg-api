@@ -13,6 +13,7 @@ public class RequestTransportCmdTest
 {
     private readonly Mock<ITrsTransportRepo> _trsTransportRepoMock = new();
     private readonly Mock<ITujuanTransportRepo> _tujuanTransportRepoMock = new();
+    private readonly Mock<IAmbulanceRepo> _ambulanceRepoMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
     private readonly RequestTransportHandler _sut;
 
@@ -22,6 +23,7 @@ public class RequestTransportCmdTest
         _sut = new RequestTransportHandler(
             _trsTransportRepoMock.Object,
             _tujuanTransportRepoMock.Object,
+            _ambulanceRepoMock.Object,
             _tglJamProviderMock.Object);
     }
 
@@ -147,5 +149,73 @@ public class RequestTransportCmdTest
             t.TujuanTransportId == string.Empty &&
             t.Konstanta == 0m &&
             t.IsNonReg)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenWilayahWithAmbulance_WhenHandled_ThenCalculatesBaseTariffAndSavesItem()
+    {
+        // Arrange
+        var ambulance = new AmbulanceModel("AMB-01", "Ambulans 1", "B 1234 CD");
+        ambulance.SetAbonement(100000m);
+        ambulance.Add(new AmbulanceKomponenModel("KOMP-01", "Tarif Dasar", 0m, true));
+        _ambulanceRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB-01")))
+            .Returns(MayBe.From(ambulance));
+
+        var cmd = new RequestTransportCmd(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER01",
+            RegId: "REG-01",
+            TujuanTransportId: "TJ-01",
+            Konstanta: 2m,
+            AmbulanceId: "AMB-01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Status.Should().Be("Requested");
+        _trsTransportRepoMock.Verify(x => x.SaveChanges(It.Is<TrsTransportModel>(t =>
+            t.Status == TransportStatusEnum.Requested &&
+            !t.IsPostedBilling &&
+            t.SubTotal == 200000m &&
+            t.Total == 200000m &&
+            t.ListItems.Count == 1)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenJarakWithAmbulanceAndKmRate_WhenHandled_ThenCalculatesBaseTariffAndSetsJarakManual()
+    {
+        // Arrange
+        var ambulance = new AmbulanceModel("AMB-02", "Ambulans 2", "B 5678 EF");
+        ambulance.SetAbonement(100000m);
+        _ambulanceRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB-02")))
+            .Returns(MayBe.From(ambulance));
+
+        var cmd = new RequestTransportCmd(
+            TransportTypeEnum.InboundRetrieval,
+            ChargingMethodEnum.Jarak,
+            "IGD",
+            "USER01",
+            AmbulanceId: "AMB-02",
+            KmRate: 15000m,
+            TotalJarakKm: 10m);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Status.Should().Be("Requested");
+        _trsTransportRepoMock.Verify(x => x.SaveChanges(It.Is<TrsTransportModel>(t =>
+            t.Status == TransportStatusEnum.Requested &&
+            !t.IsPostedBilling &&
+            t.TotalJarakKm == 10m &&
+            t.SubTotal == 250000m &&
+            t.Total == 250000m &&
+            t.ListItems.Count == 1 &&
+            t.ListItems.First().DetilTarifId == "KOMP-AMB")), Times.Once);
     }
 }

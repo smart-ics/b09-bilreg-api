@@ -71,19 +71,23 @@ public class CompleteTransportHandler : IRequestHandler<CompleteTransportCmd, Co
 
         var returnTime = request.ReturnTime ?? _tglJamProvider.Now;
 
-        // Populate items if passed before marking completed (since AddItem checks terminal state)
+        // Populate items if passed before marking completed (since ReplaceItems checks terminal state)
         if (request.Items != null)
         {
-            foreach (var item in request.Items)
-            {
-                transport.AddItem(new TrsTransportItemModel(
+            var items = request.Items
+                .Select(item => new TrsTransportItemModel(
                     transport.TrsTransportId,
                     item.DetilTarifId,
                     item.Tarif,
                     item.Qty,
                     item.PetugasMedisId,
                     item.Diskon,
-                    item.Keterangan));
+                    item.Keterangan))
+                .ToList();
+
+            if (items.Count > 0)
+            {
+                transport.ReplaceItems(items);
             }
         }
         else if (transport.ListItems.Count == 0 && !string.IsNullOrWhiteSpace(transport.AmbulanceId))

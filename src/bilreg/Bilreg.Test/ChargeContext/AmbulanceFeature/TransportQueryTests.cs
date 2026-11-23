@@ -151,4 +151,27 @@ public class TransportQueryTests
         result.First().TrsTransportId.Should().Be("TP032");
         result.First().Status.Should().Be("Dispatched");
     }
+
+    [Fact]
+    public void TransportResponseMapper_WhenVoided_MapsIsVoidTrue()
+    {
+        // Arrange
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP033",
+            new DateTime(2026, 11, 16, 9, 0, 0),
+            tujuanTransportId: "TJ-01",
+            konstanta: 150000m);
+        transport.Cancel("Salah input", 0m, "USER1", new DateTime(2026, 11, 16, 12, 0, 0));
+
+        // Act
+        var response = TransportResponseMapper.ToResponse(transport);
+
+        // Assert
+        response.IsVoid.Should().BeTrue();
+        response.Status.Should().Be("Cancelled");
+    }
 }

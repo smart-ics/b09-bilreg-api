@@ -23,7 +23,9 @@ public record RequestTransportCmd(
     string? DriverId = null,
     string? NoPolisi = null,
     string? PerawatId = null,
-    string? DokterId = null) : IRequest<RequestTransportResponse>;
+    string? DokterId = null,
+    decimal? KmRate = null,
+    decimal? TotalJarakKm = null) : IRequest<RequestTransportResponse>;
 
 public record RequestTransportResponse(
     string TrsTransportId,
@@ -33,15 +35,18 @@ public class RequestTransportHandler : IRequestHandler<RequestTransportCmd, Requ
 {
     private readonly ITrsTransportRepo _trsTransportRepo;
     private readonly ITujuanTransportRepo _tujuanTransportRepo;
+    private readonly IAmbulanceRepo _ambulanceRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
     public RequestTransportHandler(
         ITrsTransportRepo trsTransportRepo,
         ITujuanTransportRepo tujuanTransportRepo,
+        IAmbulanceRepo ambulanceRepo,
         ITglJamProvider tglJamProvider)
     {
         _trsTransportRepo = trsTransportRepo;
         _tujuanTransportRepo = tujuanTransportRepo;
+        _ambulanceRepo = ambulanceRepo;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -97,6 +102,31 @@ public class RequestTransportHandler : IRequestHandler<RequestTransportCmd, Requ
             noPolisi: request.NoPolisi ?? string.Empty,
             perawatId: request.PerawatId ?? string.Empty,
             dokterId: request.DokterId ?? string.Empty);
+
+        if (request.MetodeTarif == ChargingMethodEnum.Jarak && request.TotalJarakKm is > 0)
+        {
+            transport.SetJarakManual(request.TotalJarakKm.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AmbulanceId))
+        {
+            var ambulance = _ambulanceRepo.LoadEntity(new AmbulanceKey(request.AmbulanceId)).Match(
+                onSome: a => a,
+                onNone: () => null);
+
+            if (ambulance != null)
+            {
+                var baseTariff = request.MetodeTarif == ChargingMethodEnum.Wilayah
+                    ? ambulance.Abonement * konstanta
+                    : ambulance.Abonement + ((request.TotalJarakKm ?? 0m) * (request.KmRate ?? 0m));
+
+                if (baseTariff > 0)
+                {
+                    var kompId = ambulance.ListKomponen.FirstOrDefault()?.KomponenId ?? "KOMP-AMB";
+                    transport.AddItem(new TrsTransportItemModel(transport.TrsTransportId, kompId, baseTariff, 1m));
+                }
+            }
+        }
 
         _trsTransportRepo.SaveChanges(transport);
 

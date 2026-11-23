@@ -233,4 +233,29 @@ public class CompleteTransportCmdTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Transisi hanya valid dari status Dispatched*");
     }
+
+    [Fact]
+    public async Task GivenExistingEstimatedItem_WhenCompletedWithExplicitItems_ThenReplacesItemsWithoutDuplication()
+    {
+        // Arrange
+        var transport = CreateDispatchedTransport("TP014", regId: "");
+        transport.AddItem(new TrsTransportItemModel("TP014", "KOMP-EST", 150000m, 1m));
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP014")))
+            .Returns(MayBe.From(transport));
+
+        var cmd = new CompleteTransportCmd(
+            "TP014",
+            1050m,
+            Items: new[] { new TrsTransportItemInputDto("KOMP-ACT", 200000m, 1m) });
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Total.Should().Be(200000m);
+        transport.ListItems.Should().HaveCount(1);
+        transport.ListItems.First().DetilTarifId.Should().Be("KOMP-ACT");
+    }
 }
