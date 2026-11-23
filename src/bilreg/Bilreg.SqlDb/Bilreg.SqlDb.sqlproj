@@ -132,6 +132,8 @@
     <Folder Include="LabContext\LabMasterFeature\" />
     <Folder Include="LabContext\LabMasterFeature\Data\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
+    <Folder Include="RadContext\" />
+    <Folder Include="RadContext\RadOrderFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -407,6 +409,9 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrder.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrderItem.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadTarifModality.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
