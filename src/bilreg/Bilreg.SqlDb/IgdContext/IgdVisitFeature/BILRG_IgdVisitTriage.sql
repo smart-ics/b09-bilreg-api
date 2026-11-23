@@ -18,6 +18,10 @@ CREATE TABLE BILRG_IgdVisitTriage (
     AssessmentDateTime DATETIME NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_AssessmentDateTime DEFAULT('3000-01-01'),
     AssessorUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_AssessorUserId DEFAULT(''),
     Notes VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_Notes DEFAULT(''),
+    IsVoided BIT NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_IsVoided DEFAULT(0),
+    VoidUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidUserId DEFAULT(''),
+    VoidDateTime DATETIME NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidDateTime DEFAULT('3000-01-01'),
+    VoidReason VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidReason DEFAULT(''),
 
     CONSTRAINT PK_BILRG_IgdVisitTriage PRIMARY KEY CLUSTERED (IgdVisitId, NoTriage)
 );

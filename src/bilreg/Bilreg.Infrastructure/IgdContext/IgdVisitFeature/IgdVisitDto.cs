@@ -118,7 +118,11 @@ public record IgdVisitDto(
                 OverrideDateTime: new DateTime(3000, 1, 1),
                 AssessmentDateTime: new DateTime(3000, 1, 1),
                 AssessorUserId: "-",
-                Notes: "-")
+                Notes: "-",
+                IsVoided: false,
+                VoidUserId: "",
+                VoidDateTime: new DateTime(3000, 1, 1),
+                VoidReason: "")
             : IgdVisitTriageType.Default;
 
         var reg = string.IsNullOrEmpty(RegId)

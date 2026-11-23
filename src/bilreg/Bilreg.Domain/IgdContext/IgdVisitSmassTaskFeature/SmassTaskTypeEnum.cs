@@ -3,7 +3,8 @@ namespace Bilreg.Domain.IgdContext.IgdVisitSmassTaskFeature;
 public enum SmassTaskTypeEnum
 {
     Generate = 0,
-    Link = 1
+    Link = 1,
+    Void = 2
 }
 
 public static class SmassTaskTypeEnumExtensions
@@ -12,6 +13,7 @@ public static class SmassTaskTypeEnumExtensions
     {
         SmassTaskTypeEnum.Generate => "GENERATE",
         SmassTaskTypeEnum.Link => "LINK",
+        SmassTaskTypeEnum.Void => "VOID",
         _ => "-",
     };
 }

@@ -24,4 +24,13 @@ public interface ISmassAssessmentGateway
     Task<SmassGatewayResult> LinkIgdVisit(
         SmassLinkIgdVisitRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes one SMASS assessment by its identifier (<c>DELETE /api/Assesment/{assesmentId}</c>).
+    /// HTTP 2xx and 404 NotFound are treated as idempotent success; every failure is
+    /// returned as a failed <see cref="SmassGatewayResult"/> without throwing.
+    /// </summary>
+    Task<SmassGatewayResult> DeleteAssesment(
+        string assessmentId,
+        CancellationToken cancellationToken = default);
 }

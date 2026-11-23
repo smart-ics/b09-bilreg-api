@@ -120,7 +120,11 @@ public record IgdVisitTriageType(
     DateTime OverrideDateTime,
     DateTime AssessmentDateTime,
     string AssessorUserId,
-    string Notes)
+    string Notes,
+    bool IsVoided,
+    string VoidUserId,
+    DateTime VoidDateTime,
+    string VoidReason)
 {
     public static IgdVisitTriageType Default => new(
         NoTriage: 0,
@@ -139,7 +143,11 @@ public record IgdVisitTriageType(
         OverrideDateTime: new DateTime(3000, 1, 1),
         AssessmentDateTime: new DateTime(3000, 1, 1),
         AssessorUserId: "-",
-        Notes: "-");
+        Notes: "-",
+        IsVoided: false,
+        VoidUserId: "",
+        VoidDateTime: new DateTime(3000, 1, 1),
+        VoidReason: "");
 }
 
 public record AtsAssessmentType(
