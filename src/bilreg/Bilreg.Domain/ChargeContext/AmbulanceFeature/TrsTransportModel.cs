@@ -398,9 +398,9 @@ public class TrsTransportModel : ITrsTransportKey
         Status = TransportStatusEnum.Completed;
     }
 
-    public void Cancel(string alasanBatal, decimal biayaBatal = 0m, string petugasVoidId = "", DateTime? cancelTime = null)
+    public void Cancel(string alasanBatal, decimal biayaBatal = 0m, string petugasVoidId = "", DateTime? cancelTime = null, bool allowPostedBillingReversal = false)
     {
-        if (IsPostedBilling)
+        if (IsPostedBilling && !allowPostedBillingReversal)
             throw new InvalidOperationException("Transaksi transport yang sudah dibebankan ke Billing pasien tidak dapat dibatalkan dari operasional.");
 
         if (Status == TransportStatusEnum.Completed)
