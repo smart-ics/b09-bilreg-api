@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.RadContext.RadOrderFeature;
+using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Application.RadContext.RadOrderFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -36,6 +37,7 @@ namespace Bilreg.Test.RadContext.RadOrderFeature;
 /// 8. Guard Pembatalan -> pembatalan ulang pada order Cancelled ditolak (InvalidOperationException).
 /// 9. Katalog Modalitas Lookup (RadTarifModalityLookupQuery) -> verifikasi pencarian katalog tindakan per modalitas.
 /// 10. Integrated Master Scenario -> eksekusi beruntun seluruh siklus hidup pada satu runtime state terpadu.
+/// 11. Skenario Pembebanan Biaya & Pembatalan (Order Charge & Cancel Lifecycle) -> transisi Requested -> Charged (BillingTindakanId) -> pembatalan memicu CancelCharge.
 /// </summary>
 public class RadOrderLifecycleScenarioTest
 {
@@ -65,10 +67,12 @@ public class RadOrderLifecycleScenarioTest
         public Mock<IRadTarifModalityDal> TarifDalMock { get; } = new();
         public Mock<IRegRepo> RegRepoMock { get; } = new();
         public Mock<IPpaRepo> PpaRepoMock { get; } = new();
+        public Mock<IRadBillingIntegration> BillingMock { get; } = new();
 
         public RadItemResolutionService ResolutionService { get; }
 
         public RadOrderCreateFromEmrHandler CreateHandler { get; }
+        public RadOrderChargeHandler ChargeHandler { get; }
         public RadOrderCancelHandler CancelHandler { get; }
         public RadOrderGetHandler GetHandler { get; }
         public RadOrderWorklistHandler WorklistHandler { get; }
@@ -219,9 +223,19 @@ public class RadOrderLifecycleScenarioTest
                 PpaRepoMock.Object,
                 OrderDalMock.Object);
 
+            ChargeHandler = new RadOrderChargeHandler(
+                RepoMock.Object,
+                BillingMock.Object,
+                TimeProvider);
+
             CancelHandler = new RadOrderCancelHandler(
                 RepoMock.Object,
+                BillingMock.Object,
                 TimeProvider);
+
+            BillingMock.Setup(b => b.ChargeOrder(It.IsAny<RadOrderModel>(), It.IsAny<string>(), It.IsAny<DateTime>()))
+                .Returns<RadOrderModel, string, DateTime>((order, user, dt) =>
+                    order.OrderId.Length > 7 ? $"BILL_{order.OrderId[^7..]}" : $"BILL_{order.OrderId}");
 
             GetHandler = new RadOrderGetHandler(
                 OrderDalMock.Object,
@@ -658,7 +672,7 @@ public class RadOrderLifecycleScenarioTest
         // Assert
         var ex = await act.Should().ThrowAsync<InvalidOperationException>();
         ex.Which.Message.Should().Contain("Cancelled");
-        ex.Which.Message.Should().Contain("Requested atau Scheduled");
+        ex.Which.Message.Should().Contain("pembatalan hanya diizinkan untuk status Requested, Scheduled, atau Charged");
     }
 
     #endregion
@@ -802,6 +816,130 @@ public class RadOrderLifecycleScenarioTest
         var activeWorklist = (await harness.WorklistHandler.Handle(worklistQuery, CancellationToken.None)).ToList();
         activeWorklist.Should().HaveCount(1);
         activeWorklist[0].OrderId.Should().Be(order2.OrderId);
+    }
+
+    #endregion
+
+    #region Requirement 11: Order Charge & Cancellation Lifecycle
+
+    [Fact]
+    public async Task Req11_OrderChargeAndCancellationLifecycle_TransitionsToChargedWithBillingTindakanId_AndTriggersCancelCharge()
+    {
+        // 1. Arrange & Inisialisasi Harness
+        var harness = new RadOrderLifecycleHarness(_baseTime);
+        var createCmd = new RadOrderCreateFromEmrCmd(
+            UserId: "DR_EMR_01",
+            EmrOrderId: "EMR-RAD-CHARGE-001",
+            RegId: "REG001",
+            PatientId: "P0001",
+            PatientName: "Tn. Ahmad Dahlan",
+            BirthDateYmd: "1985-05-10",
+            Gender: "L",
+            Modality: "CR",
+            Items:
+            [
+                new RadOrderItemInputDto("TRF_CR01", (int)RadUrgencyEnum.Rutin),
+                new RadOrderItemInputDto("TRF_CR02", (int)RadUrgencyEnum.Cito)
+            ],
+            DokterPengorderId: "DOK01",
+            DokterPengorderName: "dr. Radiologi Spesialis, Sp.Rad",
+            LayananPengorderId: "POLI_DALAM",
+            LayananPengorderName: "Poli Penyakit Dalam",
+            ClinicalNote: "Pemeriksaan sebelum tindakan");
+
+        // 2. Order created -> status Requested
+        var created = await harness.CreateHandler.Handle(createCmd, CancellationToken.None);
+        created.RadOrderStatus.Should().Be((int)RadOrderStatusEnum.Requested);
+
+        var initialOrder = harness.Orders[created.OrderId];
+        initialOrder.BillingTindakanId.Should().BeEmpty();
+        initialOrder.BillingLastError.Should().BeEmpty();
+
+        // 3. Order charge triggered via RadOrderChargeCmd -> transitions to Charged with BillingTindakanId
+        var chargeTime = _baseTime.AddMinutes(15);
+        harness.TimeProvider.Now = chargeTime;
+
+        var chargeCmd = new RadOrderChargeCmd(created.OrderId, "BILLING_STAFF_01");
+        var chargeResponse = await harness.ChargeHandler.Handle(chargeCmd, CancellationToken.None);
+
+        chargeResponse.Should().NotBeNull();
+        chargeResponse.Success.Should().BeTrue();
+        chargeResponse.BillingTindakanId.Should().NotBeNullOrWhiteSpace();
+        chargeResponse.BillingLastError.Should().BeNull();
+
+        var chargedOrder = harness.Orders[created.OrderId];
+        chargedOrder.RadOrderStatus.Should().Be(RadOrderStatusEnum.Charged);
+        chargedOrder.BillingTindakanId.Should().Be(chargeResponse.BillingTindakanId);
+        chargedOrder.BillingLastError.Should().BeEmpty();
+
+        // 4. Order cancellation attempted while Charged -> triggers CancelCharge
+        var cancelTime = _baseTime.AddHours(1);
+        harness.TimeProvider.Now = cancelTime;
+
+        var cancelCmd = new RadOrderCancelCmd(
+            created.OrderId,
+            "DR_CANCEL_01",
+            "Pasien menolak pemeriksaan setelah billing dibukukan");
+
+        await harness.CancelHandler.Handle(cancelCmd, CancellationToken.None);
+
+        // Verify CancelCharge was called on billing integration
+        harness.BillingMock.Verify(b => b.CancelCharge(
+            created.OrderId,
+            "REG001",
+            "DR_CANCEL_01",
+            "Pasien menolak pemeriksaan setelah billing dibukukan",
+            cancelTime), Times.Once);
+
+        // Verify aggregate is cancelled
+        var cancelledOrder = harness.Orders[created.OrderId];
+        cancelledOrder.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        cancelledOrder.CancelledReason.Should().Be("Pasien menolak pemeriksaan setelah billing dibukukan");
+        cancelledOrder.CancelledUserId.Should().Be("DR_CANCEL_01");
+        cancelledOrder.CancelledDate.Should().Be(cancelTime);
+        cancelledOrder.IsCancelled.Should().BeTrue();
+        cancelledOrder.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Req11_ChargedOrder_WhenBillingRejectsCancellationDueToFinalizedAccount_OrderRemainsCharged()
+    {
+        // Arrange
+        var harness = new RadOrderLifecycleHarness(_baseTime);
+        var createCmd = new RadOrderCreateFromEmrCmd(
+            UserId: "DR_EMR_01",
+            EmrOrderId: "EMR-RAD-CHARGE-002",
+            RegId: "REG001",
+            PatientId: "P0001",
+            PatientName: "Tn. Ahmad Dahlan",
+            BirthDateYmd: "1985-05-10",
+            Gender: "L",
+            Modality: "CR",
+            Items: [new RadOrderItemInputDto("TRF_CR01", 0)]);
+
+        var created = await harness.CreateHandler.Handle(createCmd, CancellationToken.None);
+        await harness.ChargeHandler.Handle(new RadOrderChargeCmd(created.OrderId, "BILLING_STAFF"), CancellationToken.None);
+
+        // Setup billing integration to throw exception because cashier account is finalized / paid
+        harness.BillingMock.Setup(b => b.CancelCharge(
+                created.OrderId,
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Throws(new InvalidOperationException("Rekening pasien sudah final atau lunas di kasir"));
+
+        // Act
+        var cancelCmd = new RadOrderCancelCmd(created.OrderId, "DR_01", "Pembatalan order yang sudah dibayar di kasir");
+        var act = () => harness.CancelHandler.Handle(cancelCmd, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.Which.Message.Should().Contain("kasir");
+
+        var order = harness.Orders[created.OrderId];
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Charged);
+        order.IsCancelled.Should().BeFalse();
     }
 
     #endregion

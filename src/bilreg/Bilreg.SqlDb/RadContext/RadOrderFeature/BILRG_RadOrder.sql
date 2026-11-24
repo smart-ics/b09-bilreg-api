@@ -24,6 +24,9 @@ CREATE TABLE BILRG_RadOrder (
     LayananPengorderName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_RadOrder_LayananPengorderName DEFAULT(''),
     ClinicalNote VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_RadOrder_ClinicalNote DEFAULT(''),
 
+    BillingTindakanId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_RadOrder_BillingTindakanId DEFAULT(''),
+    BillingLastError VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_RadOrder_BillingLastError DEFAULT(''),
+
     CancelledReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_RadOrder_CancelledReason DEFAULT(''),
     CancelledDate DATETIME NOT NULL CONSTRAINT DF_BILRG_RadOrder_CancelledDate DEFAULT('3000-01-01'),
     CancelledUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_RadOrder_CancelledUserId DEFAULT(''),
@@ -50,4 +53,6 @@ GO
 CREATE INDEX IX_BILRG_RadOrder_Modality ON BILRG_RadOrder(Modality, RadOrderStatus, CrtDate);
 GO
 CREATE INDEX IX_BILRG_RadOrder_PatientRecent ON BILRG_RadOrder(PatientId, Modality, CrtDate);
+GO
+CREATE INDEX IX_BILRG_RadOrder_Billing ON BILRG_RadOrder(BillingTindakanId) WHERE BillingTindakanId <> '';
 GO

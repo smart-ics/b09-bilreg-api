@@ -163,6 +163,81 @@ public class RadOrderControllerTest
 
     #endregion
 
+    #region Charge Tests
+
+    [Fact]
+    public async Task Charge_WhenRouteIdProvided_UsesRouteIdAndReturns200OkWithJSendOk()
+    {
+        // Arrange
+        const string orderId = "RDO2611000001";
+        var request = new ChargeRadOrderRequest("USER01");
+        var expectedResponse = new RadOrderChargeResponse(true, "TND261100001", null);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<RadOrderChargeCmd>(c => c.OrderId == orderId && c.UserId == "USER01"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Charge(orderId, request);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
+
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<RadOrderChargeCmd>(c => c.OrderId == orderId && c.UserId == "USER01"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Charge_WhenRouteIdEmpty_UsesBodyOrderIdAndReturns200OkWithJSendOk()
+    {
+        // Arrange
+        const string orderIdFromBody = "RDO2611000002";
+        var request = new ChargeRadOrderRequest("USER02", orderIdFromBody);
+        var expectedResponse = new RadOrderChargeResponse(true, "TND261100002", null);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<RadOrderChargeCmd>(c => c.OrderId == orderIdFromBody && c.UserId == "USER02"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.Charge(string.Empty, request);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
+
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<RadOrderChargeCmd>(c => c.OrderId == orderIdFromBody && c.UserId == "USER02"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void Charge_HasExpectedActionAttributes()
+    {
+        var method = typeof(RadOrderController).GetMethod(nameof(RadOrderController.Charge));
+        method.Should().NotBeNull();
+
+        var httpPost = method!.GetCustomAttribute<HttpPostAttribute>();
+        httpPost.Should().NotBeNull();
+        httpPost!.Template.Should().Be("{id}/charge");
+
+        var httpPatch = method!.GetCustomAttribute<HttpPatchAttribute>();
+        httpPatch.Should().NotBeNull();
+        httpPatch!.Template.Should().Be("charge");
+    }
+
+    #endregion
+
     #region Get Tests
 
     [Fact]
