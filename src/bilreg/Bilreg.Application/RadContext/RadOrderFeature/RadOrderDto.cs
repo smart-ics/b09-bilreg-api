@@ -1,4 +1,5 @@
 using Bilreg.Domain.RadContext.RadOrderFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Application.RadContext.RadOrderFeature;
 
@@ -69,4 +70,57 @@ public record RadOrderDto(
         model.AuditTrail.Modified.Timestamp,
         model.AuditTrail.Voided.UserId,
         model.AuditTrail.Voided.Timestamp);
+
+    public RadOrderModel ToModel(IEnumerable<RadOrderItemModel>? items = null)
+    {
+        var patient = new PatientSnapshotType(
+            RegId,
+            PatientId,
+            PatientName,
+            BirthDate,
+            Gender,
+            AgeAtOrder);
+
+        var orderSource = Enum.IsDefined(typeof(RadOrderSourceEnum), OrderSource)
+            ? (RadOrderSourceEnum)OrderSource
+            : RadOrderSourceEnum.Internal;
+
+        var modality = Enum.TryParse<RadModalityEnum>(Modality, ignoreCase: true, out var m)
+            ? m
+            : RadModalityEnum.CR;
+
+        var status = Enum.IsDefined(typeof(RadOrderStatusEnum), RadOrderStatus)
+            ? (RadOrderStatusEnum)RadOrderStatus
+            : RadOrderStatusEnum.Requested;
+
+        var urgency = Enum.IsDefined(typeof(RadUrgencyEnum), Urgency)
+            ? (RadUrgencyEnum)Urgency
+            : RadUrgencyEnum.Rutin;
+
+        var auditTrail = new AuditTrailType(
+            new AuditInfoType(CrtUser, CrtDate),
+            new AuditInfoType(UpdUser, UpdDate),
+            new AuditInfoType(VodUser, VodDate));
+
+        return new RadOrderModel(
+            OrderId,
+            EmrOrderId,
+            OrderNo,
+            orderSource,
+            modality,
+            status,
+            urgency,
+            patient,
+            RegId,
+            DokterPengorderId,
+            DokterPengorderName,
+            LayananPengorderId,
+            LayananPengorderName,
+            ClinicalNote,
+            CancelledReason,
+            CancelledDate,
+            CancelledUserId,
+            auditTrail,
+            items);
+    }
 }

@@ -9,6 +9,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.RadContext.RadOrderFeature;
 using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabMasterFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
@@ -65,6 +66,7 @@ using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabMasterFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.RadContext.RadOrderFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
@@ -115,6 +117,13 @@ public static class InfrastructureService
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<ILabOrderRepo, LabOrderRepo>()
+            .AddScoped<IRadOrderRepo, RadOrderRepo>()
+            .AddScoped<IRadOrderDal, RadOrderDal>()
+            .AddScoped<IRadOrderTableDal, RadOrderDal>()
+            .AddScoped<IRadOrderItemDal, RadOrderItemDal>()
+            .AddScoped<IRadOrderItemTableDal, RadOrderItemDal>()
+            .AddScoped<IRadTarifModalityDal, RadTarifModalityDal>()
+            .AddScoped<IRadItemResolutionService, RadItemResolutionService>()
             .AddScoped<IRegAktifRepo, RegAktifRepo>()
             .AddScoped<Bilreg.Application.AdmisiContext.LayananFeature.ILayananRepo, Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananRepo>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
