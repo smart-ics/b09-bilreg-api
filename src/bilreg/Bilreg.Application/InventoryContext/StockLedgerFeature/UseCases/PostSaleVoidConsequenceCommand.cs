@@ -68,15 +68,24 @@ public class PostSaleVoidConsequenceHandler
         if (request.VoidTrsReffId.Length > 10)
             throw new ArgumentException("VoidTrsReffId must be at most 10 characters.", nameof(request.VoidTrsReffId));
 
-        var priorVoidJournals = _legacyRead.ListJournalsBySource(request.VoidTrsReffId);
+        var voidRefJournals = _legacyRead.ListJournalsBySource(request.VoidTrsReffId);
+        var isSameRef = string.Equals(request.VoidTrsReffId.Trim(), request.OriginalSaleTrsReffId.Trim(), StringComparison.Ordinal);
+        var hasConflict = isSameRef
+            ? voidRefJournals.Any(x => !SaleVoidKinds.Contains(x.MovementKindString) && !SaleIssueKinds.Contains(x.MovementKindString))
+            : voidRefJournals.Any(x => !SaleVoidKinds.Contains(x.MovementKindString));
+
+        if (hasConflict)
+        {
+            throw new InvalidOperationException(
+                $"VoidTrsReffId={request.VoidTrsReffId} already has non-sale-void movements.");
+        }
+
+        var priorVoidJournals = voidRefJournals
+            .Where(x => SaleVoidKinds.Contains(x.MovementKindString))
+            .ToList();
+
         if (priorVoidJournals.Count > 0)
         {
-            if (priorVoidJournals.Any(x => !SaleVoidKinds.Contains(x.MovementKindString)))
-            {
-                throw new InvalidOperationException(
-                    $"VoidTrsReffId={request.VoidTrsReffId} already has non-sale-void movements.");
-            }
-
             var idempotentLines = priorVoidJournals
                 .Select(j => new PostSaleVoidLineResult(
                     string.Empty,

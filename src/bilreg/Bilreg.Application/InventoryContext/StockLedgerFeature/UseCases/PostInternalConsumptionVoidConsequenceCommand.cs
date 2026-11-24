@@ -71,16 +71,25 @@ public class PostInternalConsumptionVoidConsequenceHandler
         if (request.VoidTrsReffId.Length > 10)
             throw new ArgumentException("VoidTrsReffId must be at most 10 characters.", nameof(request.VoidTrsReffId));
 
-        var priorVoidJournals = _legacyRead.ListJournalsBySource(request.VoidTrsReffId);
+        var voidRefJournals = _legacyRead.ListJournalsBySource(request.VoidTrsReffId);
+        var isSameRef = string.Equals(request.VoidTrsReffId.Trim(), request.OriginalTrsReffId.Trim(), StringComparison.Ordinal);
+        var hasConflict = isSameRef
+            ? voidRefJournals.Any(x => x.MovementKindString != VoidLegacyKindString && x.MovementKindString != ConsumptionLegacyKindString)
+            : voidRefJournals.Any(x => x.MovementKindString != VoidLegacyKindString);
+
+        if (hasConflict)
+        {
+            throw new InvalidOperationException(
+                $"VoidTrsReffId={request.VoidTrsReffId} already has non-internal-consumption-void movements " +
+                $"(expected only {VoidLegacyKindString}).");
+        }
+
+        var priorVoidJournals = voidRefJournals
+            .Where(x => x.MovementKindString == VoidLegacyKindString)
+            .ToList();
+
         if (priorVoidJournals.Count > 0)
         {
-            if (priorVoidJournals.Any(x => x.MovementKindString != VoidLegacyKindString))
-            {
-                throw new InvalidOperationException(
-                    $"VoidTrsReffId={request.VoidTrsReffId} already has non-internal-consumption-void movements " +
-                    $"(expected only {VoidLegacyKindString}).");
-            }
-
             var idempotentLines = priorVoidJournals
                 .Select(j => new PostInternalConsumptionVoidLineResult(
                     string.Empty,

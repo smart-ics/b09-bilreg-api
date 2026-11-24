@@ -120,11 +120,11 @@ public class PostStockTransferConsequenceHandler
         var candidates = sourceBalances
             .Where(b => b.QtySisa > 0)
             .Select(b => new StockAllocationCandidateType(
+                b.BrgId,
+                b.LayananId,
+                b.LegacyStokId,
                 b.LegacyStokId,
                 b.BrgMasukReffId,
-                b.BrgId,
-                b.BrgMasukReffId,
-                b.LayananId,
                 b.TglEd,
                 b.TglMasuk,
                 b.QtySisa))

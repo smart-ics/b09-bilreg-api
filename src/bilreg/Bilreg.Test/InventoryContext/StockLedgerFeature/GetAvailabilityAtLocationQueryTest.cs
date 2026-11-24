@@ -62,6 +62,8 @@ public class GetAvailabilityAtLocationQueryTest
         result.Candidates.Should().ContainSingle();
         result.Candidates[0].BrgMasukReffId.Should().Be("DOSTLH2B");
         result.Candidates[0].QtySisa.Should().Be(8);
+        result.Candidates[0].StokLokasiId.Should().NotBe(BrgId);
+        result.Candidates[0].StokLokasiId.Should().StartWith("ST");
         result.Candidates.Should().OnlyContain(c => c.QtySisa > 0);
     }
 

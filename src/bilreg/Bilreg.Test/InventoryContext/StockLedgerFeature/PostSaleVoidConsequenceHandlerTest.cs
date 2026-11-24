@@ -78,4 +78,45 @@ public class PostSaleVoidConsequenceHandlerTest
         res.Outcome.Should().Be(PostSaleVoidOutcomeEnum.Idempotent);
         _uow.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UT5_GivenSameVoidAndOriginalRef_WithOnlyIssueRow_WhenHandle_ThenCommitsReverseBuku11AndRestoreStok()
+    {
+        _legacyRead.Setup(x => x.ListJournalsBySource("SL-001", null, null, null)).Returns([
+            new LegacyStockJournalReadModel("BK-1", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 0m, 4m, 100m, "DB", "SL-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB")
+        ]);
+
+        StockConsequenceDraft? captured = null;
+        _uow.Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
+            .Callback<StockConsequenceDraft>(d => captured = d);
+
+        var cmd = new PostSaleVoidConsequenceCommand("SL-001", "SL-001", DateTime.Today, "USR-01");
+
+        var res = await CreateHandler().Handle(cmd, CancellationToken.None);
+
+        res.Outcome.Should().Be(PostSaleVoidOutcomeEnum.Success);
+        res.Lines.Should().ContainSingle();
+        res.Lines[0].QtyRestored.Should().Be(4m);
+        captured!.LegacyOperations.OfType<LegacyReverseBukuWriteOperation>()
+            .Single().Request.MovementKindString.Should().Be("11");
+        captured.LegacyOperations.OfType<LegacyStokRestoreWriteOperation>()
+            .Single().Request.QtyIn.Should().Be(4m);
+    }
+
+    [Fact]
+    public async Task UT6_GivenSameVoidAndOriginalRef_WithIssueAndVoidRows_WhenHandle_ThenReturnsIdempotent()
+    {
+        _legacyRead.Setup(x => x.ListJournalsBySource("SL-001", null, null, null)).Returns([
+            new LegacyStockJournalReadModel("BK-1", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 0m, 4m, 100m, "DB", "SL-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB"),
+            new LegacyStockJournalReadModel("BK-2", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 4m, 0m, 100m, "11", "SL-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB")
+        ]);
+
+        var cmd = new PostSaleVoidConsequenceCommand("SL-001", "SL-001", DateTime.Today, "USR-01");
+
+        var res = await CreateHandler().Handle(cmd, CancellationToken.None);
+
+        res.Outcome.Should().Be(PostSaleVoidOutcomeEnum.Idempotent);
+        res.Lines.Should().ContainSingle(x => x.LegacyBukuId == "BK-2");
+        _uow.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Never);
+    }
 }

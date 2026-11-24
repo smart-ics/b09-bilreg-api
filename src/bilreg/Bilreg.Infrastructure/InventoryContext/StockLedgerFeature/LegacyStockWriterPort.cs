@@ -218,7 +218,6 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
     public LegacyStokRestoreResult RestoreStok(LegacyStokRestoreRequest request)
     {
         Guard.Against.Null(request);
-        Guard.Against.NullOrWhiteSpace(request.PreferredLegacyStokId);
         Guard.Against.NullOrWhiteSpace(request.BrgId);
         Guard.Against.NullOrWhiteSpace(request.BrgMasukReffId);
         Guard.Against.NullOrWhiteSpace(request.LayananId);
@@ -236,41 +235,49 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Open();
 
-        // 1. Atomic increment by PreferredLegacyStokId.
-        const string updateSql = """
-            UPDATE tb_stok
-            SET fn_qty = fn_qty + @fn_qty_in
-            WHERE fs_kd_trs = @fs_kd_trs
-            """;
-        var updateDp = new DynamicParameters();
-        updateDp.AddParam("@fs_kd_trs", request.PreferredLegacyStokId, SqlDbType.VarChar);
-        updateDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
-        var rowsAffected = conn.Execute(updateSql, updateDp);
+        // 1. Atomic increment by PreferredLegacyStokId when provided.
+        if (!string.IsNullOrWhiteSpace(request.PreferredLegacyStokId))
+        {
+            var preferredStokId = request.PreferredLegacyStokId.Trim();
+            const string updateSql = """
+                UPDATE tb_stok
+                SET fn_qty = fn_qty + @fn_qty_in
+                WHERE fs_kd_trs = @fs_kd_trs
+                """;
+            var updateDp = new DynamicParameters();
+            updateDp.AddParam("@fs_kd_trs", preferredStokId, SqlDbType.VarChar);
+            updateDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+            var rowsAffected = conn.Execute(updateSql, updateDp);
 
-        if (rowsAffected == 1)
-            return new LegacyStokRestoreResult(request.PreferredLegacyStokId, WasRecreated: false);
+            if (rowsAffected == 1)
+                return new LegacyStokRestoreResult(preferredStokId, WasRecreated: false);
+        }
 
         // 2. Fallback: match existing row by scope (fs_kd_barang, fs_kd_layanan, fs_kd_do, fd_tgl_ed, fs_no_batch).
-        const string scopeUpdateSql = """
-            UPDATE TOP (1) tb_stok
-            SET fn_qty = fn_qty + @fn_qty_in
-            OUTPUT INSERTED.fs_kd_trs
-            WHERE fs_kd_barang = @fs_kd_barang
-              AND fs_kd_layanan = @fs_kd_layanan
-              AND fs_kd_do = @fs_kd_do
-              AND fd_tgl_ed = @fd_tgl_ed
-              AND fs_no_batch = @fs_no_batch
-            """;
-        var scopeDp = new DynamicParameters();
-        scopeDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
-        scopeDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
-        scopeDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
-        scopeDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
-        scopeDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
-        scopeDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
-        var matchedStokId = conn.ExecuteScalar<string?>(scopeUpdateSql, scopeDp);
-        if (!string.IsNullOrWhiteSpace(matchedStokId))
-            return new LegacyStokRestoreResult(matchedStokId, WasRecreated: false);
+        if (string.IsNullOrWhiteSpace(request.PreferredLegacyStokId) ||
+            string.IsNullOrWhiteSpace(request.LegacyStokIdIfRecreate))
+        {
+            const string scopeUpdateSql = """
+                UPDATE TOP (1) tb_stok
+                SET fn_qty = fn_qty + @fn_qty_in
+                OUTPUT INSERTED.fs_kd_trs
+                WHERE fs_kd_barang = @fs_kd_barang
+                  AND fs_kd_layanan = @fs_kd_layanan
+                  AND fs_kd_do = @fs_kd_do
+                  AND fd_tgl_ed = @fd_tgl_ed
+                  AND fs_no_batch = @fs_no_batch
+                """;
+            var scopeDp = new DynamicParameters();
+            scopeDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+            scopeDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
+            var matchedStokId = conn.ExecuteScalar<string?>(scopeUpdateSql, scopeDp);
+            if (!string.IsNullOrWhiteSpace(matchedStokId))
+                return new LegacyStokRestoreResult(matchedStokId, WasRecreated: false);
+        }
 
         // 3. Row gone (historically deleted when reaching zero) → recreate from provenance.
         var stokId = ResolveLegacyId(

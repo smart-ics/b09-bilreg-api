@@ -78,4 +78,45 @@ public class PostInternalConsumptionVoidConsequenceHandlerTests
         res.Outcome.Should().Be(PostInternalConsumptionVoidOutcomeEnum.Idempotent);
         _uow.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UT5_GivenSameVoidAndOriginalRef_WithOnlyPkRow_WhenHandle_ThenCommitsReverseBuku15AndRestoreStok()
+    {
+        _legacyRead.Setup(x => x.ListJournalsBySource("PK-001", null, null, null)).Returns([
+            new LegacyStockJournalReadModel("BK-1", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 0m, 3m, 100m, "PK", "PK-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB")
+        ]);
+
+        StockConsequenceDraft? captured = null;
+        _uow.Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
+            .Callback<StockConsequenceDraft>(d => captured = d);
+
+        var cmd = new PostInternalConsumptionVoidConsequenceCommand("PK-001", "PK-001", DateTime.Today, "USR-01");
+
+        var res = await CreateHandler().Handle(cmd, CancellationToken.None);
+
+        res.Outcome.Should().Be(PostInternalConsumptionVoidOutcomeEnum.Success);
+        res.Lines.Should().ContainSingle();
+        res.Lines[0].QtyRestored.Should().Be(3m);
+        captured!.LegacyOperations.OfType<LegacyReverseBukuWriteOperation>()
+            .Single().Request.MovementKindString.Should().Be("15");
+        captured.LegacyOperations.OfType<LegacyStokRestoreWriteOperation>()
+            .Single().Request.QtyIn.Should().Be(3m);
+    }
+
+    [Fact]
+    public async Task UT6_GivenSameVoidAndOriginalRef_WithPkAnd15Rows_WhenHandle_ThenReturnsIdempotent()
+    {
+        _legacyRead.Setup(x => x.ListJournalsBySource("PK-001", null, null, null)).Returns([
+            new LegacyStockJournalReadModel("BK-1", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 0m, 3m, 100m, "PK", "PK-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB"),
+            new LegacyStockJournalReadModel("BK-2", "BRG-01", "DO-01", "LYN-01", "PO-01", "B1", 3m, 0m, 100m, "15", "PK-001", DateTime.Today, new DateTime(2026, 6, 1), "TAB")
+        ]);
+
+        var cmd = new PostInternalConsumptionVoidConsequenceCommand("PK-001", "PK-001", DateTime.Today, "USR-01");
+
+        var res = await CreateHandler().Handle(cmd, CancellationToken.None);
+
+        res.Outcome.Should().Be(PostInternalConsumptionVoidOutcomeEnum.Idempotent);
+        res.Lines.Should().ContainSingle(x => x.LegacyBukuId == "BK-2");
+        _uow.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Never);
+    }
 }

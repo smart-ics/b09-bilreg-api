@@ -48,10 +48,10 @@ public class GetAvailabilityAtLocationHandler
             .ListBalancesAtLocation(request.BrgId, request.LayananId)
             .Where(b => b.QtySisa > 0)
             .Select(b => new StockAllocationCandidateType(
-                b.LegacyStokId,
-                b.LegacyStokId,
                 b.BrgId,
                 b.LayananId,
+                b.LegacyStokId,
+                b.LegacyStokId,
                 b.BrgMasukReffId,
                 b.TglEd,
                 b.TglMasuk,
