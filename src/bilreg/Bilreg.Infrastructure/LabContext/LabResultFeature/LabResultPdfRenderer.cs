@@ -64,13 +64,13 @@ public class LabResultPdfRenderer : ILabResultPdfRenderer
             DrawLine(gfx, fontBody, ref y, "Verified Date", view.VerifiedDate.ToString("yyyy-MM-dd HH:mm"));
         }
 
-        // Critical value alert banner
+        // Critical value alert banner - only drawn if there are items with critical flag
         var hasCriticalFlag = view.Items.Any(i =>
             i.FlagLabel.Equals("C", StringComparison.OrdinalIgnoreCase) ||
             i.FlagLabel.Equals("Critical", StringComparison.OrdinalIgnoreCase));
         var hasCriticalNote = !string.IsNullOrWhiteSpace(view.CriticalNote);
 
-        if (hasCriticalFlag || hasCriticalNote)
+        if (hasCriticalFlag)
         {
             y += LineHeight * 0.5;
             var alertBg = new XSolidBrush(XColor.FromArgb(254, 242, 242));
