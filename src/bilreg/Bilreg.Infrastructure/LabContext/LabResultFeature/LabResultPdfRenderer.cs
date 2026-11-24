@@ -3,6 +3,7 @@ using Bilreg.Application.LabContext.LabResultFeature.UseCases;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using System.Text;
 
 namespace Bilreg.Infrastructure.LabContext.LabResultFeature;
 
@@ -24,7 +25,9 @@ public class LabResultPdfRenderer : ILabResultPdfRenderer
         var fontTitle = new XFont("Arial", 14, XFontStyleEx.Bold);
         var fontHeader = new XFont("Arial", 10, XFontStyleEx.Bold);
         var fontBody = new XFont("Arial", 9, XFontStyleEx.Regular);
+        var fontBodyBold = new XFont("Arial", 9, XFontStyleEx.Bold);
         var fontSmall = new XFont("Arial", 8, XFontStyleEx.Regular);
+        var fontAlert = new XFont("Arial", 9, XFontStyleEx.Bold);
 
         var y = Margin;
 
@@ -49,11 +52,55 @@ public class LabResultPdfRenderer : ILabResultPdfRenderer
         if (!string.IsNullOrWhiteSpace(view.AmendmentReason))
             DrawLine(gfx, fontBody, ref y, "Amendment Note", view.AmendmentReason);
 
-        if (view.ResultStatus == (int)LabResultStatusEnum.Verified
-            && view.VerifiedDate.Date != EmptyDateSentinel.Date)
+        var isVerifiedOrReleased = view.ResultStatus == (int)LabResultStatusEnum.Verified
+            || view.ResultStatus == (int)LabResultStatusEnum.Released;
+
+        if (isVerifiedOrReleased && view.VerifiedDate.Date != EmptyDateSentinel.Date)
         {
-            DrawLine(gfx, fontBody, ref y, "Verified By", view.VerifiedUserId);
+            var verifierText = !string.IsNullOrWhiteSpace(view.VerifiedUserId)
+                ? view.VerifiedUserId
+                : "(Validator)";
+            DrawLine(gfx, fontBody, ref y, "Verified By", verifierText);
             DrawLine(gfx, fontBody, ref y, "Verified Date", view.VerifiedDate.ToString("yyyy-MM-dd HH:mm"));
+        }
+
+        // Critical value alert banner
+        var hasCriticalFlag = view.Items.Any(i =>
+            i.FlagLabel.Equals("C", StringComparison.OrdinalIgnoreCase) ||
+            i.FlagLabel.Equals("Critical", StringComparison.OrdinalIgnoreCase));
+        var hasCriticalNote = !string.IsNullOrWhiteSpace(view.CriticalNote);
+
+        if (hasCriticalFlag || hasCriticalNote)
+        {
+            y += LineHeight * 0.5;
+            var alertBg = new XSolidBrush(XColor.FromArgb(254, 242, 242));
+            var alertPen = new XPen(XColor.FromArgb(220, 38, 38), 1);
+            var alertBrush = new XSolidBrush(XColor.FromArgb(185, 28, 28));
+
+            var bannerWidth = page.Width.Point - Margin * 2;
+            var alertText = hasCriticalNote
+                ? $"[PERINGATAN NILAI KRITIS] {view.CriticalNote}"
+                : "[PERINGATAN NILAI KRITIS] Pemeriksaan ini mengandung nilai kritis yang memerlukan perhatian klinis segera.";
+
+            var alertLines = WrapText(alertText, 80);
+            var boxHeight = LineHeight * (alertLines.Count + 1);
+
+            if (y + boxHeight > page.Height.Point - Margin - LineHeight * 3)
+            {
+                page = document.AddPage();
+                gfx = XGraphics.FromPdfPage(page);
+                y = Margin;
+            }
+
+            gfx.DrawRectangle(alertPen, alertBg, new XRect(Margin, y, bannerWidth, boxHeight));
+            var textY = y + LineHeight * 1.1;
+            foreach (var line in alertLines)
+            {
+                gfx.DrawString(line, fontAlert, alertBrush, new XPoint(Margin + 8, textY));
+                textY += LineHeight;
+            }
+
+            y += boxHeight + LineHeight * 0.5;
         }
 
         y += LineHeight;
@@ -87,10 +134,76 @@ public class LabResultPdfRenderer : ILabResultPdfRenderer
                 ? item.DisplayValue
                 : $"{item.DisplayValue} {item.Unit}";
 
-            gfx.DrawString(Truncate(testLabel, 28), fontBody, XBrushes.Black, new XPoint(colTest, y));
-            gfx.DrawString(Truncate(resultText, 18), fontBody, XBrushes.Black, new XPoint(colResult, y));
-            gfx.DrawString(Truncate(item.ReferenceRangeText, 14), fontBody, XBrushes.Black, new XPoint(colRef, y));
-            gfx.DrawString(item.FlagLabel, fontBody, XBrushes.Black, new XPoint(colFlag, y));
+            var isCriticalItem = item.FlagLabel.Equals("C", StringComparison.OrdinalIgnoreCase)
+                || item.FlagLabel.Equals("Critical", StringComparison.OrdinalIgnoreCase);
+
+            var itemBrush = isCriticalItem
+                ? new XSolidBrush(XColor.FromArgb(185, 28, 28))
+                : XBrushes.Black;
+            var itemFont = isCriticalItem ? fontBodyBold : fontBody;
+
+            gfx.DrawString(Truncate(testLabel, 28), itemFont, itemBrush, new XPoint(colTest, y));
+            gfx.DrawString(Truncate(resultText, 18), itemFont, itemBrush, new XPoint(colResult, y));
+            gfx.DrawString(Truncate(item.ReferenceRangeText, 14), itemFont, itemBrush, new XPoint(colRef, y));
+            gfx.DrawString(item.FlagLabel, itemFont, itemBrush, new XPoint(colFlag, y));
+            y += LineHeight;
+        }
+
+        // Expertise note section
+        if (!string.IsNullOrWhiteSpace(view.ExpertiseNote))
+        {
+            y += LineHeight;
+            if (y > page.Height.Point - Margin - LineHeight * 4)
+            {
+                page = document.AddPage();
+                gfx = XGraphics.FromPdfPage(page);
+                y = Margin;
+            }
+
+            gfx.DrawString("Catatan Ekspertise Patologi Klinik:", fontHeader, XBrushes.Black, new XPoint(Margin, y));
+            y += LineHeight * 1.2;
+
+            var expertiseLines = WrapText(view.ExpertiseNote, 90);
+            foreach (var line in expertiseLines)
+            {
+                if (y > page.Height.Point - Margin - LineHeight * 3)
+                {
+                    page = document.AddPage();
+                    gfx = XGraphics.FromPdfPage(page);
+                    y = Margin;
+                }
+                gfx.DrawString(line, fontBody, XBrushes.Black, new XPoint(Margin + 10, y));
+                y += LineHeight;
+            }
+        }
+
+        // Signature & Verifier validation block
+        if (isVerifiedOrReleased && !string.IsNullOrWhiteSpace(view.VerifiedUserId))
+        {
+            y += LineHeight;
+            if (y > page.Height.Point - Margin - LineHeight * 6)
+            {
+                page = document.AddPage();
+                gfx = XGraphics.FromPdfPage(page);
+                y = Margin;
+            }
+
+            var verifierX = page.Width.Point - Margin - 200;
+            gfx.DrawString("Penanggung Jawab / Verifikator:", fontSmall, XBrushes.Black, new XPoint(verifierX, y));
+            y += LineHeight * 1.3;
+            gfx.DrawString("[ Terverifikasi Digital / LIS ]", fontSmall, XBrushes.Gray, new XPoint(verifierX, y));
+            y += LineHeight * 1.1;
+
+            var verifierLabel = view.VerifiedUserId.StartsWith("lis:", StringComparison.OrdinalIgnoreCase)
+                ? $"Validator LIS: {view.VerifiedUserId[4..].Trim()}"
+                : view.VerifiedUserId;
+
+            gfx.DrawString(verifierLabel, fontBodyBold, XBrushes.Black, new XPoint(verifierX, y));
+            if (view.VerifiedDate.Date != EmptyDateSentinel.Date)
+            {
+                y += LineHeight * 0.9;
+                gfx.DrawString($"Tanggal: {view.VerifiedDate:yyyy-MM-dd HH:mm}", fontSmall, XBrushes.Gray, new XPoint(verifierX, y));
+            }
             y += LineHeight;
         }
 
@@ -117,5 +230,39 @@ public class LabResultPdfRenderer : ILabResultPdfRenderer
         if (string.IsNullOrEmpty(text) || text.Length <= maxLen)
             return text;
         return text[..maxLen];
+    }
+
+    private static List<string> WrapText(string text, int maxCharsPerLine)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return [];
+
+        var result = new List<string>();
+        var paragraphs = text.Replace("\r\n", "\n").Split('\n');
+        foreach (var paragraph in paragraphs)
+        {
+            if (paragraph.Length <= maxCharsPerLine)
+            {
+                result.Add(paragraph);
+                continue;
+            }
+
+            var words = paragraph.Split(' ');
+            var currentLine = new StringBuilder();
+            foreach (var word in words)
+            {
+                if (currentLine.Length + word.Length + 1 > maxCharsPerLine)
+                {
+                    result.Add(currentLine.ToString());
+                    currentLine.Clear();
+                }
+                if (currentLine.Length > 0)
+                    currentLine.Append(' ');
+                currentLine.Append(word);
+            }
+            if (currentLine.Length > 0)
+                result.Add(currentLine.ToString());
+        }
+        return result;
     }
 }

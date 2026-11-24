@@ -67,6 +67,7 @@ public class InvoiceItemChargeModel
     public decimal Amount { get; }
 }
 
+[Obsolete("Deprecated: Replaced by Bilreg.Domain.ApotekContext.PenjualanFeature.PenjualanModel per ARCHITECTURE OC-APT-PENJUALAN.")]
 public class InvoiceModel : IInvoiceKey
 {
     public const string IdPrefix = "ASI";

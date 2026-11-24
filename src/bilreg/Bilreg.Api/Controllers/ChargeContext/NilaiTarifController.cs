@@ -58,9 +58,14 @@ public class NilaiTarifController : Controller
 
     [HttpGet]
     [Route("{tarifId}/{kelasId}/{tipeTarifId}")]
-    public async Task<IActionResult> GetNilaiTarif(string tarifId, string kelasId, string tipeTarifId)
+    public async Task<IActionResult> GetNilaiTarif(
+        string tarifId,
+        string kelasId,
+        string tipeTarifId,
+        [FromQuery] string? tipeJaminanId = null,
+        [FromQuery] string? layananId = null)
     {
-        var query = new TrfGetNilaiTarifQuery(tarifId, tipeTarifId, kelasId);
+        var query = new TrfGetNilaiTarifQuery(tarifId, tipeTarifId, kelasId, tipeJaminanId ?? string.Empty, layananId ?? string.Empty);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

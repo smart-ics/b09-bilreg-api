@@ -19,6 +19,9 @@ CREATE TABLE BILRG_LabResultDocument (
     AmendedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_AmendedUserId DEFAULT(''),
     PreviousVersionId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_PreviousVersionId DEFAULT(''),
 
+    ExpertiseNote VARCHAR(2000) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_ExpertiseNote DEFAULT(''),
+    CriticalNote VARCHAR(1000) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_CriticalNote DEFAULT(''),
+
     CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_CrtUser DEFAULT(''),
     CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_CrtDate DEFAULT('3000-01-01'),
     UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_UpdUser DEFAULT(''),

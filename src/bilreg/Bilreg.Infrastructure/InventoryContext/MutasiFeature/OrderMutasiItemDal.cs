@@ -36,7 +36,9 @@ public class OrderMutasiItemDal : IOrderMutasiItemDal
         bcp.AddMap("NoUrut", "NoUrut");
         bcp.AddMap("BrgId", "BrgId");
         bcp.AddMap("BrgName", "BrgName");
+        bcp.AddMap("StokCurrent", "StokCurrent");
         bcp.AddMap("Qty", "Qty");
+        bcp.AddMap("QtyTerpenuhi", "QtyTerpenuhi");
         bcp.AddMap("SatuanId", "SatuanId");
         bcp.AddMap("SatuanName", "SatuanName");
 
@@ -63,7 +65,8 @@ public class OrderMutasiItemDal : IOrderMutasiItemDal
         const string sql = """
             SELECT
                 OrderMutasiId, NoUrut,
-                BrgId, BrgName, Qty,
+                BrgId, BrgName,
+                StokCurrent, Qty, QtyTerpenuhi,
                 SatuanId, SatuanName
             FROM
                 FARIN_OrderMutasiItem
@@ -77,6 +80,6 @@ public class OrderMutasiItemDal : IOrderMutasiItemDal
         dp.AddParam("@OrderMutasiId", filter.OrderMutasiId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderMutasiItemDto>(sql, dp);
+        return conn.Read<OrderMutasiItemDto>(sql, dp) ?? [];
     }
 }

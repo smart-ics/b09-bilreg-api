@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -57,6 +57,19 @@ public class RegAktifRepo : IRegAktifRepo
 
         var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
         return listDto.Any();
+    }
+
+    public bool IsPasienAktif(IPasienKey pasien, JenisRegEnum jenisReg)
+    {
+        var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
+        return listDto.Any(x => x.JenisReg == jenisReg.ToNumberString());
+    }
+
+    public IEnumerable<RegAktifModel> ListDataRajalIgd()
+    {
+        var listDto = _regAktifDal.ListDataRajalIgd()?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel()).ToList();
+        return result;
     }
 
     public IEnumerable<RegAktifModel> ListData()

@@ -73,6 +73,14 @@ public class IgdVisitController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("{id}/triage/{noTriage:int}/void")]
+    public async Task<IActionResult> VoidTriage(string id, int noTriage, [FromBody] IgdVoidTriageBody body)
+    {
+        var cmd = new IgdVisitVoidTriageCmd(id, noTriage, body.UserId, body.VoidReason);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("{id}/assignBed")]
     public async Task<IActionResult> AssignBed(string id, [FromBody] IgdAssignBedBody body)
     {
@@ -125,6 +133,14 @@ public class IgdVisitController : Controller
     public async Task<IActionResult> Discharge(string id, [FromBody] IgdDischargeBody body)
     {
         var cmd = new IgdVisitDischargeCmd(id, body.UserId);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("{id}/retry-billing")]
+    public async Task<IActionResult> RetryBilling(string id)
+    {
+        var cmd = new IgdVisitRetryBillingPostingCmd(id);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -189,3 +205,4 @@ public record IgdAssignRegisterBody(string RegId, string UserId);
 public record IgdReplaceRegisterBody(string NewRegId, string UserId);
 public record IgdDischargeBody(string UserId);
 public record IgdVoidBody(string UserId, string VoidReason);
+public record IgdVoidTriageBody(string UserId, string VoidReason);

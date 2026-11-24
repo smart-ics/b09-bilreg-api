@@ -41,6 +41,7 @@ public class AlokasiPembayaranCommandTests
     private readonly Mock<IRegBiayaRepo> _regBiayaRepo = new();
     private readonly Mock<ITrsDirectDal> _trsDirectDal = new();
     private readonly Mock<IJurnalDal> _jurnalDal = new();
+    private readonly Mock<IRegAktifRepo> _regAktifRepo = new();
     private readonly FixedCurrentUserContext _currentUser = new(PetugasVerif);
 
     public AlokasiPembayaranCommandTests()
@@ -59,7 +60,7 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -84,7 +85,7 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -114,7 +115,7 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 3_000_000m, 0m, "COA-DPU", "DPU")
+            new("BYDPU", "Deposit", false, 3_000_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -146,8 +147,8 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 150_000m, 0m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, 50_000m, 0m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 150_000m, 0m),
+            new("BYKAS", "KAS", false, 50_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -162,7 +163,7 @@ public class AlokasiPembayaranCommandTests
     }
 
     [Fact]
-    public async Task GivenDepositAllocationExceedsTotalBill_WhenAllocate_ThenThrowsInvalidOperationException()
+    public async Task GivenDepositAllocationExceedsTotalBill_WhenAllocateBydpuWithValidNegativeBykas_ThenSucceedsAndGeneratesProjection()
     {
         var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 200_000m);
         var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
@@ -175,8 +176,39 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 300_000m, 0m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, -100_000m, 0m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 300_000m, 0m),
+            new("BYKAS", "Kasir (Bayar Sendiri)", false, -100_000m, 0m)
+        };
+
+        var handler = new AllocateFinancialResponsibilityHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _depositRepo.Object, _regJaminanPolicy.Object, _unitOfWork.Object);
+
+        var result = await handler.Handle(
+            new AllocateFinancialResponsibilityCommand(RegId, payments),
+            CancellationToken.None);
+
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
+        result.Projection.Should().HaveCount(2);
+        _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+        _trsBillingRepo.Verify(r => r.SaveChanges(bill), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDepositKhususExceedsTotalBill_WhenAllocate_ThenThrowsInvalidOperationException()
+    {
+        var bill = TataRekeningTestDataBuilder.CreateBill("BILL-01", RegId, 200_000m);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, bill);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 500_000m, 0m, 500_000m));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYDPK", "Deposit Khusus", false, 300_000m, 0m),
+            new("BYKAS", "Kasir (Bayar Sendiri)", false, -100_000m, 0m)
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
@@ -187,7 +219,7 @@ public class AlokasiPembayaranCommandTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Alokasi deposit (300,000) melebihi total tagihan kunjungan (200,000).*");
+            .WithMessage("*Alokasi Deposit Khusus (300,000) melebihi total tagihan kunjungan (200,000).*");
     }
 
     [Fact]
@@ -268,7 +300,8 @@ public class AlokasiPembayaranCommandTests
             .Returns(MayBe.From(reg));
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            financialVerificationService: null, regAktifRepo: _regAktifRepo.Object);
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, "USER-01", TestDate),
@@ -277,6 +310,7 @@ public class AlokasiPembayaranCommandTests
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
         _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
         _regRepo.Verify(r => r.SaveChanges(reg), Times.Once);
+        _regAktifRepo.Verify(r => r.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
         reg.IsAktif.Should().BeFalse();
         reg.RegKeluarAudit.UserId.Should().Be("USER-01");
         reg.RegKeluarAudit.Timestamp.Should().Be(TestDate);
@@ -391,14 +425,15 @@ public class AlokasiPembayaranCommandTests
         _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(MayBe.From(tataRekening));
 
-        var reg = RegModel.Default;
+        var reg = (RegModel)RegModel.Key(RegId);
         reg.SetKeluar(PetugasVerif, TestDate);
         _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(MayBe.From(reg));
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
-            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _regRepo.Object, _auditRepo.Object,
+            null!, null!, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance,
+            _regBiayaRepo.Object, _trsDirectDal.Object, _jurnalDal.Object, _regAktifRepo.Object);
 
         var result = await handler.Handle(
             new CancelFinalizationCommand(RegId, "USER-01", "Koreksi alokasi"),
@@ -408,6 +443,7 @@ public class AlokasiPembayaranCommandTests
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
         _auditRepo.Verify(r => r.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
         _regRepo.Verify(r => r.SaveChanges(reg), Times.Once);
+        _regAktifRepo.Verify(r => r.SaveChanges(It.Is<RegAktifModel>(m => m.RegId == RegId)), Times.Once);
         reg.IsAktif.Should().BeTrue();
         reg.RegKeluarAudit.Should().Be(AuditInfoType.Default);
         reg.RegCancelOutAudit.UserId.Should().Be("USER-01");
@@ -459,7 +495,7 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
         var expectedFinalDate = new DateTime(2026, 6, 16, 15, 30, 0);
 
@@ -473,7 +509,8 @@ public class AlokasiPembayaranCommandTests
             TestTglJamProvider.Instance,
             _regBiayaRepo.Object,
             _trsDirectDal.Object,
-            _jurnalDal.Object);
+            _jurnalDal.Object,
+            _regAktifRepo.Object);
 
         // Act
         var result = await handler.Handle(
@@ -487,6 +524,8 @@ public class AlokasiPembayaranCommandTests
         _jurnalDal.Verify(x => x.UpdateTimestamp(adminTrsId, expectedFinalDate), Times.Once);
         _trsBillingRepo.Verify(r => r.SaveChanges(billAdmin), Times.Once);
         _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
+        _regRepo.Verify(r => r.SaveChanges(reg), Times.Once);
+        _regAktifRepo.Verify(r => r.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
     }
 
     [Fact]
@@ -511,7 +550,7 @@ public class AlokasiPembayaranCommandTests
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
         var expectedFinalDate = TestTglJamProvider.Instance.Now;
 
@@ -558,7 +597,7 @@ public class AlokasiPembayaranCommandTests
         _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(MayBe.From(tataRekening));
 
-        var reg = RegModel.Default;
+        var reg = (RegModel)RegModel.Key(RegId);
         reg.SetKeluar(PetugasVerif, TestDate);
         _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(MayBe.From(reg));

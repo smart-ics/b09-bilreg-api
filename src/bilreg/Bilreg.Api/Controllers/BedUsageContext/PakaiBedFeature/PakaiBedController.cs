@@ -38,9 +38,19 @@ public class PakaiBedController : ControllerBase
         var response = await _mediator.Send(cmd);
 
         var targetBedId = (response.BedId ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(response.BangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+        if (response.IsCleaningTriggered)
         {
-            await _eventPublisher.PublishBedStatusChangedAsync(response.BangsalId, targetBedId, "Cleaning");
+            if (!string.IsNullOrWhiteSpace(response.BangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(response.BangsalId, targetBedId, "Cleaning");
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(response.BangsalId) && !string.IsNullOrWhiteSpace(targetBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(response.BangsalId, targetBedId, "Occupied");
+            }
         }
 
         if (response.IsBatalCheckIn)
@@ -87,15 +97,33 @@ public class PakaiBedController : ControllerBase
             req.AlasanTransfer,
             req.Catatan,
             effectiveUserId,
-            req.ClinicalUrgency);
+            req.ClinicalUrgency,
+            req.TransferScope,
+            req.BabyRegId);
         var response = await _mediator.Send(cmd);
 
-        if (!string.IsNullOrWhiteSpace(response.OldBangsalId) && !string.IsNullOrWhiteSpace(response.OldBedId))
+        if (response.IsCleaningTriggered)
         {
-            await _eventPublisher.PublishBedStatusChangedAsync(response.OldBangsalId, response.OldBedId, "Cleaning");
+            if (!string.IsNullOrWhiteSpace(response.OldBangsalId) && !string.IsNullOrWhiteSpace(response.OldBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(response.OldBangsalId, response.OldBedId, "Cleaning");
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(response.OldBangsalId) && !string.IsNullOrWhiteSpace(response.OldBedId))
+            {
+                await _eventPublisher.PublishBedStatusChangedAsync(response.OldBangsalId, response.OldBedId, "Occupied");
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(response.TargetBangsalId))
+        if (!string.IsNullOrWhiteSpace(response.OldBangsalId))
+        {
+            await _eventPublisher.PublishWaitingListUpdatedAsync(response.OldBangsalId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(response.TargetBangsalId) &&
+            !string.Equals(response.TargetBangsalId.Trim(), response.OldBangsalId?.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             await _eventPublisher.PublishWaitingListUpdatedAsync(response.TargetBangsalId);
         }
@@ -108,11 +136,17 @@ public class PakaiBedController : ControllerBase
     [Route("/api/v1/pakai-bed/batal")]
     [Route("/api/pakai-bed/batal")]
     [Route("/api/api/PakaiBed/batal")]
-    public async Task<IActionResult> Batal(PakaiBedVoidRequest req)
+    public async Task<IActionResult> Batal([FromBody] PakaiBedVoidRequest req)
     {
         var userAgent = HttpHelper.GetUserAgent(Request);
         var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
-        var cmd = new PakaiBedVoidCommand(req.PakaiBedId, req.UserId, req.VoidReason, userAgent, remoteIpAddress);
+        var effectiveReason = !string.IsNullOrWhiteSpace(req.VoidReason)
+            ? req.VoidReason
+            : (!string.IsNullOrWhiteSpace(req.Reason) ? req.Reason : "Batal Check-in");
+        var effectiveUserId = !string.IsNullOrWhiteSpace(req.UserId)
+            ? req.UserId
+            : (User?.Identity?.Name ?? "SYSTEM");
+        var cmd = new PakaiBedVoidCommand(req.PakaiBedId, effectiveUserId, effectiveReason, userAgent, remoteIpAddress, req.CancelScope);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -135,7 +169,13 @@ public class PakaiBedController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    public record PakaiBedVoidRequest(string PakaiBedId, string UserId, string VoidReason);
+    public record PakaiBedVoidRequest(
+        string PakaiBedId,
+        string? UserId = null,
+        string? VoidReason = null,
+        string? Reason = null,
+        string? CancelScope = null
+    );
 
     public record TransferToWardWaitingListRequest(
         string PakaiBedId,
@@ -144,6 +184,8 @@ public class PakaiBedController : ControllerBase
         string AlasanTransfer,
         string? Catatan = null,
         string? UserId = null,
-        string? ClinicalUrgency = null
+        string? ClinicalUrgency = null,
+        string? TransferScope = null,
+        string? BabyRegId = null
     );
 }

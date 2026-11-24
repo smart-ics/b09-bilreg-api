@@ -2,6 +2,7 @@ using Bilreg.Domain.BrgContext.BrgFeature;
 
 namespace Bilreg.Domain.SalesContext.PenjualanFeature;
 
+[Obsolete("Deprecated in favor of Bilreg.Domain.ApotekContext.PenjualanFeature")]
 public record PenjualanItemRacikType
 {
     public PenjualanItemRacikType(int noUrut, BrgReff brg, SatuanType satuan, decimal qty, decimal dosis, string dosisTxt)

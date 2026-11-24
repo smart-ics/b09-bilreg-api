@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.PasienContext.DemografiFeature;
+using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -46,7 +46,7 @@ public class NegaraDal : INegaraDal
                 fs_nm_negara_indonesia = @negaraName,
                 fs_nm_negara_inggris = @negaraEngName,
                 fs_alpha3 = @alpha3,
-                fs_numeric = @negaraNumeric,
+                fs_numeric = @negaraNumeric
             WHERE fs_kd_negara = @negaraId";
 
         var dp = new DynamicParameters();

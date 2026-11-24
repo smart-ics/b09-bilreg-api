@@ -33,7 +33,9 @@ public class QueueMappingModel : IQueueMappingKey
         string pasienTrackerId,
         QueueMappingMethodEnum mappingMethod,
         string mappedBy,
-        DateTime mappedAt)
+        DateTime mappedAt,
+        bool pasienHadir,
+        DateTime pasienHadirAt)
     {
         DemandKind = demandKind;
         DemandId = demandId;
@@ -43,6 +45,8 @@ public class QueueMappingModel : IQueueMappingKey
         MappingMethod = mappingMethod;
         MappedBy = mappedBy;
         MappedAt = mappedAt;
+        PasienHadir = pasienHadir;
+        PasienHadirAt = pasienHadirAt;
     }
 
     public static IQueueMappingKey Key(QueueDemandKindEnum demandKind, string demandId)
@@ -56,13 +60,50 @@ public class QueueMappingModel : IQueueMappingKey
         string pasienTrackerId,
         QueueMappingMethodEnum mappingMethod,
         string mappedBy,
-        DateTime mappedAt)
+        DateTime mappedAt,
+        bool pasienHadir = false,
+        DateTime? pasienHadirAt = null)
     {
         Guard.Against.NullOrWhiteSpace(demandId, nameof(demandId));
         Guard.Against.NullOrWhiteSpace(antrianId, nameof(antrianId));
         Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
         Guard.Against.NullOrWhiteSpace(mappedBy, nameof(mappedBy));
-        return new QueueMappingModel(demandKind, demandId, antrianId, noUrut, pasienTrackerId, mappingMethod, mappedBy, mappedAt);
+        return new QueueMappingModel(
+            demandKind,
+            demandId,
+            antrianId,
+            noUrut,
+            pasienTrackerId,
+            mappingMethod,
+            mappedBy,
+            mappedAt,
+            pasienHadir,
+            pasienHadirAt ?? ApotekDate.Empty);
+    }
+
+    public static QueueMappingModel Rehydrate(
+        QueueDemandKindEnum demandKind,
+        string demandId,
+        string antrianId,
+        int noUrut,
+        string pasienTrackerId,
+        QueueMappingMethodEnum mappingMethod,
+        string mappedBy,
+        DateTime mappedAt,
+        bool pasienHadir,
+        DateTime pasienHadirAt)
+    {
+        return new QueueMappingModel(
+            demandKind,
+            demandId,
+            antrianId,
+            noUrut,
+            pasienTrackerId,
+            mappingMethod,
+            mappedBy,
+            mappedAt,
+            pasienHadir,
+            pasienHadirAt);
     }
 
     public void Correct(string antrianId, int noUrut, string pasienTrackerId, string mappedBy, DateTime mappedAt)
@@ -76,11 +117,21 @@ public class QueueMappingModel : IQueueMappingKey
         MappedAt = mappedAt;
     }
 
+    public void MarkPasienHadir(DateTime now)
+    {
+        if (now == default || now == DateTime.MinValue || ApotekDate.IsEmpty(now))
+            throw new ArgumentException("A valid business time is required.", nameof(now));
+        PasienHadir = true;
+        PasienHadirAt = now;
+    }
+
     public QueueDemandKindEnum DemandKind { get; }
     public string DemandId { get; }
     public string AntrianId { get; private set; }
     public int NoUrut { get; private set; }
     public string PasienTrackerId { get; private set; }
+    public bool PasienHadir { get; private set; }
+    public DateTime PasienHadirAt { get; private set; }
     public QueueMappingMethodEnum MappingMethod { get; }
     public string MappedBy { get; private set; }
     public DateTime MappedAt { get; private set; }

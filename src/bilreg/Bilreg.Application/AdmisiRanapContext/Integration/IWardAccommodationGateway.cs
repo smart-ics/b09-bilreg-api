@@ -1,4 +1,4 @@
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.Integration;

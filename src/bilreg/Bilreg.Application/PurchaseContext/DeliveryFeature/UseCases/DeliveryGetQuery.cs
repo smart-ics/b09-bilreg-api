@@ -146,7 +146,7 @@ public class DeliveryGetHandler : IRequestHandler<DeliveryGetQuery, DeliveryGetR
                 item.Inspection.IsBonus,
                 item.Inspection.HasJaminanRetur,
                 item.Inspection.NoSuratJaminan,
-                item.Inspection.PoId,
+                model.PoId,
                 item.Inspection.PoNoUrut
             ),
             item.Het

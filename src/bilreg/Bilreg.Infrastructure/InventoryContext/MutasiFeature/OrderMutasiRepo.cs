@@ -32,9 +32,27 @@ public class OrderMutasiRepo : IOrderMutasiRepo
             new OrderMutasiHeaderView(
                 x.OrderMutasiId, x.OrderMutasiDate, x.State, 
                 new LayananReff(x.LayananOrderId, x.LayananOrderName),
-                new LayananReff(x.LayananTujuanId, x.LayananTujuanName)));
+                new LayananReff(x.LayananTujuanId, x.LayananTujuanName),
+                x.Priority,
+                x.OrderNote));
         return result;
     }
+
+    public IEnumerable<OrderMutasiHeaderView> ListData(ILayananKey layananOrder, Periode filter)
+    {
+        var listDto = _orderMutasiDal.ListData(layananOrder, filter) ?? [];
+        var result = listDto.Select(x =>
+            new OrderMutasiHeaderView(
+                x.OrderMutasiId, x.OrderMutasiDate, x.State,
+                new LayananReff(x.LayananOrderId, x.LayananOrderName),
+                new LayananReff(x.LayananTujuanId, x.LayananTujuanName),
+                x.Priority,
+                x.OrderNote));
+        return result;
+    }
+
+    public IEnumerable<OrderMutasiHeaderView> ListByLayananOrder(ILayananKey layananOrder, Periode filter)
+        => ListData(layananOrder, filter);
 
     public IEnumerable<OrderMutasiHeaderView> ListDraftState()
     {
@@ -42,8 +60,10 @@ public class OrderMutasiRepo : IOrderMutasiRepo
         var result = listDto.Select(x =>
             new OrderMutasiHeaderView(
                 x.OrderMutasiId, x.OrderMutasiDate, x.State,
-                 new LayananReff(x.LayananOrderId, x.LayananOrderName),
-                new LayananReff(x.LayananTujuanId, x.LayananTujuanName)));
+                new LayananReff(x.LayananOrderId, x.LayananOrderName),
+                new LayananReff(x.LayananTujuanId, x.LayananTujuanName),
+                x.Priority,
+                x.OrderNote));
         return result;
     }
 
@@ -54,7 +74,9 @@ public class OrderMutasiRepo : IOrderMutasiRepo
             new OrderMutasiHeaderView(
                 x.OrderMutasiId, x.OrderMutasiDate, x.State,
                 new LayananReff(x.LayananOrderId, x.LayananOrderName),
-                new LayananReff(x.LayananTujuanId, x.LayananTujuanName)));
+                new LayananReff(x.LayananTujuanId, x.LayananTujuanName),
+                x.Priority,
+                x.OrderNote));
         return result;
     }
 

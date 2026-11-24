@@ -24,6 +24,22 @@ public class OrderMutasiController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPut]
+    [Route("itemQty")]
+    public async Task<IActionResult> UpdateItemQty(OrderMutasiUpdateItemQtyCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpDelete]
+    [Route("item")]
+    public async Task<IActionResult> RemoveItem([FromBody] OrderMutasiRemoveItemCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost]
     [Route("submit")]
     public async Task<IActionResult> Submit(OrderMutasiSubmitCommand cmd)
@@ -48,6 +64,22 @@ public class OrderMutasiController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    [Route("cancel")]
+    public async Task<IActionResult> Cancel(OrderMutasiCancelCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost]
+    [Route("forceClose")]
+    public async Task<IActionResult> ForceClose(OrderMutasiForceCloseCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetOrder(string id)
@@ -62,6 +94,15 @@ public class OrderMutasiController : ControllerBase
     public async Task<IActionResult> GetOrderDraft(string id)
     {
         var query = new OrderMutasiDraftStateGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
+    [Route("layananOrder/{layananOrderId}/{tglYmd1}/{tglYmd2}")]
+    public async Task<IActionResult> ListByLayanan(string layananOrderId, string tglYmd1, string tglYmd2)
+    {
+        var query = new OrderMutasiListByLayananQuery(layananOrderId, tglYmd1, tglYmd2);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

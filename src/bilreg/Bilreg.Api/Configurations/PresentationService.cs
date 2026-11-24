@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Controllers.ApotekContext;
 using Bilreg.Api.Filters;
+using Bilreg.Api.Hubs;
 using Bilreg.Api.SignalR;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
@@ -98,7 +100,8 @@ public static class PresentationService
                     var path = context.HttpContext.Request.Path;
                     if (!string.IsNullOrEmpty(accessToken) &&
                         (path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath) ||
-                         path.StartsWithSegments(WardCockpitContracts.HubPath)))
+                         path.StartsWithSegments(WardCockpitContracts.HubPath) ||
+                         path.StartsWithSegments(PharmacyQueueContracts.HubPath)))
                     {
                         context.Token = accessToken;
                     }
@@ -115,6 +118,23 @@ public static class PresentationService
 
                 OnTokenValidated = context =>
                 {
+                    if (context.Principal?.Identity is ClaimsIdentity identity)
+                    {
+                        var shortRoles = identity.FindAll("role").Select(c => c.Value).ToList();
+                        foreach (var r in shortRoles)
+                        {
+                            if (!identity.HasClaim(ClaimTypes.Role, r))
+                                identity.AddClaim(new Claim(ClaimTypes.Role, r));
+                        }
+
+                        var longRoles = identity.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+                        foreach (var r in longRoles)
+                        {
+                            if (!identity.HasClaim("role", r))
+                                identity.AddClaim(new Claim("role", r));
+                        }
+                    }
+
                     CreateAuthLogger(context.HttpContext).LogDebug(
                         "JWT token validated for {UserName}",
                         context.Principal?.Identity?.Name ?? "(unknown)");

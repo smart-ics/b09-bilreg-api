@@ -1,7 +1,9 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using MediatR;
@@ -28,35 +30,46 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
     private readonly ITindakanIgdRepo _tindakanRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IRegRepo _regRepo;
+    private readonly IIgdBillingPostingOrchestrator _billingOrchestrator;
 
-    public IgdTindakanAddHandler(IIgdVisitRepo igdVisitRepo, 
+    public IgdTindakanAddHandler(
+        IIgdVisitRepo igdVisitRepo, 
         ITindakanIgdRepo tindakanRepo, 
         IPpaRepo ppaRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IRegRepo regRepo,
+        IIgdBillingPostingOrchestrator billingOrchestrator)
     {
         _igdVisitRepo = igdVisitRepo;
         _tindakanRepo = tindakanRepo;
         _ppaRepo = ppaRepo;
         _tglJamProvider = tglJamProvider;
+        _regRepo = regRepo;
+        _billingOrchestrator = billingOrchestrator;
     }
 
-    public Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
+    public async Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
-        Guard.Against.NullOrWhiteSpace(request.PetugasMedisId, nameof(request.PetugasMedisId));
+        Guard.Against.Null(request.Aktifitas, nameof(request.Aktifitas));
+        var aktifitas = (ActivityTindakanIgd)request.Aktifitas;
+        if (aktifitas == ActivityTindakanIgd.Tindakan)
+            Guard.Against.NullOrWhiteSpace(request.PetugasMedisId, nameof(request.PetugasMedisId));
         Guard.Against.NullOrWhiteSpace(request.ReffId, nameof(request.ReffId));
         Guard.Against.NullOrWhiteSpace(request.Descriptions, nameof(request.Descriptions));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         Guard.Against.NegativeOrZero(request.Qty, nameof(request.Qty));
-        Guard.Against.Null(request.Aktifitas, nameof(request.Aktifitas));
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
-        var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PetugasMedisId)).GetValueOrThrow($"Petugas Medis {request.PetugasMedisId} not found");
+        var ppa = string.IsNullOrWhiteSpace(request.PetugasMedisId)
+            ? PpaType.Default
+            : _ppaRepo.LoadEntity(PpaType.Key(request.PetugasMedisId)).GetValueOrThrow($"Petugas Medis {request.PetugasMedisId} not found");
 
         var occurredAt = _tglJamProvider.Now;
         var tindakan = TindakanIgdModel.Create
             (visit, request.ReffId, request.Descriptions, request.Qty, 
-            (ActivityTindakanIgd)request.Aktifitas, ppa, request.UserId, occurredAt);
+            aktifitas, ppa, request.UserId, occurredAt);
         visit.RecordTindakanEvent(tindakan, tindakan.Audit);
 
         IgdTindakanAddResponse response;
@@ -68,6 +81,25 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
             response = new IgdTindakanAddResponse(tindakan.TindakanIgdId, visit.IgdVisitId);
         }
 
-        return Task.FromResult(response);
+        if (visit.HasReg)
+        {
+            var reg = _regRepo.LoadEntity(visit.Reg).GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found");
+            try
+            {
+                var posted = await _billingOrchestrator.PostTindakanAsync(visit, reg, tindakan, cancellationToken);
+                if (!posted)
+                {
+                    visit.SetPendingBilling(true);
+                    _igdVisitRepo.SaveChanges(visit);
+                }
+            }
+            catch (Exception)
+            {
+                visit.SetPendingBilling(true);
+                _igdVisitRepo.SaveChanges(visit);
+            }
+        }
+
+        return response;
     }
 }

@@ -6,5 +6,6 @@ public enum WaitingListStatusEnum
     Reserved = 1,
     Placed = 2,
     Cancelled = 3,
-    Rerouted = 4
+    Rerouted = 4,
+    Rejected = 5
 }

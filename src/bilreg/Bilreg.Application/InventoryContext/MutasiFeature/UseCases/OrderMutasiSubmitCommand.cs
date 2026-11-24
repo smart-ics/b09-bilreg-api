@@ -1,22 +1,26 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Application.InventoryContext.StokFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using MediatR;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
-public record OrderMutasiSubmitCommand(string OrderMutasiId,
-    string LayananTujuanId, string UserId) : IRequest, IOrderMutasiKey;
+public record OrderMutasiSubmitCommand(
+    string OrderMutasiId,
+    string LayananTujuanId,
+    string UserId,
+    OrderMutasiPriorityEnum Priority = OrderMutasiPriorityEnum.Rutin,
+    string OrderNote = "-",
+    bool AutoApprove = false) : IRequest, IOrderMutasiKey;
 
 public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand>
 {
     private readonly IOrderMutasiRepo _orderMutasiRepo;
     private readonly ILayananRepo _layananRepo;
 
-    public OrderMutasiSubmitHandler(IOrderMutasiRepo orderMutasiRepo,
+    public OrderMutasiSubmitHandler(
+        IOrderMutasiRepo orderMutasiRepo,
         ILayananRepo layananRepo)
     {
         _orderMutasiRepo = orderMutasiRepo;
@@ -33,7 +37,7 @@ public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand
         // BUILD       
         var order = GetOrderMutasi(request);
         var tujuan = GetLayananTujuan(request.LayananTujuanId);
-        order.Submit(tujuan, request.UserId);     
+        order.Submit(tujuan, request.UserId, request.Priority, request.OrderNote, request.AutoApprove);
 
         // WRITE
         _orderMutasiRepo.SaveChanges(order);
@@ -47,8 +51,7 @@ public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand
         if (!layananMaybe.HasValue)
             throw new KeyNotFoundException($"LayananTujuan {layananTujuanId} not found");
 
-        var layanan = layananMaybe.Value.ToReff();
-        return layanan;
+        return layananMaybe.Value.ToReff();
     }
 
     private OrderMutasiModel GetOrderMutasi(OrderMutasiSubmitCommand request)
@@ -57,11 +60,6 @@ public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand
         if (!orderMaybe.HasValue)
             throw new KeyNotFoundException($"Order Mutasi {request.OrderMutasiId} not found");
 
-        var order = orderMaybe.Value; 
-        if (order.State != OrderMutasiStateEnum.Draft) 
-            throw new ArgumentException($"OrderMutasi already Submitted"); 
-
-        return order;
-
+        return orderMaybe.Value;
     }
 }

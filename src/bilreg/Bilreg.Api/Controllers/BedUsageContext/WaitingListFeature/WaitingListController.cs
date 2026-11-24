@@ -1,4 +1,5 @@
 using Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -13,8 +14,15 @@ namespace Bilreg.Api.Controllers.BedUsageContext.WaitingListFeature;
 public class WaitingListController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWardCockpitEventPublisher? _eventPublisher;
 
-    public WaitingListController(IMediator mediator) => _mediator = mediator;
+    public WaitingListController(
+        IMediator mediator,
+        IWardCockpitEventPublisher? eventPublisher = null)
+    {
+        _mediator = mediator;
+        _eventPublisher = eventPublisher;
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] WaitingListCreateCmd cmd)
@@ -56,6 +64,25 @@ public class WaitingListController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost("{id}/reject")]
+    public async Task<IActionResult> Reject(string id, [FromBody] WaitingListRejectBody body)
+    {
+        var cmd = new WaitingListRejectCmd(id, body.Reason, body.UserId);
+        await _mediator.Send(cmd);
+
+        if (_eventPublisher != null)
+        {
+            var waitingList = await _mediator.Send(new WaitingListGetQuery(id));
+            var bangsalId = waitingList.Bangsal?.BangsalId ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(bangsalId))
+            {
+                await _eventPublisher.PublishWaitingListUpdatedAsync(bangsalId);
+            }
+        }
+
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost("{id}/reroute")]
     public async Task<IActionResult> Reroute(string id, [FromBody] WaitingListRerouteBody body)
     {
@@ -70,6 +97,15 @@ public class WaitingListController : ControllerBase
             body.PlannedBedId,
             body.PlannedBedName);
         var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] string? bangsalId,
+        [FromQuery] int? waitingListStatus)
+    {
+        var result = await _mediator.Send(new WaitingListListQuery(bangsalId, waitingListStatus));
         return Ok(new JSendOk(result));
     }
 
@@ -111,6 +147,10 @@ public record WaitingListReserveBody(
     string? BedName = null);
 
 public record WaitingListCancelBody(
+    string Reason,
+    string UserId);
+
+public record WaitingListRejectBody(
     string Reason,
     string UserId);
 

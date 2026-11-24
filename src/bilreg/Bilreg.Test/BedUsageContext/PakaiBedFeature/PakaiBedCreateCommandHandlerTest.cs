@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
@@ -34,6 +35,7 @@ public class PakaiBedCreateCommandHandlerTest
     private readonly Mock<IKelasRepo> _kelasRepoMock = new();
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
     private readonly Mock<IBedOperationalRepo> _bedOperationalRepoMock = new();
+    private readonly Mock<IEmr20AntrianRanapGateway> _emr20GatewayMock = new();
 
     private readonly PakaiBedCreateCommandHandler _sut;
 
@@ -58,7 +60,8 @@ public class PakaiBedCreateCommandHandlerTest
             _roomRateRepoMock.Object,
             _kelasRepoMock.Object,
             _waitingListRepoMock.Object,
-            _bedOperationalRepoMock.Object);
+            _bedOperationalRepoMock.Object,
+            _emr20GatewayMock.Object);
 
         _defaultReg = RegModel.Default;
 
@@ -467,5 +470,88 @@ public class PakaiBedCreateCommandHandlerTest
         _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Once);
         _bedOperationalRepoMock.Verify(x => x.SaveChanges(It.Is<BedOperationalModel>(m =>
             m.BedId == "BED01" && m.OccupancyEpoch == bedOp.OccupancyEpoch + 1)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPakaiBedCreated_CallsEmr20GatewayAddRegRanapAsync()
+    {
+        // Arrange
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _emr20GatewayMock.Verify(x => x.AddRegRanapAsync("REG01", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPatientIsPerinatologi_ShouldSetLayananDkIdTo88()
+    {
+        // Arrange
+        var perinatologiReg = RegModel.Default;
+        perinatologiReg.SetJenisInap(new JenisInapType("3", "Perinatologi"), "REG_IBU01");
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(perinatologiReg));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(p =>
+            p.PakaiBedId == result.PakaiBedId &&
+            p.LayananDkId == "88")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPatientIsRegular_ShouldSetLayananDkIdFromMasterLayanan()
+    {
+        // Arrange
+        var regularReg = RegModel.Default;
+        regularReg.SetJenisInap(new JenisInapType("1", "Umum"), string.Empty);
+
+        var layananWithDk = _defaultLayanan with
+        {
+            LayananDk = new LayananDkReff("12", "Bangsal Dewasa")
+        };
+
+        _regRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(regularReg));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>()))
+            .Returns(MayBe.From(layananWithDk));
+
+        var cmd = new PakaiBedCreateCommand(
+            RegId: "REG01",
+            LayananId: "LYN01",
+            TipeKamarId: "TK01",
+            BedId: "BED01",
+            UserId: "USR01",
+            TglJamIn: DateTime.UtcNow);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.Is<PakaiBedModel>(p =>
+            p.PakaiBedId == result.PakaiBedId &&
+            p.LayananDkId == "12")), Times.Once);
     }
 }

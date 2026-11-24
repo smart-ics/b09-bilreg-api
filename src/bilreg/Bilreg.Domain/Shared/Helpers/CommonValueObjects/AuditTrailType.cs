@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 public class AuditTrailType
@@ -7,7 +9,6 @@ public class AuditTrailType
         Created = created;
         Modified = modified;
         Voided = voided;
-        IsVoided = !string.IsNullOrWhiteSpace(voided.UserId) && voided.Timestamp.Date != new DateTime(3000, 1, 1);
     }
     public AuditInfoType Created { get; init; }
     public AuditInfoType Modified { get; private set; }
@@ -45,13 +46,26 @@ public class AuditTrailType
 
 public record AuditInfoType(string UserId, DateTime Timestamp)
 {
+    private readonly string _userId = UserId?.Trim() ?? string.Empty;
+
+    public string UserId
+    {
+        get => _userId;
+        init => _userId = value?.Trim() ?? string.Empty;
+    }
+
     public AuditInfoType(string userId, string tgl, string jam) :
-        this(string.IsNullOrWhiteSpace(userId) ? string.Empty : userId.Trim(), ParseDateTime(tgl, jam))
+        this(
+            string.IsNullOrWhiteSpace(userId) ? string.Empty : userId.Trim(),
+            ParseDateTime(userId, tgl, jam))
     {
     }
 
-    private static DateTime ParseDateTime(string? tgl, string? jam)
+    private static DateTime ParseDateTime(string? userId, string? tgl, string? jam)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            return new DateTime(3000, 1, 1);
+
         if (string.IsNullOrWhiteSpace(tgl) || tgl.Trim().StartsWith("3000-01-01") || tgl.Trim().StartsWith("3000/01/01"))
             return new DateTime(3000, 1, 1);
 
@@ -61,17 +75,19 @@ public record AuditInfoType(string UserId, DateTime Timestamp)
         if (timePart.Length == 5)
             timePart += ":00";
 
-        if (DateTime.TryParseExact($"{datePart} {timePart}", "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out var dt))
+        if (DateTime.TryParseExact($"{datePart} {timePart}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
             return dt;
 
-        if (DateTime.TryParse($"{datePart} {timePart}", out dt))
+        if (DateTime.TryParse($"{datePart} {timePart}", CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
             return dt;
 
-        if (DateTime.TryParse(datePart, out dt))
+        if (DateTime.TryParse(datePart, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
             return dt;
 
-        return new DateTime(3000, 1, 1);
+        throw new FormatException($"String '{tgl} {jam}' was not recognized as a valid DateTime.");
     }
 
-    public static AuditInfoType Default => new("", new DateTime(3000,1,1));
-};
+    public bool IsEmpty => string.IsNullOrWhiteSpace(UserId) || Timestamp.Date >= new DateTime(3000, 1, 1);
+
+    public static AuditInfoType Default => new("", new DateTime(3000, 1, 1));
+}

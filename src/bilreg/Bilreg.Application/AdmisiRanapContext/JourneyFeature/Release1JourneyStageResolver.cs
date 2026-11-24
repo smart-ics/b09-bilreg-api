@@ -1,14 +1,14 @@
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
 /// <summary>
 /// Pure Release 1 stage / owner / next-task resolver.
-/// Precedence: integrity → cancellation → (completion unreachable) → active WL Waiting →
-/// active WL Accepted → closed handover without placement → active Admission handover →
+/// Precedence: integrity â†’ cancellation â†’ (completion unreachable) â†’ active WL Waiting â†’
+/// active WL Accepted â†’ closed handover without placement â†’ active Admission handover â†’
 /// unregistered prospective source.
 /// </summary>
 public static class Release1JourneyStageResolver
@@ -73,14 +73,14 @@ public static class Release1JourneyStageResolver
                 "Journey prospektif Reservasi dibatalkan sebelum registrasi.",
                 facts.Reservation.StatusAt);
 
-        // 3. Completion — intentionally unreachable in Release 1.
+        // 3. Completion â€” intentionally unreachable in Release 1.
         // Admission.Completed is flagged by integrity (no authoritative owning process).
 
         var activeWl = facts.WaitingLists
             .Where(w => w.IsActive)
             .OrderByDescending(w => w.StatusAt)
             .FirstOrDefault();
-        var hasClosedHandover = facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Closed);
+        var hasClosedHandover = facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Placed);
 
         // 4. Active Waiting List: Waiting before Accepted
         if (activeWl is { Status: WaitingListStatusEnum.Waiting })
@@ -99,7 +99,7 @@ public static class Release1JourneyStageResolver
                     "Tugas ini merupakan tanggung jawab bangsal tujuan dan tidak dapat dijalankan dari Admisi."));
         }
 
-        if (activeWl is { Status: WaitingListStatusEnum.Accepted })
+        if (activeWl is { Status: WaitingListStatusEnum.Reserved })
         {
             return new StageDecision(
                 JourneyOperationalStage.HandoverAccepted,
@@ -119,11 +119,11 @@ public static class Release1JourneyStageResolver
         if (hasClosedHandover && admission is not null && IsActiveAdmission(admission.Status))
         {
             var closedAt = facts.WaitingLists
-                .Where(w => w.Status == WaitingListStatusEnum.Closed)
+                .Where(w => w.Status == WaitingListStatusEnum.Placed)
                 .Select(w => w.StatusAt)
                 .Max();
             var ward = facts.WaitingLists
-                .Where(w => w.Status == WaitingListStatusEnum.Closed)
+                .Where(w => w.Status == WaitingListStatusEnum.Placed)
                 .OrderByDescending(w => w.StatusAt)
                 .FirstOrDefault();
 
@@ -180,10 +180,7 @@ public static class Release1JourneyStageResolver
         {
             return new StageDecision(
                 JourneyOperationalStage.RegistrationRequired,
-                new JourneyCurrentCondition(
-                    "Registrasi diperlukan",
-                    "Reservasi siap diproses menjadi admisi Rawat Inap.",
-                    facts.Reservation.StatusAt),
+                new JourneyCurrentCondition(facts.Reservation.Status == ReservationStatusEnum.Maintained ? "Dijadwalkan ulang" : "Registrasi diperlukan", facts.Reservation.Status == ReservationStatusEnum.Maintained ? "Reservasi telah dijadwalkan ulang dan siap diproses." : "Reservasi siap diproses menjadi admisi Rawat Inap.", facts.Reservation.StatusAt),
                 AdmisiTask(
                     JourneyActionCode.CompleteRegistration,
                     "Selesaikan registrasi",
@@ -306,7 +303,10 @@ public static class Release1JourneyStageResolver
         if (admission is not null && IsActiveAdmission(admission.Status)
             && decision.Stage is not JourneyOperationalStage.NeedsReconciliation)
         {
-            if (decision.Stage == JourneyOperationalStage.HandoverRequired)
+            if (decision.Stage is JourneyOperationalStage.HandoverRequired
+                or JourneyOperationalStage.WardAcceptanceRequired
+                or JourneyOperationalStage.HandoverAccepted
+                or JourneyOperationalStage.PlacementStatusUnavailable)
             {
                 actions.Add(Executable(
                     JourneyActionCode.UpdateAdmission,
@@ -342,7 +342,7 @@ public static class Release1JourneyStageResolver
             active?.BangsalId,
             active?.BangsalName,
             facts.WaitingLists.Count,
-            facts.WaitingLists.Count(w => w.Status == WaitingListStatusEnum.Closed),
+            facts.WaitingLists.Count(w => w.Status == WaitingListStatusEnum.Placed),
             facts.WaitingLists.Count(w => w.Status == WaitingListStatusEnum.Cancelled));
     }
 
@@ -457,8 +457,8 @@ public static class Release1JourneyStageResolver
             var kind = wl.Status switch
             {
                 WaitingListStatusEnum.Waiting => JourneyTimelineEventKind.WaitingListCreated,
-                WaitingListStatusEnum.Accepted => JourneyTimelineEventKind.WaitingListAccepted,
-                WaitingListStatusEnum.Closed => JourneyTimelineEventKind.WaitingListClosed,
+                WaitingListStatusEnum.Reserved => JourneyTimelineEventKind.WaitingListAccepted,
+                WaitingListStatusEnum.Placed => JourneyTimelineEventKind.WaitingListClosed,
                 WaitingListStatusEnum.Cancelled => JourneyTimelineEventKind.WaitingListCancelled,
                 _ => JourneyTimelineEventKind.WaitingListCreated
             };

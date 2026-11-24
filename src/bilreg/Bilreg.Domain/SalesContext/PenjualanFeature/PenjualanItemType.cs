@@ -3,6 +3,7 @@ using Bilreg.Domain.SalesContext.ResepFeature;
 
 namespace Bilreg.Domain.SalesContext.PenjualanFeature;
 
+[Obsolete("Deprecated in favor of Bilreg.Domain.ApotekContext.PenjualanFeature")]
 public record PenjualanItemType
 {
     private readonly List<PenjualanItemRacikType> _listItemRacik;

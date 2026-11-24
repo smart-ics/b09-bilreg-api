@@ -56,7 +56,7 @@ public record RegJalanByBookingCmd(
     public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
 }
 
-public record RegJalanByBookingResponse(string RegId, int NoAntrian);
+public record RegJalanByBookingResponse(string RegId, int NoAntrian, string QueueLabel = "", string PrefixAntrian = "");
 public class RegJalanByBookingHandler 
     : IRequestHandler<RegJalanByBookingCmd, RegJalanByBookingResponse>
 {
@@ -100,6 +100,7 @@ public class RegJalanByBookingHandler
     private readonly IAdmisiEventPublisher _publisher;
     private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
     private readonly IAdmissionQueueRefreshPublisher? _admissionQueueRefreshPublisher;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -139,7 +140,8 @@ public class RegJalanByBookingHandler
         IAdmissionServicePointResolver admissionServicePointResolver,
         IAdmisiEventPublisher publisher,
         IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null,
-        IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null)
+        IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -178,6 +180,7 @@ public class RegJalanByBookingHandler
         _publisher = publisher;
         _registrationOutcomeRepo = registrationOutcomeRepo;
         _admissionQueueRefreshPublisher = admissionQueueRefreshPublisher;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
 
     public async Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -358,13 +361,19 @@ public class RegJalanByBookingHandler
             _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
 
             trans.Complete();
-            response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
+            response = new RegJalanByBookingResponse(
+                reg.RegId,
+                booking.NoAntrian,
+                antrian.FormatClinicQueueLabel(booking.NoAntrian),
+                antrian.QueuePrefixSnapshot);
         }
 
         await _publisher.PublishRajalCreatedAsync(reg.RegId, cancellationToken);
 
         if (admissionContext is not null && _admissionQueueRefreshPublisher is not null)
             await _admissionQueueRefreshPublisher.PublishAsync(admissionContext.LoketKey, cancellationToken);
+
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(layanan.LayananId, dokter.PpaId, cancellationToken);
 
         return response;
     }

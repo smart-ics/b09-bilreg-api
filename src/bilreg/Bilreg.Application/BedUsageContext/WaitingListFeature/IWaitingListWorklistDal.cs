@@ -3,7 +3,10 @@ namespace Bilreg.Application.BedUsageContext.WaitingListFeature;
 public interface IWaitingListWorklistDal
 {
     IEnumerable<WaitingListWorklistView> ListActiveWorklist(string bangsalId);
+    IEnumerable<WaitingListWorklistView> List(WaitingListWorklistFilter filter);
 }
+
+public record WaitingListWorklistFilter(string? BangsalId = null, int? WaitingListStatus = null);
 
 public record WaitingListWorklistView(
     string WaitingListId,

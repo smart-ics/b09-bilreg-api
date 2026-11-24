@@ -30,6 +30,7 @@ public class DeleteBookingWorkflowTest
     private readonly Mock<IJadwalPraktekHarianRepo> _jadwalHarianRepo = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
+    private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
     private readonly DeleteBookingWorkflow _sut;
 
     public DeleteBookingWorkflowTest()
@@ -45,7 +46,8 @@ public class DeleteBookingWorkflowTest
             _jadwalHarianRepo.Object,
             _featureResolver.Object,
             _queueAdapter.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            _clinicQueueRefreshPublisher.Object);
     }
 
     [Fact]
@@ -55,6 +57,7 @@ public class DeleteBookingWorkflowTest
         var tgl = new DateOnly(2025, 10, 24);
         var jam = new TimeOnly(8, 0);
         var dokter = PpaType.Default with { PpaId = "D1", PpaName = "Dokter Satu" };
+        var layanan = LayananType.Default with { LayananId = "LY1", LayananName = "Poli Anak" };
         var person = new PersonInfoType("Pasien A", new DateOnly(2000, 1, 2), "L",
             AlamatType.Default, ContactType.Default, IdentitasType.Default);
         var booking = new BookingModel(
@@ -65,7 +68,7 @@ public class DeleteBookingWorkflowTest
             RegModel.Default.ToReff(),
             tgl,
             jam,
-            LayananType.Default.ToReff(),
+            layanan.ToReff(),
             dokter.ToReff(),
             1,
             AuditTrailType.Default,
@@ -115,5 +118,20 @@ public class DeleteBookingWorkflowTest
         saved!.PasienTrackerId.Should().Be(stableId);
         saved.ListEvent.Should().Contain(x =>
             x.EventName == "BOOKING_CANCELLED" && x.ReffId == "BK1");
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint("LY1", "D1", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_WhenBookingNotFound_DoesNotPublishRefreshHint()
+    {
+        _bookingRepo.Setup(x => x.LoadEntity(It.IsAny<IBookingKey>())).Returns(MayBe<BookingModel>.None);
+
+        await _sut.Execute(BookingModel.Key("NOT_FOUND"));
+
+        _clinicQueueRefreshPublisher.Verify(
+            x => x.PublishRefreshHint(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

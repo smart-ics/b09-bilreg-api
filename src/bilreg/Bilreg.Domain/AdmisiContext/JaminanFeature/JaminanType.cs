@@ -65,10 +65,20 @@ public record JaminanReff(string JaminanId, string JaminanName) : IJaminanKey;
 
 public record JaminanRekeningType(
     CoaType PpdpJasaRajal, CoaType PpdpObatRajal,
-    CoaType PpdpJasaRanap,CoaType PpdpObatRanap)
+    CoaType PpdpJasaRanap, CoaType PpdpObatRanap,
+    CoaType PiutangPulang)
 {
+    public JaminanRekeningType(
+        CoaType PpdpJasaRajal,
+        CoaType PpdpObatRajal,
+        CoaType PpdpJasaRanap,
+        CoaType PpdpObatRanap)
+        : this(PpdpJasaRajal, PpdpObatRajal, PpdpJasaRanap, PpdpObatRanap, CoaType.Default)
+    {
+    }
+
     public static JaminanRekeningType Default =>
-        new JaminanRekeningType(CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default);
+        new JaminanRekeningType(CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default);
 };
 
 public record JaminanTipeTarifType(TipeTarifReff Rajal, TipeTarifReff Ranap)

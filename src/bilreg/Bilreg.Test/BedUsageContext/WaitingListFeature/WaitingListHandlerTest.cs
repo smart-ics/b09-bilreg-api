@@ -130,12 +130,12 @@ public class WaitingListHandlerTest
     }
 
     [Fact]
-    public async Task UT03_Create_GivenActiveQueueAlreadyExists_ThenThrowsInvalidOperationException()
+    public async Task UT03_Create_GivenActiveQueueAlreadyExists_ThenReturnsExistingWaitingListIdIdempotently()
     {
         var admission = AdmissionModel.Admit(_defaultPasien, KelasDkType.Default, _defaultBangsal.ToReff(), null, null, "user1");
-        _admissionRepoMock.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
-            .Returns(MayBe.From(admission));
+        var existing = CreateActiveWaitingList() with { WaitingListId = "WTL-EXISTING" };
         _waitingListRepoMock.Setup(x => x.HasActiveByRegId(admission.RegId)).Returns(true);
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId(admission.RegId)).Returns(MayBe.From(existing));
 
         var handler = new WaitingListCreateHandler(
             _waitingListRepoMock.Object,
@@ -145,12 +145,12 @@ public class WaitingListHandlerTest
             _bedRepoMock.Object,
             TestTglJamProvider.Instance);
 
-        var act = async () => await handler.Handle(
+        var response = await handler.Handle(
             new WaitingListCreateCmd(admission.RegId, "K01", "B01", UserId: "user1"),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sudah memiliki Waiting List aktif*");
+        response.Should().NotBeNull();
+        response.WaitingListId.Should().Be("WTL-EXISTING");
         _waitingListRepoMock.Verify(x => x.Save(It.IsAny<WaitingListModel>()), Times.Never);
     }
 
@@ -407,6 +407,75 @@ public class WaitingListHandlerTest
 
     #endregion
 
+    #region REJECT COMMAND TESTS
+
+    [Fact]
+    public async Task UT12A_Reject_GivenActiveWaitingList_ThenRejectsWithReason()
+    {
+        var waitingList = CreateActiveWaitingList();
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe.From(waitingList));
+
+        WaitingListModel? saved = null;
+        _waitingListRepoMock.Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback<WaitingListModel>(m => saved = m);
+
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        await handler.Handle(
+            new WaitingListRejectCmd(waitingList.WaitingListId, "Kamar penuh / tidak ada bed isolasi", "user_bangsal"),
+            CancellationToken.None);
+
+        saved.Should().NotBeNull();
+        saved!.WaitingListStatus.Should().Be(WaitingListStatusEnum.Rejected);
+        saved.RejectReason.Should().Be("Kamar penuh / tidak ada bed isolasi");
+        saved.AuditTrail.Modified.UserId.Should().Be("user_bangsal");
+    }
+
+    [Theory]
+    [InlineData("", "Alasan", "user1")]
+    [InlineData("   ", "Alasan", "user1")]
+    [InlineData("WTL01", "", "user1")]
+    [InlineData("WTL01", "   ", "user1")]
+    [InlineData("WTL01", "Alasan", "")]
+    [InlineData("WTL01", "Alasan", "   ")]
+    public async Task UT12B_Reject_GivenInvalidGuardArgs_ThenThrowsArgumentException(
+        string waitingListId,
+        string reason,
+        string userId)
+    {
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new WaitingListRejectCmd(waitingListId, reason, userId),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task UT12C_Reject_GivenNonExistingWaitingList_ThenThrowsKeyNotFoundException()
+    {
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var handler = new WaitingListRejectHandler(
+            _waitingListRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new WaitingListRejectCmd("WTL999", "Alasan", "user1"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    #endregion
+
     #region REROUTE COMMAND TESTS
 
     [Fact]
@@ -420,12 +489,21 @@ public class WaitingListHandlerTest
         _bangsalRepoMock.Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B02")))
             .Returns(MayBe.From(targetBangsal));
 
+        var admission = AdmissionModel.Admit(_defaultPasien, KelasDkType.Default, _defaultBangsal.ToReff(), null, null, "user1") with { RegId = current.RegId };
+        _admissionRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == current.RegId)))
+            .Returns(MayBe.From(admission));
+
+        AdmissionModel? savedAdmission = null;
+        _admissionRepoMock.Setup(x => x.SaveChanges(It.IsAny<AdmissionModel>()))
+            .Callback<AdmissionModel>(m => savedAdmission = m);
+
         var savedModels = new List<WaitingListModel>();
         _waitingListRepoMock.Setup(x => x.Save(It.IsAny<WaitingListModel>()))
             .Callback<WaitingListModel>(savedModels.Add);
 
         var handler = new WaitingListRerouteHandler(
             _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
             _bangsalRepoMock.Object,
             _kelasRepoMock.Object,
             _bedRepoMock.Object,
@@ -457,6 +535,59 @@ public class WaitingListHandlerTest
         newEntry.Bangsal.BangsalId.Should().Be("B02");
         newEntry.ClinicalUrgency.Should().Be(ClinicalUrgencyEnum.Emergency);
         newEntry.PreviousWaitListId.Should().Be(current.WaitingListId);
+
+        savedAdmission.Should().NotBeNull();
+        savedAdmission!.AdmissionStatus.Should().Be(AdmissionStatusEnum.Updated);
+        savedAdmission.Bangsal.BangsalId.Should().Be("B02");
+        savedAdmission.AuditTrail.Modified.UserId.Should().Be("user4");
+    }
+
+    [Fact]
+    public async Task UT13b_Reroute_WithTargetKelas_ThenUpdatesAdmissionWithNewBangsalAndKelas()
+    {
+        var current = CreateActiveWaitingList();
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.Is<IWaitingListKey>(k => k.WaitingListId == current.WaitingListId)))
+            .Returns(MayBe.From(current));
+
+        var targetBangsal = new BangsalType("B02", "Bangsal ICU", RoomCatType.Default, new LayananReff("L02", "ICU"));
+        _bangsalRepoMock.Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        var targetKelas = new KelasType("K02", "Kelas 2", true, new KelasDkType("DK02", "Kelas 2"));
+        _kelasRepoMock.Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K02")))
+            .Returns(MayBe.From(targetKelas));
+
+        var admission = AdmissionModel.Admit(_defaultPasien, KelasDkType.Default, _defaultBangsal.ToReff(), null, null, "user1") with { RegId = current.RegId };
+        _admissionRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == current.RegId)))
+            .Returns(MayBe.From(admission));
+
+        AdmissionModel? savedAdmission = null;
+        _admissionRepoMock.Setup(x => x.SaveChanges(It.IsAny<AdmissionModel>()))
+            .Callback<AdmissionModel>(m => savedAdmission = m);
+
+        var handler = new WaitingListRerouteHandler(
+            _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
+            _bangsalRepoMock.Object,
+            _kelasRepoMock.Object,
+            _bedRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var cmd = new WaitingListRerouteCmd(
+            current.WaitingListId,
+            "B02",
+            "Pindah bangsal dan upgrade kelas",
+            "user5",
+            TargetKelasId: "K02");
+
+        var response = await handler.Handle(cmd, CancellationToken.None);
+
+        response.Should().NotBeNull();
+        savedAdmission.Should().NotBeNull();
+        savedAdmission!.AdmissionStatus.Should().Be(AdmissionStatusEnum.Updated);
+        savedAdmission.Bangsal.BangsalId.Should().Be("B02");
+        savedAdmission.KelasDk.KelasDkId.Should().Be("DK02");
+        savedAdmission.AuditTrail.Modified.UserId.Should().Be("user5");
     }
 
     [Fact]
@@ -464,6 +595,7 @@ public class WaitingListHandlerTest
     {
         var handler = new WaitingListRerouteHandler(
             _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
             _bangsalRepoMock.Object,
             _kelasRepoMock.Object,
             _bedRepoMock.Object,
@@ -474,6 +606,36 @@ public class WaitingListHandlerTest
             CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task UT14b_Reroute_WhenAdmissionNotFound_ThenThrowsKeyNotFoundException()
+    {
+        var current = CreateActiveWaitingList();
+        _waitingListRepoMock.Setup(x => x.LoadEntity(It.Is<IWaitingListKey>(k => k.WaitingListId == current.WaitingListId)))
+            .Returns(MayBe.From(current));
+
+        var targetBangsal = new BangsalType("B02", "Bangsal ICU", RoomCatType.Default, new LayananReff("L02", "ICU"));
+        _bangsalRepoMock.Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _admissionRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == current.RegId)))
+            .Returns(MayBe<AdmissionModel>.None);
+
+        var handler = new WaitingListRerouteHandler(
+            _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
+            _bangsalRepoMock.Object,
+            _kelasRepoMock.Object,
+            _bedRepoMock.Object,
+            TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new WaitingListRerouteCmd(current.WaitingListId, "B02", "Alasan reroute", "user1"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"*Admission '{current.RegId}' tidak ditemukan.*");
     }
 
     #endregion
@@ -517,25 +679,44 @@ public class WaitingListHandlerTest
     #region GET BY REG QUERY TESTS
 
     [Fact]
-    public async Task UT17_GetByReg_GivenExistingRegId_ThenReturnsQueueHistory()
+    public async Task UT17_GetByReg_GivenActiveQueueExists_ThenReturnsActiveEntry()
     {
-        var entry1 = CreateActiveWaitingList() with { WaitingListId = "WTL01" };
-        var entry2 = CreateActiveWaitingList() with { WaitingListId = "WTL02" };
+        var active = CreateActiveWaitingList() with { WaitingListId = "WTL-ACTIVE" };
 
-        _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
-            .Returns(new[] { entry1, entry2 });
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe.From(active));
 
         var handler = new WaitingListGetByRegHandler(_waitingListRepoMock.Object);
 
         var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
 
-        response.Should().HaveCount(2);
-        response.Select(x => x.WaitingListId).Should().ContainInOrder("WTL01", "WTL02");
+        response.Should().NotBeNull();
+        response!.WaitingListId.Should().Be("WTL-ACTIVE");
     }
 
     [Fact]
-    public async Task UT18_GetByReg_GivenNoEntries_ThenReturnsEmptyList()
+    public async Task UT18_GetByReg_GivenNoActiveQueue_WhenHistoryExists_ThenReturnsLatestEntry()
     {
+        var historical = CreateActiveWaitingList() with { WaitingListId = "WTL-HISTORICAL" };
+
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe<WaitingListModel>.None);
+        _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
+            .Returns(new[] { historical });
+
+        var handler = new WaitingListGetByRegHandler(_waitingListRepoMock.Object);
+
+        var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response!.WaitingListId.Should().Be("WTL-HISTORICAL");
+    }
+
+    [Fact]
+    public async Task UT18B_GetByReg_GivenNoEntries_ThenReturnsNull()
+    {
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId("RG001"))
+            .Returns(MayBe<WaitingListModel>.None);
         _waitingListRepoMock.Setup(x => x.ListByRegId("RG001"))
             .Returns(Enumerable.Empty<WaitingListModel>());
 
@@ -543,7 +724,7 @@ public class WaitingListHandlerTest
 
         var response = await handler.Handle(new WaitingListGetByRegQuery("RG001"), CancellationToken.None);
 
-        response.Should().BeEmpty();
+        response.Should().BeNull();
     }
 
     #endregion
@@ -578,6 +759,50 @@ public class WaitingListHandlerTest
         var act = async () => await handler.Handle(new WaitingListWorklistQuery(""), CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    #endregion
+
+    #region LIST QUERY TESTS
+
+    [Fact]
+    public async Task UT21_List_GivenFilter_ThenReturnsEnvelopeWithItems()
+    {
+        var items = new List<WaitingListWorklistView>
+        {
+            new("WTL01", "RG001", 0, 1, "P01", "Pasien A", "L", "1990-01-01", "K01", "Kelas 1", "B01", "Bangsal A", 0, "IGD", "IGD", "DOC1", "dr. Budi", 2, "ISOLASI", "", "", "", "user1", DateTime.Now)
+        };
+
+        _worklistDalMock.Setup(x => x.List(It.Is<WaitingListWorklistFilter>(f => f.BangsalId == "B01" && f.WaitingListStatus == 0)))
+            .Returns(items);
+
+        var handler = new WaitingListListHandler(_worklistDalMock.Object);
+
+        var response = await handler.Handle(new WaitingListListQuery("B01", 0), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Items.Should().HaveCount(1);
+        response.Items.First().WaitingListId.Should().Be("WTL01");
+    }
+
+    [Fact]
+    public async Task UT22_List_GivenNullFilter_ThenPassesNullFilterToDalAndReturnsEnvelope()
+    {
+        var items = new List<WaitingListWorklistView>
+        {
+            new("WTL01", "RG001", 0, 1, "P01", "Pasien A", "L", "1990-01-01", "K01", "Kelas 1", "B01", "Bangsal A", 0, "IGD", "IGD", "DOC1", "dr. Budi", 2, "ISOLASI", "", "", "", "user1", DateTime.Now)
+        };
+
+        _worklistDalMock.Setup(x => x.List(It.Is<WaitingListWorklistFilter>(f => f.BangsalId == null && f.WaitingListStatus == null)))
+            .Returns(items);
+
+        var handler = new WaitingListListHandler(_worklistDalMock.Object);
+
+        var response = await handler.Handle(new WaitingListListQuery(null, null), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.Items.Should().HaveCount(1);
+        response.Items.First().WaitingListId.Should().Be("WTL01");
     }
 
     #endregion

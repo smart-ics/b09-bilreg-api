@@ -21,4 +21,7 @@ public record BhpIgdView(
     int Qty,
     decimal Price,
     decimal Subtotal,
-    DateTime CreatedDateTime);
+    DateTime CreatedDateTime,
+    string TrsBillId = "",
+    bool IsPosted = false,
+    DateTime? PostedDate = null);

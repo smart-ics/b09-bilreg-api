@@ -5,6 +5,9 @@ using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
+using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
@@ -37,7 +40,11 @@ public static class ApplicationService
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>()
-            .AddScoped<IBrgPricingService, BrgPricingService>();
+            .AddScoped<IBrgPricingService, BrgPricingService>()
+            .AddScoped<IPakaiBrgInternalService, PakaiBrgInternalService>()
+            .AddScoped<ISettlePendingTindakanStockService, SettlePendingTindakanStockHandler>()
+            .AddScoped<ITindakanBomProcessor, TindakanBomProcessor>()
+            .AddScoped<IIgdBillingPostingOrchestrator, IgdBillingPostingOrchestrator>();
         
         services.AddScoped<IAdmissionQueueRefreshPublisher>(sp =>
         {

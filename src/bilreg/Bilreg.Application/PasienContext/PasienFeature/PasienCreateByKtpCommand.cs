@@ -47,7 +47,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
             request.KotaKtp, request.KodePosKtp);
         var identitasKtp = IdentitasType.Ktp(request.Nik);
         var person = new PersonInfoType(request.PasienName, tglLahir, request.Gender,
-            alamat, ContactType.Default, IdentitasType.Default);
+            alamat, ContactType.Default, identitasKtp);
         var golDarah = new GolDarahType(request.GolDarah);
         
         var pasien = _pasienFactory.CreateFromPerson(person, request.PasienName, 
@@ -61,7 +61,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
         var ktp = new KtpType(request.Nik, alamat, request.Rt, request.Rw, kelurahan);
         pasien.SetDataKtp(ktp);
         pasien.UpdateAdminInfo(kelurahan, IdentitasType.Default, ContactType.Default, 
-            ContactType.Default, PasienKeluargaType.Default, "-", PersonInfoType.Default);
+            ContactType.Default, PasienKeluargaType.Default, "-", person);
 
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);

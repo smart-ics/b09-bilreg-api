@@ -190,4 +190,27 @@ public class RegInapRepoTest
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tepat satu DPJP Primary*");
     }
+
+    [Fact]
+    public void SaveChanges_WhenProcedureAndDpjpUpdated_UpdatesHeaderAndReplacesHistory()
+    {
+        var model = CreateModel(primary: new PpaReff("DK1", "Dr. Primary"));
+        var existingDto = ta_reg_inap_dto.FromModel(model);
+        _headerDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(existingDto);
+
+        var newProsedur = new ProsedurMasukInapType("RJL", "Dari RJ", ProsedurMasukInapDkType.Default);
+        model.ChangeProsedurMasuk(newProsedur);
+        model.ChangePrimaryDpjp(new PpaReff("DK_NEW", "Dr. Baru"), Day2);
+
+        CreateSut().SaveChanges(model);
+
+        _headerDal.Verify(x => x.Update(It.Is<ta_reg_inap_dto>(d =>
+            d.fs_kd_reg == "RG00000001"
+            && d.fs_kd_caramasuk_inap == "RJL")), Times.Once);
+
+        _historyDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RG00000001")), Times.Once);
+        _historyDal.Verify(x => x.Insert(It.Is<IEnumerable<RegHistoryDokterDto>>(h =>
+            h.Any(d => d.fs_kd_dokter == "DK_NEW" && d.fb_primer && d.fd_tgl_mulai == "2026-07-02")
+        )), Times.Once);
+    }
 }

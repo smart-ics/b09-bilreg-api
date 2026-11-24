@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
@@ -20,6 +21,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Bilreg.Infrastructure.LabContext.Integration;
 
@@ -35,6 +37,8 @@ public class LabBillingIntegration : ILabBillingIntegration
     private readonly ILabExternalRepo? _labExternalRepo;
     private readonly IAddBillAppService? _addBillAppService;
     private readonly ITataRekeningRepo? _tataRekeningRepo;
+    private readonly ILayananRepo? _layananRepo;
+    private readonly IOptions<LabOptions>? _labOptions;
 
     public LabBillingIntegration()
     {
@@ -49,7 +53,9 @@ public class LabBillingIntegration : ILabBillingIntegration
         IKomponenRepo komponenRepo,
         ILabExternalRepo labExternalRepo,
         IAddBillAppService addBillAppService,
-        ITataRekeningRepo tataRekeningRepo)
+        ITataRekeningRepo tataRekeningRepo,
+        ILayananRepo? layananRepo = null,
+        IOptions<LabOptions>? labOptions = null)
     {
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;
@@ -59,6 +65,8 @@ public class LabBillingIntegration : ILabBillingIntegration
         _labExternalRepo = labExternalRepo;
         _addBillAppService = addBillAppService;
         _tataRekeningRepo = tataRekeningRepo;
+        _layananRepo = layananRepo;
+        _labOptions = labOptions;
     }
 
     public string CreateTindakan(LabBillingChargeRequest request)
@@ -168,6 +176,22 @@ public class LabBillingIntegration : ILabBillingIntegration
         return new BillingReleaseValidationResult(BillingReleaseValidationCode.Clear, "");
     }
 
+    private LayananReff ResolveLabLayanan()
+    {
+        var labLayananId = _labOptions?.Value?.LayananLabId;
+        if (string.IsNullOrWhiteSpace(labLayananId))
+            labLayananId = "4LB01";
+
+        if (_layananRepo is not null)
+        {
+            var opt = _layananRepo.LoadEntity(LayananType.Key(labLayananId));
+            if (opt.HasValue)
+                return opt.Value.ToReff();
+        }
+
+        return new LayananReff(labLayananId, "Laboratorium");
+    }
+
     private void ChargeExternalPatient(LabOrderModel order, string userId, DateTime occurredAt)
     {
         var externalKey = LabExternalModel.Key(order.Patient.RegId);
@@ -181,6 +205,7 @@ public class LabBillingIntegration : ILabBillingIntegration
         var kelasKey = KelasType.Key("III");
         var jaminanKey = JaminanType.Key("000");
         var jaminan = LoadJaminan(jaminanKey);
+        var labLayanan = ResolveLabLayanan();
 
         var externalReg = new RegModel(
             order.Patient.RegId,
@@ -197,7 +222,7 @@ public class LabBillingIntegration : ILabBillingIntegration
             CaraMasukDkType.Default,
             RujukanType.Default.ToReff(),
             PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(),
+            labLayanan,
             KarcisType.Default.ToReff(),
             new RegEligibilityType("-", "-", "-"),
             []);
@@ -208,19 +233,23 @@ public class LabBillingIntegration : ILabBillingIntegration
             var tarif = LoadTarif(tarifKey);
             var nilaiTarif = ResolveNilaiTarif(tarifKey, tipeTarifKey, kelasKey);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
-            _ = _addBillAppService!.FromLabOrderItem(order, item, externalReg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
+            _ = _addBillAppService!.FromLabOrderItem(order, item, externalReg, jaminan, tarif, nilaiTarif, listKomp, labLayanan, occurredAt);
         }
     }
 
     private void ChargeAdmisiPatient(LabOrderModel order, DateTime occurredAt)
     {
-        var regKey = RegModel.Key(order.Patient.RegId);
+        var effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId)
+            ? order.ExecutionRegId
+            : order.Patient.RegId;
+        var regKey = RegModel.Key(effectiveRegId);
         var reg = LoadReg(regKey);
 
         var jaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
             ? reg.TipeJaminan.TipeJaminanId[..3]
             : reg.TipeJaminan.TipeJaminanId;
         var jaminan = LoadJaminan(JaminanType.Key(jaminanId));
+        var labLayanan = ResolveLabLayanan();
 
         foreach (var item in order.Items)
         {
@@ -229,7 +258,7 @@ public class LabBillingIntegration : ILabBillingIntegration
             var tipeTarifKey = ResolveTipe(reg.JenisReg, jaminan);
             var nilaiTarif = ResolveNilaiTarif(tarifKey, tipeTarifKey, reg.Kelas);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
-            _ = _addBillAppService!.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
+            _ = _addBillAppService!.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, labLayanan, occurredAt);
         }
     }
 

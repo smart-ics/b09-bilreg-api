@@ -16,7 +16,11 @@ public record TriageHistoryItem(
     string AssessorUserId,
     bool IsManualOverrideBlack,
     string OverrideReason,
-    string Notes);
+    string Notes,
+    bool IsVoided,
+    string VoidUserId,
+    DateTime VoidDateTime,
+    string VoidReason);
 
 public class IgdVisitGetTriageHistoryHandler : IRequestHandler<IgdVisitGetTriageHistoryQuery, IEnumerable<TriageHistoryItem>>
 {
@@ -39,13 +43,19 @@ public class IgdVisitGetTriageHistoryHandler : IRequestHandler<IgdVisitGetTriage
                 x.Level.ToCode(),
                 x.Color.ToCode(),
                 x.AssessmentDateTime,
-                x.Level.ToReAssessmentInterval() is { } interval
-                    ? x.AssessmentDateTime.Add(interval)
-                    : new DateTime(3000, 1, 1),
+                x.IsManualOverrideBlack
+                    ? new DateTime(3000, 1, 1)
+                    : x.Level.ToReAssessmentInterval() is { } interval
+                        ? x.AssessmentDateTime.Add(interval)
+                        : new DateTime(3000, 1, 1),
                 x.AssessorUserId,
                 x.IsManualOverrideBlack,
                 x.OverrideReason,
-                x.Notes));
+                x.Notes,
+                x.IsVoided,
+                x.VoidUserId,
+                x.VoidDateTime,
+                x.VoidReason));
         return Task.FromResult(items);
     }
 }

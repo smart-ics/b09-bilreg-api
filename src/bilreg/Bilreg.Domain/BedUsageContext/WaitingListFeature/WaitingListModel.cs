@@ -30,7 +30,8 @@ public record WaitingListModel : IWaitingListKey
         string placedBedId,
         string placedPakaiBedId,
         int priority,
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail,
+        string rejectReason = "")
     {
         WaitingListId = waitingListId;
         WaitingListStatus = waitingListStatus;
@@ -51,6 +52,7 @@ public record WaitingListModel : IWaitingListKey
         PlacedPakaiBedId = placedPakaiBedId;
         Priority = priority;
         AuditTrail = auditTrail;
+        RejectReason = rejectReason ?? string.Empty;
     }
 
     #region CREATION
@@ -97,7 +99,8 @@ public record WaitingListModel : IWaitingListKey
             placedBedId: string.Empty,
             placedPakaiBedId: string.Empty,
             priority,
-            AuditTrailType.Create(auditUserId, createdAt));
+            AuditTrailType.Create(auditUserId, createdAt),
+            rejectReason: string.Empty);
     }
 
     public static WaitingListModel Create(
@@ -143,7 +146,8 @@ public record WaitingListModel : IWaitingListKey
         string.Empty,
         string.Empty,
         0,
-        AuditTrailType.Default);
+        AuditTrailType.Default,
+        string.Empty);
 
     public static IWaitingListKey Key(string id) => Default with { WaitingListId = id };
 
@@ -165,6 +169,7 @@ public record WaitingListModel : IWaitingListKey
     public BedReff PlannedBed { get; init; }
     public string CancellationReason { get; init; }
     public string RerouteReason { get; init; }
+    public string RejectReason { get; init; }
     public string PreviousWaitListId { get; init; }
     public string PlacedBedId { get; init; }
     public string PlacedPakaiBedId { get; init; }
@@ -275,14 +280,34 @@ public record WaitingListModel : IWaitingListKey
         };
     }
 
-    public WaitingListModel Reroute(string reason, string actorId, DateTime occurredAt = default)
+    public WaitingListModel Reject(string reason, string actorId, DateTime occurredAt = default)
     {
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(actorId, nameof(actorId));
 
         if (WaitingListStatus is not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved))
             throw new InvalidOperationException(
-                $"Waiting List {WaitingListId} harus Waiting atau Reserved untuk dialihkan (status saat ini: {WaitingListStatus}).");
+                $"Waiting List {WaitingListId} harus Waiting atau Reserved untuk ditolak (status saat ini: {WaitingListStatus}).");
+
+        var audit = new AuditTrailType(AuditTrail.Created, AuditTrail.Modified, AuditTrail.Voided);
+        audit.Modif(actorId, occurredAt == default ? DateTime.Now : occurredAt);
+
+        return this with
+        {
+            WaitingListStatus = WaitingListStatusEnum.Rejected,
+            RejectReason = reason,
+            AuditTrail = audit
+        };
+    }
+
+    public WaitingListModel Reroute(string reason, string actorId, DateTime occurredAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+        Guard.Against.NullOrWhiteSpace(actorId, nameof(actorId));
+
+        if (WaitingListStatus is not (WaitingListStatusEnum.Waiting or WaitingListStatusEnum.Reserved or WaitingListStatusEnum.Rejected))
+            throw new InvalidOperationException(
+                $"Waiting List {WaitingListId} harus Waiting, Reserved, atau Rejected untuk dialihkan (status saat ini: {WaitingListStatus}).");
 
         var audit = new AuditTrailType(AuditTrail.Created, AuditTrail.Modified, AuditTrail.Voided);
         audit.Modif(actorId, occurredAt == default ? DateTime.Now : occurredAt);

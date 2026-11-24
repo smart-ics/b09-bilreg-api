@@ -9,10 +9,25 @@ public interface ILabResultScaffoldService
 
     IReadOnlyList<LabResultItemCapture> BuildCaptures(
         IReadOnlyList<LabResultScaffoldLine> scaffold,
-        IEnumerable<LabResultRecordValueDto> values);
+        IEnumerable<LabResultRecordValueDto> values,
+        IEnumerable<LabResultRecordItemInputDto>? explicitItems = null);
 
     IReadOnlyList<LabResultItemModel> BuildStructureOnlyItems(
         IReadOnlyList<LabResultScaffoldLine> scaffold);
 }
 
 public record LabResultRecordValueDto(string ComponentId, string Value);
+
+public record LabResultRecordItemInputDto(
+    string? TestId = null,
+    string? TestName = null,
+    string? ComponentCode = null,
+    string? ComponentName = null,
+    int? ResultType = null,
+    decimal? NumericValue = null,
+    string? TextValue = null,
+    string? OptionValue = null,
+    string? NarrativeValue = null,
+    string? Unit = null,
+    string? ReferenceRangeText = null,
+    string? Value = null);

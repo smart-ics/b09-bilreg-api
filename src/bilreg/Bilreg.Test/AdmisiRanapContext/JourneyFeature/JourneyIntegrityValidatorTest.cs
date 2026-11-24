@@ -2,7 +2,7 @@ using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using FluentAssertions;
 using Xunit;
 

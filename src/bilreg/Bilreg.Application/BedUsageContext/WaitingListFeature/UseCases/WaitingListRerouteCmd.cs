@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using MediatR;
@@ -25,6 +27,7 @@ public record WaitingListRerouteResponse(string PreviousWaitingListId, string Ne
 public class WaitingListRerouteHandler : IRequestHandler<WaitingListRerouteCmd, WaitingListRerouteResponse>
 {
     private readonly IWaitingListRepo _waitingListRepo;
+    private readonly IAdmissionRepo _admissionRepo;
     private readonly IBangsalRepo _bangsalRepo;
     private readonly IKelasRepo _kelasRepo;
     private readonly IBedRepo _bedRepo;
@@ -32,12 +35,14 @@ public class WaitingListRerouteHandler : IRequestHandler<WaitingListRerouteCmd, 
 
     public WaitingListRerouteHandler(
         IWaitingListRepo waitingListRepo,
+        IAdmissionRepo admissionRepo,
         IBangsalRepo bangsalRepo,
         IKelasRepo kelasRepo,
         IBedRepo bedRepo,
         ITglJamProvider tglJamProvider)
     {
         _waitingListRepo = waitingListRepo;
+        _admissionRepo = admissionRepo;
         _bangsalRepo = bangsalRepo;
         _kelasRepo = kelasRepo;
         _bedRepo = bedRepo;
@@ -60,11 +65,14 @@ public class WaitingListRerouteHandler : IRequestHandler<WaitingListRerouteCmd, 
             .GetValueOrThrow($"Bangsal '{request.TargetBangsalId}' tidak ditemukan.")
             .ToReff();
 
-        var targetKelas = !string.IsNullOrWhiteSpace(request.TargetKelasId)
-            ? _kelasRepo.LoadEntity(KelasType.Key(request.TargetKelasId))
-                .GetValueOrThrow($"Kelas '{request.TargetKelasId}' tidak ditemukan.")
-                .ToReff()
-            : current.KelasRawat;
+        KelasType? targetKelasEntity = null;
+        if (!string.IsNullOrWhiteSpace(request.TargetKelasId))
+        {
+            targetKelasEntity = _kelasRepo.LoadEntity(KelasType.Key(request.TargetKelasId))
+                .GetValueOrThrow($"Kelas '{request.TargetKelasId}' tidak ditemukan.");
+        }
+
+        var targetKelas = targetKelasEntity?.ToReff() ?? current.KelasRawat;
 
         var occurredAt = _tglJamProvider.Now;
         var reroutedCurrent = current.Reroute(request.Reason, request.UserId, occurredAt);
@@ -94,9 +102,21 @@ public class WaitingListRerouteHandler : IRequestHandler<WaitingListRerouteCmd, 
             newEntry = newEntry.ReservePlannedBed(bed.ToReff(), request.UserId, occurredAt);
         }
 
+        var admission = _admissionRepo.LoadEntity(AdmissionModel.Key(current.RegId))
+            .GetValueOrThrow($"Admission '{current.RegId}' tidak ditemukan.");
+
+        var targetKelasDk = targetKelasEntity?.KelasDk is { KelasDkId: not "-" and not "" }
+            ? targetKelasEntity.KelasDk
+            : (targetKelasEntity != null
+                ? new KelasDkType(targetKelasEntity.KelasId, targetKelasEntity.KelasName)
+                : admission.KelasDk);
+
+        var updatedAdmission = admission.Update(targetKelasDk, targetBangsal, request.UserId, occurredAt);
+
         using var trans = TransHelper.NewScope();
         _waitingListRepo.Save(reroutedCurrent);
         _waitingListRepo.Save(newEntry);
+        _admissionRepo.SaveChanges(updatedAdmission);
         trans.Complete();
 
         return Task.FromResult(new WaitingListRerouteResponse(reroutedCurrent.WaitingListId, newEntry.WaitingListId));

@@ -45,4 +45,11 @@ public class LabMasterController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet("antibiotics")]
+    public async Task<IActionResult> ListAntibiotics([FromQuery] string? search = null)
+    {
+        var response = await _mediator.Send(new LabAntibioticListQuery(search));
+        return Ok(new JSendOk(response));
+    }
 }

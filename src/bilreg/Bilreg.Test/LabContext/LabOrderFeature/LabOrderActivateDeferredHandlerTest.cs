@@ -54,8 +54,33 @@ public class LabOrderActivateDeferredHandlerTest
         persisted.DeferredInfo.IsEmpty.Should().BeTrue();
         _regIntegration.Verify(
             i => i.CreateExecutionRegistration(It.Is<LabRegExecutionRequest>(r =>
-                r.OrderId == order.OrderId && r.UserId == "U3")),
+                r.OrderId == order.OrderId && r.UserId == "U3" && r.ExecutionRegId == null)),
             Times.Once);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithExecutionRegId_ForwardsExecutionRegIdToRegIntegration()
+    {
+        var order = DeferredOrder();
+        _repo.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _regIntegration
+            .Setup(i => i.CreateExecutionRegistration(It.IsAny<LabRegExecutionRequest>()))
+            .Returns("REG-TODAY-001");
+        LabOrderModel? persisted = null;
+        _repo.Setup(r => r.SaveChanges(It.IsAny<LabOrderModel>()))
+            .Callback<LabOrderModel>(m => persisted = m);
+
+        var result = await _sut.Handle(
+            new LabOrderActivateDeferredCmd(order.OrderId, "U3", "REG-TODAY-001"),
+            CancellationToken.None);
+
+        result.ExecutionRegId.Should().Be("REG-TODAY-001");
+        persisted.Should().NotBeNull();
+        persisted!.ExecutionRegId.Should().Be("REG-TODAY-001");
+        _regIntegration.Verify(
+            i => i.CreateExecutionRegistration(It.Is<LabRegExecutionRequest>(r =>
+                r.OrderId == order.OrderId && r.UserId == "U3" && r.ExecutionRegId == "REG-TODAY-001")),
+            Times.Once);
     }
 }

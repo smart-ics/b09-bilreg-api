@@ -1,3 +1,4 @@
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
@@ -21,6 +22,7 @@ public class WardRoomingInCommandHandlerTest
     private readonly Mock<IBedRepo> _bedRepoMock = new();
     private readonly Mock<IWardCockpitDal> _wardCockpitDalMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
+    private readonly Mock<IEmr20AntrianRanapGateway> _emr20GatewayMock = new();
     private readonly WardRoomingInCommandHandler _sut;
     private readonly DateTime _fixedNowUtc = new(2026, 10, 24, 10, 0, 0, DateTimeKind.Utc);
 
@@ -32,7 +34,8 @@ public class WardRoomingInCommandHandlerTest
             _pakaiBedRepoMock.Object,
             _bedRepoMock.Object,
             _wardCockpitDalMock.Object,
-            _tglJamProviderMock.Object);
+            _tglJamProviderMock.Object,
+            _emr20GatewayMock.Object);
     }
 
     [Fact]
@@ -94,6 +97,8 @@ public class WardRoomingInCommandHandlerTest
             _fixedNowUtc,
             null,
             It.IsAny<CancellationToken>()), Times.Once);
+
+        _emr20GatewayMock.Verify(x => x.AddRanapGabungAsync("REG-BABY", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -202,5 +207,7 @@ public class WardRoomingInCommandHandlerTest
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*tidak dalam status aktif*");
+
+        _emr20GatewayMock.Verify(x => x.AddRanapGabungAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

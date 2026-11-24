@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.Shared.Helpers;
@@ -34,17 +35,20 @@ public class WardRoomingInCommandHandler : IRequestHandler<WardRoomingInCommand,
     private readonly IBedRepo _bedRepo;
     private readonly IWardCockpitDal _wardCockpitDal;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
 
     public WardRoomingInCommandHandler(
         IPakaiBedRepo pakaiBedRepo,
         IBedRepo bedRepo,
         IWardCockpitDal wardCockpitDal,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IEmr20AntrianRanapGateway? emr20Gateway = null)
     {
         _pakaiBedRepo = pakaiBedRepo;
         _bedRepo = bedRepo;
         _wardCockpitDal = wardCockpitDal;
         _tglJamProvider = tglJamProvider;
+        _emr20Gateway = emr20Gateway;
     }
 
     public async Task<WardRoomingInResult> Handle(WardRoomingInCommand request, CancellationToken cancellationToken)
@@ -80,6 +84,11 @@ public class WardRoomingInCommandHandler : IRequestHandler<WardRoomingInCommand,
             occurredAt,
             request.Catatan,
             cancellationToken);
+
+        if (_emr20Gateway != null)
+        {
+            await _emr20Gateway.AddRanapGabungAsync(request.BabyRegId, cancellationToken);
+        }
 
         var result = new WardRoomingInResult(
             request.MotherPakaiBedId,

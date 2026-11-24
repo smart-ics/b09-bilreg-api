@@ -1,11 +1,14 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.ApotekContext.IntegrationFeature;
 using Bilreg.Application.ApotekContext.InvoiceFeature;
+using Bilreg.Application.ApotekContext.PenjualanFeature;
+using Bilreg.Application.ApotekContext.PenjualanFeature.UseCases;
 using Bilreg.Application.ApotekContext.QueueFeature;
 using Bilreg.Application.ApotekContext.SalesOrderFeature;
 using Bilreg.Application.ApotekContext.Shared;
 using Bilreg.Domain.ApotekContext.DispensingFeature;
 using Bilreg.Domain.ApotekContext.IntegrationFeature;
+using Bilreg.Domain.ApotekContext.PenjualanFeature;
 using Bilreg.Domain.ApotekContext.SalesOrderFeature;
 using Bilreg.Domain.ApotekContext.Shared;
 using MediatR;
@@ -15,7 +18,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ApotekContext.DispensingFeature.UseCases;
 
-public record DispensingEstablishCmd(string UserId, string SalesOrderId, List<DispensingEstablishItem> Items)
+public record DispensingEstablishCmd(string UserId, string SalesOrderId, List<DispensingEstablishItem> Items, string? PenjualanId = null)
     : IRequest<DispensingResponse>;
 
 public record DispensingEstablishItem(int SalesOrderItemNo, decimal Qty);
@@ -24,6 +27,7 @@ public record DispensingReleaseCmd(string UserId, string DispensingId, int Expec
 public record DispensingStartCmd(string UserId, string DispensingId, int ExpectedVersion, string AntrianId, int NoUrut, string PasienTrackerId)
     : IRequest<DispensingResponse>;
 public record DispensingPrepareCmd(string UserId, string DispensingId, int ExpectedVersion) : IRequest<DispensingResponse>;
+public record DispensingPreparedNotification(string DispensingId, string SalesOrderId, DateTime PreparedAt) : INotification;
 public record DispensingPickupCallCmd(string UserId, string AntrianId, int NoUrut, string PasienTrackerId)
     : IRequest<DispensingPickupResponse>;
 public record DispensingFinalReviewCmd(string UserId, string DispensingId, int ExpectedVersion, FinalReviewOutcomeEnum Outcome, string Reason)
@@ -33,7 +37,13 @@ public record DispensingEducationCmd(string UserId, string DispensingId, int Exp
 public record DispensingOverrideCmd(string UserId, string DispensingId, int ExpectedVersion, string Reason)
     : IRequest<DispensingResponse>;
 public record DispensingHandoverCmd(
-    string UserId, string DispensingId, int ExpectedVersion, string RecipientPhone, string RecipientRelationship)
+    string UserId,
+    string DispensingId,
+    int ExpectedVersion,
+    string RecipientPhone,
+    string RecipientRelationship,
+    string? PenjualanId = null,
+    string? TrsMutasiId = null)
     : IRequest<DispensingResponse>;
 public record DispensingNoShowCmd(string UserId, string DispensingId, int ExpectedVersion, string AntrianId, int NoUrut, string PasienTrackerId, string Reason)
     : IRequest<DispensingResponse>;
@@ -179,23 +189,35 @@ public class DispensingPrepareHandler : IRequestHandler<DispensingPrepareCmd, Di
 {
     private readonly IDispensingRepo _repo;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IMediator? _mediator;
 
-    public DispensingPrepareHandler(IDispensingRepo repo, IAptAuthorizationPolicy auth)
+    public DispensingPrepareHandler(
+        IDispensingRepo repo,
+        IAptAuthorizationPolicy auth,
+        IMediator? mediator = null)
     {
         _repo = repo;
         _auth = auth;
+        _mediator = mediator;
     }
 
-    public Task<DispensingResponse> Handle(DispensingPrepareCmd request, CancellationToken cancellationToken)
+    public async Task<DispensingResponse> Handle(DispensingPrepareCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(DispensingPrepareCmd), request.UserId);
         var d = _repo.LoadEntity(DispensingModel.Key(request.DispensingId)).GetValueOrThrow("Dispensing not found");
         d.AssertExpectedVersion(request.ExpectedVersion);
-        d.MarkPrepared(DateTime.Now);
+        var now = DateTime.Now;
+        d.MarkPrepared(now);
         using var trans = TransHelper.NewScope();
         _repo.SaveChanges(d);
         trans.Complete();
-        return Task.FromResult(new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version));
+
+        if (_mediator != null)
+        {
+            await _mediator.Publish(new DispensingPreparedNotification(d.DispensingId, d.SalesOrderId, now), cancellationToken);
+        }
+
+        return new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version);
     }
 }
 
@@ -363,6 +385,8 @@ public class DispensingHandoverHandler : IRequestHandler<DispensingHandoverCmd, 
     private readonly IAptIntegrationTaskRepo _taskRepo;
     private readonly ICollectionWindowDaysProvider _window;
     private readonly IAptAuthorizationPolicy _auth;
+    private readonly IMediator? _mediator;
+    private readonly IPenjualanRepo? _penjualanRepo;
 
     public DispensingHandoverHandler(
         IDispensingRepo repo,
@@ -372,6 +396,20 @@ public class DispensingHandoverHandler : IRequestHandler<DispensingHandoverCmd, 
         IAptIntegrationTaskRepo taskRepo,
         ICollectionWindowDaysProvider window,
         IAptAuthorizationPolicy auth)
+        : this(repo, salesOrderRepo, invoiceRepo, price, taskRepo, window, auth, null, null)
+    {
+    }
+
+    public DispensingHandoverHandler(
+        IDispensingRepo repo,
+        ISalesOrderRepo salesOrderRepo,
+        IInvoiceRepo invoiceRepo,
+        IMedicationPricePort price,
+        IAptIntegrationTaskRepo taskRepo,
+        ICollectionWindowDaysProvider window,
+        IAptAuthorizationPolicy auth,
+        IMediator? mediator,
+        IPenjualanRepo? penjualanRepo = null)
     {
         _repo = repo;
         _salesOrderRepo = salesOrderRepo;
@@ -380,9 +418,11 @@ public class DispensingHandoverHandler : IRequestHandler<DispensingHandoverCmd, 
         _taskRepo = taskRepo;
         _window = window;
         _auth = auth;
+        _mediator = mediator;
+        _penjualanRepo = penjualanRepo;
     }
 
-    public Task<DispensingResponse> Handle(DispensingHandoverCmd request, CancellationToken cancellationToken)
+    public async Task<DispensingResponse> Handle(DispensingHandoverCmd request, CancellationToken cancellationToken)
     {
         _auth.AssertCommandAllowed(nameof(DispensingHandoverCmd), request.UserId);
         var d = _repo.LoadEntity(DispensingModel.Key(request.DispensingId)).GetValueOrThrow("Dispensing not found");
@@ -390,7 +430,8 @@ public class DispensingHandoverHandler : IRequestHandler<DispensingHandoverCmd, 
         var so = _salesOrderRepo.LoadEntity(SalesOrderModel.Key(d.SalesOrderId)).GetValueOrThrow("Sales Order not found");
         var expired = d.IsPickupExpired(DateTime.Now, _window.GetDays());
         var hasOverride = !ApotekDate.IsEmpty(d.OverrideAt);
-        d.Handover(DateTime.Now, request.RecipientPhone, request.RecipientRelationship, expired, hasOverride);
+        var now = DateTime.Now;
+        d.Handover(now, request.RecipientPhone, request.RecipientRelationship, expired, hasOverride);
         foreach (var item in d.Items)
             so.ApplyDispenseQty(item.SalesOrderItemNo, item.Qty);
 
@@ -432,7 +473,52 @@ public class DispensingHandoverHandler : IRequestHandler<DispensingHandoverCmd, 
                 System.Text.Json.JsonSerializer.Serialize(new { invoice.InvoiceId, invoice.GrandTotal })));
         }
         trans.Complete();
-        return Task.FromResult(new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version));
+
+        // Downstream Hook: Update Penjualan handover info & stock mutation reference in tb_trs_dobill_umum
+        var trsMutasiId = !string.IsNullOrWhiteSpace(request.TrsMutasiId) ? request.TrsMutasiId : $"DI-{d.DispensingId}";
+        var targetPenjualanIds = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(request.PenjualanId))
+        {
+            targetPenjualanIds.Add(request.PenjualanId);
+        }
+        else if (_penjualanRepo != null)
+        {
+            IReadOnlyList<PenjualanModel> candidates = [];
+            if (!string.IsNullOrWhiteSpace(so.SourceId))
+                candidates = _penjualanRepo.ListByResep(so.SourceId);
+            if (candidates.Count == 0 && !string.IsNullOrWhiteSpace(so.TelaahResepId))
+                candidates = _penjualanRepo.ListByResep(so.TelaahResepId);
+            if (candidates.Count == 0 && !string.IsNullOrWhiteSpace(so.RegId))
+                candidates = _penjualanRepo.ListByReg(so.RegId);
+
+            targetPenjualanIds.AddRange(candidates.Where(x => !x.IsVoid).Select(x => x.PenjualanId));
+        }
+
+        foreach (var penId in targetPenjualanIds.Distinct())
+        {
+            if (_mediator != null)
+            {
+                await _mediator.Send(new PenjualanUpdateHandoverInfoCmd(
+                    request.UserId,
+                    penId,
+                    now,
+                    now.ToString("HH:mm:ss"),
+                    request.UserId,
+                    trsMutasiId), cancellationToken);
+            }
+            else if (_penjualanRepo != null)
+            {
+                var pOpt = _penjualanRepo.LoadEntity(new PenjualanKey(penId));
+                if (pOpt.HasValue)
+                {
+                    pOpt.Value.UpdateHandoverInfo(now, now.ToString("HH:mm:ss"), request.UserId, trsMutasiId);
+                    _penjualanRepo.SaveChanges(pOpt.Value);
+                }
+            }
+        }
+
+        return new DispensingResponse(d.DispensingId, d.DispensingStatus, d.Version);
     }
 }
 

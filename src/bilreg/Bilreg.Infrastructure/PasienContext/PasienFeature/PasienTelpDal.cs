@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -65,7 +65,7 @@ public class PasienTelpDal : IPasienTelpDal
     {
         const string sql = """
             DELETE FROM 
-                tc_mr_id
+                tc_mr_telp
             WHERE
                fs_mr = @fs_mr
             """;

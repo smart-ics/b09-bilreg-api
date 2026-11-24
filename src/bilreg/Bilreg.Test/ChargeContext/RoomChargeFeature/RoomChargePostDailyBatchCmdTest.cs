@@ -143,9 +143,45 @@ public class RoomChargePostDailyBatchCmdTest
     }
 
     [Fact]
+    public async Task GivenBabyInIndependentBed_WhenBatchExecuted_ThenChargesFullDailyTariff()
+    {
+        // Arrange: Bayi perinatal menempati bed sendiri (IsRoomingIn = false, BaseTariff = 300000m)
+        var occupants = new List<BedOccupantItem>
+        {
+            new("PB-BABY-INDEP", "REG-BABY-INDEP", "PAS-BABY-01", "W01", "K01", "BED-BAYI-01", 
+                new DateTime(2026, 10, 18, 10, 0, 0), "VIP", "VIP",
+                IsRoomingIn: false, MotherPakaiBedId: "", BaseTariff: 300000m, PayerTariff: 300000m)
+        };
+        _bedOccupancyQueryMock.Setup(x => x.GetActiveOccupants("W01", It.IsAny<DateTime>())).Returns(occupants);
+        _roomChargeRepoMock.Setup(x => x.GetByPakaiBedAndDate("PB-BABY-INDEP", "2026-10-19")).Returns(MayBe<RoomChargeModel>.None);
+
+        var cmd = new RoomChargePostDailyBatchCmd("W01", new DateTime(2026, 10, 19, 12, 0, 0), "USER01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.TotalProcessed.Should().Be(1);
+        result.TotalSkipped.Should().Be(0);
+        result.TotalFailed.Should().Be(0);
+
+        _billingLockCheckerMock.Verify(x => x.AssertBillingNotFinal("REG-BABY-INDEP"), Times.Once);
+        _roomChargeRepoMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
+            m.PakaiBedId == "PB-BABY-INDEP" &&
+            m.IsRoomingIn == false &&
+            m.MotherPakaiBedId == "" &&
+            m.RoomChargeStatus == RoomChargeStatusEnum.Posted &&
+            m.ChargedUnits == 1.0m &&
+            m.TotalAmount == 300000m)), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b =>
+            b.Reg.RegId == "REG-BABY-INDEP" &&
+            b.Nilai.SubTotal == 300000m)), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenRoomingInOccupant_WhenBatchExecuted_ThenCreatesZeroChargeUnitsAndTotal()
     {
-        // Arrange
+        // Arrange: Bayi rawat gabung bersama ibu (IsRoomingIn = true, ChargedUnits = 0, TotalAmount = 0)
         var occupants = new List<BedOccupantItem>
         {
             new("PB-BABY", "REG-BABY", "PAS-BABY", "W01", "K01", "BED01-B", new DateTime(2026, 10, 18, 10, 0, 0), "VIP", "VIP",
@@ -164,8 +200,12 @@ public class RoomChargePostDailyBatchCmdTest
         _roomChargeRepoMock.Verify(x => x.SaveChanges(It.Is<RoomChargeModel>(m =>
             m.PakaiBedId == "PB-BABY" &&
             m.IsRoomingIn == true &&
+            m.MotherPakaiBedId == "PB01" &&
             m.ChargedUnits == 0.0m &&
             m.TotalAmount == 0.0m)), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b =>
+            b.Reg.RegId == "REG-BABY" &&
+            b.Nilai.SubTotal == 0.0m)), Times.Once);
     }
 
     [Fact]

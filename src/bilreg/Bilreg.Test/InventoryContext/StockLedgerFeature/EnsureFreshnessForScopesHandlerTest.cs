@@ -257,7 +257,7 @@ public class EnsureFreshnessForScopesHandlerTest
                 HydrateScopeOutcomeEnum.Success,
                 AlignmentStatusEnum.Aligned,
                 string.Empty,
-                0));
+                AppliedJournalCount: 1));
         _mediator
             .Setup(x => x.Send(It.IsAny<CatchUpScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CatchUpScopeFromLegacyResult(
@@ -282,5 +282,97 @@ public class EnsureFreshnessForScopesHandlerTest
         _mediator.Verify(
             x => x.Send(It.IsAny<CatchUpScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Handle_NotAligned_FreshScopeZeroJournals_ShortCircuitsCatchUp()
+    {
+        var scope = StockLegacyScopeModel.CreateNotAligned(BrgId, DoId);
+        _scopeRepo.Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
+            .Returns(MayBe.From(scope));
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<HydrateScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HydrateScopeFromLegacyResult(
+                HydrateScopeOutcomeEnum.Success,
+                AlignmentStatusEnum.Aligned,
+                string.Empty,
+                AppliedJournalCount: 0));
+
+        var result = await _sut.Handle(
+            new EnsureFreshnessForScopesCommand([new ScopeKeyDto(BrgId, DoId)], UserId),
+            default);
+
+        result.Outcome.Should().Be(EnsureFreshnessOutcomeEnum.Success);
+        _mediator.Verify(
+            x => x.Send(It.IsAny<HydrateScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mediator.Verify(
+            x => x.Send(It.IsAny<CatchUpScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_MultiScope_WithFreshScope_OnlyCatchesUpNonFreshScope()
+    {
+        _scopeRepo
+            .Setup(x => x.LoadEntity(It.Is<IStockLegacyScopeKey>(k => k.BrgId == BrgId)))
+            .Returns(MayBe.From(StockLegacyScopeModel.CreateNotAligned(BrgId, DoId)));
+
+        _scopeRepo
+            .Setup(x => x.LoadEntity(It.Is<IStockLegacyScopeKey>(k => k.BrgId == BrgId2)))
+            .Returns(MayBe.From(StockLegacyScopeModel.CreateNotAligned(BrgId2, DoId2)));
+
+        _mediator
+            .Setup(x => x.Send(
+                It.Is<HydrateScopeFromLegacyCommand>(c => c.BrgId == BrgId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HydrateScopeFromLegacyResult(
+                HydrateScopeOutcomeEnum.Success,
+                AlignmentStatusEnum.Aligned,
+                string.Empty,
+                AppliedJournalCount: 0));
+
+        _mediator
+            .Setup(x => x.Send(
+                It.Is<HydrateScopeFromLegacyCommand>(c => c.BrgId == BrgId2),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HydrateScopeFromLegacyResult(
+                HydrateScopeOutcomeEnum.Success,
+                AlignmentStatusEnum.Aligned,
+                string.Empty,
+                AppliedJournalCount: 2));
+
+        _mediator
+            .Setup(x => x.Send(It.IsAny<CatchUpScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CatchUpScopeFromLegacyResult(
+                CatchUpScopeOutcomeEnum.Success,
+                AlignmentStatusEnum.Aligned,
+                string.Empty,
+                AppliedJournalCount: 1));
+
+        var result = await _sut.Handle(
+            new EnsureFreshnessForScopesCommand(
+            [
+                new ScopeKeyDto(BrgId, DoId),
+                new ScopeKeyDto(BrgId2, DoId2)
+            ],
+            UserId),
+            default);
+
+        result.Outcome.Should().Be(EnsureFreshnessOutcomeEnum.Success);
+        _mediator.Verify(
+            x => x.Send(It.IsAny<HydrateScopeFromLegacyCommand>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _mediator.Verify(
+            x => x.Send(
+                It.Is<CatchUpScopeFromLegacyCommand>(c => c.BrgId == BrgId),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+        _mediator.Verify(
+            x => x.Send(
+                It.Is<CatchUpScopeFromLegacyCommand>(c => c.BrgId == BrgId2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

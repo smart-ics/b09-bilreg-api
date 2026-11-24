@@ -53,7 +53,7 @@ public class PasienController : Controller
 
     [HttpPatch]
     [Route("ktp")]
-    public async Task<IActionResult> SetDataKpt(PasienSetKtpCommand cmd)
+    public async Task<IActionResult> SetDataKtp(PasienSetKtpCommand cmd)
     {
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));

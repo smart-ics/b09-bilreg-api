@@ -1,3 +1,4 @@
+using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
 namespace Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
@@ -16,7 +17,7 @@ public record StokLokasiDto(
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
-    DateTime UpdDate)
+    DateTime UpdDate) : IStokLokasiCandidate
 {
     public static StokLokasiDto FromModel(
         LocationStockBalanceModel model,

@@ -2,6 +2,7 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.LabContext.LabOwareFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -26,6 +27,7 @@ public class LabOrderCancelHandlerTest
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
     private readonly Mock<ITglJamProvider> _tglJamProvider = new();
     private readonly Mock<ILabOwareOutboundQueueRepo> _queueRepo = new();
+    private readonly Mock<IBillingLockValidationService> _billingLockValidator = new();
     private readonly LabOrderCancelHandler _sut;
 
     public LabOrderCancelHandlerTest()
@@ -35,7 +37,8 @@ public class LabOrderCancelHandlerTest
             _labOrderRepo.Object,
             _billingIntegration.Object,
             _tglJamProvider.Object,
-            _queueRepo.Object);
+            _queueRepo.Object,
+            _billingLockValidator.Object);
     }
 
     private static LabOrderModel CreateOrderedModel()
@@ -171,6 +174,37 @@ public class LabOrderCancelHandlerTest
     #endregion
 
     #region Charged Order Cancellation
+
+    [Fact]
+    public async Task Handle_GivenChargedOrderWithExecutionRegId_CallsBillingIntegrationCancelChargeWithExecutionRegId()
+    {
+        // Arrange
+        const string executionRegId = "REG-EXEC-2026-999";
+        var order = CreateOrderedModel();
+        order.Defer("Reagen belum siap", FixedNow.AddDays(1), "LAB_USER", FixedNow.AddHours(-2));
+        order.ActivateFromDeferred(executionRegId, "LAB_USER", FixedNow.AddHours(-1));
+        order.Charge("BILLING_OFFICER");
+        order.MarkCharged(TindakanId, "BILLING_OFFICER", FixedNow.AddMinutes(-30));
+
+        _labOrderRepo.Setup(r => r.LoadEntity(It.Is<ILabOrderKey>(k => k.OrderId == OrderId)))
+            .Returns(MayBe.From(order));
+
+        var cmd = new LabOrderCancelCmd(OrderId, UserId, Reason);
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+        order.CancelledReason.Should().Be(Reason);
+        order.CancelledUserId.Should().Be(UserId);
+        order.CancelledDate.Should().Be(FixedNow);
+
+        _billingLockValidator.Verify(v => v.EnsureCanModifyBillingAsync(executionRegId, It.IsAny<CancellationToken>()), Times.Once);
+        _billingIntegration.Verify(b => b.CancelCharge(order.OrderId, executionRegId, UserId, Reason, FixedNow), Times.Once);
+        _billingIntegration.Verify(b => b.CancelCharge(order.OrderId, RegId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+        _labOrderRepo.Verify(r => r.SaveChanges(order), Times.Once);
+    }
 
     [Fact]
     public async Task Handle_GivenChargedOrder_CallsBillingIntegrationCancelChargeAndCancelsOrder()

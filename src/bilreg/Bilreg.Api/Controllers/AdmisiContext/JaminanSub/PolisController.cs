@@ -27,6 +27,13 @@ public class PolisController : Controller
     }
 
     [HttpPut]
+    public async Task<IActionResult> Update(PolisUpdateCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPut]
     [Route("addCoverage")]
     public async Task<IActionResult> AddCoverage(PolisAddCoverageCommand cmd)
     {

@@ -46,6 +46,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IEmrAntrianOutboundQueueRepo _emrAntrianOutboundQueueRepo;
     private readonly IIgdVisitRepo _igdVisitRepo;
+    private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -60,7 +61,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider,
         IEmrAntrianOutboundQueueRepo emrAntrianOutboundQueueRepo,
-        IIgdVisitRepo igdVisitRepo)
+        IIgdVisitRepo igdVisitRepo,
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -77,9 +79,10 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _tglJamProvider = tglJamProvider;
         _emrAntrianOutboundQueueRepo = emrAntrianOutboundQueueRepo;
         _igdVisitRepo = igdVisitRepo;
+        _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
     }
 
-    public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
+    public async Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
         Guard.Against.NullOrWhiteSpace(request.RegId);
@@ -87,7 +90,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 
         var reg = LoadReg(request);
         if (reg is null)
-            return Task.CompletedTask;
+            return;
         if (reg.IsAktif == false)
             throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
         var snapshotJson = AuditLogSnapshotJson.Serialize(reg);
@@ -136,7 +139,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         var audit = CreateAudit(reg, snapshotJson, request, occurredAt);
         _auditRepo.SaveChanges(audit);
 
-        return Task.CompletedTask;
+        await _clinicQueueRefreshPublisher.PublishRefreshHint(reg.Layanan.LayananId, reg.Dokter.PpaId, cancellationToken);
     }
 
     #region PRIVATE-HELPER

@@ -62,7 +62,66 @@ public class LabResultRecordHandlerTest
             r.OrderId == order.OrderId
             && r.ResultStatus == LabResultStatusEnum.Recorded
             && r.Items.Single().ComponentId == "MLC0001"
-            && r.Items.Single().NumericValue == 13.2m)), Times.Once);
+            && r.Items.Single().NumericValue == 13.2m
+            && r.CriticalNote == "")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_FirstRecord_WithCriticalNote_SavesCriticalNoteOnDocument()
+    {
+        var order = ChargedLabOrder();
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId))
+            .Returns(MayBe<LabResultDocumentModel>.None);
+
+        var criticalNote = "Kalium kritis 6.8 mEq/L, konfirmasi ulang ke perawat ruangan";
+        var cmd = new LabResultRecordCmd(
+            order.OrderId,
+            "UR1",
+            (int)LabResultSourceEnum.Manual,
+            [new LabResultRecordValueDto("MLC0001", "6.8")],
+            CriticalNote: criticalNote);
+
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        _orderRepo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o => o.LabOrderStatus == LabOrderStatusEnum.Recorded)), Times.Once);
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
+            r.OrderId == order.OrderId
+            && r.ResultStatus == LabResultStatusEnum.Recorded
+            && r.Items.Single().ComponentId == "MLC0001"
+            && r.Items.Single().NumericValue == 6.8m
+            && r.CriticalNote == criticalNote)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_SubsequentRecord_UpdatesExistingDocumentAndCriticalNote()
+    {
+        var order = ChargedLabOrder();
+        order.MarkRecorded("U1");
+        var existingDoc = LabResultDocumentModel.CreateInitial(order.OrderId, new AuditInfoType("U1", DateTime.Now));
+        existingDoc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U1");
+        existingDoc.SetCriticalNote("Catatan awal");
+        existingDoc.MarkRecorded("U1");
+
+        _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
+        _resultRepo.Setup(x => x.LoadByOrderId(order.OrderId))
+            .Returns(MayBe.From(existingDoc));
+
+        var updatedCriticalNote = "Catatan revisi nilai kritis analitik";
+        var cmd = new LabResultRecordCmd(
+            order.OrderId,
+            "UR2",
+            (int)LabResultSourceEnum.Manual,
+            [new LabResultRecordValueDto("MLC0001", "14.5")],
+            CriticalNote: updatedCriticalNote);
+
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
+            r.OrderId == order.OrderId
+            && r.ResultStatus == LabResultStatusEnum.Recorded
+            && r.Items.Single().NumericValue == 14.5m
+            && r.CriticalNote == updatedCriticalNote)), Times.Once);
     }
 
     [Fact]

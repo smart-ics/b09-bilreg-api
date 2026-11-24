@@ -1,6 +1,7 @@
 using Bilreg.Api.Controllers.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
+using Bilreg.Application.BedUsageContext.WardCockpitFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -44,6 +45,37 @@ public class WaitingListControllerTest
             UserId: "user1");
 
         var response = new WaitingListCreateResponse("WTL001");
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var actionResult = await _sut.Create(cmd);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task Create_GivenDuplicateRegistration_WhenActiveQueueExists_ThenReturnsExistingWaitingListIdIdempotently()
+    {
+        var cmd = new WaitingListCreateCmd(
+            RegId: "REG01",
+            KelasId: "K01",
+            BangsalId: "B01",
+            ArrivalSourceType: ArrivalSourceTypeEnum.Igd,
+            ReferringUnitId: "U01",
+            ReferringUnitName: "Unit 1",
+            ReferringDoctorId: "D01",
+            ReferringDoctorName: "Dokter 1",
+            ClinicalUrgency: ClinicalUrgencyEnum.Emergency,
+            SpecialRequirements: "O2",
+            PlannedBedId: "BED01",
+            PlannedBedName: "Bed 01",
+            Priority: 1,
+            UserId: "user1");
+
+        var response = new WaitingListCreateResponse("WTL-EXISTING");
         _mediatorMock
             .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
@@ -140,6 +172,64 @@ public class WaitingListControllerTest
     }
 
     [Fact]
+    public async Task Reject_GivenValidBody_ThenSendsRejectCmdAndPublishesSignalRAndReturnsDone()
+    {
+        var eventPublisherMock = new Mock<IWardCockpitEventPublisher>();
+        var sut = new WaitingListController(_mediatorMock.Object, eventPublisherMock.Object);
+
+        var body = new WaitingListRejectBody("Bangsal penuh", "user_bangsal");
+
+        WaitingListRejectCmd? capturedCmd = null;
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<WaitingListRejectCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest, CancellationToken>((req, _) => capturedCmd = (WaitingListRejectCmd)req)
+            .Returns(Task.CompletedTask);
+
+        var getResponse = new WaitingListGetResponse(
+            WaitingListId: "WTL001",
+            WaitingListStatus: WaitingListStatusEnum.Rejected,
+            RegId: "REG01",
+            Pasien: new PasienReff("P01", "Pasien A", new DateOnly(1990, 1, 1), "L"),
+            KelasRawat: new KelasReff("K01", "Kelas 1"),
+            Bangsal: new BangsalReff("B01", "Bangsal Melati"),
+            ArrivalSourceType: ArrivalSourceTypeEnum.Igd,
+            ReferringUnit: new LayananReff("U01", "IGD"),
+            ReferringDoctor: new DokterReff("D01", "dr. Budi"),
+            ClinicalUrgency: ClinicalUrgencyEnum.Routine,
+            SpecialRequirements: "",
+            PlannedBed: new BedReff("-", "-", false),
+            CancellationReason: "",
+            RerouteReason: "",
+            PreviousWaitListId: "",
+            PlacedBedId: "",
+            PlacedPakaiBedId: "",
+            Priority: 0,
+            CrtDate: new DateTime(2026, 10, 17, 8, 0, 0),
+            CrtUser: "admin",
+            UpdDate: new DateTime(3000, 1, 1),
+            UpdUser: "",
+            VodDate: new DateTime(3000, 1, 1),
+            VodUser: "");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WaitingListGetQuery>(q => q.WaitingListId == "WTL001"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(getResponse);
+
+        var actionResult = await sut.Reject("WTL001", body);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be("Done");
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.WaitingListId.Should().Be("WTL001");
+        capturedCmd.Reason.Should().Be("Bangsal penuh");
+        capturedCmd.UserId.Should().Be("user_bangsal");
+
+        eventPublisherMock.Verify(x => x.PublishWaitingListUpdatedAsync("B01", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Reroute_GivenValidBody_ThenSendsRerouteCmdAndReturnsResult()
     {
         var body = new WaitingListRerouteBody(
@@ -218,46 +308,94 @@ public class WaitingListControllerTest
     }
 
     [Fact]
-    public async Task GetByReg_GivenRegId_ThenSendsGetByRegQueryAndReturnsList()
+    public async Task List_GivenFilter_ThenSendsWaitingListListQueryAndReturnsResult()
     {
-        var items = new List<WaitingListGetResponse>
+        var items = new List<WaitingListWorklistView>
         {
-            new(
-                WaitingListId: "WTL001",
-                WaitingListStatus: WaitingListStatusEnum.Waiting,
-                RegId: "REG01",
-                Pasien: new PasienReff("P01", "Pasien A", new DateOnly(1990, 1, 1), "L"),
-                KelasRawat: new KelasReff("K01", "Kelas 1"),
-                Bangsal: new BangsalReff("B01", "Bangsal Melati"),
-                ArrivalSourceType: ArrivalSourceTypeEnum.Adm,
-                ReferringUnit: new LayananReff("-", "-"),
-                ReferringDoctor: new DokterReff("-", "-"),
-                ClinicalUrgency: ClinicalUrgencyEnum.Routine,
-                SpecialRequirements: "",
-                PlannedBed: new BedReff("-", "-", false),
-                CancellationReason: "",
-                RerouteReason: "",
-                PreviousWaitListId: "",
-                PlacedBedId: "",
-                PlacedPakaiBedId: "",
-                Priority: 0,
-                CrtDate: new DateTime(2026, 10, 17, 8, 0, 0),
-                CrtUser: "admin",
-                UpdDate: new DateTime(3000, 1, 1),
-                UpdUser: "",
-                VodDate: new DateTime(3000, 1, 1),
-                VodUser: "")
+            new("WTL001", "REG01", 0, 0, "P01", "Pasien A", "L", "1990-01-01", "K01", "Kelas 1", "B01", "Bangsal Melati", 0, "", "", "", "", 2, "O2", "", "", "", "admin", new DateTime(2026, 10, 17, 8, 0, 0))
         };
+        var response = new WaitingListListResponse(items);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WaitingListListQuery>(q => q.BangsalId == "B01" && q.WaitingListStatus == 0), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var actionResult = await _sut.List("B01", 0);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task List_GivenNullFilter_ThenSendsWaitingListListQueryWithNullsAndReturnsResult()
+    {
+        var items = new List<WaitingListWorklistView>();
+        var response = new WaitingListListResponse(items);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WaitingListListQuery>(q => q.BangsalId == null && q.WaitingListStatus == null), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var actionResult = await _sut.List(null, null);
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task GetByReg_GivenRegId_WhenFound_ThenSendsGetByRegQueryAndReturnsSingle()
+    {
+        var item = new WaitingListGetResponse(
+            WaitingListId: "WTL001",
+            WaitingListStatus: WaitingListStatusEnum.Waiting,
+            RegId: "REG01",
+            Pasien: new PasienReff("P01", "Pasien A", new DateOnly(1990, 1, 1), "L"),
+            KelasRawat: new KelasReff("K01", "Kelas 1"),
+            Bangsal: new BangsalReff("B01", "Bangsal Melati"),
+            ArrivalSourceType: ArrivalSourceTypeEnum.Adm,
+            ReferringUnit: new LayananReff("-", "-"),
+            ReferringDoctor: new DokterReff("-", "-"),
+            ClinicalUrgency: ClinicalUrgencyEnum.Routine,
+            SpecialRequirements: "",
+            PlannedBed: new BedReff("-", "-", false),
+            CancellationReason: "",
+            RerouteReason: "",
+            PreviousWaitListId: "",
+            PlacedBedId: "",
+            PlacedPakaiBedId: "",
+            Priority: 0,
+            CrtDate: new DateTime(2026, 10, 17, 8, 0, 0),
+            CrtUser: "admin",
+            UpdDate: new DateTime(3000, 1, 1),
+            UpdUser: "",
+            VodDate: new DateTime(3000, 1, 1),
+            VodUser: "");
 
         _mediatorMock
             .Setup(x => x.Send(It.Is<WaitingListGetByRegQuery>(q => q.RegId == "REG01"), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items.AsEnumerable());
+            .ReturnsAsync(item);
 
         var actionResult = await _sut.GetByReg("REG01");
 
         var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
-        jsend.data.Should().BeEquivalentTo(items);
+        jsend.data.Should().BeEquivalentTo(item);
+    }
+
+    [Fact]
+    public async Task GetByReg_GivenRegId_WhenNotFound_ThenSendsGetByRegQueryAndReturnsNull()
+    {
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<WaitingListGetByRegQuery>(q => q.RegId == "REG99"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((WaitingListGetResponse?)null);
+
+        var actionResult = await _sut.GetByReg("REG99");
+
+        var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeNull();
     }
 
     [Fact]

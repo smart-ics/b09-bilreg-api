@@ -119,6 +119,20 @@ public class EmrAntrianOutboundQueueModel : IEmrAntrianOutboundQueueKey
         ProcessedDate = failedAt;
     }
 
+    public void RefreshPayload(string payloadJson)
+    {
+        Guard.Against.NullOrWhiteSpace(payloadJson, nameof(payloadJson));
+
+        if (QueueStatus != EmrAntrianOutboundQueueStatusEnum.Pending
+            && QueueStatus != EmrAntrianOutboundQueueStatusEnum.Failed)
+            throw new InvalidOperationException(
+                $"Queue {QueueId} berstatus {QueueStatus}; refresh payload hanya dari Pending atau Failed.");
+
+        PayloadJson = payloadJson;
+        LastError = "";
+        QueueStatus = EmrAntrianOutboundQueueStatusEnum.Pending;
+    }
+
     public void AssertCanManualRetry()
     {
         if (QueueStatus != EmrAntrianOutboundQueueStatusEnum.Failed)
@@ -129,7 +143,7 @@ public class EmrAntrianOutboundQueueModel : IEmrAntrianOutboundQueueKey
     public string QueueId { get; init; }
     public string SourceId { get; init; }
     public string MessageType { get; init; }
-    public string PayloadJson { get; init; }
+    public string PayloadJson { get; private set; }
     public EmrAntrianOutboundQueueStatusEnum QueueStatus { get; private set; }
     public int RetryCount { get; private set; }
     public DateTime LastRetryDate { get; private set; }

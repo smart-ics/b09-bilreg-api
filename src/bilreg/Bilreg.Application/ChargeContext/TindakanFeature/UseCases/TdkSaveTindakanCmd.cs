@@ -4,7 +4,9 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BrgContext.BrgFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
@@ -13,8 +15,11 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -28,17 +33,19 @@ public record TdkSaveTindakanCmd(string TindakanId, string RegId,
     string LayananId, string NilaiTarifId, string UserId,
     IEnumerable<TdkSaveTindakanPpaCmd> ListPpa,
     string PakaiBedId = "", int Qty = 1,
-    bool IsDiskonDokter = false)
+    bool IsDiskonDokter = false,
+    IEnumerable<TdkSaveTindakanKomponenDiskonCmd>? ListKomponenDiskon = null)
     : IRequest<TdkSaveTindakanRespose>, ITindakanKey, IRegKey, ILayananKey, INilaiTarifKey
 {
     public TdkSaveTindakanCmd(string tindakanId, string regId, string layananId, string nilaiTarifId, string userId,
         IEnumerable<TdkSaveTindakanPpaCmd> listPpa, int qty, bool isDiskonDokter = false)
-        : this(tindakanId, regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter)
+        : this(tindakanId, regId, layananId, nilaiTarifId, userId, listPpa, "", qty, isDiskonDokter, null)
     {
     }
 }
 
 public record TdkSaveTindakanPpaCmd(string KomponenId, string PpaId);
+public record TdkSaveTindakanKomponenDiskonCmd(string KomponenId, decimal Diskon);
 
 public record TdkSaveTindakanRespose(string TindakanId);
 
@@ -57,6 +64,13 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private readonly IJurnalRepo _jurnalRepo;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IBillingLockValidationService _billingLockValidator;
+    private readonly ITrsBillingRepo? _trsBillingRepo;
+    private readonly ITindakanBomProcessor? _tindakanBomProcessor;
+    private readonly ITindakanBarangRepo? _tindakanBarangRepo;
+    private readonly ITindakanStokPendingRepo? _tindakanStokPendingRepo;
+    private readonly IPakaiBrgInternalService? _pakaiBrgInternalService;
+    private readonly IBrgRepo? _brgRepo;
+    private readonly IGroupRekRepo? _groupRekRepo;
 
     public TdkSaveTindakanHandler(ITindakanRepo tindakanRepo,
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
@@ -66,7 +80,14 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
         ITglJamProvider tglJamProvider,
-        IBillingLockValidationService billingLockValidator)
+        IBillingLockValidationService billingLockValidator,
+        ITrsBillingRepo? trsBillingRepo = null,
+        ITindakanBomProcessor? tindakanBomProcessor = null,
+        ITindakanBarangRepo? tindakanBarangRepo = null,
+        ITindakanStokPendingRepo? tindakanStokPendingRepo = null,
+        IPakaiBrgInternalService? pakaiBrgInternalService = null,
+        IBrgRepo? brgRepo = null,
+        IGroupRekRepo? groupRekRepo = null)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -81,6 +102,26 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         _jurnalRepo = jurnalRepo;
         _tglJamProvider = tglJamProvider;
         _billingLockValidator = billingLockValidator;
+        _trsBillingRepo = trsBillingRepo;
+        _tindakanBomProcessor = tindakanBomProcessor;
+        _tindakanBarangRepo = tindakanBarangRepo;
+        _tindakanStokPendingRepo = tindakanStokPendingRepo;
+        _pakaiBrgInternalService = pakaiBrgInternalService;
+        _brgRepo = brgRepo;
+        _groupRekRepo = groupRekRepo;
+    }
+
+    public TdkSaveTindakanHandler(ITindakanRepo tindakanRepo,
+        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        IAddBillAppService addBillAppService, 
+        IMapJaminanJkRepo mapJaminanJkRepo, 
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator)
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, billingLockValidator, null, null, null, null, null, null, null)
+    {
     }
 
     public TdkSaveTindakanHandler(IRegRepo regRepo,
@@ -95,7 +136,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         ITglJamProvider tglJamProvider)
-        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService())
+        : this(tindakanRepo, regRepo, layananRepo, nilaiTarifRepo, komponenRepo, ppaRepo, tarifRepo, jaminanRepo, addBillAppService, mapJaminanJkRepo, jurnalRepo, tglJamProvider, new NullBillingLockValidationService(), null, null, null, null, null, null, null)
     {
     }
 
@@ -145,10 +186,54 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
 
         var occurredAt = _tglJamProvider.Now;
         var qty = request.Qty <= 0 ? 1 : request.Qty;
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter);
+        var diskonMap = request.ListKomponenDiskon?.ToDictionary(x => x.KomponenId, x => x.Diskon);
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt, request.PakaiBedId, qty, request.IsDiskonDokter, diskonMap);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
+
+        // 1. Reversal of old BOM effects (if any)
+        if (_tindakanBarangRepo != null)
+        {
+            var oldBomItems = _tindakanBarangRepo.ListByTindakanId(tdk.TindakanId)
+                .Where(x => !x.IsVoid)
+                .ToList();
+
+            if (oldBomItems.Count > 0)
+            {
+                // Void active PakaiBrgId
+                if (_pakaiBrgInternalService != null)
+                {
+                    var uniquePakaiIds = oldBomItems
+                        .Select(x => x.PakaiBrgId)
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Distinct()
+                        .ToList();
+
+                    foreach (var pakaiId in uniquePakaiIds)
+                    {
+                        await _pakaiBrgInternalService.VoidFromTindakan(
+                            new PakaiBrgVoidFromTindakanCommand(pakaiId, request.UserId, "Edit tindakan"),
+                            cancellationToken);
+                    }
+                }
+
+                // Mark pending void
+                _tindakanStokPendingRepo?.MarkVoidByTindakanId(tdk.TindakanId, occurredAt, request.UserId);
+
+                // Mark BILRG_TindakanBarang void
+                _tindakanBarangRepo.MarkVoid(tdk.TindakanId, request.UserId);
+
+                // Delete old barang TrsBilling & Jurnal
+                foreach (var item in oldBomItems.Where(x => !string.IsNullOrWhiteSpace(x.TrsBillingId)))
+                {
+                    _trsBillingRepo?.DeleteEntity(TrsBillType.Key(item.TrsBillingId));
+                    _jurnalRepo.DeleteEntity(JurnalType.Key(item.TrsBillingId));
+                }
+            }
+        }
+
+        // 2. Save TindakanModel and Jasa TrsBilling + Jurnal
         var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
@@ -157,7 +242,72 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
                 layanan, mapJaminanJk);
 
         _tindakanRepo.SaveChanges(tdk);
+        // Bug fix: explicitly call SaveChanges to _trsBillingRepo
+        if (_trsBillingRepo != null)
+        {
+            _trsBillingRepo.SaveChanges(trsBilling);
+        }
         _jurnalRepo.SaveChanges(jurnal);
+
+        // 3. Re-execute BOM expansion & stock allocation / pending / separate billing for new qty
+        if (_tindakanBomProcessor != null)
+        {
+            var bomResult = await _tindakanBomProcessor.Process(tdk, reg, request.UserId, cancellationToken);
+            if (bomResult.IsChargeBarang && bomResult.Items.Count > 0)
+            {
+                foreach (var item in bomResult.Items)
+                {
+                    GroupRekType? groupRek = null;
+                    if (_brgRepo != null && _groupRekRepo != null)
+                    {
+                        var brg = _brgRepo.LoadEntity(new BrgKey(item.BrgId))
+                            .Match(b => b, () => (IBrg?)null);
+                        if (brg != null)
+                        {
+                            groupRek = _groupRekRepo.LoadEntity(GroupRekType.Key(brg.GroupRek.GroupRekId))
+                                .Match(g => g, () => (GroupRekType?)null);
+                        }
+                    }
+
+                    groupRek ??= new GroupRekType(
+                        "OBAT",
+                        "OBAT/BHP",
+                        GroupRekDkType.Default,
+                        string.Empty,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default,
+                        CoaType.Default);
+
+                    var tindakanBarang = new TindakanBarangType(
+                        TindakanBarangId: item.TindakanBarangId,
+                        TindakanId: tdk.TindakanId,
+                        NoUrut: item.NoUrut,
+                        BrgId: item.BrgId,
+                        SatuanBomId: item.SatuanBomId,
+                        QtyBom: item.QtyBom,
+                        SatuanKecilId: item.SatuanKecilId,
+                        QtyKecilRequested: item.QtyKecilRequested,
+                        QtyKecilDeducted: item.QtyImmediateCut,
+                        QtyKecilPending: item.QtyPending,
+                        IsChargeBarang: item.IsChargeBarang,
+                        HargaJualTotal: item.HargaJualTotal,
+                        PakaiBrgId: item.PakaiBrgId,
+                        TrsBillingId: item.IsChargeBarang ? $"{tdk.TindakanId}-B{item.NoUrut:D2}" : string.Empty,
+                        IsVoid: false,
+                        BrgName: item.BrgName,
+                        QtyPending: item.QtyPending);
+
+                    var billBarang = _addBillAppService.FromTindakanBarang(
+                        tdk, tindakanBarang, reg, jaminan, groupRek, occurredAt);
+
+                    var jurnalBarang = JurnalType.CreateFromTrsBilling(billBarang, layanan, mapJaminanJk);
+                    _jurnalRepo.SaveChanges(jurnalBarang);
+                }
+            }
+        }
+
         trans.Complete();
 
         //  RESPONSE
@@ -259,15 +409,16 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
         NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
-        DateTime occurredAt, string pakaiBedId = "", int qty = 1, bool isDiskonDokter = false)
+        DateTime occurredAt, string pakaiBedId = "", int qty = 1, bool isDiskonDokter = false,
+        IReadOnlyDictionary<string, decimal>? komponenDiskonMap = null)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty, isDiskonDokter);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap);
 
         tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt, pakaiBedId, qty, isDiskonDokter, komponenDiskonMap
         );
     }
 

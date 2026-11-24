@@ -1,7 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -11,16 +10,21 @@ namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 public record OrderMutasiSubmittedListQuery(string TglYmd1, string TglYmd2) 
     : IRequest<IEnumerable<OrderMutasiSubmittedListResponse>>;
 
-public record OrderMutasiSubmittedListResponse(string OrderMutasiId,
-    string OrderMutasiDate, string State, 
-    LayananReff LayananOrder, LayananReff LayananTujuan);
+public record OrderMutasiSubmittedListResponse(
+    string OrderMutasiId,
+    string OrderMutasiDate,
+    string State,
+    string Priority,
+    LayananReff LayananOrder,
+    LayananReff LayananTujuan,
+    string OrderNote);
 
-public class OrderMutasiSubmitedListHandler
+public class OrderMutasiSubmittedListHandler
     : IRequestHandler<OrderMutasiSubmittedListQuery, IEnumerable<OrderMutasiSubmittedListResponse>>
 {
     private readonly IOrderMutasiRepo _orderMutasiRepo;
 
-    public OrderMutasiSubmitedListHandler(IOrderMutasiRepo orderMutasiRepo)
+    public OrderMutasiSubmittedListHandler(IOrderMutasiRepo orderMutasiRepo)
     {
         _orderMutasiRepo = orderMutasiRepo;
     }
@@ -28,6 +32,7 @@ public class OrderMutasiSubmitedListHandler
     public Task<IEnumerable<OrderMutasiSubmittedListResponse>> Handle(OrderMutasiSubmittedListQuery request, 
         CancellationToken cancellationToken)
     {
+        Guard.Against.Null(request, nameof(request));
         Guard.Against.InvalidDateFormat(request.TglYmd1, nameof(request.TglYmd1));
         Guard.Against.InvalidDateFormat(request.TglYmd2, nameof(request.TglYmd2));
 
@@ -39,8 +44,14 @@ public class OrderMutasiSubmitedListHandler
     private static IEnumerable<OrderMutasiSubmittedListResponse> GenResponse(IEnumerable<OrderMutasiHeaderView> listSubmited)
     {
         var result = listSubmited
-            .Select(x => new OrderMutasiSubmittedListResponse(x.OrderMutasiId,
-                x.OrderMutasiDate.ToString("yyyy-MM-dd HH:mm:ss"), x.State.ToString(), x.LayananOrder, x.LayananTujuan));
+            .Select(x => new OrderMutasiSubmittedListResponse(
+                x.OrderMutasiId,
+                x.OrderMutasiDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                x.State.ToString(),
+                x.Priority.ToString(),
+                x.LayananOrder,
+                x.LayananTujuan,
+                x.OrderNote));
         return result;
     }
 

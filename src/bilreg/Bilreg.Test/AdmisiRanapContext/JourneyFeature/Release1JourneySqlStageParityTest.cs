@@ -1,8 +1,9 @@
 using Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using FluentAssertions;
 
 namespace Bilreg.Test.AdmisiRanapContext.JourneyFeature;
@@ -73,7 +74,7 @@ public class Release1JourneySqlStageParityTest
             Facts(JourneyOriginKind.OpnameRequest,
                 opn: new("OPN1", OpnameRequestStatusEnum.Fulfilled, "REG1", T0),
                 admissions: [new("REG1", AdmissionStatusEnum.Admitted, "OPN1", "-", T1, "B01", "Bangsal")],
-                waitingLists: [new("WL1", "REG1", WaitingListStatusEnum.Accepted, T2, "B01", "Bangsal")])
+                waitingLists: [new("WL1", "REG1", WaitingListStatusEnum.Reserved, T2, "B01", "Bangsal")])
         ];
         yield return
         [
@@ -81,7 +82,7 @@ public class Release1JourneySqlStageParityTest
             Facts(JourneyOriginKind.OpnameRequest,
                 opn: new("OPN1", OpnameRequestStatusEnum.Fulfilled, "REG1", T0),
                 admissions: [new("REG1", AdmissionStatusEnum.Admitted, "OPN1", "-", T1, "B01", "Bangsal")],
-                waitingLists: [new("WL1", "REG1", WaitingListStatusEnum.Closed, T2, "B01", "Bangsal")])
+                waitingLists: [new("WL1", "REG1", WaitingListStatusEnum.Placed, T2, "B01", "Bangsal")])
         ];
         yield return
         [
@@ -117,7 +118,7 @@ public class Release1JourneySqlStageParityTest
                 waitingLists:
                 [
                     new("WL1", "REG1", WaitingListStatusEnum.Waiting, T2, "B01", "Bangsal"),
-                    new("WL2", "REG1", WaitingListStatusEnum.Accepted, T2.AddMinutes(1), "B01", "Bangsal")
+                    new("WL2", "REG1", WaitingListStatusEnum.Reserved, T2.AddMinutes(1), "B01", "Bangsal")
                 ])
         ];
         yield return
@@ -138,7 +139,7 @@ public class Release1JourneySqlStageParityTest
 
         sqlStage.Should().Be(b1, because: $"case '{caseName}' must keep SQL stage parity with B1");
         b1.Should().NotBe(JourneyOperationalStage.InWard);
-        if (facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Closed)
+        if (facts.WaitingLists.Any(w => w.Status == WaitingListStatusEnum.Placed)
             && facts.Admissions.Any(a => a.Status is AdmissionStatusEnum.Admitted
                 or AdmissionStatusEnum.Updated or AdmissionStatusEnum.Waiting)
             && !facts.WaitingLists.Any(w => w.IsActive)
@@ -163,5 +164,34 @@ public class Release1JourneySqlStageParityTest
         s2.Should().Be(sortAt);
         j1.Should().Be("opn:A");
         j2.Should().Be("opn:B");
+    }
+
+    [Theory]
+    [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.EmrIgd, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.ExternalChannel, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
+    [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
+    public void FromNormalizedFacts_WithInpatientOrder_DerivesExpectedSqlStage(
+        OrderSourceEnum orderSource,
+        InpatientOrderStatusEnum status,
+        JourneyOperationalStage expectedStage)
+    {
+        var facts = new JourneyNormalizedFacts(
+            OriginKind: orderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd ? JourneyOriginKind.OpnameRequest : JourneyOriginKind.Reservation,
+            Patient: new JourneyPatientSummary("P001", "RM001", "Pasien Uji"),
+            OpnameRequest: null,
+            Reservation: null,
+            Admissions: [],
+            WaitingLists: [],
+            HasOrphanRegistration: false,
+            InpatientOrder: new InpatientOrderJourneyFact("ORD001", orderSource, status, "-", T0));
+
+        var sqlInputs = Release1JourneySqlStageExpression.FromNormalizedFacts(facts);
+        var sqlStage = Release1JourneySqlStageExpression.Derive(sqlInputs);
+
+        sqlStage.Should().Be(expectedStage);
     }
 }

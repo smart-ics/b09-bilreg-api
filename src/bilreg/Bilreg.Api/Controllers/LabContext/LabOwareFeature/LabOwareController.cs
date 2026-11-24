@@ -1,11 +1,15 @@
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.UseCases;
+using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.LabContext.LabOwareFeature;
+
+public record LabOwareStatusResponse(bool IsActive);
 
 [Route("api/LabContext/LabOwareFeature")]
 [ApiController]
@@ -17,6 +21,14 @@ public class LabOwareController : ControllerBase
     public LabOwareController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpGet("status")]
+    [AllowAnonymous]
+    public IActionResult GetStatus([FromServices] IOptions<OwareOptions> options)
+    {
+        var opt = options.Value;
+        return Ok(new JSendOk(new LabOwareStatusResponse(opt.IsConfiguredAndValid)));
     }
 
     [HttpPost("enqueue")]

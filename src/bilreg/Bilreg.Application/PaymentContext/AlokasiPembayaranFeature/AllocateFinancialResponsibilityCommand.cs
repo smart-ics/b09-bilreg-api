@@ -1,4 +1,6 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.PaymentContext.DepositFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
@@ -27,6 +29,26 @@ public class AllocateFinancialResponsibilityHandler
     private readonly IDepositRepo _depositRepo;
     private readonly IRegJaminanPolicy _regJaminanPolicy;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITipeJaminanRepo? _tipeJaminanRepo;
+    private readonly IJaminanRepo? _jaminanRepo;
+
+    public AllocateFinancialResponsibilityHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
+        IDepositRepo depositRepo,
+        IRegJaminanPolicy regJaminanPolicy,
+        IUnitOfWork unitOfWork,
+        ITipeJaminanRepo tipeJaminanRepo,
+        IJaminanRepo jaminanRepo)
+    {
+        _tataRekeningRepo = tataRekeningRepo;
+        _trsBillingRepo = trsBillingRepo;
+        _depositRepo = depositRepo;
+        _regJaminanPolicy = regJaminanPolicy;
+        _unitOfWork = unitOfWork;
+        _tipeJaminanRepo = tipeJaminanRepo;
+        _jaminanRepo = jaminanRepo;
+    }
 
     public AllocateFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -34,12 +56,8 @@ public class AllocateFinancialResponsibilityHandler
         IDepositRepo depositRepo,
         IRegJaminanPolicy regJaminanPolicy,
         IUnitOfWork unitOfWork)
+        : this(tataRekeningRepo, trsBillingRepo, depositRepo, regJaminanPolicy, unitOfWork, null!, null!)
     {
-        _tataRekeningRepo = tataRekeningRepo;
-        _trsBillingRepo = trsBillingRepo;
-        _depositRepo = depositRepo;
-        _regJaminanPolicy = regJaminanPolicy;
-        _unitOfWork = unitOfWork;
     }
 
     public Task<AllocateFinancialResponsibilityResponse> Handle(
@@ -78,6 +96,9 @@ public class AllocateFinancialResponsibilityHandler
         var totalDepositAllocated = request.Payments
             .Where(x => x.PaymentId == PaymentType.ByDpu.PaymentId || x.PaymentId == PaymentType.ByDpk.PaymentId)
             .Sum(x => x.NilaiJasa + x.NilaiObat);
+        var totalDpk = request.Payments
+            .Where(x => x.PaymentId == PaymentType.ByDpk.PaymentId)
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
 
         if (hasDepositPayment || totalDepositAllocated > 0)
         {
@@ -91,15 +112,16 @@ public class AllocateFinancialResponsibilityHandler
             }
 
             var totalTagihan = tataRekening.ListTrsBill.Sum(b => b.FinancialTotal);
-            if (totalDepositAllocated > totalTagihan)
+            if (totalDpk > totalTagihan)
             {
                 throw new InvalidOperationException(
-                    $"Alokasi deposit ({totalDepositAllocated:N0}) melebihi total tagihan kunjungan ({totalTagihan:N0}).");
+                    $"Alokasi Deposit Khusus ({totalDpk:N0}) melebihi total tagihan kunjungan ({totalTagihan:N0}).");
             }
         }
 
         var listPayment = request.Payments
-            .Select(TataRekeningApplicationMapper.ToPaymentType)
+            .Select(p => TataRekeningApplicationMapper.ToPaymentType(
+                p, TataRekeningApplicationMapper.ResolvePaymentCoa(p, _tipeJaminanRepo, _jaminanRepo)))
             .ToList();
 
         tataRekening.AllocateFinancialResponsibility(listPayment);

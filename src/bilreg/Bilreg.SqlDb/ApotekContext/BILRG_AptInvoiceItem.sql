@@ -1,3 +1,9 @@
+-- ============================================================================
+-- [DECOMMISSIONED / OBSOLETE]
+-- Table: BILRG_AptInvoiceItem
+-- Reason: Deprecated greenfield invoice detail table. Replaced by dbo.tb_trs_dobill_umum2
+--         for absolute backward compatibility per ARCHITECTURE OC-APT-PENJUALAN.
+-- ============================================================================
 CREATE TABLE BILRG_AptInvoiceItem (
     InvoiceId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptInvoiceItem_InvoiceId DEFAULT(''),
     ItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptInvoiceItem_ItemNo DEFAULT(0),

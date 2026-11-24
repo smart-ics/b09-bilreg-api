@@ -1,6 +1,6 @@
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.BedUsageContext.WardFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using FluentAssertions;

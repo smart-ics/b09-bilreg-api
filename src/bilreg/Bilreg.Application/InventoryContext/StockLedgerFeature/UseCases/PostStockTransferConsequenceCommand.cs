@@ -1,3 +1,5 @@
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
+using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
@@ -57,6 +59,8 @@ public class PostStockTransferConsequenceHandler
     private readonly IStockLegacyScopeRepo _scopeRepo;
     private readonly ILegacyStockReadPort _legacyRead;
     private readonly IStockConsequenceUnitOfWork _uow;
+    private readonly ISender? _sender;
+    private readonly ILogger<PostStockTransferConsequenceHandler>? _logger;
 
     public PostStockTransferConsequenceHandler(
         LegacyFreshnessGate freshnessGate,
@@ -65,7 +69,9 @@ public class PostStockTransferConsequenceHandler
         IStockLegacyBindingRepo bindingRepo,
         IStockLegacyScopeRepo scopeRepo,
         ILegacyStockReadPort legacyRead,
-        IStockConsequenceUnitOfWork uow)
+        IStockConsequenceUnitOfWork uow,
+        ISender? sender = null,
+        ILogger<PostStockTransferConsequenceHandler>? logger = null)
     {
         _freshnessGate = freshnessGate;
         _batchRepo = batchRepo;
@@ -74,6 +80,8 @@ public class PostStockTransferConsequenceHandler
         _scopeRepo = scopeRepo;
         _legacyRead = legacyRead;
         _uow = uow;
+        _sender = sender;
+        _logger = logger;
     }
 
     public async Task<PostStockTransferConsequenceResult> Handle(
@@ -407,6 +415,8 @@ public class PostStockTransferConsequenceHandler
             UserId: request.UserId);
 
         _uow.Commit(draft);
+
+        await PendingSettleTrigger.TryDrain(_sender, _logger, request.UserId, [(request.BrgId, request.DestLayananId)], cancellationToken);
 
         return new PostStockTransferConsequenceResult(
             PostStockTransferOutcomeEnum.Success,

@@ -3,7 +3,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.InpatientOrderFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;

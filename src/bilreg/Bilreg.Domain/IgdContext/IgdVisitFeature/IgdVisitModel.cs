@@ -35,7 +35,8 @@ public class IgdVisitModel : IIgdVisitKey
         AuditTrailType auditTrail,
         AuditInfoType dischargeAudit,
         IEnumerable<IgdVisitTriageType> listTriage,
-        IEnumerable<IgdVisitEventType> listEvent)
+        IEnumerable<IgdVisitEventType> listEvent,
+        bool hasPendingBilling = false)
     {
         IgdVisitId = igdVisitId;
         DaftarDateTime = daftarDateTime;
@@ -53,6 +54,7 @@ public class IgdVisitModel : IIgdVisitKey
         NextReTriageAt = nextReTriageAt;
         AuditTrail = auditTrail;
         DischargeAudit = dischargeAudit;
+        HasPendingBilling = hasPendingBilling;
         _listTriage = listTriage?.ToList() ?? [];
         _listEvent = listEvent?.ToList() ?? [];
     }
@@ -75,7 +77,8 @@ public class IgdVisitModel : IIgdVisitKey
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
-        listEvent: []);
+        listEvent: [],
+        hasPendingBilling: false);
 
     public static IIgdVisitKey Key(string id) => new IgdVisitModel(
         igdVisitId: id,
@@ -95,7 +98,8 @@ public class IgdVisitModel : IIgdVisitKey
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
-        listEvent: []);
+        listEvent: [],
+        hasPendingBilling: false);
 
     public static IgdVisitModel Create(VisitorType visitor, AuditInfoType audit)
     {
@@ -122,7 +126,8 @@ public class IgdVisitModel : IIgdVisitKey
             auditTrail: AuditTrailType.Create(audit.UserId, audit.Timestamp),
             dischargeAudit: AuditInfoType.Default,
             listTriage: [],
-            listEvent: []);
+            listEvent: [],
+            hasPendingBilling: false);
 
         visit.Emit(IgdEventEnum.Daftar, audit, $"Visit dibuat untuk {visitor.VisitorName}");
         return visit;
@@ -146,6 +151,7 @@ public class IgdVisitModel : IIgdVisitKey
     public DateTime NextReTriageAt { get; private set; }
     public AuditTrailType AuditTrail { get; init; }
     public AuditInfoType DischargeAudit { get; private set; }
+    public bool HasPendingBilling { get; private set; }
     public IEnumerable<IgdVisitTriageType> ListTriage => _listTriage;
     public IEnumerable<IgdVisitEventType> ListEvent => _listEvent;
 
@@ -208,7 +214,11 @@ public class IgdVisitModel : IIgdVisitKey
             OverrideDateTime: new DateTime(3000, 1, 1),
             AssessmentDateTime: audit.Timestamp,
             AssessorUserId: audit.UserId,
-            Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes);
+            Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes,
+            IsVoided: false,
+            VoidUserId: "",
+            VoidDateTime: new DateTime(3000, 1, 1),
+            VoidReason: "");
 
         _listTriage.Add(newTriage);
         Triage = newTriage;
@@ -271,7 +281,11 @@ public class IgdVisitModel : IIgdVisitKey
             OverrideDateTime: overrideTime,
             AssessmentDateTime: audit.Timestamp,
             AssessorUserId: audit.UserId,
-            Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes);
+            Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes,
+            IsVoided: false,
+            VoidUserId: "",
+            VoidDateTime: new DateTime(3000, 1, 1),
+            VoidReason: "");
 
         _listTriage.Add(newTriage);
         Triage = newTriage;
@@ -282,6 +296,42 @@ public class IgdVisitModel : IIgdVisitKey
         NextReTriageAt = nextReTriageAt ?? new DateTime(3000, 1, 1);
         AuditTrail.Modif(audit.UserId, audit.Timestamp);
         Emit(IgdEventEnum.AssessTriage, audit, $"Triage {newTriage.Level.ToCode()}");
+    }
+
+    public void VoidTriage(int noTriage, string voidReason, AuditInfoType audit)
+    {
+        Guard.Against.Null(audit, nameof(audit));
+        if (string.IsNullOrWhiteSpace(audit.UserId) || audit.UserId.Trim() == "-")
+            throw new ArgumentException("UserId wajib diisi.", nameof(audit));
+        if (string.IsNullOrWhiteSpace(voidReason) || voidReason.Trim() == "-")
+            throw new ArgumentException("Alasan pembatalan triage wajib diisi.", nameof(voidReason));
+        if (IsTerminal)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat void triage.");
+
+        var index = _listTriage.FindIndex(x => x.NoTriage == noTriage);
+        if (index < 0)
+            throw new KeyNotFoundException(
+                $"Triage #{noTriage} tidak ditemukan pada visit {IgdVisitId}.");
+
+        var target = _listTriage[index];
+        if (target.IsVoided)
+            throw new InvalidOperationException(
+                $"Triage #{noTriage} pada visit {IgdVisitId} sudah di-void.");
+
+        var trimmedReason = voidReason.Trim();
+        _listTriage[index] = target with
+        {
+            IsVoided = true,
+            VoidUserId = audit.UserId.Trim(),
+            VoidDateTime = audit.Timestamp,
+            VoidReason = trimmedReason,
+        };
+
+        RecalculateActiveTriage();
+
+        AuditTrail.Modif(audit.UserId, audit.Timestamp);
+        Emit(IgdEventEnum.VoidTriage, audit, $"Void Triage #{noTriage} ({target.Level.ToCode()}): {trimmedReason}");
     }
 
     public void AssignBed(string bedId, AuditInfoType audit)
@@ -484,18 +534,44 @@ public class IgdVisitModel : IIgdVisitKey
     {
         _listTriage.Clear();
         _listTriage.AddRange(triages);
-        var latest = _listTriage.OrderByDescending(x => x.NoTriage).FirstOrDefault();
+        if (_listTriage.Count > 0)
+            RecalculateActiveTriage();
+    }
+
+    private void RecalculateActiveTriage()
+    {
+        var latest = _listTriage
+            .Where(x => !x.IsVoided)
+            .OrderByDescending(x => x.NoTriage)
+            .FirstOrDefault();
+
         if (latest is not null)
         {
-            Triage = latest;
             HasTriage = true;
+            Triage = latest;
             TriageMethod = latest.Method;
             TriageColor = latest.Color;
             LastTriageAt = latest.AssessmentDateTime;
-            NextReTriageAt = latest.Level.ToReAssessmentInterval() is { } interval
-                ? latest.AssessmentDateTime.Add(interval)
-                : new DateTime(3000, 1, 1);
+            NextReTriageAt = latest.IsManualOverrideBlack
+                ? new DateTime(3000, 1, 1)
+                : latest.Level.ToReAssessmentInterval() is { } interval
+                    ? latest.AssessmentDateTime.Add(interval)
+                    : new DateTime(3000, 1, 1);
         }
+        else
+        {
+            HasTriage = false;
+            Triage = IgdVisitTriageType.Default;
+            TriageMethod = TriageMethodEnum.Unknown;
+            TriageColor = TriageColorEnum.Unknown;
+            LastTriageAt = new DateTime(3000, 1, 1);
+            NextReTriageAt = new DateTime(3000, 1, 1);
+        }
+    }
+
+    public void SetPendingBilling(bool hasPending)
+    {
+        HasPendingBilling = hasPending;
     }
     #endregion
 

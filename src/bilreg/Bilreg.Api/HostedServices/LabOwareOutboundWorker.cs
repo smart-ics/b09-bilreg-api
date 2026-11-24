@@ -58,7 +58,7 @@ public class LabOwareOutboundWorker : BackgroundService
             var opt = _options.Value;
             var intervalSec = opt.IntervalSeconds > 0 ? opt.IntervalSeconds : DefaultIntervalSeconds;
 
-            if (opt.WorkerEnabled)
+            if (opt.WorkerEnabled && opt.IsConfiguredAndValid)
             {
                 try
                 {

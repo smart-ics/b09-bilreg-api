@@ -1,16 +1,21 @@
 using Ardalis.GuardClauses;
+using System.Text.Json;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
+using Bilreg.Application.LabContext.LabOwareFeature.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOwareFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
-public record LabOrderCancelCmd(string OrderId, string UserId, string Reason) : IRequest, ILabOrderKey;
+public record LabOrderCancelCmd(string OrderId, string UserId, string Reason,
+    string ClientIpAddress = "", string UserAgent = "") : IRequest, ILabOrderKey;
 
 public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
 {
@@ -19,19 +24,30 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly ILabOwareOutboundQueueRepo _queueRepo;
     private readonly IBillingLockValidationService _billingLockValidator;
+    private readonly IAuditRepo _auditRepo;
+    private readonly ILabOwareIntegration? _owareIntegration;
 
     public LabOrderCancelHandler(
         ILabOrderRepo labOrderRepo,
         ILabBillingIntegration labBillingIntegration,
         ITglJamProvider tglJamProvider,
         ILabOwareOutboundQueueRepo queueRepo,
-        IBillingLockValidationService billingLockValidator)
+        IBillingLockValidationService billingLockValidator,
+        IAuditRepo auditRepo,
+        ILabOwareIntegration? owareIntegration = null)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
         _tglJamProvider = tglJamProvider;
         _queueRepo = queueRepo;
         _billingLockValidator = billingLockValidator;
+        _auditRepo = auditRepo;
+        _owareIntegration = owareIntegration;
+    }
+
+    private class NullAuditRepo : IAuditRepo
+    {
+        public void SaveChanges(AuditLog entity) { }
     }
 
     public LabOrderCancelHandler(
@@ -39,7 +55,17 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         ILabBillingIntegration labBillingIntegration,
         ITglJamProvider tglJamProvider,
         ILabOwareOutboundQueueRepo queueRepo)
-        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, new NullBillingLockValidationService())
+        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, new NullBillingLockValidationService(), new NullAuditRepo(), null)
+    {
+    }
+
+    public LabOrderCancelHandler(
+        ILabOrderRepo labOrderRepo,
+        ILabBillingIntegration labBillingIntegration,
+        ITglJamProvider tglJamProvider,
+        ILabOwareOutboundQueueRepo queueRepo,
+        IBillingLockValidationService billingLockValidator)
+        : this(labOrderRepo, labBillingIntegration, tglJamProvider, queueRepo, billingLockValidator, new NullAuditRepo(), null)
     {
     }
 
@@ -52,7 +78,12 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
 
         var order = _labOrderRepo.LoadEntity(request)
             .GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
-        await _billingLockValidator.EnsureCanModifyBillingAsync(order.ExecutionRegId, cancellationToken);
+
+        var effectiveRegId = !string.IsNullOrWhiteSpace(order.ExecutionRegId)
+            ? order.ExecutionRegId
+            : order.Patient.RegId;
+
+        await _billingLockValidator.EnsureCanModifyBillingAsync(effectiveRegId, cancellationToken);
 
         var occurredAt = _tglJamProvider.Now;
 
@@ -69,7 +100,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         // Financial Coordination with TRK-BILLING
         if (order.LabOrderStatus == LabOrderStatusEnum.Charged)
         {
-            _labBillingIntegration.CancelCharge(order.OrderId, order.Patient.RegId, request.UserId, request.Reason, occurredAt);
+            _labBillingIntegration.CancelCharge(order.OrderId, effectiveRegId, request.UserId, request.Reason, occurredAt);
         }
 
         var wasOwareSent = order.OwareStatus == OwareStatusEnum.Sent;
@@ -77,7 +108,8 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
         order.Cancel(request.UserId, request.Reason, occurredAt);
 
         LabOwareOutboundQueueModel? cancelQueue = null;
-        if (wasOwareSent)
+        var isOwareActive = _owareIntegration == null || _owareIntegration.IsActive;
+        if (wasOwareSent && isOwareActive)
         {
             var payloadJson = $"{{\"orderId\":\"{order.OrderId}\"}}";
             cancelQueue = LabOwareOutboundQueueModel.CreatePending(
@@ -93,6 +125,20 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
             _queueRepo.SaveChanges(cancelQueue);
         }
         _labOrderRepo.SaveChanges(order);
+
+        var auditLog = AuditLog.Create(
+            request.UserId,
+            occurredAt,
+            actionType: "VOID",
+            entityName: nameof(LabOrderModel),
+            entityId: order.OrderId,
+            reason: request.Reason,
+            originalDataJson: JsonSerializer.Serialize(order),
+            correlationId: order.Patient?.RegId ?? "",
+            clientIpAddress: request.ClientIpAddress,
+            userAgent: request.UserAgent);
+        _auditRepo.SaveChanges(auditLog);
+
         trans.Complete();
     }
 }

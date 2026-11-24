@@ -16,6 +16,20 @@ public class ApotekConcurrencyException : ApotekDomainException
         ExpectedVersion = expectedVersion;
     }
 
+    public ApotekConcurrencyException(string message)
+        : base(message)
+    {
+        AggregateId = string.Empty;
+        ExpectedVersion = 0;
+    }
+
+    public ApotekConcurrencyException(string aggregateId, string message)
+        : base(message)
+    {
+        AggregateId = aggregateId;
+        ExpectedVersion = 0;
+    }
+
     public string AggregateId { get; }
     public int ExpectedVersion { get; }
 }

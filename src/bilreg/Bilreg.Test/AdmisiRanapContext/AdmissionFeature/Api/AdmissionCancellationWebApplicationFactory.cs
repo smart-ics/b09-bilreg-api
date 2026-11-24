@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Test.PaymentContext.TataRekeningFeature.Api;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -83,6 +83,7 @@ public sealed class AdmissionCancellationApiHarness
         Repo.Setup(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Repo.Setup(x => x.CompleteLedger(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         Eligibility.Setup(x => x.HasBillingItems(It.IsAny<string>())).Returns(false);
+        Eligibility.Setup(x => x.HasActiveBedPlacement(It.IsAny<string>())).Returns(false);
     }
 
     public static CoordinatedCancellationState State(string? sourceId = null, string? sourceKind = null) => new(

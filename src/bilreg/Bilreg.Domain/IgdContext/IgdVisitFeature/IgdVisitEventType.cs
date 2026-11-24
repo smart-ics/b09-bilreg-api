@@ -17,6 +17,7 @@ public enum IgdEventEnum
     TransferBed = 12,
     VoidTindakan = 13,
     ReplaceRegister = 14,
+    VoidTriage = 15,
 }
 
 public static class IgdEventEnumExtensions
@@ -38,6 +39,7 @@ public static class IgdEventEnumExtensions
         IgdEventEnum.TransferBed => "TRANSFER_BED",
         IgdEventEnum.VoidTindakan => "VOID_TINDAKAN",
         IgdEventEnum.ReplaceRegister => "REPLACE_REGISTER",
+        IgdEventEnum.VoidTriage => "VOID_TRIAGE",
         _ => "DAFTAR",
     };
 
@@ -58,6 +60,7 @@ public static class IgdEventEnumExtensions
         "TRANSFER_BED" => IgdEventEnum.TransferBed,
         "VOID_TINDAKAN" => IgdEventEnum.VoidTindakan,
         "REPLACE_REGISTER" => IgdEventEnum.ReplaceRegister,
+        "VOID_TRIAGE" => IgdEventEnum.VoidTriage,
         _ => IgdEventEnum.Daftar,
     };
 }

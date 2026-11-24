@@ -87,6 +87,17 @@ public class LabOrderControllerTest
     }
 
     [Fact]
+    public void ActivateDeferredAction_HasExpectedHttpAttributes()
+    {
+        var method = typeof(LabOrderController).GetMethod(nameof(LabOrderController.ActivateDeferred));
+        method.Should().NotBeNull();
+
+        var patchAttr = method!.GetCustomAttribute<HttpPatchAttribute>();
+        patchAttr.Should().NotBeNull();
+        patchAttr!.Template.Should().Be("activateDeferred");
+    }
+
+    [Fact]
     public void GetAction_HasExpectedHttpAttributes()
     {
         var method = typeof(LabOrderController).GetMethod(nameof(LabOrderController.Get));
@@ -453,6 +464,56 @@ public class LabOrderControllerTest
                 c.Urgency == LabOrderUrgencyEnum.Cito &&
                 c.ClinicalNote == "Update CITO note"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region ActivateDeferred Endpoint Tests
+
+    [Fact]
+    public async Task ActivateDeferred_GivenValidCommandWithExecutionRegId_DispatchesAndReturnsOkWithJSendOk()
+    {
+        // Arrange
+        var cmd = new LabOrderActivateDeferredCmd("LBO20261015001", "PETUGAS01", "REG-ACT-001");
+        var expectedResponse = new LabOrderActivateDeferredResponse("REG-ACT-001");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.ActivateDeferred(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivateDeferred_GivenCommandWithoutExecutionRegId_DispatchesAndReturnsOkWithJSendOk()
+    {
+        // Arrange
+        var cmd = new LabOrderActivateDeferredCmd("LBO20261015001", "PETUGAS01");
+        var expectedResponse = new LabOrderActivateDeferredResponse("REG-AUTO-002");
+
+        _mediatorMock
+            .Setup(x => x.Send(cmd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.ActivateDeferred(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(cmd, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

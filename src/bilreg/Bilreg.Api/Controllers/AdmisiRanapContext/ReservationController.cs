@@ -38,6 +38,13 @@ public class ReservationController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpGet("{id}/history")]
+    public async Task<IActionResult> History(string id)
+    {
+        var result = await _mediator.Send(new AdmGetReservationHistoryQry(id));
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {

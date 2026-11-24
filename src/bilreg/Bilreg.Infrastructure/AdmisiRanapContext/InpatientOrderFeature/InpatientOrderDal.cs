@@ -18,7 +18,16 @@ public interface IInpatientOrderDal :
 {
     IEnumerable<InpatientOrderDto> ListActive();
     InpatientOrderDto GetByExternalReference(string externalReferenceId, string externalSystemSource);
+    IEnumerable<InpatientOrderAuditDto> ListAudits(string inpatientOrderId);
 }
+
+public record InpatientOrderAuditDto(
+    string AuditId,
+    DateTime EventTime,
+    string UserId,
+    string ActionType,
+    string Reason,
+    string OriginalDataJson);
 
 public class InpatientOrderDal : IInpatientOrderDal
 {
@@ -211,6 +220,22 @@ public class InpatientOrderDal : IInpatientOrderDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<InpatientOrderDto>(sql, dp);
+    }
+
+    public IEnumerable<InpatientOrderAuditDto> ListAudits(string inpatientOrderId)
+    {
+        const string sql = """
+            SELECT AuditId, EventTime, UserId, ActionType, Reason, OriginalDataJson
+            FROM BILRG_AuditLog
+            WHERE EntityName = 'InpatientOrderModel' AND EntityId = @InpatientOrderId
+            ORDER BY EventTime ASC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@InpatientOrderId", inpatientOrderId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<InpatientOrderAuditDto>(sql, dp) ?? [];
     }
 
     private static DynamicParameters MapParams(InpatientOrderDto dto)

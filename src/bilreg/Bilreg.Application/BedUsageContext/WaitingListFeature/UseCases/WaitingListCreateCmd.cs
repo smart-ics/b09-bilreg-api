@@ -64,13 +64,17 @@ public class WaitingListCreateHandler : IRequestHandler<WaitingListCreateCmd, Wa
         Guard.Against.NullOrWhiteSpace(request.BangsalId, nameof(request.BangsalId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
+        if (_waitingListRepo.HasActiveByRegId(request.RegId))
+        {
+            var existing = _waitingListRepo.LoadActiveByRegId(request.RegId);
+            if (existing.HasValue)
+                return Task.FromResult(new WaitingListCreateResponse(existing.Value.WaitingListId));
+        }
+
         var admission = _admissionRepo.LoadEntity(request)
             .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
 
         AdmissionStatusGuard.EnsureCanEnterWaitingList(admission.AdmissionStatus);
-
-        if (_waitingListRepo.HasActiveByRegId(request.RegId))
-            throw new InvalidOperationException($"Admission '{request.RegId}' sudah memiliki Waiting List aktif.");
 
         var kelas = _kelasRepo.LoadEntity(KelasType.Key(request.KelasId))
             .GetValueOrThrow($"Kelas '{request.KelasId}' tidak ditemukan.")

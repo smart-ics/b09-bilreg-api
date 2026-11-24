@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
@@ -20,9 +21,11 @@ using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.LabContext;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Test.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Xunit;
@@ -39,6 +42,8 @@ public class LabBillingIntegrationTest
     private readonly Mock<ILabExternalRepo> _labExternalRepo = new();
     private readonly Mock<IAddBillAppService> _addBillAppService = new();
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepo = new();
+    private readonly Mock<ILayananRepo> _layananRepo = new();
+    private readonly IOptions<LabOptions> _labOptions = Options.Create(new LabOptions { LayananLabId = "4LB01" });
 
     private LabBillingIntegration CreateSut() => new(
         _regRepo.Object,
@@ -48,7 +53,9 @@ public class LabBillingIntegrationTest
         _komponenRepo.Object,
         _labExternalRepo.Object,
         _addBillAppService.Object,
-        _tataRekeningRepo.Object);
+        _tataRekeningRepo.Object,
+        _layananRepo.Object,
+        _labOptions);
 
     private static RegModel SampleReg(string regId = "REG001") =>
         new(
@@ -123,6 +130,45 @@ public class LabBillingIntegrationTest
             It.IsAny<TarifType>(),
             It.IsAny<NilaiTarifType>(),
             It.IsAny<IEnumerable<KomponenType>>(),
+            It.Is<LayananReff>(l => l.LayananId == "4LB01"),
+            It.IsAny<DateTime>()), Times.Exactly(order.Items.Count));
+    }
+
+    [Fact]
+    public void ChargeOrder_AdmissionPatient_WithExecutionRegId_ChargesAgainstExecutionRegistration()
+    {
+        var sut = CreateSut();
+        var order = LabOrderTestSupport.CreateEmrOrder();
+        order.Defer("Reagen habis", DateTime.Now.AddDays(1), "U1", DateTime.Now.AddHours(-1));
+        order.ActivateFromDeferred("REG-EXEC-001", "U1", DateTime.Now);
+
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-EXEC-001")))
+            .Returns(MayBe.From(SampleReg("REG-EXEC-001")));
+        _jaminanRepo.Setup(r => r.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(JaminanType.Umum));
+        _tarifRepo.Setup(r => r.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default));
+        _nilaiTarifRepo.Setup(r => r.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe.From(NilaiTarifType.Default));
+        _komponenRepo.Setup(r => r.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+
+        var billingId = sut.ChargeOrder(order, "U1", DateTime.Now);
+
+        var expectedId = order.OrderId.Length > 12 ? order.OrderId[..12] : order.OrderId;
+        billingId.Should().Be(expectedId);
+
+        _regRepo.Verify(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-EXEC-001")), Times.Once);
+        _regRepo.Verify(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == order.Patient.RegId)), Times.Never);
+        _addBillAppService.Verify(a => a.FromLabOrderItem(
+            order,
+            It.IsAny<LabOrderItemModel>(),
+            It.Is<RegModel>(r => r.RegId == "REG-EXEC-001"),
+            It.IsAny<JaminanType>(),
+            It.IsAny<TarifType>(),
+            It.IsAny<NilaiTarifType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            It.Is<LayananReff>(l => l.LayananId == "4LB01"),
             It.IsAny<DateTime>()), Times.Exactly(order.Items.Count));
     }
 
@@ -165,6 +211,7 @@ public class LabBillingIntegrationTest
             It.IsAny<TarifType>(),
             It.IsAny<NilaiTarifType>(),
             It.IsAny<IEnumerable<KomponenType>>(),
+            It.Is<LayananReff>(l => l.LayananId == "4LB01"),
             It.IsAny<DateTime>()), Times.Once);
     }
 
@@ -194,6 +241,7 @@ public class LabBillingIntegrationTest
             .Returns([]);
 
         RegModel? capturedReg = null;
+        LayananReff? capturedLayanan = null;
         _addBillAppService.Setup(a => a.FromLabOrderItem(
             order,
             It.IsAny<LabOrderItemModel>(),
@@ -202,15 +250,22 @@ public class LabBillingIntegrationTest
             It.IsAny<TarifType>(),
             It.IsAny<NilaiTarifType>(),
             It.IsAny<IEnumerable<KomponenType>>(),
+            It.IsAny<LayananReff>(),
             It.IsAny<DateTime>()))
-            .Callback<LabOrderModel, LabOrderItemModel, RegModel, JaminanType, TarifType, NilaiTarifType, IEnumerable<KomponenType>, DateTime>(
-                (_, _, reg, _, _, _, _, _) => capturedReg = reg);
+            .Callback<LabOrderModel, LabOrderItemModel, RegModel, JaminanType, TarifType, NilaiTarifType, IEnumerable<KomponenType>, LayananReff, DateTime>(
+                (_, _, reg, _, _, _, _, lay, _) =>
+                {
+                    capturedReg = reg;
+                    capturedLayanan = lay;
+                });
 
         sut.ChargeOrder(order, "U1", DateTime.Now);
 
         capturedReg.Should().NotBeNull();
         capturedReg!.RegId.Should().StartWith(LabExternalModel.IdPrefix);
         capturedReg.RegId.Length.Should().Be(10);
+        capturedLayanan.Should().NotBeNull();
+        capturedLayanan!.LayananId.Should().Be("4LB01");
     }
 
     [Fact]
@@ -430,6 +485,7 @@ public class LabBillingIntegrationTest
             It.IsAny<TarifType>(),
             It.Is<NilaiTarifType>(nt => nt.Nilai == 29500m),
             It.IsAny<IEnumerable<KomponenType>>(),
+            It.Is<LayananReff>(l => l.LayananId == "4LB01"),
             It.IsAny<DateTime>()), Times.Exactly(order.Items.Count));
     }
 }

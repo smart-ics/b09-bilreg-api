@@ -1,3 +1,9 @@
+-- ============================================================================
+-- [DECOMMISSIONED / OBSOLETE]
+-- Table: BILRG_AptInvoiceItemCharge
+-- Reason: Deprecated greenfield invoice charge table. Replaced by dbo.tb_trs_dobill_umum2
+--         (fn_biaya & fn_biaya_fee) per ARCHITECTURE OC-APT-PENJUALAN.
+-- ============================================================================
 CREATE TABLE BILRG_AptInvoiceItemCharge (
     InvoiceId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptInvoiceItemCharge_InvoiceId DEFAULT(''),
     ItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptInvoiceItemCharge_ItemNo DEFAULT(0),

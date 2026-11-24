@@ -42,7 +42,24 @@ public class RegDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
+        var initial = Faker();
+        _sut.Insert(initial);
+
+        var updated = initial with
+        {
+            fs_kd_cara_masuk_dk = "2",
+            fs_kd_jenis_inap = "3",
+            fs_reg_ibu = "REG-IBU01",
+            fs_kd_medis = "MEDIS01"
+        };
+        _sut.Update(updated);
+
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().NotBeNull();
+        actual.fs_kd_cara_masuk_dk.Should().Be("2");
+        actual.fs_kd_jenis_inap.Should().Be("3");
+        actual.fs_reg_ibu.Should().Be("REG-IBU01");
+        actual.fs_kd_medis.Should().Be("MEDIS01");
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
@@ -20,7 +20,7 @@ public interface IOrderOpDal :
 
 public class OrderOpDal : IOrderOpDal
 {
-    public readonly DatabaseOptions _opt;
+    private readonly DatabaseOptions _opt;
 
     public OrderOpDal(IOptions<DatabaseOptions> opt)
     {
@@ -35,6 +35,9 @@ public class OrderOpDal : IOrderOpDal
                Icd10Id, JenisOperasiId, NamaOperasi,
                DokterId, UrgencyLevel, TarifId, TarifName,
                EstimasiDurasi, PreferedDate, SpecialEquipment,
+               DokterPengorderId, LayananPengorderId, DokterOperatorId,
+               ProsedurTambahan, KlasifikasiOperasi, AnestesiPlan,
+               PostOpCareUnit, AlasanBatal,
                CrtUser, CrtDate,
                UpdUser, UpdDate,
                VodUser, VodDate)
@@ -43,6 +46,9 @@ public class OrderOpDal : IOrderOpDal
                @Icd10Id, @JenisOperasiId, @NamaOperasi,
                @DokterId, @UrgencyLevel, @TarifId, @TarifName,
                @EstimasiDurasi, @PreferedDate, @SpecialEquipment,
+               @DokterPengorderId, @LayananPengorderId, @DokterOperatorId,
+               @ProsedurTambahan, @KlasifikasiOperasi, @AnestesiPlan,
+               @PostOpCareUnit, @AlasanBatal,
                @CrtUser, @CrtDate,
                @UpdUser, @UpdDate,
                @VodUser, @VodDate)
@@ -57,13 +63,22 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
         
-        dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
+        dp.AddParam("@DokterId", string.IsNullOrEmpty(model.DokterId) ? (model.DokterOperatorId ?? string.Empty) : model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@TarifId", model.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", model.TarifName, SqlDbType.VarChar);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
+
+        dp.AddParam("@DokterPengorderId", model.DokterPengorderId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@LayananPengorderId", model.LayananPengorderId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@DokterOperatorId", model.DokterOperatorId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@ProsedurTambahan", model.ProsedurTambahan ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@KlasifikasiOperasi", model.KlasifikasiOperasi, SqlDbType.Int);
+        dp.AddParam("@AnestesiPlan", model.AnestesiPlan, SqlDbType.Int);
+        dp.AddParam("@PostOpCareUnit", model.PostOpCareUnit, SqlDbType.Int);
+        dp.AddParam("@AlasanBatal", model.AlasanBatal ?? string.Empty, SqlDbType.VarChar);
         
         dp.AddParam("@CrtUser", model.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", model.CrtDate, SqlDbType.DateTime);
@@ -96,6 +111,15 @@ public class OrderOpDal : IOrderOpDal
                EstimasiDurasi = @EstimasiDurasi,
                PreferedDate = @PreferedDate,
                SpecialEquipment = @SpecialEquipment,
+
+               DokterPengorderId = @DokterPengorderId,
+               LayananPengorderId = @LayananPengorderId,
+               DokterOperatorId = @DokterOperatorId,
+               ProsedurTambahan = @ProsedurTambahan,
+               KlasifikasiOperasi = @KlasifikasiOperasi,
+               AnestesiPlan = @AnestesiPlan,
+               PostOpCareUnit = @PostOpCareUnit,
+               AlasanBatal = @AlasanBatal,
         
                CrtUser = @CrtUser,
                CrtDate = @CrtDate,
@@ -116,13 +140,22 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
         
-        dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
+        dp.AddParam("@DokterId", string.IsNullOrEmpty(model.DokterId) ? (model.DokterOperatorId ?? string.Empty) : model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@TarifId", model.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", model.TarifName, SqlDbType.VarChar);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
+
+        dp.AddParam("@DokterPengorderId", model.DokterPengorderId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@LayananPengorderId", model.LayananPengorderId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@DokterOperatorId", model.DokterOperatorId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@ProsedurTambahan", model.ProsedurTambahan ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@KlasifikasiOperasi", model.KlasifikasiOperasi, SqlDbType.Int);
+        dp.AddParam("@AnestesiPlan", model.AnestesiPlan, SqlDbType.Int);
+        dp.AddParam("@PostOpCareUnit", model.PostOpCareUnit, SqlDbType.Int);
+        dp.AddParam("@AlasanBatal", model.AlasanBatal ?? string.Empty, SqlDbType.VarChar);
         
         dp.AddParam("@CrtUser", model.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", model.CrtDate, SqlDbType.DateTime);
@@ -141,7 +174,7 @@ public class OrderOpDal : IOrderOpDal
            DELETE FROM 
                 BILRG_OrderOp
            WHERE
-               OrderOpId = @OrderOpId
+                OrderOpId = @OrderOpId
            """;
         
         var dp = new DynamicParameters();
@@ -155,10 +188,13 @@ public class OrderOpDal : IOrderOpDal
     {
         const string sql = """
            SELECT
-               aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
+               aa.OrderOpId, aa.OrderDate, aa.RegId, aa.PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.TarifId, aa.TarifName,
                aa.EstimasiDurasi, aa.PreferedDate, aa.SpecialEquipment,
+               aa.DokterPengorderId, aa.LayananPengorderId, aa.DokterOperatorId,
+               aa.ProsedurTambahan, aa.KlasifikasiOperasi, aa.AnestesiPlan,
+               aa.PostOpCareUnit, aa.AlasanBatal,
                aa.CrtUser, aa.CrtDate,
                aa.UpdUser, aa.UpdDate,
                aa.VodUser, aa.VodDate,
@@ -167,14 +203,19 @@ public class OrderOpDal : IOrderOpDal
                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
                ISNULL(cc.fs_ket_icd, '') AS fs_ket_icd,
                ISNULL(dd.fs_nm_jenis_operasi, '') AS fs_nm_jenis_operasi,
-               ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg
-               
+               ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg,
+               ISNULL(ff.fs_nm_peg, '') AS DokterPengorderName,
+               ISNULL(gg.fs_nm_layanan, '') AS LayananPengorderName,
+               ISNULL(hh.fs_nm_peg, '') AS DokterOperatorName
            FROM
                BILRG_OrderOp aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN tc_icd cc ON aa.Icd10id = cc.fs_kd_icd
                LEFT JOIN ta_jenis_operasi dd ON aa.JenisOperasiId = dd.fs_kd_jenis_operasi
                LEFT JOIN td_peg ee ON aa.DokterId = ee.fs_kd_peg
+               LEFT JOIN td_peg ff ON aa.DokterPengorderId = ff.fs_kd_peg
+               LEFT JOIN ta_layanan gg ON aa.LayananPengorderId = gg.fs_kd_layanan
+               LEFT JOIN td_peg hh ON aa.DokterOperatorId = hh.fs_kd_peg
            WHERE
                OrderOpId = @OrderOpId
            """;
@@ -190,10 +231,13 @@ public class OrderOpDal : IOrderOpDal
     {
         const string sql = """
            SELECT
-               aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
+               aa.OrderOpId, aa.OrderDate, aa.RegId, aa.PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.TarifId, aa.TarifName,
                aa.EstimasiDurasi, aa.PreferedDate, aa.SpecialEquipment,
+               aa.DokterPengorderId, aa.LayananPengorderId, aa.DokterOperatorId,
+               aa.ProsedurTambahan, aa.KlasifikasiOperasi, aa.AnestesiPlan,
+               aa.PostOpCareUnit, aa.AlasanBatal,
                aa.CrtUser, aa.CrtDate,
                aa.UpdUser, aa.UpdDate,
                aa.VodUser, aa.VodDate,
@@ -202,14 +246,19 @@ public class OrderOpDal : IOrderOpDal
                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
                ISNULL(cc.fs_ket_icd, '') AS fs_ket_icd,
                ISNULL(dd.fs_nm_jenis_operasi, '') AS fs_nm_jenis_operasi,
-               ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg
-               
+               ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg,
+               ISNULL(ff.fs_nm_peg, '') AS DokterPengorderName,
+               ISNULL(gg.fs_nm_layanan, '') AS LayananPengorderName,
+               ISNULL(hh.fs_nm_peg, '') AS DokterOperatorName
            FROM 
                BILRG_OrderOp aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN tc_icd cc ON aa.Icd10id = cc.fs_kd_icd
                LEFT JOIN ta_jenis_operasi dd ON aa.JenisOperasiId = dd.fs_kd_jenis_operasi
                LEFT JOIN td_peg ee ON aa.DokterId = ee.fs_kd_peg
+               LEFT JOIN td_peg ff ON aa.DokterPengorderId = ff.fs_kd_peg
+               LEFT JOIN ta_layanan gg ON aa.LayananPengorderId = gg.fs_kd_layanan
+               LEFT JOIN td_peg hh ON aa.DokterOperatorId = hh.fs_kd_peg
            WHERE
                OrderDate BETWEEN @Tgl1 AND @Tgl2
            """;
@@ -219,6 +268,6 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@Tgl2", filter.Tgl2, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrderOpDto>(sql, dp);
+        return conn.Read<OrderOpDto>(sql, dp) ?? [];
     }
 }

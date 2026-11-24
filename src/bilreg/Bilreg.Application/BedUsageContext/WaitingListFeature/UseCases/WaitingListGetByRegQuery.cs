@@ -5,25 +5,30 @@ using MediatR;
 namespace Bilreg.Application.BedUsageContext.WaitingListFeature.UseCases;
 
 public record WaitingListGetByRegQuery(string RegId)
-    : IRequest<IEnumerable<WaitingListGetResponse>>, IRegKey;
+    : IRequest<WaitingListGetResponse?>, IRegKey;
 
 public class WaitingListGetByRegHandler
-    : IRequestHandler<WaitingListGetByRegQuery, IEnumerable<WaitingListGetResponse>>
+    : IRequestHandler<WaitingListGetByRegQuery, WaitingListGetResponse?>
 {
     private readonly IWaitingListRepo _waitingListRepo;
 
     public WaitingListGetByRegHandler(IWaitingListRepo waitingListRepo) =>
         _waitingListRepo = waitingListRepo;
 
-    public Task<IEnumerable<WaitingListGetResponse>> Handle(
+    public Task<WaitingListGetResponse?> Handle(
         WaitingListGetByRegQuery request,
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId, nameof(request.RegId));
 
-        var models = _waitingListRepo.ListByRegId(request.RegId);
-        var responses = models.Select(WaitingListGetResponse.FromModel).ToList();
+        var active = _waitingListRepo.LoadActiveByRegId(request.RegId);
+        if (active.HasValue)
+            return Task.FromResult<WaitingListGetResponse?>(WaitingListGetResponse.FromModel(active.Value));
 
-        return Task.FromResult<IEnumerable<WaitingListGetResponse>>(responses);
+        var latest = _waitingListRepo.ListByRegId(request.RegId).FirstOrDefault();
+        if (latest is not null)
+            return Task.FromResult<WaitingListGetResponse?>(WaitingListGetResponse.FromModel(latest));
+
+        return Task.FromResult<WaitingListGetResponse?>(null);
     }
 }

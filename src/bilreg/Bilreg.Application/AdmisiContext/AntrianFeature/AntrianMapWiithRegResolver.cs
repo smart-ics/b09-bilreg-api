@@ -53,6 +53,14 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         if (!antrianMap.ListMap.Any())
             antrianMap.SeedingMap();
 
+        // 0. IDEMPOTENCY GUARD: Jika nomor registrasi sudah memiliki slot di map ini
+        var existingSlot = antrianMap.ListMap.FirstOrDefault(x => x.ReffId == reg.RegId);
+        if (existingSlot is not null)
+        {
+            existingSlot.SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
+            return Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((antrianMap, existingSlot));
+        }
+
         var req = new GetGrupJaminanJetliRequest(reg.TipeJaminan);
         var grupJmnResp = _getGrupJaminanJetliService.Execute(req);
         var flag = grupJmnResp.GroupJaminanId == "JKN" ? "BPJS" : "UMUM";

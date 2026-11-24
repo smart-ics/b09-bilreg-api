@@ -297,4 +297,52 @@ public class InpatientOrderUseCasesTest
         mediatorMock.Verify(m => m.Send(It.Is<AdmCancelInpatientOrderCmd>(c =>
             c.InpatientOrderId == "OPN000000002" && c.Reason == "Batal"), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ReservationController_History_DelegatesToMediator()
+    {
+        var mediatorMock = new Mock<IMediator>();
+        var expectedResponse = new AdmReservationHistoryResponse(
+            "OPN000000002", "P01", "Pasien A", new DateTime(2026, 11, 15), "Kelas 1", "Bangsal B",
+            1, "user1", new DateTime(2026, 11, 1), "user2", new DateTime(2026, 11, 5), []);
+
+        mediatorMock.Setup(m => m.Send(It.Is<AdmGetReservationHistoryQry>(q => q.ReservationId == "OPN000000002"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = new ReservationController(mediatorMock.Object);
+        var result = await controller.History("OPN000000002");
+        var okResult = result as OkObjectResult;
+        okResult.Should().NotBeNull();
+        var jsend = okResult!.Value as JSendOk;
+        jsend.Should().NotBeNull();
+        mediatorMock.Verify(m => m.Send(It.Is<AdmGetReservationHistoryQry>(q => q.ReservationId == "OPN000000002"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdmGetReservationHistoryHandler_ReturnsEntriesWithAuditAndCreation()
+    {
+        var order = InpatientOrderModel.CreateBooking(
+            new PasienReff("P01", "Pasien A", new DateOnly(1985, 3, 10), "L"),
+            new DateTime(2026, 11, 10),
+            new KelasReff("K01", "Kelas VIP"),
+            new BangsalReff("B01", "Bangsal Anggrek"),
+            "user1");
+
+        _orderRepo.Setup(x => x.GetByKey(order.InpatientOrderId)).Returns(MayBe.From(order));
+        _orderRepo.Setup(x => x.ListAudits(order.InpatientOrderId)).Returns(new List<InpatientOrderAuditRecord>
+        {
+            new("AUD01", new DateTime(2026, 11, 5, 10, 0, 0), "user2", "UPDATE", "Rescheduled by request", "{\"PlannedDate\":\"2026-11-10T00:00:00\"}")
+        });
+
+        var handler = new AdmGetReservationHistoryHandler(_orderRepo.Object);
+        var response = await handler.Handle(new AdmGetReservationHistoryQry(order.InpatientOrderId), CancellationToken.None);
+
+        response.Should().NotBeNull();
+        response.ReservationId.Should().Be(order.InpatientOrderId);
+        response.Entries.Should().HaveCount(2);
+        response.Entries[0].ActionType.Should().Be("CREATE");
+        response.Entries[1].ActionType.Should().Be("UPDATE");
+        response.Entries[1].PreviousPlannedDate.Should().Be(new DateTime(2026, 11, 10));
+        response.Entries[1].Notes.Should().Be("Rescheduled by request");
+    }
 }

@@ -225,7 +225,13 @@ public sealed partial class JourneyDal
                ord.DokterId, ord.DokterName, ord.ClinicalNotes, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
                ISNULL(NULLIF(ord.PasienName,''), ISNULL(mr.fs_nm_pasien,'')) AS PasienName,
                ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
-               CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+               CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir,
+               ISNULL(mr.fs_no_hp,'') AS NoHp,
+               ISNULL(mr.fs_tlp_pasien,'') AS TlpPasien,
+               ISNULL(mr.fs_alm_pasien,'') AS Alm1,
+               ISNULL(mr.fs_alm2_pasien,'') AS Alm2,
+               ISNULL(mr.fs_alm3_pasien,'') AS Alm3,
+               ISNULL(mr.fs_kota_pasien,'') AS Kota
         FROM BILRG_AdmInpatientOrder ord
         LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
         WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId IN @OpnIds
@@ -239,7 +245,13 @@ public sealed partial class JourneyDal
                ISNULL(NULLIF(ord.Gender,''), ISNULL(mr.fs_jns_kelamin,'')) AS Gender,
                CASE WHEN ord.TglLahir <> '3000-01-01' THEN ord.TglLahir WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE '3000-01-01' END AS TglLahir,
                ord.KelasId, ord.KelasName, ord.BangsalId, ord.BangsalName, ord.PlannedDate, ord.CrtDate, ord.UpdDate,
-               ord.DokterId, ord.DokterName, ord.TipeJaminanId, ord.TipeJaminanName, ord.ClinicalNotes
+               ord.DokterId, ord.DokterName, ord.TipeJaminanId, ord.TipeJaminanName, ord.ClinicalNotes,
+               ISNULL(mr.fs_no_hp,'') AS NoHp,
+               ISNULL(mr.fs_tlp_pasien,'') AS TlpPasien,
+               ISNULL(mr.fs_alm_pasien,'') AS Alm1,
+               ISNULL(mr.fs_alm2_pasien,'') AS Alm2,
+               ISNULL(mr.fs_alm3_pasien,'') AS Alm3,
+               ISNULL(mr.fs_kota_pasien,'') AS Kota
         FROM BILRG_AdmInpatientOrder ord
         LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
         WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (3, 4) AND ord.InpatientOrderId IN @RsvIds
@@ -259,7 +271,13 @@ public sealed partial class JourneyDal
                a.KelasDkId, a.KelasDkName, a.BangsalId, a.BangsalName, a.AdmissionDate, a.CrtDate, a.UpdDate,
                ISNULL(mr.fs_nm_pasien,'') AS PasienName,
                ISNULL(mr.fs_jns_kelamin,'') AS Gender,
-               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir
+               CASE WHEN ISDATE(mr.fd_tgl_lahir)=1 THEN CAST(mr.fd_tgl_lahir AS DATETIME) ELSE NULL END AS TglLahir,
+               ISNULL(mr.fs_no_hp,'') AS NoHp,
+               ISNULL(mr.fs_tlp_pasien,'') AS TlpPasien,
+               ISNULL(mr.fs_alm_pasien,'') AS Alm1,
+               ISNULL(mr.fs_alm2_pasien,'') AS Alm2,
+               ISNULL(mr.fs_alm3_pasien,'') AS Alm3,
+               ISNULL(mr.fs_kota_pasien,'') AS Kota
         FROM BILRG_AdmAdmission a
         LEFT JOIN tc_mr mr ON a.PasienId = mr.fs_mr
         LEFT JOIN BILRG_AdmInpatientOrder io ON a.InpatientOrderId = io.InpatientOrderId AND io.VodDate = @VodDate
@@ -284,7 +302,7 @@ public sealed partial class JourneyDal
                  WaitingListId ASC
         """;
 
-    private static string BuildRegExtrasSelectSql() =>
+    internal static string BuildRegExtrasSelectSql() =>
         """
         SELECT
             reg.fs_kd_reg AS RegId,
@@ -294,11 +312,23 @@ public sealed partial class JourneyDal
             ISNULL(kl.fs_nm_kelas,'') AS KelasName,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_kd_dokter)),''), NULLIF(LTRIM(RTRIM(reg.fs_kd_medis)),'')), '') AS DokterId,
             ISNULL(COALESCE(NULLIF(LTRIM(RTRIM(hd.fs_nm_peg)),''), NULLIF(LTRIM(RTRIM(peg.fs_nm_peg)),'')), '') AS DokterName,
-            ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId
+            ISNULL(reg.fs_kd_jenis_inap,'') AS JenisInapId,
+            ISNULL(ji.fs_nm_jenis_inap,'') AS JenisInapName,
+            ISNULL(ri.fs_kd_caramasuk_inap,'') AS ProsedurMasukId,
+            ISNULL(cmi.fs_nm_caramasuk_inap,'') AS ProsedurMasukName,
+            ISNULL(reg.fs_kd_cara_masuk_dk,'') AS CaraMasukId,
+            ISNULL(cmd.fs_nm_cara_masuk_dk,'') AS CaraMasukName,
+            ISNULL(reg.fs_reg_ibu,'') AS RegIbuId,
+            ISNULL(ibuMr.fs_nm_pasien,'') AS NamaIbu
         FROM ta_registrasi reg
         LEFT JOIN ta_tipe_jaminan tj ON reg.fs_kd_tipe_jaminan = tj.fs_kd_tipe_jaminan
         LEFT JOIN ta_kelas kl ON reg.fs_kd_kelas = kl.fs_kd_kelas
         LEFT JOIN ta_reg_inap ri ON ri.fs_kd_reg = reg.fs_kd_reg
+        LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
+        LEFT JOIN ta_caramasuk_inap cmi ON ri.fs_kd_caramasuk_inap = cmi.fs_kd_caramasuk_inap
+        LEFT JOIN ta_cara_masuk_dk cmd ON reg.fs_kd_cara_masuk_dk = cmd.fs_kd_cara_masuk_dk
+        LEFT JOIN ta_registrasi ibuReg ON reg.fs_reg_ibu = ibuReg.fs_kd_reg
+        LEFT JOIN tc_mr ibuMr ON ibuReg.fs_mr = ibuMr.fs_mr
         LEFT JOIN (
             SELECT h.fs_kd_reg, h.fs_kd_dokter, ISNULL(p.fs_nm_peg,'') AS fs_nm_peg,
                    ROW_NUMBER() OVER (PARTITION BY h.fs_kd_reg ORDER BY h.fd_tgl_mulai DESC) AS rn
@@ -345,7 +375,12 @@ public sealed partial class JourneyDal
                 extras ?? RegExtras.Empty);
         }
 
-        var patient = BuildPatient(opn.PasienId, opn.PasienName, opn.Gender, opn.TglLahir);
+        var patient = BuildPatient(
+            opn.PasienId,
+            opn.PasienName,
+            opn.Gender,
+            opn.TglLahir,
+            BuildContactSummary(opn.NoHp, opn.TlpPasien));
         var facts = new JourneyNormalizedFacts(
             JourneyOriginKind.OpnameRequest,
             patient,
@@ -372,7 +407,7 @@ public sealed partial class JourneyDal
             ReferringDoctor: null,
             ReferralOrSourceSummary: "Opname Request",
             PolicySummary: null,
-            AddressSummary: null);
+            AddressSummary: BuildAddressSummary(opn.Alm1, opn.Alm2, opn.Alm3, opn.Kota));
     }
 
     private JourneyFactBag? FoldReservationJourney(
@@ -408,7 +443,12 @@ public sealed partial class JourneyDal
                 extras ?? RegExtras.Empty);
         }
 
-        var patient = BuildPatient(rsv.PasienId, rsv.PasienName, rsv.Gender, rsv.TglLahir);
+        var patient = BuildPatient(
+            rsv.PasienId,
+            rsv.PasienName,
+            rsv.Gender,
+            rsv.TglLahir,
+            BuildContactSummary(rsv.NoHp, rsv.TlpPasien));
         var facts = new JourneyNormalizedFacts(
             JourneyOriginKind.Reservation,
             patient,
@@ -435,7 +475,7 @@ public sealed partial class JourneyDal
             ReferringDoctor: null,
             ReferralOrSourceSummary: "Reservation",
             PolicySummary: null,
-            AddressSummary: null);
+            AddressSummary: BuildAddressSummary(rsv.Alm1, rsv.Alm2, rsv.Alm3, rsv.Kota));
     }
 
     private JourneyFactBag? FoldRegJourney(
@@ -463,14 +503,24 @@ public sealed partial class JourneyDal
             extras ?? RegExtras.Empty);
     }
 
-    private static RegExtras MapRegExtras(RegExtrasBatchRowDto row) =>
-        new(
+    internal static RegExtras MapRegExtras(RegExtrasBatchRowDto row)
+    {
+        var effectiveRegIbu = (string.IsNullOrWhiteSpace(row.RegIbuId) || row.RegIbuId.All(c => c == '0' || c == '-')) ? null : row.RegIbuId.Trim();
+        var effectiveNamaIbu = string.IsNullOrWhiteSpace(row.NamaIbu) ? null : row.NamaIbu.Trim();
+
+        return new(
             Named(row.TipeJaminanId, row.TipeJaminanName),
             Named(row.KelasId, row.KelasName),
             Named(row.DokterId, row.DokterName),
-            string.IsNullOrWhiteSpace(row.ProsedurMasukId) ? null : $"Prosedur masuk: {row.ProsedurMasukId}",
+            BuildProcedureSummary(row.ProsedurMasukId, row.ProsedurMasukName),
             null,
-            null);
+            null,
+            Named(row.JenisInapId, row.JenisInapName),
+            Named(row.ProsedurMasukId, row.ProsedurMasukName),
+            Named(row.CaraMasukId, row.CaraMasukName),
+            effectiveRegIbu,
+            effectiveNamaIbu);
+    }
 
     private sealed record ExpandedFactBatch(
         IReadOnlyList<OpnameRowDto> Opnames,
@@ -479,7 +529,7 @@ public sealed partial class JourneyDal
         IReadOnlyList<WaitingListRowDto> WaitingLists,
         IReadOnlyList<RegExtrasBatchRowDto> RegExtras);
 
-    private sealed record RegExtrasBatchRowDto(
+    internal sealed record RegExtrasBatchRowDto(
         string RegId,
         string TipeJaminanId,
         string TipeJaminanName,
@@ -487,5 +537,15 @@ public sealed partial class JourneyDal
         string KelasName,
         string DokterId,
         string DokterName,
-        string ProsedurMasukId);
+        string JenisInapId,
+        string JenisInapName,
+        string ProsedurMasukId,
+        string ProsedurMasukName,
+        string CaraMasukId,
+        string CaraMasukName,
+        string RegIbuId = "",
+        string NamaIbu = "")
+    {
+        public RegExtrasBatchRowDto() : this("", "", "", "", "", "", "", "", "", "", "", "", "", "", "") { }
+    }
 }

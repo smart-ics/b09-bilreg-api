@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -20,11 +21,12 @@ namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 public class RegJaminanPolicyAdapterTest
 {
     private readonly Mock<IRegRepo> _regRepoMock = new();
+    private readonly Mock<ITipeJaminanRepo> _tipeJaminanRepoMock = new();
     private readonly RegJaminanPolicyAdapter _sut;
 
     public RegJaminanPolicyAdapterTest()
     {
-        _sut = new RegJaminanPolicyAdapter(_regRepoMock.Object);
+        _sut = new RegJaminanPolicyAdapter(_regRepoMock.Object, _tipeJaminanRepoMock.Object);
     }
 
     private static RegModel CreateReg(
@@ -58,6 +60,19 @@ public class RegJaminanPolicyAdapterTest
             []);
     }
 
+    private static TipeJaminanType CreateTipeJaminan(
+        string id = "BPJS",
+        string name = "BPJS Kesehatan",
+        bool isAktif = true)
+    {
+        return new TipeJaminanType(
+            id,
+            name,
+            isAktif,
+            JaminanType.Default.ToReff(),
+            CaraBayarDkType.Default);
+    }
+
     [Fact]
     public void GivenMatchingInsuranceAndActiveRegistration_WhenIsJaminanValidForReg_ThenReturnsTrue()
     {
@@ -65,6 +80,8 @@ public class RegJaminanPolicyAdapterTest
         var reg = CreateReg("REG-01", "BPJS");
         _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
             .Returns(MayBe.From(reg));
+        _tipeJaminanRepoMock.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "BPJS")))
+            .Returns(MayBe.From(CreateTipeJaminan("BPJS", "BPJS Kesehatan", isAktif: true)));
 
         // Act
         var result = _sut.IsJaminanValidForReg("REG-01", "BPJS");
@@ -80,12 +97,81 @@ public class RegJaminanPolicyAdapterTest
         var reg = CreateReg("REG-01", "BPJS");
         _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
             .Returns(MayBe.From(reg));
+        _tipeJaminanRepoMock.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => string.Equals(k.TipeJaminanId, "bpjs", StringComparison.OrdinalIgnoreCase))))
+            .Returns(MayBe.From(CreateTipeJaminan("BPJS", "BPJS Kesehatan", isAktif: true)));
 
         // Act
         var result = _sut.IsJaminanValidForReg("REG-01", "bpjs");
 
         // Assert
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GivenSecondaryActiveInsuranceDifferentFromRegistration_WhenIsJaminanValidForReg_ThenReturnsTrue()
+    {
+        // Arrange: registration has BPJS, but payment is secondary insurance ASR-PRUDENTIAL which is active in master
+        var reg = CreateReg("REG-01", "BPJS");
+        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(reg));
+        _tipeJaminanRepoMock.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "ASR-PRUDENTIAL")))
+            .Returns(MayBe.From(CreateTipeJaminan("ASR-PRUDENTIAL", "Prudential Life", isAktif: true)));
+
+        // Act
+        var result = _sut.IsJaminanValidForReg("REG-01", "ASR-PRUDENTIAL");
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GivenPaymentId00000_WhenIsJaminanValidForReg_ThenReturnsFalse()
+    {
+        // Arrange: "00000" (Bayar Sendiri / UMUM) must always be rejected as insurance
+        var reg = CreateReg("REG-01", "00000", "Membayar Sendiri");
+        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(reg));
+
+        // Act
+        var result = _sut.IsJaminanValidForReg("REG-01", "00000");
+
+        // Assert
+        result.Should().BeFalse();
+        _tipeJaminanRepoMock.Verify(r => r.LoadEntity(It.IsAny<ITipeJaminanKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenInactiveInsurance_WhenIsJaminanValidForReg_ThenReturnsFalse()
+    {
+        // Arrange: insurance exists in master but IsAktif == false
+        var reg = CreateReg("REG-01", "BPJS");
+        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(reg));
+        _tipeJaminanRepoMock.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "INACTIVE-JMN")))
+            .Returns(MayBe.From(CreateTipeJaminan("INACTIVE-JMN", "Asuransi Non-Aktif", isAktif: false)));
+
+        // Act
+        var result = _sut.IsJaminanValidForReg("REG-01", "INACTIVE-JMN");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenInsuranceNotFoundInMaster_WhenIsJaminanValidForReg_ThenReturnsFalse()
+    {
+        // Arrange
+        var reg = CreateReg("REG-01", "BPJS");
+        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(reg));
+        _tipeJaminanRepoMock.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "NON-EXISTENT")))
+            .Returns(MayBe<TipeJaminanType>.None);
+
+        // Act
+        var result = _sut.IsJaminanValidForReg("REG-01", "NON-EXISTENT");
+
+        // Assert
+        result.Should().BeFalse();
     }
 
     [Fact]
@@ -112,21 +198,6 @@ public class RegJaminanPolicyAdapterTest
 
         // Act
         var result = _sut.IsJaminanValidForReg("REG-01", "BPJS");
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void GivenRegistrationWithDifferentInsurance_WhenIsJaminanValidForReg_ThenReturnsFalse()
-    {
-        // Arrange
-        var reg = CreateReg("REG-01", "BPJS");
-        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
-            .Returns(MayBe.From(reg));
-
-        // Act
-        var result = _sut.IsJaminanValidForReg("REG-01", "ASR-PRUDENTIAL");
 
         // Assert
         result.Should().BeFalse();
@@ -164,29 +235,25 @@ public class RegJaminanPolicyAdapterTest
     }
 
     [Fact]
-    public void GivenRegistrationWithEmptyInsurance_WhenIsJaminanValidForReg_ThenReturnsFalse()
-    {
-        // Arrange
-        var reg = CreateReg("REG-01", tipeJaminanId: "");
-        _regRepoMock.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
-            .Returns(MayBe.From(reg));
-
-        // Act
-        var result = _sut.IsJaminanValidForReg("REG-01", "BPJS");
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
     public void GivenNullRegRepo_WhenConstructingAdapter_ThenThrowsArgumentNullException()
     {
         // Act
-        var act = () => new RegJaminanPolicyAdapter(null!);
+        var act = () => new RegJaminanPolicyAdapter(null!, _tipeJaminanRepoMock.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("regRepo");
+    }
+
+    [Fact]
+    public void GivenNullTipeJaminanRepo_WhenConstructingAdapter_ThenThrowsArgumentNullException()
+    {
+        // Act
+        var act = () => new RegJaminanPolicyAdapter(_regRepoMock.Object, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("tipeJaminanRepo");
     }
 
     [Fact]
@@ -195,6 +262,7 @@ public class RegJaminanPolicyAdapterTest
         // Arrange
         var services = new ServiceCollection();
         services.AddScoped<IRegRepo>(_ => _regRepoMock.Object);
+        services.AddScoped<ITipeJaminanRepo>(_ => _tipeJaminanRepoMock.Object);
 
         // Act
         services.AddTataRekeningFeature();

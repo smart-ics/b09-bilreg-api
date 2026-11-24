@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
 using Bilreg.Application.PaymentContext.RegOutFeature.RegOutAgg;
@@ -37,6 +39,9 @@ public class AllocateFinalizeHandler
     private readonly IRegBiayaRepo _regBiayaRepo;
     private readonly ITrsDirectDal _trsDirectDal;
     private readonly IJurnalDal _jurnalDal;
+    private readonly IRegAktifRepo? _regAktifRepo;
+    private readonly ITipeJaminanRepo? _tipeJaminanRepo;
+    private readonly IJaminanRepo? _jaminanRepo;
 
     public AllocateFinalizeHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -48,7 +53,10 @@ public class AllocateFinalizeHandler
         ITglJamProvider tglJamProvider,
         IRegBiayaRepo regBiayaRepo,
         ITrsDirectDal trsDirectDal,
-        IJurnalDal jurnalDal)
+        IJurnalDal jurnalDal,
+        IRegAktifRepo? regAktifRepo = null,
+        ITipeJaminanRepo? tipeJaminanRepo = null,
+        IJaminanRepo? jaminanRepo = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
@@ -60,6 +68,9 @@ public class AllocateFinalizeHandler
         _regBiayaRepo = regBiayaRepo;
         _trsDirectDal = trsDirectDal;
         _jurnalDal = jurnalDal;
+        _regAktifRepo = regAktifRepo;
+        _tipeJaminanRepo = tipeJaminanRepo;
+        _jaminanRepo = jaminanRepo;
     }
 
     public AllocateFinalizeHandler(
@@ -71,7 +82,21 @@ public class AllocateFinalizeHandler
         IUnitOfWork unitOfWork,
         ITglJamProvider tglJamProvider)
         : this(tataRekeningRepo, trsBillingRepo, depositRepo, regJaminanPolicy, regRepo, unitOfWork, tglJamProvider,
-            null!, null!, null!)
+            null!, null!, null!, null, null, null)
+    {
+    }
+
+    public AllocateFinalizeHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
+        IDepositRepo depositRepo,
+        IRegJaminanPolicy regJaminanPolicy,
+        IRegRepo regRepo,
+        IUnitOfWork unitOfWork,
+        ITglJamProvider tglJamProvider,
+        IRegAktifRepo regAktifRepo)
+        : this(tataRekeningRepo, trsBillingRepo, depositRepo, regJaminanPolicy, regRepo, unitOfWork, tglJamProvider,
+            null!, null!, null!, regAktifRepo, null, null)
     {
     }
 
@@ -112,6 +137,9 @@ public class AllocateFinalizeHandler
         var totalDepositAllocated = request.Payments
             .Where(x => x.PaymentId == PaymentType.ByDpu.PaymentId || x.PaymentId == PaymentType.ByDpk.PaymentId)
             .Sum(x => x.NilaiJasa + x.NilaiObat);
+        var totalDpk = request.Payments
+            .Where(x => x.PaymentId == PaymentType.ByDpk.PaymentId)
+            .Sum(x => x.NilaiJasa + x.NilaiObat);
 
         if (hasDepositPayment || totalDepositAllocated > 0)
         {
@@ -125,15 +153,16 @@ public class AllocateFinalizeHandler
             }
 
             var totalTagihan = tataRekening.ListTrsBill.Sum(b => b.FinancialTotal);
-            if (totalDepositAllocated > totalTagihan)
+            if (totalDpk > totalTagihan)
             {
                 throw new InvalidOperationException(
-                    $"Alokasi deposit ({totalDepositAllocated:N0}) melebihi total tagihan kunjungan ({totalTagihan:N0}).");
+                    $"Alokasi Deposit Khusus ({totalDpk:N0}) melebihi total tagihan kunjungan ({totalTagihan:N0}).");
             }
         }
 
         var listPayment = request.Payments
-            .Select(TataRekeningApplicationMapper.ToPaymentType)
+            .Select(p => TataRekeningApplicationMapper.ToPaymentType(
+                p, TataRekeningApplicationMapper.ResolvePaymentCoa(p, _tipeJaminanRepo, _jaminanRepo)))
             .ToList();
 
         // 1. Allocate financial responsibility
@@ -174,6 +203,7 @@ public class AllocateFinalizeHandler
             .GetValueOrThrow($"Registrasi '{request.RegId}' tidak ditemukan.");
         reg.SetKeluar(petugasVerif, occurredAt);
         _regRepo.SaveChanges(reg);
+        _regAktifRepo?.Delete(request);
 
         scope.Complete();
 

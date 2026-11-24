@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -27,7 +28,8 @@ public class AdmissionController : ControllerBase
             body.KelasDkId,
             body.BangsalId,
             body.UserId,
-            body.Registration);
+            body.Registration,
+            body.IsBbl);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -40,7 +42,8 @@ public class AdmissionController : ControllerBase
             body.KelasDkId,
             body.BangsalId,
             body.UserId,
-            body.Registration);
+            body.Registration,
+            body.IsBbl);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -68,6 +71,60 @@ public class AdmissionController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPut("{id}/inpatient-visit")]
+    public async Task<IActionResult> UpdateInpatientVisit(string id, [FromBody] AdmUpdateInpatientVisitBody body)
+    {
+        var userId = !string.IsNullOrWhiteSpace(body.UserId)
+            ? body.UserId
+            : (User?.FindFirst(ClaimTypes.Name)?.Value ?? User?.Identity?.Name ?? string.Empty);
+
+        try
+        {
+            var cmd = new AdmUpdateInpatientVisitCmd(
+                id,
+                body.DokterId,
+                body.ProsedurMasukInapId,
+                body.JenisInapId,
+                body.RegIbu,
+                userId,
+                body.CaraMasukDkId);
+
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+        catch (KeyNotFoundException ex) when (ex.Message.Contains("ibu", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new JSendFailed(ex));
+        }
+        catch (ArgumentException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity, new JSendFailed(ex));
+        }
+    }
+
+    [HttpPut("{id}/jaminan")]
+    public async Task<IActionResult> UpdateJaminan(string id, [FromBody] AdmUpdateInpatientJaminanBody body)
+    {
+        var cmd = new AdmUpdateInpatientJaminanCmd(
+            id,
+            body.TipeJaminanId,
+            body.PolisId,
+            body.SjpNo,
+            body.PesertaJaminanId,
+            body.SjpId,
+            body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost("{regId}/cancel")]
     public async Task<IActionResult> Cancel(string regId, [FromBody] AdmCoordinatedCancelBody? body)
     {
@@ -85,8 +142,8 @@ public class AdmissionController : ControllerBase
                 body.ExpectedAdmissionStatus!.Value,
                 body.ExpectedUpdatedAt,
                 body.RequestId!.Trim(),
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Request.Headers.UserAgent.FirstOrDefault(),
+                HttpContext?.Connection?.RemoteIpAddress?.ToString(),
+                Request?.Headers?.UserAgent.FirstOrDefault(),
                 body.VoidSource ?? false);
             var result = await _mediator.Send(command);
             return Ok(new JSendOk(result));
@@ -100,9 +157,12 @@ public class AdmissionController : ControllerBase
             var statusCode = ex.Code == CoordinatedCancellationErrorCode.RegistrationHasBillingItems
                 ? StatusCodes.Status400BadRequest
                 : StatusCodes.Status409Conflict;
-            var blockers = ex.Code == CoordinatedCancellationErrorCode.RegistrationHasBillingItems
-                ? new[] { CoordinatedCancellationErrorCode.RegistrationHasBillingItems }
-                : null;
+            var blockers = ex.Code switch
+            {
+                CoordinatedCancellationErrorCode.RegistrationHasBillingItems => new[] { CoordinatedCancellationErrorCode.RegistrationHasBillingItems },
+                CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement => new[] { CoordinatedCancellationErrorCode.RegistrationHasActiveBedPlacement },
+                _ => null
+            };
             return Failure(statusCode, ex.Code, ex.Message, correlationId, blockers);
         }
         catch (ArgumentException ex)
@@ -170,14 +230,16 @@ public record AdmProcessOpnameRequestBody(
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration);
+    AdmissionRegistrationData Registration,
+    bool IsBbl = false);
 
 public record AdmProcessReservationBody(
     string ReservationId,
     string KelasDkId,
     string BangsalId,
     string UserId,
-    AdmissionRegistrationData Registration);
+    AdmissionRegistrationData Registration,
+    bool IsBbl = false);
 
 public record AdmProcessDirectAdmissionBody(
     string PasienId,
@@ -191,6 +253,22 @@ public record AdmProcessDirectAdmissionBody(
 public record AdmUpdateAdmissionBody(
     string KelasDkId,
     string BangsalId,
+    string UserId);
+
+public record AdmUpdateInpatientVisitBody(
+    string DokterId,
+    string ProsedurMasukInapId,
+    string JenisInapId,
+    string RegIbu,
+    string UserId = "",
+    string? CaraMasukDkId = null);
+
+public record AdmUpdateInpatientJaminanBody(
+    string TipeJaminanId,
+    string PolisId,
+    string? SjpNo,
+    string? PesertaJaminanId,
+    string? SjpId,
     string UserId);
 
 public record AdmCoordinatedCancelBody(

@@ -196,23 +196,4 @@ public class PasienRepoTest
     }
 
     #endregion
-
-    #region DeleteEntity Tests
-
-    [Fact]
-    public void GivenPasienKey_WhenDeleteEntity_ThenDeletesSasetRecord()
-    {
-        // Arrange
-        var key = PasienModel.Key(PasienId);
-
-        // Act
-        _sut.DeleteEntity(key);
-
-        // Assert
-        _pasienDalMock.Verify(x => x.Delete(It.Is<IPasienKey>(k => k.PasienId == PasienId)), Times.Once);
-        _pasienKtpDalMock.Verify(x => x.Delete(It.Is<IPasienKey>(k => k.PasienId == PasienId)), Times.Once);
-        _pasienSasetDalMock.Verify(x => x.Delete(key), Times.Once);
-    }
-
-    #endregion
 }

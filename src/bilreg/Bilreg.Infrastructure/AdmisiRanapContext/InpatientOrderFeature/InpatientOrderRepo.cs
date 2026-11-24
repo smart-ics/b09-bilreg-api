@@ -56,4 +56,8 @@ public class InpatientOrderRepo : IInpatientOrderRepo
 
         return MayBe.From(dto.ToModel());
     }
+
+    public IEnumerable<InpatientOrderAuditRecord> ListAudits(string inpatientOrderId) =>
+        _dal.ListAudits(inpatientOrderId).Select(a => new InpatientOrderAuditRecord(
+            a.AuditId, a.EventTime, a.UserId, a.ActionType, a.Reason, a.OriginalDataJson));
 }

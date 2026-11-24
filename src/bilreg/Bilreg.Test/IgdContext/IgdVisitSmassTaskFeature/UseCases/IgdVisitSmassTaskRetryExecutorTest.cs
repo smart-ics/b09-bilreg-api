@@ -445,4 +445,101 @@ public class IgdVisitSmassTaskRetryExecutorTest
         task.TaskStatus.Should().Be(SmassTaskStatusEnum.Succeeded);
         _taskRepo.Verify(r => r.SaveChanges(task), Times.Once);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenVoidTaskSucceeds_CallsDeleteAssesmentAndMarksSucceeded()
+    {
+        // Arrange
+        var task = IgdVisitSmassTaskModel.CreatePending(
+            IgdVisitId, noTriage: 1, SmassTaskTypeEnum.Void, assessmentId: "ASM-VOID-1");
+        task.MarkFailed("Previous 503");
+
+        _smassGateway
+            .Setup(g => g.DeleteAssesment("ASM-VOID-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SmassGatewayResult(true, "ASM-VOID-1", null));
+
+        // Act
+        await IgdVisitSmassTaskRetryExecutor.ExecuteAsync(
+            _taskRepo.Object,
+            _visitRepo.Object,
+            _regRepo.Object,
+            _smassGateway.Object,
+            _emrLabelGateway.Object,
+            _options,
+            task,
+            OperatorUserId,
+            CancellationToken.None);
+
+        // Assert
+        task.TaskStatus.Should().Be(SmassTaskStatusEnum.Succeeded);
+        task.AssessmentId.Should().Be("ASM-VOID-1");
+        _smassGateway.Verify(g => g.DeleteAssesment("ASM-VOID-1", It.IsAny<CancellationToken>()), Times.Once);
+        _visitRepo.Verify(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()), Times.Never);
+        _regRepo.Verify(r => r.LoadEntity(It.IsAny<IRegKey>()), Times.Never);
+        _emrLabelGateway.Verify(
+            e => e.AddSmassLabel(It.IsAny<EmrAddSmassLabelRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _taskRepo.Verify(r => r.SaveChanges(task), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenVoidTaskFails_MarksTaskFailedAndPreservesAssessmentId()
+    {
+        // Arrange
+        var task = IgdVisitSmassTaskModel.CreatePending(
+            IgdVisitId, noTriage: 2, SmassTaskTypeEnum.Void, assessmentId: "ASM-VOID-2");
+        task.MarkFailed("Initial timeout");
+
+        _smassGateway
+            .Setup(g => g.DeleteAssesment("ASM-VOID-2", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SmassGatewayResult(false, null, "HTTP 502 Bad Gateway"));
+
+        // Act
+        await IgdVisitSmassTaskRetryExecutor.ExecuteAsync(
+            _taskRepo.Object,
+            _visitRepo.Object,
+            _regRepo.Object,
+            _smassGateway.Object,
+            _emrLabelGateway.Object,
+            _options,
+            task,
+            OperatorUserId,
+            CancellationToken.None);
+
+        // Assert
+        task.TaskStatus.Should().Be(SmassTaskStatusEnum.Failed);
+        task.AssessmentId.Should().Be("ASM-VOID-2");
+        task.RetryCount.Should().Be(2);
+        task.LastError.Should().Contain("502");
+        _taskRepo.Verify(r => r.SaveChanges(task), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenVoidTaskHasEmptyAssessmentId_MarksTaskFailedWithoutCallingGateway()
+    {
+        // Arrange
+        var task = IgdVisitSmassTaskModel.CreatePending(
+            IgdVisitId, noTriage: 1, SmassTaskTypeEnum.Void, assessmentId: "");
+        task.MarkFailed("Missing id");
+
+        // Act
+        await IgdVisitSmassTaskRetryExecutor.ExecuteAsync(
+            _taskRepo.Object,
+            _visitRepo.Object,
+            _regRepo.Object,
+            _smassGateway.Object,
+            _emrLabelGateway.Object,
+            _options,
+            task,
+            OperatorUserId,
+            CancellationToken.None);
+
+        // Assert
+        task.TaskStatus.Should().Be(SmassTaskStatusEnum.Failed);
+        task.LastError.Should().Contain("AssessmentId");
+        _smassGateway.Verify(
+            g => g.DeleteAssesment(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _taskRepo.Verify(r => r.SaveChanges(task), Times.Once);
+    }
 }

@@ -13,4 +13,10 @@ public sealed class RegistrationCancellationEligibilityRepo : IRegistrationCance
         ArgumentException.ThrowIfNullOrWhiteSpace(regId);
         return _dal.HasBillingItems(regId);
     }
+
+    public bool HasActiveBedPlacement(string regId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(regId);
+        return _dal.HasActiveBedPlacement(regId);
+    }
 }

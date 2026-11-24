@@ -4,6 +4,8 @@ CREATE TABLE BILRG_AptQueueMapping (
     AntrianId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_AntrianId DEFAULT(''),
     NoUrut INT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_NoUrut DEFAULT(0),
     PasienTrackerId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_PasienTrackerId DEFAULT(''),
+    PasienHadir BIT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_PasienHadir DEFAULT(0),
+    PasienHadirAt DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_PasienHadirAt DEFAULT('3000-01-01'),
     MappingMethod INT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappingMethod DEFAULT(0),
     MappedBy VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappedBy DEFAULT(''),
     MappedAt DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappedAt DEFAULT('3000-01-01'),

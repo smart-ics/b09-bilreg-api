@@ -17,7 +17,7 @@ public interface IAntrianDal :
     IListData<AntrianDto, Periode>,
     IListData<AntrianViewDto, DateTime>
 {
-    
+    void UpdatePrefixIfEmpty(string antrianId, string queuePrefixSnapshot);
 }
 
 public class AntrianDal : IAntrianDal
@@ -78,6 +78,23 @@ public class AntrianDal : IAntrianDal
         dp.AddParam("@SequenceTag", dto.SequenceTag, SqlDbType.VarChar);	 
         dp.AddParam("@AntrianDescription", dto.AntrianDescription, SqlDbType.VarChar);
         dp.AddParam("@ServicePointCode", dto.ServicePointCode, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public void UpdatePrefixIfEmpty(string antrianId, string queuePrefixSnapshot)
+    {
+        const string sql = """
+            UPDATE BILRG_Antrian
+            SET QueuePrefixSnapshot = @QueuePrefixSnapshot
+            WHERE AntrianId = @AntrianId
+              AND (QueuePrefixSnapshot IS NULL OR QueuePrefixSnapshot = '')
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@AntrianId", antrianId, SqlDbType.VarChar);
+        dp.AddParam("@QueuePrefixSnapshot", queuePrefixSnapshot, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -148,7 +165,8 @@ public class AntrianDal : IAntrianDal
                 ISNULL(bb.SequenceTag,'') AS SequenceTag, 
                 ISNULL(bb.AntrianDescription,'') AS AntrianDescription, 
                 ISNULL(bb.StartTime,'') AS StartTime, 
-                ISNULL(bb.EndTime,'') AS EndTime
+                ISNULL(bb.EndTime,'') AS EndTime,
+                ISNULL(bb.QueuePrefixSnapshot, '') AS QueuePrefixSnapshot
            FROM
            	    BILRG_AntrianEntry aa
            	    LEFT JOIN BILRG_Antrian bb ON aa.AntrianId = bb.AntrianId
