@@ -109,6 +109,7 @@ public static class InfrastructureService
         IConfiguration configuration)
     {
         services
+            .AddScoped<ISqlConnectionScope, SqlConnectionScope>()
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ISqlServerClock, SqlServerClock>()
