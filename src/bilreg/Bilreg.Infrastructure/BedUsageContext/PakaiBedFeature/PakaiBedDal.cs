@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -52,11 +53,15 @@ public class PakaiBedDal : IPakaiBedDal
         """;
 
     private readonly DatabaseOptions _opt;
+    private readonly ISqlConnectionScope _connectionScope;
 
-    public PakaiBedDal(IOptions<DatabaseOptions> opt)
+    public PakaiBedDal(IOptions<DatabaseOptions> opt, ISqlConnectionScope? connectionScope = null)
     {
         _opt = opt.Value;
+        _connectionScope = connectionScope ?? new SqlConnectionScope(opt);
     }
+
+    private SqlConnection GetConnection() => _connectionScope.GetConnection();
 
     public void Insert(PakaiBedDto dto)
     {
@@ -134,7 +139,7 @@ public class PakaiBedDal : IPakaiBedDal
             """;
 
         var dp = BuildParams(dto);
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, dp);
 
         conn.Execute("DELETE FROM ta_trs_bed2 WHERE fs_kd_trs = @fs_kd_trs", new { fs_kd_trs = SafeTruncate(dto.fs_kd_trs, 10) });
@@ -186,7 +191,7 @@ public class PakaiBedDal : IPakaiBedDal
             """;
 
         var dp = BuildParams(dto);
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, dp);
 
         if (dto.list_komponen != null && dto.list_komponen.Count > 0)
@@ -326,7 +331,7 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, dp);
 
         if (existing != null && !string.IsNullOrWhiteSpace(existing.fs_kd_bed))
@@ -360,7 +365,7 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", SafeTruncate(key.PakaiBedId, 15), SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         var dto = conn.ReadSingle<PakaiBedDto>(sql, dp);
         if (dto != null)
         {
@@ -387,7 +392,7 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", filter.RegId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.Read<PakaiBedDto>(sql, dp);
     }
 
@@ -406,7 +411,7 @@ public class PakaiBedDal : IPakaiBedDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_bed", bedId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.Read<PakaiBedDto>(sql, dp)?.FirstOrDefault();
     }
 
@@ -755,7 +760,7 @@ public class PakaiBedDal : IPakaiBedDal
               AND (r.fd_tgl_keluar = '' OR r.fd_tgl_keluar = '3000-01-01' OR r.fd_tgl_keluar IS NULL)
               AND (r.fd_tgl_void = '' OR r.fd_tgl_void = '3000-01-01' OR r.fd_tgl_void IS NULL);
         """;
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         var dp = new DynamicParameters();
         dp.AddParam("@pakaiBedId", SafeTruncate(pakaiBedId, 15), SqlDbType.VarChar);
         var results = await conn.QueryAsync<string>(new CommandDefinition(sql, dp));
@@ -773,7 +778,7 @@ public class PakaiBedDal : IPakaiBedDal
               AND (fd_tgl_out = '' OR fd_tgl_out = '3000-01-01' OR fd_tgl_out IS NULL)
               AND (fd_tgl_void = '' OR fd_tgl_void = '3000-01-01' OR fd_tgl_void IS NULL);
             """;
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         var dp = new DynamicParameters();
         dp.AddParam("@bedId", bedId, SqlDbType.VarChar);
         dp.AddParam("@babyRegId", SafeTruncate(babyRegId, 50), SqlDbType.VarChar);
@@ -803,7 +808,7 @@ public class PakaiBedDal : IPakaiBedDal
 
             SELECT DISTINCT fs_kd_trs FROM @UpdatedTrs WHERE ISNULL(fs_kd_trs, '') <> '';
             """;
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         var dp = new DynamicParameters();
         dp.AddParam("@bedId", bedId, SqlDbType.VarChar);
         dp.AddParam("@babyRegId", SafeTruncate(babyRegId, 50), SqlDbType.VarChar);

@@ -124,6 +124,7 @@
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
+    <Folder Include="PaymentContext\KasirFeature\" />
     <Folder Include="BedUsageContext\RoomChargeFeature" />
     <Folder Include="LabContext\" />
     <Folder Include="LabContext\LabOrderFeature\" />
@@ -134,6 +135,8 @@
     <Folder Include="LabContext\LabMasterFeature\" />
     <Folder Include="LabContext\LabMasterFeature\Data\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
+    <Folder Include="RadContext\" />
+    <Folder Include="RadContext\RadOrderFeature\" />
     <Folder Include="PurchaseContext\" />
     <Folder Include="PurchaseContext\DeliveryFeature\" />
   </ItemGroup>
@@ -419,6 +422,15 @@
     <Build Include="ChargeContext\TindakanFeature\BILRG_TindakanBarang.sql" />
     <Build Include="InventoryContext\PakaiBrgFeature\BILRG_TindakanStokPending.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrder.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrderItem.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadTarifModality.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_KasirShift.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_LoketKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirItem.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment.sql" />
+    <None Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment_Alter.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />

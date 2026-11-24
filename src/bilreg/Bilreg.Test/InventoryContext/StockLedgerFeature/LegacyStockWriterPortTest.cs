@@ -107,7 +107,7 @@ public class LegacyStockWriterPortTest
     }
 
     [Fact]
-    public void DepleteStok_ZeroRemaining_DeletesStokRowOnly()
+    public void DepleteStok_ZeroRemaining_RetainsStokRowWithZeroQty()
     {
         using var trans = TransHelper.NewScope();
 
@@ -126,13 +126,13 @@ public class LegacyStockWriterPortTest
         _sut.DepleteStok(new LegacyStokDepleteRequest(inbound.LegacyStokId, QtyOut: 3));
 
         _read.ListBalances(BrgId, DoId)
-            .Should().NotContain(x => x.LegacyStokId == inbound.LegacyStokId);
+            .Should().ContainSingle(x => x.LegacyStokId == inbound.LegacyStokId && x.QtySisa == 0);
         _read.ListJournals(BrgId, DoId)
             .Should().Contain(x => x.LegacyBukuId == inbound.LegacyBukuId);
     }
 
     [Fact]
-    public void RestoreStok_AfterFullDeplete_RecreatesStok_RetainsOriginalBuku()
+    public void RestoreStok_AfterFullDeplete_UpdatesExistingZeroQtyStok_RetainsOriginalBuku()
     {
         using var trans = TransHelper.NewScope();
 
@@ -144,7 +144,7 @@ public class LegacyStockWriterPortTest
 
         _sut.DepleteStok(new LegacyStokDepleteRequest(inbound.LegacyStokId, QtyOut: 4));
         _read.ListBalances(BrgId, DoId)
-            .Should().NotContain(x => x.LegacyStokId == inbound.LegacyStokId);
+            .Should().ContainSingle(x => x.LegacyStokId == inbound.LegacyStokId && x.QtySisa == 0);
 
         var bukuCountBefore = _read.ListJournals(BrgId, DoId).Count;
         var recreateId = "STWRTRE001";
@@ -162,11 +162,11 @@ public class LegacyStockWriterPortTest
             TrsReffId: "VRSTLWRT05",
             LegacyStokIdIfRecreate: recreateId));
 
-        restore.WasRecreated.Should().BeTrue();
-        restore.LegacyStokId.Should().Be(recreateId);
+        restore.WasRecreated.Should().BeFalse();
+        restore.LegacyStokId.Should().Be(inbound.LegacyStokId);
 
         var balances = _read.ListBalances(BrgId, DoId);
-        balances.Should().ContainSingle(x => x.LegacyStokId == recreateId && x.QtySisa == 4);
+        balances.Should().ContainSingle(x => x.LegacyStokId == inbound.LegacyStokId && x.QtySisa == 4);
         _read.ListJournals(BrgId, DoId).Count.Should().Be(bukuCountBefore);
         _read.ListJournals(BrgId, DoId)
             .Should().Contain(x => x.LegacyBukuId == inbound.LegacyBukuId);
@@ -185,7 +185,7 @@ public class LegacyStockWriterPortTest
 
         _sut.DepleteStok(new LegacyStokDepleteRequest(inbound.LegacyStokId, QtyOut: 4));
         _read.ListBalances(BrgId, DoId)
-            .Should().NotContain(x => x.LegacyStokId == inbound.LegacyStokId);
+            .Should().ContainSingle(x => x.LegacyStokId == inbound.LegacyStokId && x.QtySisa == 0);
 
         var bukuCountBefore = _read.ListJournals(BrgId, DoId).Count;
 
@@ -202,7 +202,7 @@ public class LegacyStockWriterPortTest
             TrsReffId: "VRSTLWRT07",
             LegacyStokIdIfRecreate: null));
 
-        restore.WasRecreated.Should().BeTrue();
+        restore.WasRecreated.Should().BeFalse();
         restore.LegacyStokId.Should().Be(inbound.LegacyStokId);
 
         _read.ListBalances(BrgId, DoId)
@@ -259,16 +259,12 @@ public class LegacyStockWriterPortTest
             TrsReffId: "DMSTLWRT08",
             MovementKindString: "DO"));
 
-        // Row gone before RestoreStok UPDATE — same outcome as concurrent deplete-delete race.
-        _sut.DepleteStok(new LegacyStokDepleteRequest(inbound.LegacyStokId, QtyOut: 5));
-        _read.ListBalances(BrgId, DoId)
-            .Should().NotContain(x => x.LegacyStokId == inbound.LegacyStokId);
-
+        // Row absent before RestoreStok UPDATE — fall through to recreate using IfRecreate id.
         var bukuCountBefore = _read.ListJournals(BrgId, DoId).Count;
         var bindingChosenId = "STWRTRE002";
 
         var restore = _sut.RestoreStok(new LegacyStokRestoreRequest(
-            PreferredLegacyStokId: inbound.LegacyStokId,
+            PreferredLegacyStokId: "STMISSING1",
             QtyIn: 5,
             BrgId: BrgId,
             BrgMasukReffId: DoId,
@@ -288,5 +284,63 @@ public class LegacyStockWriterPortTest
         _read.ListJournals(BrgId, DoId).Count.Should().Be(bukuCountBefore);
         _read.ListJournals(BrgId, DoId)
             .Should().Contain(x => x.LegacyBukuId == inbound.LegacyBukuId);
+    }
+
+    [Fact]
+    public void RestoreStok_EmptyPreferredId_ExistingScopeRow_IncrementsExistingQty()
+    {
+        using var trans = TransHelper.NewScope();
+
+        var inbound = _sut.InsertInbound(new LegacyInboundWriteRequest(
+            BrgId, DoId, LayananId,
+            Qty: 10, Hpp: 100m, StockLedgerSentinel.EmptyDate, TglMasuk, TglMutasi,
+            TrsReffId: "DMSTLWRT09",
+            MovementKindString: "DO"));
+
+        _sut.DepleteStok(new LegacyStokDepleteRequest(inbound.LegacyStokId, QtyOut: 4));
+
+        var restore = _sut.RestoreStok(new LegacyStokRestoreRequest(
+            PreferredLegacyStokId: string.Empty,
+            QtyIn: 4,
+            BrgId: BrgId,
+            BrgMasukReffId: DoId,
+            LayananId: LayananId,
+            Hpp: 100m,
+            TglEd: StockLedgerSentinel.EmptyDate,
+            TglMasuk: TglMasuk,
+            TglMutasi: TglMutasi.AddHours(1),
+            TrsReffId: "VRSTLWRT09"));
+
+        restore.WasRecreated.Should().BeFalse();
+        restore.LegacyStokId.Should().Be(inbound.LegacyStokId);
+
+        _read.ListBalances(BrgId, DoId)
+            .Should().ContainSingle(x => x.LegacyStokId == inbound.LegacyStokId && x.QtySisa == 10);
+    }
+
+    [Fact]
+    public void RestoreStok_EmptyPreferredId_MissingScopeRow_RecreatesRowFromProvenance()
+    {
+        using var trans = TransHelper.NewScope();
+
+        var recreateId = "STWRTRE003";
+        var restore = _sut.RestoreStok(new LegacyStokRestoreRequest(
+            PreferredLegacyStokId: string.Empty,
+            QtyIn: 6,
+            BrgId: BrgId,
+            BrgMasukReffId: DoId,
+            LayananId: LayananId,
+            Hpp: 100m,
+            TglEd: StockLedgerSentinel.EmptyDate,
+            TglMasuk: TglMasuk,
+            TglMutasi: TglMutasi.AddHours(1),
+            TrsReffId: "VRSTLWRT10",
+            LegacyStokIdIfRecreate: recreateId));
+
+        restore.WasRecreated.Should().BeTrue();
+        restore.LegacyStokId.Should().Be(recreateId);
+
+        _read.ListBalances(BrgId, DoId)
+            .Should().ContainSingle(x => x.LegacyStokId == recreateId && x.QtySisa == 6);
     }
 }

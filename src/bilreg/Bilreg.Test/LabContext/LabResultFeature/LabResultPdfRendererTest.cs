@@ -113,6 +113,61 @@ public class LabResultPdfRendererTest
     }
 
     [Fact]
+    public void Render_WhenAllItemsNormal_EvenWithCriticalNote_DoesNotRenderCriticalAlert()
+    {
+        var viewNormalWithNote = new LabResultPdfView(
+            HospitalName: "RS Mitra Sehat",
+            OrderNo: "LAB202611005",
+            OrderId: "LBO202611005",
+            RegId: "REG202611005",
+            PatientId: "MR5555",
+            PatientName: "Siti Rahma",
+            BirthDate: new DateTime(1980, 1, 1),
+            Gender: "P",
+            AgeAtOrder: 46,
+            VersionNo: 1,
+            ResultStatus: (int)LabResultStatusEnum.Verified,
+            ResultStatusLabel: "Verified",
+            VerifiedDate: new DateTime(2026, 11, 7, 10, 0, 0),
+            VerifiedUserId: "dr. Hendra Sp.PK",
+            AmendmentReason: "",
+            PreviousVersionNo: 0,
+            Items:
+            [
+                new LabResultPdfItemView("Kimia Darah", "Kalium", "4.2", "mmol/L", "3.5 - 5.0", ""),
+                new LabResultPdfItemView("Kimia Darah", "Natrium", "140", "mmol/L", "135 - 145", "")
+            ],
+            ExpertiseNote: "Dalam batas normal.",
+            CriticalNote: "Catatan kritis lama yang seharusnya tidak dicetak jika hasil sudah normal");
+
+        var viewNormalEmptyNote = viewNormalWithNote with { CriticalNote = "" };
+
+        var renderer = new LabResultPdfRenderer();
+        var bytesWithNote = renderer.Render(viewNormalWithNote);
+        var bytesEmptyNote = renderer.Render(viewNormalEmptyNote);
+
+        AssertValidPdfBytes(bytesWithNote);
+        AssertValidPdfBytes(bytesEmptyNote);
+
+        // When all items are normal, presence of CriticalNote produces identical PDF drawing content length
+        // (the critical alert box is completely bypassed and never drawn)
+        bytesWithNote.Length.Should().Be(bytesEmptyNote.Length);
+
+        // In contrast, when there is a critical flag, the critical alert box is rendered, resulting in larger PDF content
+        var viewWithCriticalFlag = viewNormalWithNote with
+        {
+            Items =
+            [
+                new LabResultPdfItemView("Kimia Darah", "Kalium", "2.1", "mmol/L", "3.5 - 5.0", "C"),
+                new LabResultPdfItemView("Kimia Darah", "Natrium", "140", "mmol/L", "135 - 145", "")
+            ]
+        };
+        var bytesWithCriticalFlag = renderer.Render(viewWithCriticalFlag);
+        AssertValidPdfBytes(bytesWithCriticalFlag);
+        bytesWithCriticalFlag.Length.Should().BeGreaterThan(bytesWithNote.Length);
+    }
+
+    [Fact]
     public void Render_WithLisValidator_RendersPdfSuccessfully()
     {
         var view = new LabResultPdfView(

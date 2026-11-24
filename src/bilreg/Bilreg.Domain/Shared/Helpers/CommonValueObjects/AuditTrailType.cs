@@ -9,6 +9,7 @@ public class AuditTrailType
         Created = created;
         Modified = modified;
         Voided = voided;
+        IsVoided = voided != null && voided.Timestamp != new DateTime(3000, 1, 1) && voided.Timestamp != DateTime.MinValue;
     }
     public AuditInfoType Created { get; init; }
     public AuditInfoType Modified { get; private set; }

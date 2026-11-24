@@ -2,8 +2,10 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.RoomRateFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -90,6 +92,8 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
     private readonly IRegRepo _regRepo;
     private readonly IBedOperationalRepo _bedOperationalRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
+    private readonly ISqlConnectionScope? _connectionScope;
 
     public PakaiBedTransferCommandHandler(
         IPakaiBedRepo pakaiBedRepo,
@@ -101,7 +105,9 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         ILayananRepo layananRepo,
         IRegRepo regRepo,
         IBedOperationalRepo bedOperationalRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IEmr20AntrianRanapGateway? emr20Gateway = null,
+        ISqlConnectionScope? connectionScope = null)
     {
         _pakaiBedRepo = pakaiBedRepo;
         _bedRepo = bedRepo;
@@ -113,6 +119,8 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         _regRepo = regRepo;
         _bedOperationalRepo = bedOperationalRepo;
         _tglJamProvider = tglJamProvider;
+        _emr20Gateway = emr20Gateway;
+        _connectionScope = connectionScope;
     }
 
     public async Task<PakaiBedTransferResult> Handle(PakaiBedTransferCommand request, CancellationToken cancellationToken)
@@ -121,6 +129,9 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
         Guard.Against.NullOrWhiteSpace(request.TargetBedId, nameof(request.TargetBedId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         cancellationToken.ThrowIfCancellationRequested();
+
+        // Ensure transactional connection scope is primed
+        _connectionScope?.GetConnection();
 
         // 1. Muat entity PakaiBedModel (lama), verifikasi status Active
         var pakaiBedLama = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(request.PakaiBedId))
@@ -342,7 +353,15 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             _pakaiBedRepo.SaveChanges(babyPakaiBedBaru);
 
             // Note: Mother remains on the old bed! Old bed is NOT marked as CleaningRequired.
+            cancellationToken.ThrowIfCancellationRequested();
             trans.Complete();
+
+            if (_emr20Gateway != null)
+            {
+                var babyRegId = babyPakaiBed!.Reg.RegId;
+                await _emr20Gateway.DischargeRegRanapAsync(babyRegId, isGabung: true, cancellationToken);
+                await _emr20Gateway.AddRegRanapAsync(babyRegId, cancellationToken);
+            }
 
             return new PakaiBedTransferResult(
                 babyPakaiBedBaru.PakaiBedId,
@@ -513,7 +532,22 @@ public class PakaiBedTransferCommandHandler : IRequestHandler<PakaiBedTransferCo
             // Persist mother's new bed allocation on target bed
             _pakaiBedRepo.SaveChanges(pakaiBedBaru);
 
+            cancellationToken.ThrowIfCancellationRequested();
             trans.Complete();
+
+            if (_emr20Gateway != null)
+            {
+                await _emr20Gateway.DischargeRegRanapAsync(pakaiBedLama.Reg.RegId, isGabung: false, cancellationToken);
+                await _emr20Gateway.AddRegRanapAsync(pakaiBedLama.Reg.RegId, cancellationToken);
+                foreach (var pair in babyTransferPairs)
+                {
+                    var bReg = pair.newBabyBed.Reg.RegId;
+                    if (!string.IsNullOrWhiteSpace(bReg))
+                    {
+                        await _emr20Gateway.AddRanapGabungAsync(bReg, cancellationToken);
+                    }
+                }
+            }
 
             return new PakaiBedTransferResult(
                 pakaiBedBaru.PakaiBedId,

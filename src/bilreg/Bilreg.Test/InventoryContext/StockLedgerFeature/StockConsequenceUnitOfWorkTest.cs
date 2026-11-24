@@ -15,10 +15,6 @@ public class StockConsequenceUnitOfWorkTest
     private readonly IOptions<DatabaseOptions> _db = ConnStringHelper.GetTestEnv();
     private readonly LegacyStockWriterPort _writer;
     private readonly LegacyStockReadPort _legacyRead;
-    private readonly StockBatchRepo _batchRepo;
-    private readonly StockMutasiRepo _mutasiRepo;
-    private readonly StockLegacyBindingRepo _bindingRepo;
-    private readonly StockLegacyScopeRepo _scopeRepo;
 
     private const string BrgId = "BRGSTLUOW0001";
     private const string DoId = "DOSTLUOW01";
@@ -31,38 +27,17 @@ public class StockConsequenceUnitOfWorkTest
     {
         _writer = new LegacyStockWriterPort(_db);
         _legacyRead = new LegacyStockReadPort(_db);
-        _batchRepo = new StockBatchRepo(new StockBatchDal(_db), new StokLokasiDal(_db));
-        _mutasiRepo = new StockMutasiRepo(new StokMutasiDal(_db));
-        _bindingRepo = new StockLegacyBindingRepo(new StokLegacyBindingDal(_db));
-        _scopeRepo = new StockLegacyScopeRepo(new StokLegacyScopeDal(_db));
     }
 
     [Fact]
-    public void Commit_CoexistenceOn_PersistsLegacyLedgerBindingAndScope()
+    public void Commit_PersistsLegacyBukuAndStok()
     {
-        StockLedgerV2SchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
 
-        var uow = CreateUow(coexistenceEnabled: true);
+        var uow = new StockConsequenceUnitOfWork(_writer);
         var draft = BuildInboundDraft(BrgId, DoId, "TRSUOW0001", "BKUOW00001", "STUOW00001");
 
         uow.Commit(draft);
-
-        var batch = _batchRepo.LoadByNaturalKey(BrgId, DoId);
-        batch.HasValue.Should().BeTrue();
-        batch.Value.QtySisa.Should().Be(10);
-
-        _mutasiRepo.Exists("TRSUOW0001", MovementKindEnum.GoodsReceipt, draft.MutasiInserts[0].StokLokasiId)
-            .Should().BeTrue();
-
-        var binding = _bindingRepo.FindByLegacyBukuId("BKUOW00001");
-        binding.HasValue.Should().BeTrue();
-        binding.Value.LegacyStokId.Should().Be("STUOW00001");
-
-        var scope = _scopeRepo.LoadEntity(StockLegacyScopeModel.Key(BrgId, DoId));
-        scope.HasValue.Should().BeTrue();
-        scope.Value.AlignmentStatus.Should().Be(AlignmentStatusEnum.Aligned);
-        scope.Value.LastLegacyBukuId.Should().Be("BKUOW00001");
 
         _legacyRead.ListJournals(BrgId, DoId)
             .Should().Contain(x => x.LegacyBukuId == "BKUOW00001" && x.QtyIn == 10);
@@ -71,80 +46,45 @@ public class StockConsequenceUnitOfWorkTest
     }
 
     [Fact]
-    public void Commit_OccConflict_Throws()
+    public void Commit_MultipleOperations_CommitsAtomicallyToLegacyTables()
     {
-        StockLedgerV2SchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
 
-        var seed = StockBatchModel.Create(BrgId, "DOSTLUOW02", hpp: 100m, TglMasuk);
-        seed.IncreaseLokasi(LayananId, TglEd, qty: 10);
-        _batchRepo.SaveChanges(seed);
-
-        var workerA = _batchRepo.LoadByNaturalKey(BrgId, "DOSTLUOW02").Value;
-        var workerB = _batchRepo.LoadByNaturalKey(BrgId, "DOSTLUOW02").Value;
-        workerA.IncreaseLokasi(LayananId, TglEd, qty: 1);
-        _batchRepo.SaveChanges(workerA);
-
-        workerB.IncreaseLokasi(LayananId, TglEd, qty: 1);
-        var lokasi = workerB.ListLokasi.Single();
-        var mutasi = StockMovementModel.CreateInbound(
-            lokasi.StokLokasiId, workerB.StokBatchId, BrgId, "DOSTLUOW02", LayananId, TglEd,
-            "TRSUOWOCC1", MovementKindEnum.GoodsReceipt, qtyIn: 1, hpp: 100m, TglMutasi);
-
+        var uow = new StockConsequenceUnitOfWork(_writer);
         var draft = new StockConsequenceDraft(
-            BatchUpserts: [workerB],
-            MutasiInserts: [mutasi],
-            BindingInserts: [
-                StockLegacyBindingModel.CreateMutasiBuku(
-                    mutasi.StokMutasiId, "BKOCC00001", "TRSUOWOCC1",
-                    lokasi.StokLokasiId, "STOCC00001")
-            ],
+            BatchUpserts: [],
+            MutasiInserts: [],
+            BindingInserts: [],
             ScopeUpdates: [],
             LegacyOperations: [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
                     BrgId, "DOSTLUOW02", LayananId,
-                    Qty: 1, Hpp: 100m, TglEd, TglMasuk, TglMutasi,
-                    TrsReffId: "TRSUOWOCC1",
+                    Qty: 10, Hpp: 100m, TglEd, TglMasuk, TglMutasi,
+                    TrsReffId: "TRSUOW0002",
                     MovementKindString: "DO",
-                    LegacyBukuId: "BKOCC00001",
-                    LegacyStokId: "STOCC00001"))
+                    LegacyBukuId: "BKUOW00002",
+                    LegacyStokId: "STUOW00002")),
+                new LegacyOutboundBukuWriteOperation(new LegacyOutboundBukuWriteRequest(
+                    BrgId, "DOSTLUOW02", LayananId,
+                    QtyOut: 4, Hpp: 100m, TglEd, TglMutasi.AddMinutes(5),
+                    TrsReffId: "TRSUOWOUT2",
+                    MovementKindString: "PK",
+                    LegacyBukuId: "BKUOWOUT02")),
+                new LegacyStokDepleteWriteOperation(new LegacyStokDepleteRequest(
+                    LegacyStokId: "STUOW00002",
+                    QtyOut: 4))
             ],
             UserId: "tester");
 
-        var uow = CreateUow(coexistenceEnabled: true);
-        var act = () => uow.Commit(draft);
-
-        act.Should().Throw<InvalidOperationException>().WithMessage("*concurrency*");
-    }
-
-    [Fact]
-    public void Commit_CoexistenceOff_SkipsLegacyWrites()
-    {
-        StockLedgerV2SchemaFixture.EnsureSchema();
-        using var trans = TransHelper.NewScope();
-
-        var uow = CreateUow(coexistenceEnabled: false);
-        var draft = BuildInboundDraft(BrgId, "DOSTLUOW03", "TRSUOW0003", "BKUOW00003", "STUOW00003");
-
         uow.Commit(draft);
 
-        _batchRepo.LoadByNaturalKey(BrgId, "DOSTLUOW03").HasValue.Should().BeTrue();
-        _mutasiRepo.Exists("TRSUOW0003", MovementKindEnum.GoodsReceipt, draft.MutasiInserts[0].StokLokasiId)
-            .Should().BeTrue();
-        _bindingRepo.FindByLegacyBukuId("BKUOW00003").HasValue.Should().BeTrue();
+        var journals = _legacyRead.ListJournals(BrgId, "DOSTLUOW02");
+        journals.Should().Contain(x => x.LegacyBukuId == "BKUOW00002" && x.QtyIn == 10);
+        journals.Should().Contain(x => x.LegacyBukuId == "BKUOWOUT02" && x.QtyOut == 4);
 
-        _legacyRead.ListJournals(BrgId, "DOSTLUOW03").Should().BeEmpty();
-        _legacyRead.ListBalances(BrgId, "DOSTLUOW03").Should().BeEmpty();
+        _legacyRead.ListBalances(BrgId, "DOSTLUOW02")
+            .Should().ContainSingle(x => x.LegacyStokId == "STUOW00002" && x.QtySisa == 6);
     }
-
-    private StockConsequenceUnitOfWork CreateUow(bool coexistenceEnabled) =>
-        new(
-            _writer,
-            _batchRepo,
-            _mutasiRepo,
-            _bindingRepo,
-            _scopeRepo,
-            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = coexistenceEnabled }));
 
     private static StockConsequenceDraft BuildInboundDraft(
         string brgId,

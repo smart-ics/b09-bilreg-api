@@ -1,7 +1,5 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
-using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -45,27 +43,21 @@ public class SettlePendingTindakanStockHandler :
     private const int MAX_KETERANGAN_LENGTH = 40;
 
     private readonly ITindakanStokPendingRepo _pendingRepo;
-    private readonly IStockBatchRepo _stockBatchRepo;
     private readonly IPakaiBrgInternalService _pakaiBrgInternalService;
     private readonly ITglJamProvider _tglJamProvider;
-    private readonly ISender _sender;
-    private readonly ILegacyStockReadPort? _legacyStockReadPort;
+    private readonly ILegacyStockReadPort _legacyStockReadPort;
     private readonly ILogger<SettlePendingTindakanStockHandler>? _logger;
 
     public SettlePendingTindakanStockHandler(
         ITindakanStokPendingRepo pendingRepo,
-        IStockBatchRepo stockBatchRepo,
         IPakaiBrgInternalService pakaiBrgInternalService,
         ITglJamProvider tglJamProvider,
-        ISender sender,
-        ILegacyStockReadPort? legacyStockReadPort = null,
+        ILegacyStockReadPort legacyStockReadPort,
         ILogger<SettlePendingTindakanStockHandler>? logger = null)
     {
         _pendingRepo = pendingRepo;
-        _stockBatchRepo = stockBatchRepo;
         _pakaiBrgInternalService = pakaiBrgInternalService;
         _tglJamProvider = tglJamProvider;
-        _sender = sender;
         _legacyStockReadPort = legacyStockReadPort;
         _logger = logger;
     }
@@ -112,11 +104,21 @@ public class SettlePendingTindakanStockHandler :
         List<SettledPendingItem> items,
         CancellationToken ct)
     {
-        if (!await EnsureFresh(brgId, layananId, userId, ct))
+        decimal availableWhole;
+        try
+        {
+            availableWhole = Math.Floor(
+                _legacyStockReadPort.ListBalancesAtLocation(brgId, layananId)
+                    .Where(c => c.QtySisa > 0m)
+                    .Sum(c => c.QtySisa));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex,
+                "Settle pending dilewati untuk Brg {BrgId} Layanan {LayananId}: gagal membaca saldo legacy.",
+                brgId, layananId);
             return;
-
-        var availableWhole = Math.Floor(
-            _stockBatchRepo.ListAllocationCandidates(brgId, layananId).Sum(c => c.QtySisa));
+        }
 
         // Fase 1: baris utuh (QtyPending >= 1), FIFO ketat — berhenti saat saldo tidak cukup.
         foreach (var row in rows.Where(r => r.QtyPending >= 1m))
@@ -160,31 +162,6 @@ public class SettlePendingTindakanStockHandler :
                 items.Add(new SettledPendingItem(row.PendingId, row.RegId, brgId, layananId, pakai.PakaiBrgId));
             }
         }
-    }
-
-    private async Task<bool> EnsureFresh(string brgId, string layananId, string userId, CancellationToken ct)
-    {
-        var candidates = _stockBatchRepo.ListAllocationCandidates(brgId, layananId).ToList();
-        var activeDos = _legacyStockReadPort?.ListActiveDoIdsAtLocation(brgId, layananId) ?? [];
-        var scopes = candidates
-            .Select(c => new ScopeKeyDto(brgId, c.BrgMasukReffId))
-            .Concat(activeDos.Select(doId => new ScopeKeyDto(brgId, doId)))
-            .Distinct()
-            .ToList();
-
-        if (scopes.Count == 0)
-            return true;
-
-        var result = await _sender.Send(new EnsureFreshnessForScopesCommand(scopes, userId), ct);
-        if (result.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
-        {
-            _logger?.LogWarning(
-                "Settle pending dilewati untuk Brg {BrgId} Layanan {LayananId}: {Reason}",
-                brgId, layananId, result.InconsistencyReason);
-            return false;
-        }
-
-        return true;
     }
 
     private Task<PakaiBrgCreateFromTindakanResult> IssuePakai(
