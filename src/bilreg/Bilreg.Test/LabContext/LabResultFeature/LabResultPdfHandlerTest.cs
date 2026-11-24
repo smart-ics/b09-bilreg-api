@@ -43,12 +43,12 @@ public class LabResultPdfHandlerTest
 
         var audit = new AuditInfoType("USR01", new DateTime(2026, 11, 7, 10, 0, 0));
         var document = LabResultDocumentModel.CreateInitial(order.OrderId, audit);
-        document.SetCriticalNote("Catatan nilai kritis uji");
         document.RecordResult(
             LabResultSourceEnum.Manual,
             [LabResultTestSupport.Capture(numeric: 15.5m)],
             "USR01",
             DateTime.Now);
+        document.SetCriticalNote("Catatan nilai kritis uji");
         document.MarkRecorded("USR01", DateTime.Now);
         document.Verify("dr. Patolog Sp.PK", DateTime.Now, "Catatan ekspertise patolog uji");
 

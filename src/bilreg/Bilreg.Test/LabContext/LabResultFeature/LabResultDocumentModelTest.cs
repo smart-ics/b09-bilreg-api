@@ -246,6 +246,18 @@ public class LabResultDocumentModelTest
     }
 
     [Fact]
+    public void RecordResult_WhenPreviouslyHadCriticalNote_ClearsCriticalNoteIfNoCriticalFlags()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.SetCriticalNote("Catatan kritis sebelumnya sudah dilaporkan ke dokter");
+        doc.CriticalNote.Should().Be("Catatan kritis sebelumnya sudah dilaporkan ke dokter");
+
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
+
+        doc.CriticalNote.Should().BeEmpty();
+    }
+
+    [Fact]
     public void SetCriticalNote_WhenReleased_Throws()
     {
         var doc = VerifiedDocument();
@@ -322,6 +334,7 @@ public class LabResultDocumentModelTest
         var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
             new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
 
+        Thread.Sleep(10);
         var (retired, newVersion) = doc.AmendVerifiedToNewVersion(regenerated, "Koreksi nilai", "UAMEND", amendedAt);
 
         retired.ResultDocumentId.Should().Be(doc.ResultDocumentId);

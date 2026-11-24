@@ -135,6 +135,8 @@
     <Folder Include="LabContext\LabMasterFeature\" />
     <Folder Include="LabContext\LabMasterFeature\Data\" />
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
+    <Folder Include="RadContext\" />
+    <Folder Include="RadContext\RadOrderFeature\" />
     <Folder Include="PurchaseContext\" />
     <Folder Include="PurchaseContext\DeliveryFeature\" />
   </ItemGroup>
@@ -420,6 +422,9 @@
     <Build Include="ChargeContext\TindakanFeature\BILRG_TindakanBarang.sql" />
     <Build Include="InventoryContext\PakaiBrgFeature\BILRG_TindakanStokPending.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrder.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadOrderItem.sql" />
+    <Build Include="RadContext\RadOrderFeature\BILRG_RadTarifModality.sql" />
     <Build Include="PaymentContext\KasirFeature\BILRG_KasirShift.sql" />
     <Build Include="PaymentContext\KasirFeature\BILRG_LoketKasir.sql" />
     <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasir.sql" />

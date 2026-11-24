@@ -389,6 +389,10 @@ public class LabResultDocumentModel : ILabResultDocumentKey
 
         _items.Clear();
         _items.AddRange(next);
+        if (!next.Any(i => i.FlagStatus == LabResultFlagEnum.Critical))
+        {
+            CriticalNote = string.Empty;
+        }
         var recordAt = recordedAt == default ? DateTime.Now : recordedAt;
         AuditTrail.Modif(userId, recordAt);
     }
