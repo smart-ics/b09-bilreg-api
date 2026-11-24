@@ -42,13 +42,7 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
         var bindingRepo = new StockLegacyBindingRepo(new StokLegacyBindingDal(_db));
         var scopeRepo = new StockLegacyScopeRepo(new StokLegacyScopeDal(_db));
 
-        var uow = new StockConsequenceUnitOfWork(
-            writer,
-            batchRepo,
-            mutasiRepo,
-            bindingRepo,
-            scopeRepo,
-            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }))
+        var uow = new StockConsequenceUnitOfWork(writer)
         {
             FailAfterLegacyWritesForTest = () =>
                 throw new InvalidOperationException("forced-mid-flight-failure")
