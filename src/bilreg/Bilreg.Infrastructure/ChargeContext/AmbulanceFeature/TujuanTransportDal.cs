@@ -117,7 +117,7 @@ public class TujuanTransportDto
     public TujuanTransportModel ToModel()
     {
         var model = new TujuanTransportModel(fs_kd_tujuan_transport, fs_nm_tujuan_transport, fn_konstanta, fb_perkiraan);
-        model.SetDefaultAmbulance(fs_kd_default_transport);
+        model.SetDefaultAmbulance(fs_kd_default_transport?.Trim() ?? string.Empty);
         return model;
     }
 }
