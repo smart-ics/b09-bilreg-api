@@ -1,8 +1,6 @@
 using Bilreg.Application.InventoryContext.PakaiBrgFeature;
-using Bilreg.Application.InventoryContext.StockLedgerFeature;
-using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
+using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
-using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -14,25 +12,20 @@ namespace Bilreg.Test.InventoryContext.PakaiBrgFeature;
 public class SettlePendingTindakanStockHandlerTests
 {
     private readonly Mock<ITindakanStokPendingRepo> _pendingRepo = new();
-    private readonly Mock<IStockBatchRepo> _batchRepo = new();
+    private readonly Mock<ILegacyStockReadPort> _legacyStockReadPort = new();
     private readonly Mock<IPakaiBrgInternalService> _pakai = new();
     private readonly Mock<ITglJamProvider> _tglJam = new();
-    private readonly Mock<ISender> _sender = new();
     private readonly List<TindakanStokPendingType> _active = [];
     private int _pakaiSeq;
 
     private SettlePendingTindakanStockHandler CreateSut(decimal stock)
     {
         _tglJam.Setup(x => x.Now).Returns(new DateTime(2026, 1, 1));
-        _sender
-            .Setup(x => x.Send(It.IsAny<EnsureFreshnessForScopesCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EnsureFreshnessForScopesResult(
-                EnsureFreshnessOutcomeEnum.Success, string.Empty, string.Empty, string.Empty));
-        _batchRepo
-            .Setup(x => x.ListAllocationCandidates("B1", "L1"))
+        _legacyStockReadPort
+            .Setup(x => x.ListBalancesAtLocation("B1", "L1"))
             .Returns(() => stock <= 0
                 ? []
-                : [new LocationStockBalanceModel("LOK1", "BAT1", "B1", "DO1", "L1", default, "", default, stock, 1)]);
+                : [new LegacyStockBalanceReadModel("STK1", "B1", "DO1", "L1", default, "", stock, 1m, default)]);
         _pendingRepo
             .Setup(x => x.ListFifoAktif(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(() => _active.Where(p => !p.StatusPotStok).ToList());
@@ -48,7 +41,7 @@ public class SettlePendingTindakanStockHandlerTests
             .ReturnsAsync(() => new PakaiBrgCreateFromTindakanResult($"PK{++_pakaiSeq}", DateTime.Now, 0m, 1, []));
 
         return new SettlePendingTindakanStockHandler(
-            _pendingRepo.Object, _batchRepo.Object, _pakai.Object, _tglJam.Object, _sender.Object);
+            _pendingRepo.Object, _pakai.Object, _tglJam.Object, _legacyStockReadPort.Object);
     }
 
     private static TindakanStokPendingType Row(string id, decimal qty, string reg = "REG") =>
