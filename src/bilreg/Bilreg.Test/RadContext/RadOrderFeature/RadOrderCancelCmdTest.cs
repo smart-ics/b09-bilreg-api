@@ -1,4 +1,5 @@
 using Bilreg.Application.RadContext.RadOrderFeature;
+using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Application.RadContext.RadOrderFeature.UseCases;
 using Bilreg.Domain.RadContext.RadOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -13,12 +14,13 @@ namespace Bilreg.Test.RadContext.RadOrderFeature;
 public class RadOrderCancelCmdTest
 {
     private readonly Mock<IRadOrderRepo> _repoMock = new();
+    private readonly Mock<IRadBillingIntegration> _billingMock = new();
     private readonly DateTime _now = new(2026, 11, 24, 14, 30, 0);
     private readonly RadOrderCancelHandler _sut;
 
     public RadOrderCancelCmdTest()
     {
-        _sut = new RadOrderCancelHandler(_repoMock.Object, new TestTglJamProvider(_now));
+        _sut = new RadOrderCancelHandler(_repoMock.Object, _billingMock.Object, new TestTglJamProvider(_now));
     }
 
     private static PatientSnapshotType EmrSnapshot() =>
@@ -44,6 +46,10 @@ public class RadOrderCancelCmdTest
         if (status == RadOrderStatusEnum.Scheduled)
         {
             order.Schedule("TECH1", new DateTime(2026, 11, 24, 9, 0, 0));
+        }
+        else if (status == RadOrderStatusEnum.Charged)
+        {
+            order.MarkCharged("TND001", "BILL_USER", new DateTime(2026, 11, 24, 9, 15, 0));
         }
         else if (status == RadOrderStatusEnum.Cancelled)
         {
@@ -80,6 +86,7 @@ public class RadOrderCancelCmdTest
         order.AuditTrail.Modified.Timestamp.Should().Be(_now);
 
         _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+        _billingMock.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     [Fact]
@@ -106,6 +113,73 @@ public class RadOrderCancelCmdTest
         order.IsCancelled.Should().BeTrue();
 
         _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+        _billingMock.Verify(b => b.CancelCharge(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ChargedOrder_CallsCancelCharge_AndCancelsSuccessfully()
+    {
+        // Arrange
+        var order = CreateTestOrder("RDO0000000003", RadOrderStatusEnum.Charged);
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IRadOrderKey>(k => k.OrderId == "RDO0000000003")))
+            .Returns(MayBe.From(order));
+
+        var cmd = new RadOrderCancelCmd(
+            OrderId: "RDO0000000003",
+            UserId: "DR_CANCEL",
+            Reason: "Kondisi pasien tidak memungkinkan dilakukan foto radiologi");
+
+        // Act
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        _billingMock.Verify(b => b.CancelCharge(
+            "RDO0000000003",
+            "REG001",
+            "DR_CANCEL",
+            "Kondisi pasien tidak memungkinkan dilakukan foto radiologi",
+            _now), Times.Once);
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        order.CancelledReason.Should().Be("Kondisi pasien tidak memungkinkan dilakukan foto radiologi");
+        order.CancelledUserId.Should().Be("DR_CANCEL");
+        order.CancelledDate.Should().Be(_now);
+        order.IsCancelled.Should().BeTrue();
+
+        _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ChargedOrder_WhenBillingCompensationFails_ThrowsExceptionAndDoesNotCancel()
+    {
+        // Arrange
+        var order = CreateTestOrder("RDO0000000004", RadOrderStatusEnum.Charged);
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IRadOrderKey>(k => k.OrderId == "RDO0000000004")))
+            .Returns(MayBe.From(order));
+
+        _billingMock.Setup(b => b.CancelCharge(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Throws(new InvalidOperationException("Rekening pasien sudah final atau lunas di kasir"));
+
+        var cmd = new RadOrderCancelCmd(
+            OrderId: "RDO0000000004",
+            UserId: "DR_CANCEL",
+            Reason: "Pasien membatalkan pemeriksaan radiologi");
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*kasir*");
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Charged);
+        order.IsCancelled.Should().BeFalse();
+        _repoMock.Verify(r => r.SaveChanges(It.IsAny<RadOrderModel>()), Times.Never);
     }
 
     [Fact]
@@ -167,7 +241,7 @@ public class RadOrderCancelCmdTest
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*pembatalan hanya diizinkan untuk status Requested atau Scheduled*");
+            .WithMessage("*pembatalan hanya diizinkan untuk status Requested, Scheduled, atau Charged*");
 
         _repoMock.Verify(r => r.SaveChanges(It.IsAny<RadOrderModel>()), Times.Never);
     }
@@ -207,7 +281,7 @@ public class RadOrderCancelCmdTest
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*pembatalan hanya diizinkan untuk status Requested atau Scheduled*");
+            .WithMessage("*pembatalan hanya diizinkan untuk status Requested, Scheduled, atau Charged*");
 
         _repoMock.Verify(r => r.SaveChanges(It.IsAny<RadOrderModel>()), Times.Never);
     }
