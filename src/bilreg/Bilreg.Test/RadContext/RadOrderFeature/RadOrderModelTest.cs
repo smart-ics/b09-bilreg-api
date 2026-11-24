@@ -308,7 +308,7 @@ public class RadOrderModelTest
         var act = () => order.Cancel("Alasan kedua", "USER2");
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*pembatalan hanya diizinkan untuk status Requested atau Scheduled*");
+            .WithMessage("*pembatalan hanya diizinkan untuk status Requested, Scheduled, atau Charged*");
     }
 
     [Fact]
@@ -381,5 +381,201 @@ public class RadOrderModelTest
             urgency: RadUrgencyEnum.Rutin);
 
         order.IsCito.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Charge_FromRequested_SucceedsWithoutException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-013",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110014",
+            audit: TestAudit());
+
+        var act = () => order.Charge("USER1");
+
+        act.Should().NotThrow();
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Requested);
+    }
+
+    [Fact]
+    public void Charge_FromScheduled_SucceedsWithoutException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-014",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110015",
+            audit: TestAudit());
+
+        order.Schedule("TECH1");
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Scheduled);
+
+        var act = () => order.Charge("USER1");
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Charge_WhenVoided_ThrowsInvalidOperationException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-015",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110016",
+            audit: TestAudit());
+
+        order.AuditTrail.Batal("ADMIN", new DateTime(2026, 11, 24, 10, 0, 0));
+
+        var act = () => order.Charge("USER1");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*sudah void; charge tidak diizinkan*");
+    }
+
+    [Fact]
+    public void Charge_WhenStatusInvalid_ThrowsInvalidOperationException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-016",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110017",
+            audit: TestAudit());
+
+        order.Cancel("Batal", "USER1");
+
+        var act = () => order.Charge("USER2");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*charge hanya diizinkan untuk status Requested atau Scheduled*");
+    }
+
+    [Fact]
+    public void Charge_WhenAlreadyHasBillingTindakanId_ThrowsInvalidOperationException()
+    {
+        var order = new RadOrderModel(
+            orderId: "RDO0000000001",
+            emrOrderId: "EMR-RAD-001",
+            orderNo: "RAD26110001",
+            orderSource: RadOrderSourceEnum.Internal,
+            modality: RadModalityEnum.CR,
+            radOrderStatus: RadOrderStatusEnum.Requested,
+            urgency: RadUrgencyEnum.Rutin,
+            patient: EmrSnapshot(),
+            executionRegId: "REG001",
+            dokterPengorderId: "DR01",
+            dokterPengorderName: "dr. Sp.Rad",
+            layananPengorderId: "LY01",
+            layananPengorderName: "Poli Paru",
+            clinicalNote: "Catatan klinis",
+            cancelledReason: string.Empty,
+            cancelledDate: RadOrderModel.EmptyDate,
+            cancelledUserId: string.Empty,
+            auditTrail: AuditTrailType.Create("DR01", DateTime.Now),
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            billingTindakanId: "TIN001");
+
+        var act = () => order.Charge("USER2");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*sudah memiliki BillingTindakanId 'TIN001'*");
+    }
+
+    [Fact]
+    public void MarkCharged_SetsChargedStateAndClearsError()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-018",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110019",
+            audit: TestAudit());
+
+        order.RecordBillingError("Ada kesalahan tarif sebelumnya", "USER1");
+        order.BillingLastError.Should().Be("Ada kesalahan tarif sebelumnya");
+
+        var chargedAt = new DateTime(2026, 11, 24, 11, 0, 0);
+        order.MarkCharged("TIN12345", "USER2", chargedAt);
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Charged);
+        order.IsCharged.Should().BeTrue();
+        order.BillingTindakanId.Should().Be("TIN12345");
+        order.BillingLastError.Should().BeEmpty();
+        order.AuditTrail.Modified.UserId.Should().Be("USER2");
+        order.AuditTrail.Modified.Timestamp.Should().Be(chargedAt);
+    }
+
+    [Fact]
+    public void RecordBillingError_KeepsStatusAndSetsError()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-019",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110020",
+            audit: TestAudit());
+
+        var recordedAt = new DateTime(2026, 11, 24, 11, 15, 0);
+        order.RecordBillingError("Tarif tidak ditemukan", "BILL_USER", recordedAt);
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Requested);
+        order.BillingLastError.Should().Be("Tarif tidak ditemukan");
+        order.BillingTindakanId.Should().BeEmpty();
+        order.AuditTrail.Modified.UserId.Should().Be("BILL_USER");
+        order.AuditTrail.Modified.Timestamp.Should().Be(recordedAt);
+    }
+
+    [Fact]
+    public void RecordBillingError_TruncatesLongMessage()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-020",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110021",
+            audit: TestAudit());
+
+        var longError = new string('Z', 250);
+        order.RecordBillingError(longError, "USER1");
+
+        order.BillingLastError.Should().HaveLength(200);
+        order.BillingLastError.Should().Be(new string('Z', 200));
+    }
+
+    [Fact]
+    public void Cancel_FromChargedStatus_CancelsSuccessfully()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-021",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            items: [CreateItem("TRF01", "Thorax AP", RadModalityEnum.CR)],
+            orderNo: "RAD26110022",
+            audit: TestAudit());
+
+        order.MarkCharged("TIN-001", "USER1");
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Charged);
+
+        var cancelDate = new DateTime(2026, 11, 24, 12, 0, 0);
+        order.Cancel("Pasien batal tindakan radiologi", "DOKTER1", cancelDate);
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        order.CancelledReason.Should().Be("Pasien batal tindakan radiologi");
+        order.CancelledUserId.Should().Be("DOKTER1");
+        order.CancelledDate.Should().Be(cancelDate);
+        order.IsCancelled.Should().BeTrue();
+        order.IsActive.Should().BeFalse();
+        order.AuditTrail.Modified.UserId.Should().Be("DOKTER1");
+        order.AuditTrail.Modified.Timestamp.Should().Be(cancelDate);
     }
 }
