@@ -230,7 +230,9 @@ public class RadOrderRepoTest
             UpdUser: "USER_UPD",
             UpdDate: new DateTime(2026, 11, 24, 9, 0, 0),
             VodUser: "USER_VOD",
-            VodDate: new DateTime(2026, 11, 24, 11, 0, 0));
+            VodDate: new DateTime(2026, 11, 24, 11, 0, 0),
+            BillingTindakanId: "TDK001",
+            BillingLastError: "Koneksi timeout");
 
         var items = new List<RadOrderItemModel>
         {
@@ -269,8 +271,41 @@ public class RadOrderRepoTest
         model.AuditTrail.Voided.UserId.Should().Be("USER_VOD");
         model.AuditTrail.Voided.Timestamp.Should().Be(new DateTime(2026, 11, 24, 11, 0, 0));
         model.AuditTrail.IsVoided.Should().BeTrue();
+        model.BillingTindakanId.Should().Be("TDK001");
+        model.BillingLastError.Should().Be("Koneksi timeout");
         model.Items.Should().HaveCount(1);
         model.Items[0].TarifId.Should().Be("TRF_CT");
         model.Items[0].Modality.Should().Be(RadModalityEnum.CT);
+    }
+
+    [Fact]
+    public void FromModel_MapsBillingFieldsCorrectly()
+    {
+        // Arrange
+        var model = CreateTestModel();
+        model.MarkCharged("TDK002", "USER_CHG", new DateTime(2026, 11, 24, 10, 0, 0));
+
+        // Act
+        var dto = RadOrderDto.FromModel(model);
+
+        // Assert
+        dto.BillingTindakanId.Should().Be("TDK002");
+        dto.BillingLastError.Should().BeEmpty();
+        dto.RadOrderStatus.Should().Be((int)RadOrderStatusEnum.Charged);
+    }
+
+    [Fact]
+    public void FromModel_WhenBillingError_MapsLastErrorCorrectly()
+    {
+        // Arrange
+        var model = CreateTestModel();
+        model.RecordBillingError("Tarif tidak ditemukan", "USER_ERR", new DateTime(2026, 11, 24, 10, 0, 0));
+
+        // Act
+        var dto = RadOrderDto.FromModel(model);
+
+        // Assert
+        dto.BillingTindakanId.Should().BeEmpty();
+        dto.BillingLastError.Should().Be("Tarif tidak ditemukan");
     }
 }
