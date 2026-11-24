@@ -16,7 +16,11 @@ namespace Bilreg.Application.ChargeContext.AmbulanceFeature.UseCases;
 public record ChargeTransportCmd(
     string TrsTransportId,
     string PetugasId = "",
-    DateTime? ChargeTime = null) : IRequest<ChargeTransportResponse>, ITrsTransportKey;
+    DateTime? ChargeTime = null,
+    string? DriverId = null,
+    string? PerawatId = null,
+    string? DokterId = null,
+    IEnumerable<TransportItemAdjustmentDto>? Items = null) : IRequest<ChargeTransportResponse>, ITrsTransportKey;
 
 public record ChargeTransportResponse(
     string TrsTransportId,
@@ -28,6 +32,7 @@ public class ChargeTransportHandler : IRequestHandler<ChargeTransportCmd, Charge
 {
     private readonly ITrsTransportRepo _trsTransportRepo;
     private readonly IAmbulanceRepo _ambulanceRepo;
+    private readonly ITujuanTransportRepo _tujuanTransportRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IRegRepo _regRepo;
     private readonly IJaminanRepo _jaminanRepo;
@@ -37,6 +42,7 @@ public class ChargeTransportHandler : IRequestHandler<ChargeTransportCmd, Charge
     public ChargeTransportHandler(
         ITrsTransportRepo trsTransportRepo,
         IAmbulanceRepo ambulanceRepo,
+        ITujuanTransportRepo tujuanTransportRepo,
         IAddBillAppService addBillAppService,
         IRegRepo regRepo,
         IJaminanRepo jaminanRepo,
@@ -45,6 +51,7 @@ public class ChargeTransportHandler : IRequestHandler<ChargeTransportCmd, Charge
     {
         _trsTransportRepo = trsTransportRepo;
         _ambulanceRepo = ambulanceRepo;
+        _tujuanTransportRepo = tujuanTransportRepo;
         _addBillAppService = addBillAppService;
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;
@@ -83,48 +90,28 @@ public class ChargeTransportHandler : IRequestHandler<ChargeTransportCmd, Charge
                 onSome: j => j,
                 onNone: () => JaminanType.Default);
 
-        AmbulanceModel? ambulance = null;
-        if (!string.IsNullOrWhiteSpace(transport.AmbulanceId))
+        if (transport.ListItems.Count == 0
+            && !string.IsNullOrWhiteSpace(transport.AmbulanceId)
+            && !string.IsNullOrWhiteSpace(transport.TujuanTransportId))
         {
-            ambulance = _ambulanceRepo.LoadEntity(new AmbulanceKey(transport.AmbulanceId)).Match(
+            var ambulance = _ambulanceRepo.LoadEntity(new AmbulanceKey(transport.AmbulanceId)).Match(
                 onSome: a => a,
                 onNone: () => null);
-        }
+            var tujuan = _tujuanTransportRepo.LoadEntity(new TujuanTransportKey(transport.TujuanTransportId)).Match(
+                onSome: t => t,
+                onNone: () => null);
 
-        if (transport.ListItems.Count == 0 && ambulance != null && ambulance.ListKomponen.Count > 0)
-        {
-            foreach (var komp in ambulance.ListKomponen)
+            if (ambulance != null && tujuan != null)
             {
-                transport.AddItem(new TrsTransportItemModel(
-                    transport.TrsTransportId,
-                    komp.KomponenId,
-                    komp.NilaiTarif,
-                    1m));
-            }
-        }
-
-        if (transport.SubTotal <= 0)
-        {
-            var abonement = ambulance?.Abonement ?? 0m;
-            decimal subtotal = 0m;
-            if (transport.MetodeTarif == ChargingMethodEnum.Wilayah)
-            {
-                subtotal = abonement * transport.Konstanta;
-            }
-            else if (transport.MetodeTarif == ChargingMethodEnum.Jarak)
-            {
-                // In Jarak method: Abonement + (TotalJarakKm * KmRate)
-                subtotal = abonement;
-            }
-
-            if (subtotal > 0)
-            {
-                var kompId = ambulance?.ListKomponen.FirstOrDefault()?.KomponenId ?? "KOMP-AMB";
-                transport.AddItem(new TrsTransportItemModel(
-                    transport.TrsTransportId,
-                    kompId,
-                    subtotal,
-                    1m));
+                var calc = TransportTariffCalculator.Calculate(ambulance, tujuan);
+                foreach (var item in calc.Items)
+                {
+                    transport.AddItem(new TrsTransportItemModel(
+                        transport.TrsTransportId,
+                        item.DetilTarifId,
+                        item.TarifFinal,
+                        1m));
+                }
             }
         }
 
@@ -137,6 +124,17 @@ public class ChargeTransportHandler : IRequestHandler<ChargeTransportCmd, Charge
         var listReffKomp = _komponenRepo.ListData(kompKeys)?.ToList() ?? [];
 
         using var scope = TransHelper.NewScope();
+
+        if (request.DriverId is not null || request.PerawatId is not null || request.DokterId is not null)
+        {
+            transport.UpdateCrew(request.DriverId, request.PerawatId, request.DokterId);
+        }
+
+        if (request.Items != null)
+        {
+            var adjustments = request.Items.Select(x => (x.DetilTarifId, x.Tarif, x.Diskon));
+            transport.AdjustItems(adjustments);
+        }
 
         _addBillAppService.FromAmbulanceUsage(
             transport,

@@ -55,37 +55,37 @@ public class RequestTransportHandler : IRequestHandler<RequestTransportCmd, Requ
         Guard.Against.NullOrWhiteSpace(request.LayananId, nameof(request.LayananId));
         Guard.Against.NullOrWhiteSpace(request.PetugasId, nameof(request.PetugasId));
 
+        if (request.MetodeTarif == ChargingMethodEnum.Jarak)
+            throw new ArgumentException("Metode tarif Jarak tidak didukung; perhitungan tarif transport menggunakan metode Tujuan/Wilayah.", nameof(request.MetodeTarif));
+
         var tujuanId = request.TujuanTransportId ?? string.Empty;
-        var konstanta = request.Konstanta;
+        if (string.IsNullOrWhiteSpace(tujuanId))
+            throw new ArgumentException("Metode tarif Wilayah wajib menentukan TujuanTransportId.", nameof(request.TujuanTransportId));
 
-        if (request.MetodeTarif == ChargingMethodEnum.Wilayah)
+        var tujuan = _tujuanTransportRepo.LoadEntity(new TujuanTransportKey(tujuanId)).Match(
+            onSome: t => t,
+            onNone: () => null);
+
+        var ambulance = !string.IsNullOrWhiteSpace(request.AmbulanceId)
+            ? _ambulanceRepo.LoadEntity(new AmbulanceKey(request.AmbulanceId)).Match(
+                onSome: a => a,
+                onNone: () => null)
+            : null;
+
+        TransportTariffCalculationResult? calcResult = null;
+        var konstanta = tujuan?.Konstanta ?? 0m;
+
+        if (ambulance != null && tujuan != null)
         {
-            if (string.IsNullOrWhiteSpace(tujuanId))
-                throw new ArgumentException("Metode tarif Wilayah wajib menentukan TujuanTransportId.", nameof(request.TujuanTransportId));
-
-            if (konstanta <= 0)
-            {
-                var tujuan = _tujuanTransportRepo.LoadEntity(new TujuanTransportKey(tujuanId)).Match(
-                    onSome: t => t,
-                    onNone: () => null);
-
-                if (tujuan != null)
-                    konstanta = tujuan.Konstanta;
-            }
-        }
-        else if (request.MetodeTarif == ChargingMethodEnum.Jarak)
-        {
-            if (!string.IsNullOrWhiteSpace(tujuanId))
-                throw new ArgumentException("Transaksi dengan metode tarif Jarak tidak boleh memiliki TujuanTransportId (Core Invariant 6).", nameof(request.TujuanTransportId));
-
-            konstanta = 0m;
+            calcResult = TransportTariffCalculator.Calculate(ambulance, tujuan);
+            konstanta = calcResult.KonstantaEfektif;
         }
 
         var tglTrs = request.TglTrs ?? _tglJamProvider.Now;
 
         var transport = TrsTransportModel.Create(
             request.TipePerjalanan,
-            request.MetodeTarif,
+            ChargingMethodEnum.Wilayah,
             request.LayananId,
             request.PetugasId,
             trsTransportId: request.TrsTransportId,
@@ -103,28 +103,11 @@ public class RequestTransportHandler : IRequestHandler<RequestTransportCmd, Requ
             perawatId: request.PerawatId ?? string.Empty,
             dokterId: request.DokterId ?? string.Empty);
 
-        if (request.MetodeTarif == ChargingMethodEnum.Jarak && request.TotalJarakKm is > 0)
+        if (calcResult != null)
         {
-            transport.SetJarakManual(request.TotalJarakKm.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.AmbulanceId))
-        {
-            var ambulance = _ambulanceRepo.LoadEntity(new AmbulanceKey(request.AmbulanceId)).Match(
-                onSome: a => a,
-                onNone: () => null);
-
-            if (ambulance != null)
+            foreach (var item in calcResult.Items)
             {
-                var baseTariff = request.MetodeTarif == ChargingMethodEnum.Wilayah
-                    ? ambulance.Abonement * konstanta
-                    : ambulance.Abonement + ((request.TotalJarakKm ?? 0m) * (request.KmRate ?? 0m));
-
-                if (baseTariff > 0)
-                {
-                    var kompId = ambulance.ListKomponen.FirstOrDefault()?.KomponenId ?? "KOMP-AMB";
-                    transport.AddItem(new TrsTransportItemModel(transport.TrsTransportId, kompId, baseTariff, 1m));
-                }
+                transport.AddItem(new TrsTransportItemModel(transport.TrsTransportId, item.DetilTarifId, item.TarifFinal, 1m));
             }
         }
 

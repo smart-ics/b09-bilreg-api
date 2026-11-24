@@ -1,6 +1,8 @@
 using Bilreg.Application.ChargeContext.AmbulanceFeature;
 using Bilreg.Application.ChargeContext.AmbulanceFeature.UseCases;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -11,6 +13,7 @@ namespace Bilreg.Test.ChargeContext.AmbulanceFeature;
 public class TransportQueryTests
 {
     private readonly Mock<ITrsTransportRepo> _trsTransportRepoMock = new();
+    private readonly Mock<IKomponenRepo> _komponenRepoMock = new();
 
     private static TrsTransportModel CreatePopulatedTransport(string id = "TP030")
     {
@@ -57,7 +60,14 @@ public class TransportQueryTests
             .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP030")))
             .Returns(MayBe.From(transport));
 
-        var handler = new GetTransportHandler(_trsTransportRepoMock.Object);
+        _komponenRepoMock
+            .Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([
+                KomponenType.Default with { KomponenId = "KOMP-01", KomponenName = "Jasa Sarana" },
+                KomponenType.Default with { KomponenId = "KOMP-02", KomponenName = "Jasa Pelayanan" }
+            ]);
+
+        var handler = new GetTransportHandler(_trsTransportRepoMock.Object, _komponenRepoMock.Object);
 
         // Act
         var result = await handler.Handle(new GetTransportQuery("TP030"), CancellationToken.None);
@@ -84,6 +94,8 @@ public class TransportQueryTests
         result.Diskon.Should().Be(5000m);
         result.Total.Should().Be(195000m);
         result.ListItems.Should().HaveCount(2);
+        result.ListItems.First(i => i.DetilTarifId == "KOMP-01").DetilTarifName.Should().Be("Jasa Sarana");
+        result.ListItems.First(i => i.DetilTarifId == "KOMP-02").DetilTarifName.Should().Be("Jasa Pelayanan");
     }
 
     [Fact]
@@ -94,7 +106,14 @@ public class TransportQueryTests
             .Setup(x => x.LoadEntity(It.IsAny<ITrsTransportKey>()))
             .Returns(MayBe<TrsTransportModel>.None);
 
-        var handler = new GetTransportHandler(_trsTransportRepoMock.Object);
+        _komponenRepoMock
+            .Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([
+                KomponenType.Default with { KomponenId = "KOMP-01", KomponenName = "Jasa Sarana" },
+                KomponenType.Default with { KomponenId = "KOMP-02", KomponenName = "Jasa Pelayanan" }
+            ]);
+
+        var handler = new GetTransportHandler(_trsTransportRepoMock.Object, _komponenRepoMock.Object);
 
         // Act
         var act = () => handler.Handle(new GetTransportQuery("TP-NONEXIST"), CancellationToken.None);
@@ -112,7 +131,14 @@ public class TransportQueryTests
             .Setup(x => x.ListDataByReg("REG-01"))
             .Returns([transport]);
 
-        var handler = new ListTransportByRegHandler(_trsTransportRepoMock.Object);
+        _komponenRepoMock
+            .Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([
+                KomponenType.Default with { KomponenId = "KOMP-01", KomponenName = "Jasa Sarana" },
+                KomponenType.Default with { KomponenId = "KOMP-02", KomponenName = "Jasa Pelayanan" }
+            ]);
+
+        var handler = new ListTransportByRegHandler(_trsTransportRepoMock.Object, _komponenRepoMock.Object);
 
         // Act
         var result = await handler.Handle(new ListTransportByRegQuery("REG-01"), CancellationToken.None);

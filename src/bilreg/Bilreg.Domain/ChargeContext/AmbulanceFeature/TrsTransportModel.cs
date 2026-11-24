@@ -523,6 +523,48 @@ public class TrsTransportModel : ITrsTransportKey
         Diskon = _listItems.Where(x => !x.IsVoid).Sum(x => x.Diskon);
         Total = Math.Max(0m, SubTotal - Diskon);
     }
+
+    public void UpdateCrew(string? driverId, string? perawatId, string? dokterId)
+    {
+        if (IsPostedBilling)
+            throw new InvalidOperationException("Transaksi yang sudah diposting ke billing tidak dapat diubah.");
+        AssertNotTerminalState();
+
+        if (driverId != null)
+            DriverId = driverId;
+        if (perawatId != null)
+            PerawatId = perawatId;
+        if (dokterId != null)
+            DokterId = dokterId;
+    }
+
+    public void AdjustItems(IEnumerable<(string DetilTarifId, decimal Tarif, decimal Diskon)> adjustments)
+    {
+        ArgumentNullException.ThrowIfNull(adjustments);
+        if (IsPostedBilling)
+            throw new InvalidOperationException("Transaksi yang sudah diposting ke billing tidak dapat diubah.");
+        AssertNotTerminalState();
+
+        foreach (var (detilTarifId, tarif, diskon) in adjustments)
+        {
+            if (tarif < 0)
+                throw new ArgumentException("Tarif tidak boleh negatif.", nameof(adjustments));
+            if (diskon < 0)
+                throw new ArgumentException("Diskon tidak boleh negatif.", nameof(adjustments));
+
+            var item = _listItems.FirstOrDefault(x => x.DetilTarifId == detilTarifId)
+                ?? throw new KeyNotFoundException($"Komponen tarif '{detilTarifId}' tidak ditemukan pada transaksi.");
+
+            var maxDiskon = tarif * item.Qty;
+            if (diskon > maxDiskon)
+                throw new ArgumentException($"Diskon ({diskon}) tidak boleh melebihi subtotal ({maxDiskon}).", nameof(adjustments));
+
+            item.SetTarif(tarif);
+            item.SetDiskon(diskon);
+        }
+
+        RecalculateTotals();
+    }
     #endregion
 
     private void AssertNotTerminalState()

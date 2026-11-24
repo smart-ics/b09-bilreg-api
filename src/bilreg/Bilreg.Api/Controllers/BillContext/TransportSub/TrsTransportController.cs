@@ -70,14 +70,35 @@ public class TrsTransportController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("update-detail")]
+    [HttpPost("{id}/update-detail")]
+    public async Task<IActionResult> UpdateDetail(string? id = null, [FromBody] UpdateTransportDetailCmd? cmd = null)
+    {
+        var finalCmd = cmd != null
+            ? (!string.IsNullOrWhiteSpace(id) ? cmd with { TrsTransportId = id } : cmd)
+            : new UpdateTransportDetailCmd(id ?? string.Empty);
+        var result = await _mediator.Send(finalCmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("charge-billing")]
     [HttpPost("{id}/charge-billing")]
     public async Task<IActionResult> ChargeBilling(string? id = null, [FromBody] ChargeTransportCmd? cmd = null)
     {
-        var finalCmd = cmd != null && !string.IsNullOrWhiteSpace(cmd.TrsTransportId)
+        var finalCmd = cmd != null
             ? (!string.IsNullOrWhiteSpace(id) ? cmd with { TrsTransportId = id } : cmd)
-            : new ChargeTransportCmd(id ?? string.Empty, cmd?.PetugasId ?? string.Empty, cmd?.ChargeTime);
+            : new ChargeTransportCmd(id ?? string.Empty);
         var result = await _mediator.Send(finalCmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet("preview-tarif")]
+    public async Task<IActionResult> PreviewTarif(
+        [FromQuery] string ambulanceId,
+        [FromQuery] string tujuanTransportId)
+    {
+        var query = new PreviewTransportTariffQuery(ambulanceId, tujuanTransportId);
+        var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
 
