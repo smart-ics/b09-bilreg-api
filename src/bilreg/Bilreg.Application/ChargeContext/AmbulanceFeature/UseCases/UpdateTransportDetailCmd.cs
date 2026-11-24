@@ -10,7 +10,7 @@ public record TransportItemAdjustmentDto(
     decimal Diskon = 0m);
 
 public record UpdateTransportDetailCmd(
-    string TrsTransportId,
+    string TrsTransportId = "",
     string? DriverId = null,
     string? PerawatId = null,
     string? DokterId = null,

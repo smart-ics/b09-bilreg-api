@@ -545,6 +545,40 @@ public class TrsTransportControllerTest
     }
 
     [Fact]
+    public async Task UpdateDetail_WithoutBodyTrsTransportId_PopulatesFromRouteId_ReturnsOkWithResponse()
+    {
+        // Arrange
+        var cmd = new UpdateTransportDetailCmd(
+            DriverId: "DRV-1",
+            PerawatId: "PRW-1",
+            DokterId: "DOK-1",
+            Items: [new TransportItemAdjustmentDto("K-VAR", 80000m, 5000m)]);
+        cmd.TrsTransportId.Should().BeEmpty();
+
+        var expected = new UpdateTransportDetailResponse("TP-001", "DRV-1", "PRW-1", "DOK-1", 80000m, 5000m, 75000m);
+        UpdateTransportDetailCmd? capturedCmd = null;
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<UpdateTransportDetailCmd>(), It.IsAny<CancellationToken>()))
+            .Callback<IRequest<UpdateTransportDetailResponse>, CancellationToken>((c, _) => capturedCmd = (UpdateTransportDetailCmd)c)
+            .ReturnsAsync(expected);
+
+        // Act
+        var result = await _sut.UpdateDetail("TP-001", cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expected);
+
+        capturedCmd.Should().NotBeNull();
+        capturedCmd!.TrsTransportId.Should().Be("TP-001");
+        capturedCmd.DriverId.Should().Be("DRV-1");
+        capturedCmd.PerawatId.Should().Be("PRW-1");
+        capturedCmd.DokterId.Should().Be("DOK-1");
+    }
+
+    [Fact]
     public async Task ChargeBilling_ForwardsCrewAndItems_ReturnsOkWithResponse()
     {
         // Arrange

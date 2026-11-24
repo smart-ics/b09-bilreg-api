@@ -106,4 +106,18 @@ public class UpdateTransportDetailCmdTest
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [Fact]
+    public async Task Handle_DefaultEmptyTrsTransportId_ThrowsArgumentException()
+    {
+        // Arrange
+        var cmd = new UpdateTransportDetailCmd(DriverId: "DRV-NEW");
+        cmd.TrsTransportId.Should().BeEmpty();
+
+        // Act
+        var act = () => _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
 }
