@@ -1,5 +1,7 @@
+using Bilreg.Application.Shared;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
@@ -34,6 +36,7 @@ public class TransferToWardWaitingListCommandTest
     private readonly Mock<IBedOperationalRepo> _bedOperationalRepoMock = new();
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
+    private readonly Mock<IEmr20AntrianRanapGateway> _emr20GatewayMock = new();
 
     private readonly TransferToWardWaitingListCommandHandler _sut;
 
@@ -46,7 +49,8 @@ public class TransferToWardWaitingListCommandTest
             _regRepoMock.Object,
             _bedOperationalRepoMock.Object,
             _waitingListRepoMock.Object,
-            _tglJamProviderMock.Object);
+            _tglJamProviderMock.Object,
+            _emr20GatewayMock.Object);
 
         _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 3, 10, 0, 0));
     }
@@ -963,5 +967,348 @@ public class TransferToWardWaitingListCommandTest
         savedWls.Should().Contain(w => w.RegId == "REG_IBU");
         savedWls.Should().Contain(w => w.RegId == "REG_BAYI1");
         savedWls.Should().Contain(w => w.RegId == "REG_BAYI2");
+    }
+
+    [Fact]
+    public async Task Handle_GeneralTransfer_DischargesRegRanapOnEmrGatewayOnce()
+    {
+        // Arrange
+        var pakaiBed = CreateTestBed("PKB001", "BED01", "REG001");
+        var reg = CreateTestReg("REG001");
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB001")))
+            .Returns(MayBe.From(pakaiBed));
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG001")))
+            .Returns(MayBe.From(reg));
+
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId("REG001"))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var transferTime = new DateTime(2026, 11, 3, 10, 30, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB001",
+            "BGS02",
+            transferTime,
+            "Kebutuhan ICU",
+            "Pasien perlu monitoring ketat",
+            "nurse_1");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG001", false, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync(It.IsAny<string>(), true, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_MomWithRoomingInBabyTransfer_DischargesBothMomAndBabyOnEmrGateway()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU", 300000m, "PAS_IBU", "Ny Ibu");
+        var babyBed = CreateTestBed("PKB_BAYI", "BED01", "REG_BAYI", 0m, "PAS_BAYI", "Bayi Ny Ibu");
+        var motherReg = CreateTestReg("REG_IBU");
+        var babyReg = CreateTestBabyReg("REG_BAYI", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_IBU"))
+            .ReturnsAsync(new List<string> { "REG_BAYI" });
+
+        _pakaiBedRepoMock
+            .Setup(x => x.ListData(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(new List<PakaiBedModel> { babyBed });
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_IBU")))
+            .Returns(MayBe.From(motherReg));
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(MayBe.From(babyReg));
+
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS02",
+            transferTime,
+            "Pindah bangsal ibu dan bayi",
+            null,
+            "nurse_1",
+            TransferScope: "ibu");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG_IBU", false, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG_BAYI", true, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_BabyScopeTransfer_DischargesOnlyBabyOnEmrGateway()
+    {
+        // Arrange
+        var babyBed = CreateTestBed("PKB_BAYI", "BED01", "REG_BAYI", 0m, "PAS_BAYI", "Bayi Ny A");
+        var babyReg = CreateTestBabyReg("REG_BAYI", "REG_IBU");
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS_NICU", BangsalName = "Bangsal NICU" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_BAYI")))
+            .Returns(MayBe.From(babyBed));
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS_NICU")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_BAYI")))
+            .Returns(MayBe.From(babyReg));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId("REG_BAYI"))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_BAYI",
+            "BGS_NICU",
+            transferTime,
+            "Transfer direct baby to NICU",
+            "Kondisi memburuk",
+            "nurse_1",
+            TransferScope: "bayi");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync("REG_BAYI", true, It.IsAny<CancellationToken>()), Times.Once);
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync(It.IsAny<string>(), false, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCancellationTokenCanceled_ThrowsOperationCanceledExceptionAndNeverCallsEmrGateway()
+    {
+        // Arrange
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB001",
+            "BGS02",
+            new DateTime(2026, 11, 3, 11, 0, 0),
+            "Pindah bangsal",
+            null,
+            "nurse_1");
+        var cancellationToken = new CancellationToken(canceled: true);
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, cancellationToken);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_CancellationTokenCanceledBeforeTransactionCommit_RollsBackAndNeverCallsEmrGateway()
+    {
+        // Arrange
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU");
+        var motherReg = CreateTestReg("REG_IBU");
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Melati" };
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar Mawar 1"),
+            IsAktif = true
+        };
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+
+        _pakaiBedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        _pakaiBedRepoMock
+            .Setup(x => x.GetRoomingInBabyRegIdsAsync("PKB_IBU"))
+            .ReturnsAsync(new List<string>());
+
+        _bangsalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        _bedRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_IBU")))
+            .Returns(MayBe.From(motherReg));
+
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock
+            .Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        using var cts = new CancellationTokenSource();
+        _waitingListRepoMock
+            .Setup(x => x.Save(It.IsAny<WaitingListModel>()))
+            .Callback(() => cts.Cancel());
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS02",
+            transferTime,
+            "Pindah bangsal ibu",
+            null,
+            "nurse_1");
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, cts.Token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _emr20GatewayMock.Verify(x => x.DischargeRegRanapAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithScopedConnection_PrimesConnectionAndExecutesTransferSuccessfully()
+    {
+        // Arrange
+        var connectionScopeMock = new Mock<ISqlConnectionScope>();
+        var handlerWithScope = new TransferToWardWaitingListCommandHandler(
+            _pakaiBedRepoMock.Object,
+            _bangsalRepoMock.Object,
+            _bedRepoMock.Object,
+            _regRepoMock.Object,
+            _bedOperationalRepoMock.Object,
+            _waitingListRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _emr20GatewayMock.Object,
+            connectionScopeMock.Object);
+
+        var motherBed = CreateTestBed("PKB_IBU", "BED01", "REG_IBU", 300000m, "PAS_IBU", "Ny. Ibu");
+        _pakaiBedRepoMock.Setup(x => x.LoadEntity(It.Is<IPakaiBed>(k => k.PakaiBedId == "PKB_IBU")))
+            .Returns(MayBe.From(motherBed));
+
+        var regIbu = CreateTestReg("REG_IBU");
+        _regRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG_IBU")))
+            .Returns(MayBe.From(regIbu));
+
+        var targetBangsal = BangsalType.Default with { BangsalId = "BGS02", BangsalName = "Bangsal Anggrek" };
+        _bangsalRepoMock.Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "BGS02")))
+            .Returns(MayBe.From(targetBangsal));
+
+        var oldBed = BedType.Default with
+        {
+            BedId = "BED01",
+            BedName = "Bed 01",
+            Bangsal = new BangsalReff("BGS01", "Bangsal Mawar"),
+            Kamar = new KamarReff("KMR01", "Kamar 01")
+        };
+        _bedRepoMock.Setup(x => x.LoadEntity(It.Is<IBedKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBed));
+
+        var oldBedOp = BedOperationalModel.Create("BED01", "BGS01", "KMR01", OccupancyPolicyReff.Default);
+        _bedOperationalRepoMock.Setup(x => x.LoadEntity(It.Is<IBedOperationalKey>(k => k.BedId == "BED01")))
+            .Returns(MayBe.From(oldBedOp));
+
+        _waitingListRepoMock.Setup(x => x.LoadActiveByRegId(It.IsAny<string>()))
+            .Returns(MayBe<WaitingListModel>.None);
+
+        var transferTime = new DateTime(2026, 11, 3, 11, 0, 0);
+        var cmd = new TransferToWardWaitingListCommand(
+            "PKB_IBU",
+            "BGS02",
+            transferTime,
+            "Pindah bangsal dengan scoped connection",
+            null,
+            "nurse_1");
+
+        // Act
+        var result = await handlerWithScope.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PakaiBedId.Should().Be("PKB_IBU");
+        result.TargetBangsalId.Should().Be("BGS02");
+        connectionScopeMock.Verify(x => x.GetConnection(), Times.Once);
+        _pakaiBedRepoMock.Verify(x => x.SaveChanges(It.IsAny<PakaiBedModel>()), Times.AtLeastOnce);
+        _waitingListRepoMock.Verify(x => x.Save(It.IsAny<WaitingListModel>()), Times.AtLeastOnce);
     }
 }

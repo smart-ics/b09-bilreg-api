@@ -83,8 +83,9 @@ public class WardCockpitDal : IWardCockpitDal
                     PARTITION BY tb.fs_kd_bed 
                     ORDER BY 
                         CASE WHEN tb.fn_tarif > 0 THEN 1 ELSE 2 END,
-                        tb.fd_tgl_in ASC,
-                        tb.fs_jam_in ASC
+                        tb.fd_tgl_in DESC,
+                        tb.fs_jam_in DESC,
+                        tb.fs_kd_trs DESC
                 ) AS rn
             FROM ta_trs_bed tb
             WHERE (tb.fd_tgl_out = '' OR tb.fd_tgl_out = '3000-01-01' OR tb.fd_tgl_out IS NULL)
@@ -232,8 +233,9 @@ public class WardCockpitDal : IWardCockpitDal
                     PARTITION BY tb.fs_kd_bed 
                     ORDER BY 
                         CASE WHEN tb.fn_tarif > 0 THEN 1 ELSE 2 END,
-                        tb.fd_tgl_in ASC,
-                        tb.fs_jam_in ASC
+                        tb.fd_tgl_in DESC,
+                        tb.fs_jam_in DESC,
+                        tb.fs_kd_trs DESC
                 ) AS rn
             FROM ta_trs_bed tb
             WHERE (tb.fd_tgl_out = '' OR tb.fd_tgl_out = '3000-01-01' OR tb.fd_tgl_out IS NULL)

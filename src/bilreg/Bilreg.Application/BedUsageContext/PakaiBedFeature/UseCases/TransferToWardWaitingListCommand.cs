@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.BedOperationalFeature;
+using Bilreg.Application.BedUsageContext.Integration;
 using Bilreg.Application.BedUsageContext.WaitingListFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.Shared;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -77,6 +79,8 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
     private readonly IBedOperationalRepo _bedOperationalRepo;
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IEmr20AntrianRanapGateway? _emr20Gateway;
+    private readonly ISqlConnectionScope? _connectionScope;
 
     public TransferToWardWaitingListCommandHandler(
         IPakaiBedRepo pakaiBedRepo,
@@ -85,7 +89,9 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
         IRegRepo regRepo,
         IBedOperationalRepo bedOperationalRepo,
         IWaitingListRepo waitingListRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IEmr20AntrianRanapGateway? emr20Gateway = null,
+        ISqlConnectionScope? connectionScope = null)
     {
         _pakaiBedRepo = pakaiBedRepo;
         _bangsalRepo = bangsalRepo;
@@ -94,6 +100,8 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
         _bedOperationalRepo = bedOperationalRepo;
         _waitingListRepo = waitingListRepo;
         _tglJamProvider = tglJamProvider;
+        _emr20Gateway = emr20Gateway;
+        _connectionScope = connectionScope;
     }
 
     public async Task<TransferToWardWaitingListResult> Handle(TransferToWardWaitingListCommand request, CancellationToken cancellationToken)
@@ -103,6 +111,9 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
         Guard.Against.NullOrWhiteSpace(request.AlasanTransfer, nameof(request.AlasanTransfer));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
         cancellationToken.ThrowIfCancellationRequested();
+
+        // Ensure transactional connection scope is primed
+        _connectionScope?.GetConnection();
 
         // 1. Fetch active bed occupancy for pakaiBedId
         var pakaiBed = _pakaiBedRepo.LoadEntity(PakaiBedModel.Key(request.PakaiBedId))
@@ -324,7 +335,13 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
 
             _waitingListRepo.Save(babyWaitingList);
 
+            cancellationToken.ThrowIfCancellationRequested();
             trans.Complete();
+
+            if (_emr20Gateway != null)
+            {
+                await _emr20Gateway.DischargeRegRanapAsync(babyRegId, isGabung: true, cancellationToken);
+            }
 
             return new TransferToWardWaitingListResult(
                 WaitingListId: babyWaitingList.WaitingListId,
@@ -674,7 +691,21 @@ public class TransferToWardWaitingListCommandHandler : IRequestHandler<TransferT
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             trans.Complete();
+
+            if (_emr20Gateway != null)
+            {
+                await _emr20Gateway.DischargeRegRanapAsync(pakaiBed.Reg.RegId, isGabung: false, cancellationToken);
+                foreach (var bBed in babyPakaiBedsToTransfer)
+                {
+                    var bReg = bBed.Reg.RegId;
+                    if (!string.IsNullOrWhiteSpace(bReg))
+                    {
+                        await _emr20Gateway.DischargeRegRanapAsync(bReg, isGabung: true, cancellationToken);
+                    }
+                }
+            }
 
             return new TransferToWardWaitingListResult(
                 WaitingListId: waitingList.WaitingListId,

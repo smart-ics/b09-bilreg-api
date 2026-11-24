@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.BedUsageContext.WaitingListFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -48,8 +49,15 @@ public class WaitingListDal : IWaitingListDal
         """;
 
     private readonly DatabaseOptions _opt;
+    private readonly ISqlConnectionScope _connectionScope;
 
-    public WaitingListDal(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
+    public WaitingListDal(IOptions<DatabaseOptions> opt, ISqlConnectionScope? connectionScope = null)
+    {
+        _opt = opt.Value;
+        _connectionScope = connectionScope ?? new SqlConnectionScope(opt);
+    }
+
+    private SqlConnection GetConnection() => _connectionScope.GetConnection();
 
     public void Insert(WaitingListDto dto)
     {
@@ -78,7 +86,7 @@ public class WaitingListDal : IWaitingListDal
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, MapWriteParams(dto));
     }
 
@@ -131,7 +139,7 @@ public class WaitingListDal : IWaitingListDal
             END
             """;
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, MapWriteParams(dto));
     }
 
@@ -147,7 +155,7 @@ public class WaitingListDal : IWaitingListDal
         var dp = new DynamicParameters();
         dp.AddParam("@WaitingListId", waitingListId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, dp);
     }
 
@@ -166,7 +174,7 @@ public class WaitingListDal : IWaitingListDal
         var dp = new DynamicParameters();
         dp.AddParam("@WaitingListId", waitingListId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.ReadSingle<WaitingListDto>(sql, dp);
     }
 
@@ -184,7 +192,7 @@ public class WaitingListDal : IWaitingListDal
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", regId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.Read<WaitingListDto>(sql, dp) ?? [];
     }
 
@@ -210,7 +218,7 @@ public class WaitingListDal : IWaitingListDal
         dp.AddParam("@Rerouted", (int)WaitingListStatusEnum.Rerouted, SqlDbType.Int);
         dp.AddParam("@Rejected", (int)WaitingListStatusEnum.Rejected, SqlDbType.Int);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         var resultDto = conn.Read<WaitingListDto>(sql, dp);
         return resultDto?.FirstOrDefault();
     }
