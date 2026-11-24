@@ -5,6 +5,7 @@ using Bilreg.Infrastructure.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using FluentAssertions;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.BedUsageContext.BedOperationalFeature;
 
@@ -106,6 +107,44 @@ public class BedOperationalDalTest
             corrections.Single().OriginalTransactionId.Should().Be(originalId);
             corrections.Single().ReplacementTransactionId.Should()
                 .Be(source.ListReadinessCorrection.Single().ReplacementTransactionId);
+        }
+        finally
+        {
+            Cleanup(bedId);
+        }
+    }
+
+    [Fact]
+    public void ReadinessTransaction_WhenTransactionAborted_RollsBackCleanlyWithoutLeavingOrphanedRecords()
+    {
+        EnsureSchema();
+        const string bedId = "BDOPD003";
+        Cleanup(bedId);
+        try
+        {
+            var scope = new SqlConnectionScope(ConnStringHelper.GetTestEnv());
+            var transactionsDal = new BedReadinessTransactionDal(ConnStringHelper.GetTestEnv(), scope);
+            var ready = Create(bedId).VerifyReady(
+                "Ready verified",
+                "EVIDENCE-1",
+                "PEG-1",
+                "PEG-2",
+                At,
+                At.AddMinutes(1),
+                string.Empty,
+                "REQ-DAL-ROLLBACK");
+
+            // Execute insert inside a transaction scope that is aborted
+            using (var trans = TransHelper.NewScope())
+            {
+                transactionsDal.Insert(ready.ListReadinessTransaction
+                    .Select(BedReadinessTransactionDto.FromModel));
+                // Do NOT call trans.Complete() -> simulates rollback/cancellation
+            }
+
+            // Verify with a new query that no fact was persisted
+            var list = _transactions.ListData(ready)?.ToList() ?? [];
+            list.Should().BeEmpty();
         }
         finally
         {

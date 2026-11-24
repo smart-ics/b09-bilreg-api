@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -32,8 +33,15 @@ public class BedOperationalDal : IBedOperationalDal
         """;
 
     private readonly DatabaseOptions _opt;
+    private readonly ISqlConnectionScope _connectionScope;
 
-    public BedOperationalDal(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
+    public BedOperationalDal(IOptions<DatabaseOptions> opt, ISqlConnectionScope? connectionScope = null)
+    {
+        _opt = opt.Value;
+        _connectionScope = connectionScope ?? new SqlConnectionScope(opt);
+    }
+
+    private SqlConnection GetConnection() => _connectionScope.GetConnection();
 
     public void Insert(BedOperationalDto dto)
     {
@@ -55,7 +63,7 @@ public class BedOperationalDal : IBedOperationalDal
                 @OccupancyEpoch, @Version,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, BuildParams(dto));
     }
 
@@ -81,7 +89,7 @@ public class BedOperationalDal : IBedOperationalDal
                 VodDate = @VodDate
             WHERE BedId = @BedId
             """;
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         conn.Execute(sql, BuildParams(dto));
     }
 
@@ -110,7 +118,7 @@ public class BedOperationalDal : IBedOperationalDal
             """;
         var dp = BuildParams(dto);
         dp.AddParam("@ExpectedVersion", expectedVersion, SqlDbType.Int);
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.Execute(sql, dp);
     }
 
@@ -119,7 +127,7 @@ public class BedOperationalDal : IBedOperationalDal
         var sql = $"{SelectFrom}\nWHERE aa.BedId = @BedId";
         var dp = new DynamicParameters();
         dp.AddParam("@BedId", key.BedId, SqlDbType.VarChar);
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.ReadSingle<BedOperationalDto>(sql, dp);
     }
 
