@@ -1,3 +1,4 @@
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -24,7 +25,9 @@ public record AdmissionDto(
     DateTime UpdDate,
     string VodUser,
     DateTime VodDate,
-    string InpatientOrderId = "-")
+    string InpatientOrderId = "-",
+    string JenisInapId = "",
+    string JenisInapName = "")
 {
     public static AdmissionDto FromModel(AdmissionModel model) =>
         new(
@@ -46,7 +49,9 @@ public record AdmissionDto(
             model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId,
             model.AuditTrail.Voided.Timestamp,
-            model.InpatientOrderId);
+            model.InpatientOrderId,
+            model.JenisInap.JenisInapId,
+            model.JenisInap.JenisInapName);
 
     public AdmissionModel ToModel()
     {
@@ -65,6 +70,15 @@ public record AdmissionDto(
         var pasien = new PasienReff(PasienId, pasienName, parsedTglLahir, gender);
         var kelasDk = new KelasDkType(KelasDkId, KelasDkName);
         var bangsal = new BangsalReff(BangsalId, BangsalName);
+        var jenisInapId = (JenisInapId ?? string.Empty).Trim();
+        var jenisInapName = (JenisInapName ?? string.Empty).Trim();
+        var jenisInap = string.IsNullOrWhiteSpace(jenisInapId)
+            ? JenisInapType.Empty
+            : new JenisInapType(
+                jenisInapId,
+                string.IsNullOrWhiteSpace(jenisInapName)
+                    ? JenisInapType.FromId(jenisInapId).JenisInapName
+                    : jenisInapName);
         return new AdmissionModel(
             RegId,
             (AdmissionStatusEnum)AdmissionStatus,
@@ -76,6 +90,7 @@ public record AdmissionDto(
             AdmissionDate,
             audit,
             (AdmissionSourceEnum)AdmissionSource,
-            InpatientOrderId);
+            InpatientOrderId,
+            jenisInap);
     }
 }

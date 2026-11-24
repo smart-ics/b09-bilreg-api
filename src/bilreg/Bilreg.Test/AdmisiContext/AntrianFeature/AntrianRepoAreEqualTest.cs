@@ -224,4 +224,33 @@ public class AntrianRepoAreEqualTest
 
         entryDal.Verify(x => x.Update(It.IsAny<AntrianEntryDto>()), Times.Never);
     }
+
+    [Fact]
+    public void SaveChanges_WhenEntityExists_ThenCallsUpdatePrefixIfEmpty()
+    {
+        var sequencer = new Mock<ISequencer>();
+        var antrianDal = new Mock<IAntrianDal>();
+        var entryDal = new Mock<IAntrianEntryDal>();
+
+        var antrianId = "AN001";
+        var persistedQueue = new AntrianModel(
+            antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [], sequencer.Object, "");
+        var updatedQueue = new AntrianModel(
+            antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [], sequencer.Object, "C");
+
+        antrianDal
+            .Setup(x => x.GetData(It.IsAny<IAntrianKey>()))
+            .Returns(AntrianDto.FromModel(persistedQueue));
+        entryDal
+            .Setup(x => x.ListData(It.IsAny<IAntrianKey>()))
+            .Returns([]);
+
+        var sut = new AntrianRepo(antrianDal.Object, entryDal.Object, sequencer.Object);
+        sut.SaveChanges(updatedQueue);
+
+        antrianDal.Verify(x => x.Update(It.Is<AntrianDto>(d => d.AntrianId == antrianId)), Times.Once);
+        antrianDal.Verify(x => x.UpdatePrefixIfEmpty(antrianId, "C"), Times.Once);
+    }
 }

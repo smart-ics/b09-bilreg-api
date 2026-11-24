@@ -25,19 +25,11 @@ public sealed class LegacyFreshnessGate
         string userId,
         CancellationToken cancellationToken = default)
     {
-        // ADR-STL-007: when CoexistenceEnabled=false (cutover), gate no-ops; legacy ports unused.
-        // S1 tests primarily cover CoexistenceEnabled=true.
-        if (!_options.CoexistenceEnabled)
-        {
-            return Task.FromResult(new EnsureFreshnessForScopesResult(
-                EnsureFreshnessOutcomeEnum.Success,
-                string.Empty,
-                string.Empty,
-                string.Empty));
-        }
-
-        return _mediator.Send(
-            new EnsureFreshnessForScopesCommand(scopes, userId),
-            cancellationToken);
+        // Deactivated (P1-S02): legacy tables are the system of record; no-op fresh result.
+        return Task.FromResult(new EnsureFreshnessForScopesResult(
+            EnsureFreshnessOutcomeEnum.Success,
+            string.Empty,
+            string.Empty,
+            string.Empty));
     }
 }

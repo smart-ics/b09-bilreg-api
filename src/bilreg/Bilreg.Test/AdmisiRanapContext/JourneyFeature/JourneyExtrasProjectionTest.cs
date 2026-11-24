@@ -61,6 +61,7 @@ public class JourneyExtrasProjectionTest
         mapped.ProsedurMasuk.Should().NotBeNull();
         mapped.ProsedurMasuk!.Id.Should().Be("PM01");
         mapped.ProsedurMasuk.Name.Should().Be("Rawat Darurat (IGD)");
+        mapped.ProcedureSummary.Should().Be("Rawat Darurat (IGD)");
 
         mapped.CaraMasuk.Should().NotBeNull();
         mapped.CaraMasuk!.Id.Should().Be("CM01");
@@ -94,6 +95,7 @@ public class JourneyExtrasProjectionTest
 
         mapped.JenisInap.Should().BeNull();
         mapped.ProsedurMasuk.Should().BeNull();
+        mapped.ProcedureSummary.Should().BeNull();
         mapped.CaraMasuk.Should().BeNull();
         mapped.RegIbuId.Should().BeNull();
         mapped.NamaIbu.Should().BeNull();
@@ -188,5 +190,121 @@ public class JourneyExtrasProjectionTest
         clinical.JenisInap.Should().Be(jenisInap);
         clinical.ProsedurMasuk.Should().Be(prosedurMasuk);
         clinical.CaraMasuk.Should().Be(caraMasuk);
+    }
+
+    [Theory]
+    [InlineData("08123456789", "0215551234", "08123456789")]
+    [InlineData("  08123456789  ", "0215551234", "08123456789")]
+    [InlineData("", "0215551234", "0215551234")]
+    [InlineData("   ", "  0215551234 ", "0215551234")]
+    [InlineData("", "", null)]
+    [InlineData("   ", "   ", null)]
+    [InlineData(null, null, null)]
+    public void BuildContactSummary_Uses_NoHp_With_Fallback_To_TlpPasien(
+        string? noHp,
+        string? tlpPasien,
+        string? expected)
+    {
+        var result = JourneyDal.BuildContactSummary(noHp, tlpPasien);
+
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Jl. Merdeka No. 1", "RT 01/RW 02", "Kel. Sukamaju", "Bandung", "Jl. Merdeka No. 1, RT 01/RW 02, Kel. Sukamaju, Bandung")]
+    [InlineData("  Jl. Merdeka No. 1 ", "", "   ", "Bandung", "Jl. Merdeka No. 1, Bandung")]
+    [InlineData("", "", "", "Jakarta Selatan", "Jakarta Selatan")]
+    [InlineData("", "   ", null, "", null)]
+    public void BuildAddressSummary_Joins_NonEmpty_Parts_Or_Returns_Null(
+        string? alm1,
+        string? alm2,
+        string? alm3,
+        string? kota,
+        string? expected)
+    {
+        var result = JourneyDal.BuildAddressSummary(alm1, alm2, alm3, kota);
+
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("201", "MELALUI IGD", "MELALUI IGD")]
+    [InlineData("201", "  MELALUI IGD  ", "MELALUI IGD")]
+    [InlineData("201", "", "201")]
+    [InlineData("201", "   ", "201")]
+    [InlineData("", "", null)]
+    [InlineData("-", "", null)]
+    public void BuildProcedureSummary_Uses_Name_With_Fallback_To_Id_Without_Prefix(
+        string? id,
+        string? name,
+        string? expected)
+    {
+        var result = JourneyDal.BuildProcedureSummary(id, name);
+
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AssembleAdmissionBag_Maps_ContactSummary_And_AddressSummary_From_AdmissionRow()
+    {
+        var sut = new JourneyDal(Options.Create(new DatabaseOptions()));
+        var admission = new JourneyDal.AdmissionRowDto(
+            RegId: "REG101",
+            AdmissionStatus: 1,
+            PasienId: "P101",
+            OpnameRequestId: "",
+            ReservationId: "",
+            KelasDkId: "K01",
+            KelasDkName: "Kelas 1",
+            BangsalId: "B01",
+            BangsalName: "Bangsal Anggrek",
+            AdmissionDate: Now,
+            CrtDate: Now,
+            UpdDate: Now,
+            PasienName: "Pasien Uji",
+            Gender: "P",
+            TglLahir: new DateTime(1992, 5, 10),
+            NoHp: "",
+            TlpPasien: "0217654321",
+            Alm1: "Jl. Kenanga 10",
+            Alm2: "",
+            Alm3: "Kec. Coblong",
+            Kota: "Bandung");
+
+        var bag = sut.AssembleAdmissionBag(
+            admission,
+            JourneyOriginKind.DirectOrLegacyAdmission,
+            opname: null,
+            reservation: null,
+            wlRows: [],
+            regExtras: JourneyDal.RegExtras.Empty);
+
+        bag.Facts.Patient.Should().NotBeNull();
+        bag.Facts.Patient!.ContactSummary.Should().Be("0217654321");
+        bag.AddressSummary.Should().Be("Jl. Kenanga 10, Kec. Coblong, Bandung");
+    }
+
+    [Fact]
+    public void Admission_Select_Sqls_Project_Contact_And_Address_Columns_From_TcMr()
+    {
+        var sqls = new[]
+        {
+            JourneyDal.BuildLoadRegJourneySql(),
+            JourneyDal.BuildFindAdmissionByOpnameSql(),
+            JourneyDal.BuildFindAdmissionByOpnameFallbackSql(),
+            JourneyDal.BuildFindAdmissionByReservationSql(),
+            JourneyDal.BuildFindAdmissionByReservationFallbackSql(),
+            JourneyDal.BuildAdmissionSelectSql()
+        };
+
+        foreach (var sql in sqls)
+        {
+            sql.Should().Contain("ISNULL(mr.fs_no_hp,'') AS NoHp");
+            sql.Should().Contain("ISNULL(mr.fs_tlp_pasien,'') AS TlpPasien");
+            sql.Should().Contain("ISNULL(mr.fs_alm_pasien,'') AS Alm1");
+            sql.Should().Contain("ISNULL(mr.fs_alm2_pasien,'') AS Alm2");
+            sql.Should().Contain("ISNULL(mr.fs_alm3_pasien,'') AS Alm3");
+            sql.Should().Contain("ISNULL(mr.fs_kota_pasien,'') AS Kota");
+        }
     }
 }

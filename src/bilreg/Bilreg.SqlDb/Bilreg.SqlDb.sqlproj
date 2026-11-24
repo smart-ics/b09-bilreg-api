@@ -75,6 +75,7 @@
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
+    <Folder Include="ChargeContext\TindakanFeature\" />
     <Folder Include="PaymentContext\RekapCatakFeature\" />
     <Folder Include="PaymentContext\RekeningFeature\" />
     <Folder Include="AccountingContext" />
@@ -111,6 +112,7 @@
     <Folder Include="BedUsageContext\WaitingListFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
     <Folder Include="InventoryContext\StockLedgerFeature\" />
+    <Folder Include="InventoryContext\PakaiBrgFeature\" />
     <Folder Include="InventoryContext\" />
     <Folder Include="SalesContext\" />
     <Folder Include="BrgContext\" />
@@ -122,6 +124,7 @@
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
+    <Folder Include="PaymentContext\KasirFeature\" />
     <Folder Include="BedUsageContext\RoomChargeFeature" />
     <Folder Include="LabContext\" />
     <Folder Include="LabContext\LabOrderFeature\" />
@@ -134,6 +137,8 @@
     <Folder Include="AdmisiRanapContext\DigitalSignFeature" />
     <Folder Include="RadContext\" />
     <Folder Include="RadContext\RadOrderFeature\" />
+    <Folder Include="PurchaseContext\" />
+    <Folder Include="PurchaseContext\DeliveryFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -293,7 +298,11 @@
     <None Include="PaymentContext\RekapCatakFeature\ta_rekap_cetak_tarif.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_transport2.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_transport3.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_trs_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_trs_transport2.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\Migration_ta_transport_AmbulanceFeature.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />
@@ -323,6 +332,8 @@
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map_hdr.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOpHist.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_OrderOpResource.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedOperational.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessTransaction.sql" />
@@ -408,10 +419,18 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
+    <Build Include="ChargeContext\TindakanFeature\BILRG_TindakanBarang.sql" />
+    <Build Include="InventoryContext\PakaiBrgFeature\BILRG_TindakanStokPending.sql" />
     <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
     <Build Include="RadContext\RadOrderFeature\BILRG_RadOrder.sql" />
     <Build Include="RadContext\RadOrderFeature\BILRG_RadOrderItem.sql" />
     <Build Include="RadContext\RadOrderFeature\BILRG_RadTarifModality.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_KasirShift.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_LoketKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasir.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirItem.sql" />
+    <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment.sql" />
+    <None Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment_Alter.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
@@ -447,6 +466,9 @@
     <None Include="BrgContext\StandardFeature\Kfa\FARPU_KfaReplacement.sql" />
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasi.sql" />
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasiItem.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrg.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrgItem.sql" />
+    <None Include="InventoryContext\MutasiFeature\ta_layanan_Seed_TRANS.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.dataseed.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_Stok.sql" />
@@ -455,5 +477,6 @@
     <None Include="InventoryContext\StokFeature\ta_layanan_AddJenisLokasi.sql" />
     <None Include="InventoryContext\StokFeature\tb_buku.sql" />
     <None Include="InventoryContext\StokFeature\tb_stok.sql" />
+    <Build Include="PurchaseContext\DeliveryFeature\BILRG_DoInspeksi.sql" />
   </ItemGroup>
 </Project>

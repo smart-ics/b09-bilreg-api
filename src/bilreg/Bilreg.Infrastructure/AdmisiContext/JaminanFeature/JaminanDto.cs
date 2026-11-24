@@ -27,6 +27,7 @@ public record JaminanDto(
     string fs_piut_obat_rawat, 
     string fs_kd_rek_ppdp_jasa_ri,
     string fs_kd_rek_ppdp_obat_ri,
+    string fs_piut_pulang,
     
     string fs_nm_cara_bayar_dk ,
     string fs_nm_grup_jaminan,
@@ -36,6 +37,7 @@ public record JaminanDto(
     string fs_nm_piut_obat_rawat,
     string fs_nm_rek_ppdp_jasa_ri,
     string fs_nm_rek_ppdp_obat_ri,    
+    string fs_nm_piut_pulang,
 
     string fs_nm_tipe_brg_rawat_jalan,
     string fs_nm_tipe_brg_rawat_inap
@@ -65,6 +67,7 @@ public record JaminanDto(
             model.Rekening.PpdpObatRajal.CoaId,
             model.Rekening.PpdpJasaRanap.CoaId,
             model.Rekening.PpdpObatRanap.CoaId,
+            model.Rekening.PiutangPulang.CoaId,
             
             model.CaraBayarDk.CaraBayarDkName,
             model.GroupJaminan.GroupJaminanName,
@@ -75,6 +78,7 @@ public record JaminanDto(
             model.Rekening.PpdpObatRajal.CoaName,
             model.Rekening.PpdpJasaRanap.CoaName,
             model.Rekening.PpdpObatRanap.CoaName,
+            model.Rekening.PiutangPulang.CoaName,
 
             model.TipeBarang.Rajal.TipeBarangName,
             model.TipeBarang.Ranap.TipeBarangName
@@ -100,7 +104,8 @@ public record JaminanDto(
             new CoaType(fs_piut_rawat, fs_nm_piut_rawat),
             new CoaType(fs_piut_obat_rawat, fs_nm_piut_obat_rawat),
             new CoaType(fs_kd_rek_ppdp_jasa_ri, fs_nm_rek_ppdp_jasa_ri),
-            new CoaType(fs_kd_rek_ppdp_obat_ri, fs_nm_rek_ppdp_obat_ri));
+            new CoaType(fs_kd_rek_ppdp_obat_ri, fs_nm_rek_ppdp_obat_ri),
+            new CoaType(fs_piut_pulang, fs_nm_piut_pulang));
         
         var jaminan = new JaminanType(fs_kd_jaminan, fs_nm_jaminan, fb_aktif,
             alamat, caraBayarDk, grupJaminan, tipeTarif, rekening, tipeBarang);

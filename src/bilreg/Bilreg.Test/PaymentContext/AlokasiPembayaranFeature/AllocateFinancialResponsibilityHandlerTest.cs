@@ -1,9 +1,12 @@
+using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.PaymentContext.AlokasiPembayaranFeature;
 using Bilreg.Application.PaymentContext.DepositFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -34,6 +37,8 @@ public class AllocateFinancialResponsibilityHandlerTest
     private readonly Mock<IRegJaminanPolicy> _regJaminanPolicy = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
+    private readonly Mock<ITipeJaminanRepo> _tipeJaminanRepo = new();
+    private readonly Mock<IJaminanRepo> _jaminanRepo = new();
 
     private readonly AllocateFinancialResponsibilityHandler _sut;
 
@@ -46,7 +51,9 @@ public class AllocateFinancialResponsibilityHandlerTest
             _trsBillingRepo.Object,
             _depositRepo.Object,
             _regJaminanPolicy.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _tipeJaminanRepo.Object,
+            _jaminanRepo.Object);
     }
 
     private static TrsBillType CreateBill(string billId, string regId, decimal amount, BillModulGroup modulGroup = BillModulGroup.Jasa)
@@ -109,7 +116,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -128,11 +135,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("BYKAS")]
-    [InlineData("-")]
-    public async Task GivenClosedAndVerifiedTataRekening_WhenAllocateCashPaymentWithEmptyOrByKasCoaId_ThenFallsBackTo1499901AndPersists(string dummyCoaId)
+    [Fact]
+    public async Task GivenClosedAndVerifiedTataRekening_WhenAllocateCashPaymentWithEmptyOrByKasCoaId_ThenFallsBackTo1499901AndPersists()
     {
         // Arrange
         var bill = CreateBill("BILL-01", RegId, 100_000m, BillModulGroup.Jasa);
@@ -144,7 +148,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, dummyCoaId, "KAS")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -187,8 +191,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Total Jasa = 150_000, Total Obat = 50_000 (100% exact match)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BPJS", "BPJS Kesehatan", true, 100_000m, 30_000m, "COA-BPJS", "BPJS"),
-            new("BYKAS", "KAS", false, 50_000m, 20_000m, "COA-KAS", "KAS")
+            new("BPJS", "BPJS Kesehatan", true, 100_000m, 30_000m),
+            new("BYKAS", "KAS", false, 50_000m, 20_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -205,6 +209,95 @@ public class AllocateFinancialResponsibilityHandlerTest
         _trsBillingRepo.Verify(r => r.SaveChanges(billJasa), Times.Once);
         _trsBillingRepo.Verify(r => r.SaveChanges(billObat), Times.Once);
         _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenInsuranceAllocationWithoutCoaId_WhenTipeJaminanAndJaminanFound_ThenResolvesCoaFromPiutangPulang()
+    {
+        // Arrange
+        var billJasa = CreateBill("BILL-JASA-COA", RegId, 100_000m, BillModulGroup.Jasa);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, billJasa);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _regJaminanPolicy.Setup(p => p.IsJaminanValidForReg(RegId, "BPJS"))
+            .Returns(true);
+
+        var tipeJaminan = TipeJaminanType.Default with
+        {
+            TipeJaminanId = "BPJS",
+            TipeJaminanName = "BPJS Kesehatan",
+            Jaminan = new JaminanReff("JAM-BPJS", "BPJS Sehat")
+        };
+        _tipeJaminanRepo.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "BPJS")))
+            .Returns(MayBe.From(tipeJaminan));
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = "JAM-BPJS",
+            JaminanName = "BPJS Sehat",
+            Rekening = JaminanRekeningType.Default with
+            {
+                PiutangPulang = new CoaType("1322000", "Piutang BPJS")
+            }
+        };
+        _jaminanRepo.Setup(r => r.LoadEntity(It.Is<IJaminanKey>(k => k.JaminanId == "JAM-BPJS")))
+            .Returns(MayBe.From(jaminan));
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BPJS", "BPJS Kesehatan", true, 100_000m, 0m)
+        };
+
+        var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
+        var bpjsPayment = tataRekening.ListPayment.First(p => p.Payment.PaymentId == "BPJS");
+        bpjsPayment.Coa.CoaId.Should().Be("1322000");
+        bpjsPayment.Coa.CoaName.Should().Be("Piutang BPJS");
+        _tipeJaminanRepo.Verify(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "BPJS")), Times.Once);
+        _jaminanRepo.Verify(r => r.LoadEntity(It.Is<IJaminanKey>(k => k.JaminanId == "JAM-BPJS")), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenInsuranceAllocationWithoutCoaId_WhenTipeJaminanNotFound_ThenFallsBackToDefaultInsuranceCoa()
+    {
+        // Arrange
+        var billJasa = CreateBill("BILL-JASA-COA2", RegId, 100_000m, BillModulGroup.Jasa);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, billJasa);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        _regJaminanPolicy.Setup(p => p.IsJaminanValidForReg(RegId, "ASR01"))
+            .Returns(true);
+
+        _tipeJaminanRepo.Setup(r => r.LoadEntity(It.Is<ITipeJaminanKey>(k => k.TipeJaminanId == "ASR01")))
+            .Returns(MayBe<TipeJaminanType>.None);
+
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("ASR01", "Asuransi Lain", true, 100_000m, 0m)
+        };
+
+        var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        var asrPayment = tataRekening.ListPayment.First(p => p.Payment.PaymentId == "ASR01");
+        asrPayment.Coa.CoaId.Should().Be("1323000");
+        asrPayment.Coa.CoaName.Should().Be("Piutang Jaminan");
     }
 
 
@@ -231,8 +324,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Total Jasa = 500_000, Total Obat = 250_000 (100% exact match)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 300_000m, 200_000m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, 200_000m, 50_000m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 300_000m, 200_000m),
+            new("BYKAS", "KAS", false, 200_000m, 50_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -282,8 +375,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Cashier balance: 350_000 (Jasa 250_000, Obat 100_000)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 250_000m, 150_000m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, 250_000m, 100_000m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 250_000m, 150_000m),
+            new("BYKAS", "KAS", false, 250_000m, 100_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -330,7 +423,7 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Sisa saldo deposit (7_000_000) tetap aktif di akun deposit pasien
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit Pasien", false, 2_000_000m, 1_000_000m, "COA-DPU", "DPU")
+            new("BYDPU", "Deposit Pasien", false, 2_000_000m, 1_000_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -353,7 +446,7 @@ public class AllocateFinancialResponsibilityHandlerTest
     }
 
     [Fact]
-    public async Task GivenExcessDepositWithInsuranceAndNegativeCashierRefund_WhenAllocate_ThenSucceedsAndNetAllocationEqualsTotalBillExactly()
+    public async Task GivenExcessDepositWithInsuranceExceedingKurangBayar_WhenAllocate_ThenThrowsArgumentException()
     {
         // Arrange: Jasa 1_500_000, Obat 500_000 -> Total Tagihan 2_000_000
         var billJasa = CreateBill("BILL-JASA", RegId, 1_500_000m, BillModulGroup.Jasa);
@@ -371,19 +464,48 @@ public class AllocateFinancialResponsibilityHandlerTest
         _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(new DepositSaldoModel(RegId, 1_000_000m, 0m, 1_000_000m));
 
-        // Total Tagihan = 2_000_000
-        // BPJS = 1_500_000 (Jasa 1_200_000, Obat 300_000)
-        // Sisa tagihan pasien = 500_000. Tapi saldo deposit = 1_000_000 (saldoAktifDeposit > sisa tagihan pasien).
-        // Sesuai invarian, deposit dialokasikan PENUH = 1_000_000 (Jasa 600_000, Obat 400_000)
-        // Kelebihan deposit = 500_000 dialokasikan sebagai refund kasir negatif (BYKAS = -500_000: Jasa -300_000, Obat -200_000)
-        // Net Jasa: 1_200_000 + 600_000 - 300_000 = 1_500_000
-        // Net Obat: 300_000 + 400_000 - 200_000 = 500_000
-        // Net Total: 2_000_000
+        // Tagihan = 2_000_000, Deposit = 1_000_000, Kasir Refund = -500_000.
+        // netDpuApplied = 1_000_000 - 500_000 = 500_000.
+        // Sisa Kurang Bayar = 2_000_000 - 500_000 = 1_500_000.
+        // BPJS = 1_600_000 melebihi Kurang Bayar (1_500_000) sehingga harus ditolak sesuai TD-01.
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BPJS", "BPJS Kesehatan", true, 1_200_000m, 300_000m, "COA-BPJS", "BPJS"),
-            new("BYDPU", "Deposit Pasien", false, 600_000m, 400_000m, "COA-DPU", "DPU"),
-            new("BYKAS", "Kasir Refund", false, -300_000m, -200_000m, "COA-KAS", "KAS")
+            new("BPJS", "BPJS Kesehatan", true, 1_300_000m, 300_000m),
+            new("BYDPU", "Deposit Pasien", false, 600_000m, 400_000m),
+            new("BYKAS", "Kasir Refund", false, -300_000m, -200_000m)
+        };
+
+        var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
+
+        // Act
+        var act = () => _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Total alokasi Hutang dan Jaminan*tidak boleh melebihi sisa Kurang Bayar*");
+    }
+
+    [Fact]
+    public async Task GivenExcessBydpuOverTotalBillWithNegativeBykas_WhenAllocate_ThenSucceedsAndGeneratesProjection()
+    {
+        // Arrange: Jasa 150_000, Obat 50_000 -> Total Tagihan 200_000
+        var billJasa = CreateBill("BILL-JASA", RegId, 150_000m, BillModulGroup.Jasa);
+        var billObat = CreateBill("BILL-OBAT", RegId, 50_000m, BillModulGroup.Obat);
+        var tataRekening = TataRekeningTestDataBuilder.HydrateClosed(RegId, billJasa, billObat);
+        tataRekening.CompleteFinancialVerification(PetugasVerif, TestDate);
+
+        _tataRekeningRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(MayBe.From(tataRekening));
+
+        // Saldo aktif deposit: 500_000
+        _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
+            .Returns(new DepositSaldoModel(RegId, 500_000m, 0m, 500_000m));
+
+        // BYDPU = 300_000 > totalTagihan (200_000), BYKAS = -100_000
+        var payments = new List<PaymentAllocationInputDto>
+        {
+            new("BYDPU", "Deposit Pasien", false, 200_000m, 100_000m),
+            new("BYKAS", "Kasir (Bayar Sendiri)", false, -50_000m, -50_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -394,18 +516,13 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Assert
         result.Should().NotBeNull();
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
-        result.Projection.Should().HaveCount(3);
+        result.Projection.Should().HaveCount(2);
 
         var netJasa = result.Projection.Sum(p => p.NilaiJasa);
         var netObat = result.Projection.Sum(p => p.NilaiObat);
-        var netTotal = netJasa + netObat;
+        netJasa.Should().Be(150_000m);
+        netObat.Should().Be(50_000m);
 
-        netJasa.Should().Be(1_500_000m);
-        netObat.Should().Be(500_000m);
-        netTotal.Should().Be(2_000_000m);
-        netTotal.Should().Be(billJasa.Nilai.SubTotal + billObat.Nilai.SubTotal);
-
-        _regJaminanPolicy.Verify(p => p.IsJaminanValidForReg(RegId, "BPJS"), Times.Once);
         _depositRepo.Verify(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
         _tataRekeningRepo.Verify(r => r.SaveChanges(tataRekening), Times.Once);
         _trsBillingRepo.Verify(r => r.SaveChanges(billJasa), Times.Once);
@@ -432,7 +549,7 @@ public class AllocateFinancialResponsibilityHandlerTest
         // BYDPU absorbs exact active saldo: 600_000
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit Pasien", false, 400_000m, 200_000m, "COA-DPU", "DPU")
+            new("BYDPU", "Deposit Pasien", false, 400_000m, 200_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -472,7 +589,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -501,7 +618,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -523,7 +640,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -559,8 +676,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Requested deposit: 50_000 (exceeds 30_000)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 50_000m, 0m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, 50_000m, 0m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 50_000m, 0m),
+            new("BYKAS", "KAS", false, 50_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -593,8 +710,8 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Requested BYDPK: 50_000 (exceeds active 20_000)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPK", "Deposit Khusus", false, 50_000m, 0m, "COA-DPK", "DPK"),
-            new("BYKAS", "KAS", false, 50_000m, 0m, "COA-KAS", "KAS")
+            new("BYDPK", "Deposit Khusus", false, 50_000m, 0m),
+            new("BYKAS", "KAS", false, 50_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -623,8 +740,8 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit", false, 50_000m, 0m, "COA-DPU", "DPU"),
-            new("BYKAS", "KAS", false, 50_000m, 0m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit", false, 50_000m, 0m),
+            new("BYKAS", "KAS", false, 50_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -638,7 +755,7 @@ public class AllocateFinancialResponsibilityHandlerTest
     }
 
     [Fact]
-    public async Task GivenDepositAllocationExceedsTotalBill_WhenAllocate_ThenThrowsInvalidOperationException()
+    public async Task GivenDepositKhususExceedsTotalBill_WhenAllocate_ThenThrowsInvalidOperationException()
     {
         // Arrange: Jasa 500_000, Obat 250_000 -> Total Tagihan 750_000
         var billJasa = CreateBill("BILL-JASA", RegId, 500_000m, BillModulGroup.Jasa);
@@ -653,11 +770,11 @@ public class AllocateFinancialResponsibilityHandlerTest
         _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(new DepositSaldoModel(RegId, 1_000_000m, 0m, 1_000_000m));
 
-        // Requested BYDPU: 1_000_000 (exceeds total bill 750_000)
+        // Requested BYDPK: 1_000_000 (exceeds total bill 750_000)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit Pasien", false, 650_000m, 350_000m, "COA-DPU", "DPU"),
-            new("BYKAS", "Kasir Refund", false, -150_000m, -100_000m, "COA-KAS", "KAS")
+            new("BYDPK", "Deposit Khusus", false, 650_000m, 350_000m),
+            new("BYKAS", "Kasir Refund", false, -150_000m, -100_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -665,13 +782,13 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Act
         var act = () => _sut.Handle(command, CancellationToken.None);
 
-        // Assert: Invariant 2 violation
+        // Assert: Invariant 2 violation for deposit khusus
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Alokasi deposit (1,000,000) melebihi total tagihan kunjungan (750,000).*");
+            .WithMessage("*Alokasi deposit khusus (1,000,000) melebihi total tagihan kunjungan (750,000).*");
     }
 
     [Fact]
-    public async Task GivenDepositGreaterThanTotalBill_WhenAllocateDepositExceedingBill_ThenThrowsInvalidOperationException()
+    public async Task GivenDepositGreaterThanTotalBill_WhenAllocateDepositExceedingBillWithRefund_ThenSucceeds()
     {
         // Arrange: Jasa 800_000, Obat 400_000 -> Total Tagihan 1_200_000
         var billJasa = CreateBill("BILL-JASA", RegId, 800_000m, BillModulGroup.Jasa);
@@ -686,21 +803,21 @@ public class AllocateFinancialResponsibilityHandlerTest
         _depositRepo.Setup(r => r.GetSaldo(It.Is<IRegKey>(k => k.RegId == RegId)))
             .Returns(new DepositSaldoModel(RegId, 2_500_000m, 500_000m, 2_000_000m));
 
-        // Requested BYDPU: 2_000_000 (exceeds total bill 1_200_000)
+        // Requested BYDPU: 2_000_000 (exceeds total bill 1_200_000), BYKAS: -800_000 (Net 1_200_000)
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYDPU", "Deposit Pasien", false, 1_300_000m, 700_000m, "COA-DPU", "DPU"),
-            new("BYKAS", "Kasir Refund", false, -500_000m, -300_000m, "COA-KAS", "KAS")
+            new("BYDPU", "Deposit Pasien", false, 1_300_000m, 700_000m),
+            new("BYKAS", "Kasir Refund", false, -500_000m, -300_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
 
         // Act
-        var act = () => _sut.Handle(command, CancellationToken.None);
+        var result = await _sut.Handle(command, CancellationToken.None);
 
-        // Assert: Invariant 2 violation
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Alokasi deposit (2,000,000) melebihi total tagihan kunjungan (1,200,000).*");
+        // Assert
+        result.Should().NotBeNull();
+        result.Summary.IsFinancialResponsibilityAllocated.Should().BeTrue();
     }
 
     #endregion
@@ -724,7 +841,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("ASR-UNKNOWN", "Asuransi Asing", true, 100_000m, 0m, "COA-ASR", "ASR")
+            new("ASR-UNKNOWN", "Asuransi Asing", true, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -755,7 +872,7 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Jasa is 100_000, but payment is 80_000
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 80_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 80_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -783,7 +900,7 @@ public class AllocateFinancialResponsibilityHandlerTest
         // Jasa matches (50_000), but Obat payment is 70_000 instead of 50_000
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 50_000m, 70_000m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 50_000m, 70_000m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -817,7 +934,7 @@ public class AllocateFinancialResponsibilityHandlerTest
 
         var payments = new List<PaymentAllocationInputDto>
         {
-            new(paymentId, paymentName, isTipeJaminan, nilaiJasa, nilaiObat, "COA-01", "COA")
+            new(paymentId, paymentName, isTipeJaminan, nilaiJasa, nilaiObat)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(RegId, payments);
@@ -842,7 +959,7 @@ public class AllocateFinancialResponsibilityHandlerTest
     {
         var payments = new List<PaymentAllocationInputDto>
         {
-            new("BYKAS", "KAS", false, 100_000m, 0m, "COA-01", "COA")
+            new("BYKAS", "KAS", false, 100_000m, 0m)
         };
 
         var command = new AllocateFinancialResponsibilityCommand(invalidRegId!, payments);

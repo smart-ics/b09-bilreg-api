@@ -52,4 +52,53 @@ public class EmrAntrianOutboundQueueModelTest
         var act = () => queue.AssertCanManualRetry();
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void RefreshPayload_WhenPending_UpdatesPayloadAndKeepsPending()
+    {
+        var queue = EmrAntrianOutboundQueueModel.CreatePending(
+            "REG000000001",
+            EmrAntrianOutboundQueueModel.MessageTypeAddReg,
+            "{\"old\":true}");
+
+        queue.RefreshPayload("{\"new\":true}");
+
+        queue.PayloadJson.Should().Be("{\"new\":true}");
+        queue.QueueStatus.Should().Be(EmrAntrianOutboundQueueStatusEnum.Pending);
+        queue.LastError.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RefreshPayload_WhenFailed_ResetsToPendingAndClearsError()
+    {
+        var queue = EmrAntrianOutboundQueueModel.CreatePending(
+            "REG000000001",
+            EmrAntrianOutboundQueueModel.MessageTypeAddReg,
+            "{\"old\":true}");
+        queue.MarkProcessing();
+        queue.MarkFailed("timeout", new DateTime(2026, 7, 21, 10, 0, 0));
+
+        queue.RefreshPayload("{\"new\":true}");
+
+        queue.PayloadJson.Should().Be("{\"new\":true}");
+        queue.QueueStatus.Should().Be(EmrAntrianOutboundQueueStatusEnum.Pending);
+        queue.LastError.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(EmrAntrianOutboundQueueStatusEnum.Processing)]
+    [InlineData(EmrAntrianOutboundQueueStatusEnum.Succeeded)]
+    public void RefreshPayload_WhenProcessingOrSucceeded_Throws(EmrAntrianOutboundQueueStatusEnum status)
+    {
+        var queue = EmrAntrianOutboundQueueModel.CreatePending(
+            "REG000000001",
+            EmrAntrianOutboundQueueModel.MessageTypeAddReg,
+            "{\"old\":true}");
+        queue.MarkProcessing();
+        if (status == EmrAntrianOutboundQueueStatusEnum.Succeeded)
+            queue.MarkSucceeded(new DateTime(2026, 7, 21, 10, 0, 0));
+
+        var act = () => queue.RefreshPayload("{\"new\":true}");
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

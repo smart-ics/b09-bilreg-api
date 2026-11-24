@@ -102,6 +102,11 @@ public record RadOrderDto(
             new AuditInfoType(UpdUser, UpdDate),
             new AuditInfoType(VodUser, VodDate));
 
+        if (!string.IsNullOrWhiteSpace(VodUser) && VodDate.Date != new DateTime(3000, 1, 1))
+        {
+            auditTrail.Batal(VodUser, VodDate);
+        }
+
         return new RadOrderModel(
             OrderId,
             EmrOrderId,

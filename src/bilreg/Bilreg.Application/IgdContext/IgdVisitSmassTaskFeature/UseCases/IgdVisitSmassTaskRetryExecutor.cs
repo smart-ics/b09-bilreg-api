@@ -52,6 +52,15 @@ internal static class IgdVisitSmassTaskRetryExecutor
                 result = await gateway.GenerateIgdTriage(
                     BuildGeneratePayload(igdVisitRepo, options, task), cancellationToken);
             }
+            else if (task.TaskType == SmassTaskTypeEnum.Void)
+            {
+                if (string.IsNullOrWhiteSpace(task.AssessmentId))
+                    throw new InvalidOperationException(
+                        $"Task Void {task.IgdVisitSmassTaskId} tidak memiliki AssessmentId; " +
+                        "retry penghapusan SMASS tidak dapat dijalankan.");
+
+                result = await gateway.DeleteAssesment(task.AssessmentId, cancellationToken);
+            }
             else
             {
                 var (linkPayload, loadedReg) = BuildLinkPayload(igdVisitRepo, regRepo, task);
@@ -67,9 +76,17 @@ internal static class IgdVisitSmassTaskRetryExecutor
         try
         {
             if (result.Success)
-                task.MarkSucceeded(result.AssessmentId ?? string.Empty);
+            {
+                var assessmentId = task.TaskType == SmassTaskTypeEnum.Void
+                    && string.IsNullOrWhiteSpace(result.AssessmentId)
+                    ? task.AssessmentId
+                    : result.AssessmentId ?? string.Empty;
+                task.MarkSucceeded(assessmentId);
+            }
             else
+            {
                 task.MarkFailed(result.ErrorMessage ?? $"SMASS {task.TaskType.ToCode()} retry gagal.");
+            }
         }
         catch (Exception ex)
         {

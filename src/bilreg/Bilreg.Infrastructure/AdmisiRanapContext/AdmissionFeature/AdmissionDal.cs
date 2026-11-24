@@ -30,7 +30,9 @@ public class AdmissionDal : IAdmissionDal
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.KelasDkId, aa.KelasDkName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
-        ISNULL(aa.InpatientOrderId, '-') AS InpatientOrderId
+        ISNULL(aa.InpatientOrderId, '-') AS InpatientOrderId,
+        ISNULL(reg.fs_kd_jenis_inap, '') AS JenisInapId,
+        ISNULL(ji.fs_nm_jenis_inap, '') AS JenisInapName
         """;
 
     private readonly DatabaseOptions _opt;
@@ -89,6 +91,8 @@ public class AdmissionDal : IAdmissionDal
                 {SELECT_COLUMNS}
             FROM BILRG_AdmAdmission aa
             LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            LEFT JOIN ta_registrasi reg ON aa.RegId = reg.fs_kd_reg
+            LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
             WHERE aa.RegId = @RegId
             """;
 
@@ -170,9 +174,13 @@ public class AdmissionDal : IAdmissionDal
                 ca.UpdDate,
                 ca.VodUser,
                 ca.VodDate,
-                ca.InpatientOrderId
+                ca.InpatientOrderId,
+                ISNULL(reg.fs_kd_jenis_inap, '') AS JenisInapId,
+                ISNULL(ji.fs_nm_jenis_inap, '') AS JenisInapName
             FROM CombinedAdmissions ca
             LEFT JOIN tc_mr bb ON ca.PasienId = bb.fs_mr
+            LEFT JOIN ta_registrasi reg ON ca.RegId = reg.fs_kd_reg
+            LEFT JOIN ta_jenis_inap ji ON reg.fs_kd_jenis_inap = ji.fs_kd_jenis_inap
             WHERE
                 (@Status IS NULL OR ca.AdmissionStatus = @Status)
                 AND (@PasienId IS NULL OR @PasienId = '' OR ca.PasienId = @PasienId)

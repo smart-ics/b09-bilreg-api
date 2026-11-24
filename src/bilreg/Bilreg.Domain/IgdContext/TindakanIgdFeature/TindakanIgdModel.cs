@@ -20,7 +20,11 @@ public class TindakanIgdModel : ITindakanIgdKey
         int qty,
         ActivityTindakanIgd aktifitas,
         PpaReff ppa,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string trsTdkId = "",
+        string trsBillId = "",
+        bool isPosted = false,
+        DateTime? postedDate = null)
     {
         TindakanIgdId = tindakanIgdId;
         IgdVisitId = igdVisitId;
@@ -31,6 +35,10 @@ public class TindakanIgdModel : ITindakanIgdKey
         Aktifitas = aktifitas;
         Ppa = ppa;
         Audit = audit;
+        TrsTdkId = trsTdkId ?? string.Empty;
+        TrsBillId = trsBillId ?? string.Empty;
+        IsPosted = isPosted;
+        PostedDate = postedDate;
     }
 
     public static TindakanIgdModel Default => new(
@@ -87,13 +95,41 @@ public class TindakanIgdModel : ITindakanIgdKey
     #region PROPERTIES
     public string TindakanIgdId { get; init; }
     public string IgdVisitId { get; init; }
-    public string RegId { get; init; }
+    public string RegId { get; private set; }
     public ActivityTindakanIgd Aktifitas { get; init;  }
     public string ReffId { get; init; } // tarifId atau barangId
     public string Descriptions { get; init; }
     public int Qty { get; init; }
     public PpaReff Ppa {  get; init; }
     public AuditInfoType Audit { get; init; }
+    public string TrsTdkId { get; private set; }
+    public string TrsBillId { get; private set; }
+    public bool IsPosted { get; private set; }
+    public DateTime? PostedDate { get; private set; }
+    #endregion
+
+    #region BEHAVIOUR
+    public void AssignRegister(string regId)
+    {
+        Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
+        RegId = regId;
+    }
+
+    public void MarkAsPosted(string trsTdkId, string trsBillId, DateTime postedAt)
+    {
+        Guard.Against.NullOrWhiteSpace(trsTdkId, nameof(trsTdkId));
+        Guard.Against.NullOrWhiteSpace(trsBillId, nameof(trsBillId));
+        TrsTdkId = trsTdkId;
+        TrsBillId = trsBillId;
+        IsPosted = true;
+        PostedDate = postedAt;
+    }
+
+    public void MarkAsVoided(AuditInfoType audit, string voidReason)
+    {
+        Guard.Against.Null(audit, nameof(audit));
+        Guard.Against.NullOrWhiteSpace(voidReason, nameof(voidReason));
+    }
     #endregion
 
 }

@@ -48,4 +48,44 @@ public class EmrAntrianOutboundEnqueueService
         _queueRepo.SaveChanges(queue);
         return queue.QueueId;
     }
+
+    /// <summary>
+    /// Enqueue or update registration queue publication to EMR.
+    /// Pending -> updates payload in place; Processing -> returns existing QueueId;
+    /// Failed -> refreshes payload and resets to Pending; Succeeded/none -> inserts new Pending row.
+    /// </summary>
+    public string EnqueueOrUpdateAddReg(AddAntrianEmrByRegCommand cmd, DateTime createdAt)
+    {
+        var payloadJson = EmrAntrianOutboundPayloadBuilder.SerializeReg(cmd);
+
+        var active = _queueRepo.FindPendingOrProcessingBySource(cmd.RegId, EmrAntrianOutboundQueueModel.MessageTypeAddReg);
+        if (active.HasValue)
+        {
+            var existing = active.Value;
+            if (existing.QueueStatus == EmrAntrianOutboundQueueStatusEnum.Pending)
+            {
+                existing.RefreshPayload(payloadJson);
+                _queueRepo.SaveChanges(existing);
+            }
+
+            return existing.QueueId;
+        }
+
+        var failed = _queueRepo.FindLatestFailedBySource(cmd.RegId, EmrAntrianOutboundQueueModel.MessageTypeAddReg);
+        if (failed.HasValue)
+        {
+            var existingFailed = failed.Value;
+            existingFailed.RefreshPayload(payloadJson);
+            _queueRepo.SaveChanges(existingFailed);
+            return existingFailed.QueueId;
+        }
+
+        var queue = EmrAntrianOutboundQueueModel.CreatePending(
+            cmd.RegId,
+            EmrAntrianOutboundQueueModel.MessageTypeAddReg,
+            payloadJson,
+            createdAt);
+        _queueRepo.SaveChanges(queue);
+        return queue.QueueId;
+    }
 }

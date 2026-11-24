@@ -20,7 +20,11 @@ public record IgdVisitTriageDto(
     DateTime OverrideDateTime,
     DateTime AssessmentDateTime,
     string AssessorUserId,
-    string Notes)
+    string Notes,
+    bool IsVoided,
+    string VoidUserId,
+    DateTime VoidDateTime,
+    string VoidReason)
 {
     public static IgdVisitTriageDto FromModel(string igdVisitId, IgdVisitTriageType triage)
         => new(
@@ -41,7 +45,11 @@ public record IgdVisitTriageDto(
             OverrideDateTime: triage.OverrideDateTime,
             AssessmentDateTime: triage.AssessmentDateTime,
             AssessorUserId: triage.AssessorUserId,
-            Notes: triage.Notes);
+            Notes: triage.Notes,
+            IsVoided: triage.IsVoided,
+            VoidUserId: triage.VoidUserId,
+            VoidDateTime: triage.VoidDateTime,
+            VoidReason: triage.VoidReason);
 
     public IgdVisitTriageType ToModel()
         => new(
@@ -61,5 +69,9 @@ public record IgdVisitTriageDto(
             OverrideDateTime: OverrideDateTime,
             AssessmentDateTime: AssessmentDateTime,
             AssessorUserId: AssessorUserId,
-            Notes: Notes);
+            Notes: Notes,
+            IsVoided: IsVoided,
+            VoidUserId: VoidUserId,
+            VoidDateTime: VoidDateTime,
+            VoidReason: VoidReason);
 }

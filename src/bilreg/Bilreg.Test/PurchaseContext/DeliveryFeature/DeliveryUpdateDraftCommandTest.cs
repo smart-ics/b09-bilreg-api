@@ -127,9 +127,7 @@ public class DeliveryUpdateDraftCommandTest
             qtyDitolak: 0m,
             alasanTolak: "",
             isBonus: false,
-            hasJaminanRetur: false,
             noSuratJaminan: "",
-            poId: PoId,
             poNoUrut: 1);
 
         var item = DeliveryOrderItemType.Create(

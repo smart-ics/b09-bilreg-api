@@ -24,4 +24,8 @@ public record TindakanIgdView(
     ActivityTindakanIgd Aktifitas,
     PpaReff Ppa,
     string CrtUserId,
-    DateTime CreatedDateTime);
+    DateTime CreatedDateTime,
+    string TrsTdkId = "",
+    string TrsBillId = "",
+    bool IsPosted = false,
+    DateTime? PostedDate = null);

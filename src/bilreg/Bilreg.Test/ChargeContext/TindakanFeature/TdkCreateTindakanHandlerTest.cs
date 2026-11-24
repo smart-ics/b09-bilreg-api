@@ -4,10 +4,12 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BrgContext.BrgFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -16,6 +18,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -314,5 +317,160 @@ public class TdkCreateTindakanHandlerTest
             It.IsAny<DateTime>()), Times.Once);
         _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Never);
         _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTarifWithBomChargeBarangFalse_WhenCreate_ThenBomProcessedAndOnlyJasaBillCreated()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var bomProcessorMock = new Mock<ITindakanBomProcessor>();
+        var brgRepoMock = new Mock<IBrgRepo>();
+        var groupRekRepoMock = new Mock<IGroupRekRepo>();
+
+        var sut = new TindakanCreateHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            null,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            bomProcessorMock.Object,
+            brgRepoMock.Object,
+            groupRekRepoMock.Object);
+
+        var bomItems = new List<TindakanBomItemResult>
+        {
+            new("BRG-01", "Spuit 3cc", 1, "PCS", 1m, 1m, "PCS", 1m, 1m, 0m, "PK-01", false, 0m, "TBG-01")
+        };
+        bomProcessorMock.Setup(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TindakanBomResult("TDK-01", "PK-01", false, bomItems));
+
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")], 1);
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        bomProcessorMock.Verify(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), "USER-01", It.IsAny<CancellationToken>()), Times.Once);
+        _addBillAppServiceMock.Verify(x => x.FromTindakan(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<TarifType>(), It.IsAny<JaminanType>(), It.IsAny<IEnumerable<KomponenType>>(), It.IsAny<DateTime>()), Times.Once);
+        _addBillAppServiceMock.Verify(x => x.FromTindakanBarang(It.IsAny<TindakanModel>(), It.IsAny<TindakanBarangType>(), It.IsAny<RegModel>(), It.IsAny<JaminanType>(), It.IsAny<GroupRekType>(), It.IsAny<DateTime>()), Times.Never);
+        _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTarifWithBomChargeBarangTrue_WhenCreate_ThenJasaBillAndBarangBillsCreatedWithBIds()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var bomProcessorMock = new Mock<ITindakanBomProcessor>();
+        var brgRepoMock = new Mock<IBrgRepo>();
+        var groupRekRepoMock = new Mock<IGroupRekRepo>();
+
+        var sut = new TindakanCreateHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            null,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            bomProcessorMock.Object,
+            brgRepoMock.Object,
+            groupRekRepoMock.Object);
+
+        var bomItems = new List<TindakanBomItemResult>
+        {
+            new("BRG-01", "Obat Anestesi", 1, "AMP", 1m, 1m, "AMP", 1m, 1m, 0m, "PK-01", true, 75000m, "TBG-01"),
+            new("BRG-02", "Kasa Steril", 2, "PCS", 2m, 1m, "PCS", 2m, 0m, 2m, "", true, 25000m, "TBG-02")
+        };
+        bomProcessorMock.Setup(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TindakanBomResult("TDK-01", "PK-01", true, bomItems));
+
+        var billCreatedList = new List<TindakanBarangType>();
+        _addBillAppServiceMock.Setup(x => x.FromTindakanBarang(
+                It.IsAny<TindakanModel>(),
+                It.IsAny<TindakanBarangType>(),
+                It.IsAny<RegModel>(),
+                It.IsAny<JaminanType>(),
+                It.IsAny<GroupRekType>(),
+                It.IsAny<DateTime>()))
+            .Callback<TindakanModel, TindakanBarangType, RegModel, JaminanType, GroupRekType, DateTime>((tdk, brg, r, j, g, dt) => billCreatedList.Add(brg))
+            .Returns(TrsBillType.Default);
+
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")], 1);
+
+        // Act
+        var result = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        bomProcessorMock.Verify(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), "USER-01", It.IsAny<CancellationToken>()), Times.Once);
+        _addBillAppServiceMock.Verify(x => x.FromTindakan(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<TarifType>(), It.IsAny<JaminanType>(), It.IsAny<IEnumerable<KomponenType>>(), It.IsAny<DateTime>()), Times.Once);
+        _addBillAppServiceMock.Verify(x => x.FromTindakanBarang(It.IsAny<TindakanModel>(), It.IsAny<TindakanBarangType>(), It.IsAny<RegModel>(), It.IsAny<JaminanType>(), It.IsAny<GroupRekType>(), It.IsAny<DateTime>()), Times.Exactly(2));
+        _jurnalRepoMock.Verify(x => x.SaveChanges(It.IsAny<JurnalType>()), Times.Exactly(3)); // 1 jasa + 2 barang
+
+        billCreatedList.Should().HaveCount(2);
+        billCreatedList[0].TrsBillingId.Should().EndWith("-B01");
+        billCreatedList[1].TrsBillingId.Should().EndWith("-B02");
+    }
+
+    [Fact]
+    public async Task GivenBomProcessorThrowsException_WhenCreate_ThenRollbacksAndRethrows()
+    {
+        // Arrange
+        SetupBasicMasterData(nilaiTarifKomp: 50000m);
+        var bomProcessorMock = new Mock<ITindakanBomProcessor>();
+
+        var sut = new TindakanCreateHandler(
+            _tindakanRepoMock.Object,
+            _regRepoMock.Object,
+            _layananRepoMock.Object,
+            _nilaiTarifRepoMock.Object,
+            _komponenRepoMock.Object,
+            _ppaRepoMock.Object,
+            _tarifRepoMock.Object,
+            _jaminanRepoMock.Object,
+            null,
+            _addBillAppServiceMock.Object,
+            _mapJaminanJkRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _tglJamProviderMock.Object,
+            new NullBillingLockValidationService(),
+            bomProcessorMock.Object);
+
+        bomProcessorMock.Setup(x => x.Process(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("BOM expansion failed"));
+
+        var cmd = new TdkCreateTindakanCmd(
+            "REG-01", "LYN-01", "NT-01", "USER-01",
+            [new TdkCreateTindakanPpaCmd("KOMP-01", "PPA-01")], 1);
+
+        // Act
+        var act = () => sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*BOM expansion failed*");
     }
 }

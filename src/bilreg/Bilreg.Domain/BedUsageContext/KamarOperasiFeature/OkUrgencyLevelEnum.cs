@@ -2,8 +2,6 @@ namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 
 public enum UrgencyLevelEnum
 {
-    Elective,
-    Urgent,
-    Emergency,
-    Crash    
+    Elective = 1,
+    Cito = 2
 }

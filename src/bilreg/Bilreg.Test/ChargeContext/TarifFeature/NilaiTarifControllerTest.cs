@@ -61,6 +61,49 @@ public class NilaiTarifControllerTest
     }
 
     [Fact]
+    public async Task GetNilaiTarif_WhenCalledWithTipeJaminanAndLayanan_SendsTrfGetNilaiTarifQueryAndReturnsOk()
+    {
+        // Arrange
+        const string tarifId = "TRF-01";
+        const string kelasId = "KLS-01";
+        const string tipeTarifId = "TT-01";
+        const string tipeJaminanId = "TJ-01";
+        const string layananId = "LYN-01";
+
+        var expectedResponse = new TrfGetNilaiTarifResponse(
+            "NT-01",
+            tarifId,
+            "Tarif Test",
+            new TipeTarifReff(tipeTarifId, "Umum"),
+            new KelasReff(kelasId, "Kelas 1"),
+            150000m,
+            [],
+            true,
+            [
+                new TrfGetNilaiTarifBrgResponse("BRG-01", "Spuit", "PCS", "PCS", 2m, 1, true, 5000m, 10000m)
+            ]
+        );
+
+        _mediatorMock.Setup(x => x.Send(
+            It.Is<TrfGetNilaiTarifQuery>(q =>
+                q.TarifId == tarifId &&
+                q.KelasId == kelasId &&
+                q.TipeTarifId == tipeTarifId &&
+                q.TipeJaminanId == tipeJaminanId &&
+                q.LayananId == layananId),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.GetNilaiTarif(tarifId, kelasId, tipeTarifId, tipeJaminanId, layananId);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedResponse);
+    }
+
+    [Fact]
     public async Task ListTarifRajal_WhenCalled_SendsTrfListTarifRajalQueryAndReturnsOk()
     {
         // Arrange

@@ -17,6 +17,8 @@ public interface IEmrAntrianOutboundQueueDal :
     IEnumerable<EmrAntrianOutboundQueueDto> ListProcessable(int batchSize);
 
     EmrAntrianOutboundQueueDto? FindActiveBySource(string sourceId, string messageType);
+    EmrAntrianOutboundQueueDto? FindPendingOrProcessingBySource(string sourceId, string messageType);
+    EmrAntrianOutboundQueueDto? FindLatestFailedBySource(string sourceId, string messageType);
     void DeleteBySourceId(string sourceId);
 }
 
@@ -119,6 +121,51 @@ public class EmrAntrianOutboundQueueDal : IEmrAntrianOutboundQueueDal
         dp.AddParam("@Pending", (int)EmrAntrianOutboundQueueStatusEnum.Pending, SqlDbType.Int);
         dp.AddParam("@Processing", (int)EmrAntrianOutboundQueueStatusEnum.Processing, SqlDbType.Int);
         dp.AddParam("@Succeeded", (int)EmrAntrianOutboundQueueStatusEnum.Succeeded, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.QueryFirstOrDefault<EmrAntrianOutboundQueueDto>(sql, dp);
+    }
+
+    public EmrAntrianOutboundQueueDto? FindPendingOrProcessingBySource(string sourceId, string messageType)
+    {
+        const string sql = """
+            SELECT TOP 1
+                aa.QueueId, aa.SourceId, aa.MessageType, aa.PayloadJson, aa.QueueStatus,
+                aa.RetryCount, aa.LastRetryDate, aa.ProcessedDate, aa.LastError, aa.CrtDate
+            FROM BILRG_EmrAntrianOutboundQueue aa
+            WHERE aa.SourceId = @SourceId
+              AND aa.MessageType = @MessageType
+              AND aa.QueueStatus IN (@Pending, @Processing)
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@SourceId", sourceId, SqlDbType.VarChar);
+        dp.AddParam("@MessageType", messageType, SqlDbType.VarChar);
+        dp.AddParam("@Pending", (int)EmrAntrianOutboundQueueStatusEnum.Pending, SqlDbType.Int);
+        dp.AddParam("@Processing", (int)EmrAntrianOutboundQueueStatusEnum.Processing, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.QueryFirstOrDefault<EmrAntrianOutboundQueueDto>(sql, dp);
+    }
+
+    public EmrAntrianOutboundQueueDto? FindLatestFailedBySource(string sourceId, string messageType)
+    {
+        const string sql = """
+            SELECT TOP 1
+                aa.QueueId, aa.SourceId, aa.MessageType, aa.PayloadJson, aa.QueueStatus,
+                aa.RetryCount, aa.LastRetryDate, aa.ProcessedDate, aa.LastError, aa.CrtDate
+            FROM BILRG_EmrAntrianOutboundQueue aa
+            WHERE aa.SourceId = @SourceId
+              AND aa.MessageType = @MessageType
+              AND aa.QueueStatus = @Failed
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@SourceId", sourceId, SqlDbType.VarChar);
+        dp.AddParam("@MessageType", messageType, SqlDbType.VarChar);
+        dp.AddParam("@Failed", (int)EmrAntrianOutboundQueueStatusEnum.Failed, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.QueryFirstOrDefault<EmrAntrianOutboundQueueDto>(sql, dp);

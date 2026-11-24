@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.PakaiBrgFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -31,6 +33,22 @@ public class PakaiBrgController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost("pending/settle")]
+    public async Task<IActionResult> SettlePending([FromBody] SettlePendingRequest? req)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst(ClaimTypes.Name)?.Value
+                     ?? "SYSTEM";
+        var cmd = new SettlePendingTindakanStockCommand(
+            req?.BrgId ?? string.Empty,
+            req?.LayananId ?? string.Empty,
+            userId);
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    public record SettlePendingRequest(string? BrgId, string? LayananId);
 
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)

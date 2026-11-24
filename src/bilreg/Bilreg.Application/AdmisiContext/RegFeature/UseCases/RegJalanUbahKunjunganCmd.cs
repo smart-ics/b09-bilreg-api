@@ -1,3 +1,5 @@
+using System.Globalization;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
@@ -32,7 +34,7 @@ public record RegJalanUbahKunjunganCmd(string RegId,
     string LayananId, string DokterId, string JamPraktek, string KarcisId,
     string UserId) : IRequest<RegJalanUbahKunjunganResponse>, IRegKey, ILayananKey, IKarcisKey;
 
-public record RegJalanUbahKunjunganResponse(string RegId, int NoAntrian);
+public record RegJalanUbahKunjunganResponse(string RegId, int NoAntrian, string QueueLabel = "", string PrefixAntrian = "");
 public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjunganCmd, RegJalanUbahKunjunganResponse>
 {
     private readonly IRegRepo _regRepo;
@@ -63,6 +65,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
+    private readonly EmrAntrianOutboundEnqueueService? _emrOutboundEnqueue;
 
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -87,7 +90,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider,
-        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
+        IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null,
+        EmrAntrianOutboundEnqueueService? emrOutboundEnqueue = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -113,6 +117,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
         _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
+        _emrOutboundEnqueue = emrOutboundEnqueue;
     }
     public async Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
@@ -166,6 +171,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             reserved = _queueNumberAdapter.ReserveForRegistration(
                 schedule.LegacyJadwal, tglBerobat, reg).Value;
             antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+            var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            TryUpdateAntrianPrefix(antrian, rawPrefix);
             noAntrian = reserved.NoUrut;
         }
 
@@ -210,6 +217,24 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         SaveJurnalReg(jurnalReg);
         SaveJurnalTdk(jurnalTindakan);
 
+        if (!isSameSchedule && _emrOutboundEnqueue is not null)
+        {
+            var emrRawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
+            var prefix = string.IsNullOrWhiteSpace(emrRawPrefix) ? "-" : emrRawPrefix.Trim();
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId,
+                "-",
+                reg.Pasien.PasienId,
+                reg.Pasien.PasienName,
+                reg.Layanan.LayananId,
+                reg.Dokter.PpaId,
+                reg.RegDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                schedule.LegacyJadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                noAntrian,
+                prefix);
+            _emrOutboundEnqueue.EnqueueOrUpdateAddReg(emrPayload, occurredAt);
+        }
+
         trans.Complete();
         #endregion
 
@@ -219,7 +244,14 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             await _clinicQueueRefreshPublisher.PublishRefreshHint(oldLayananId, oldDokterId, cancellationToken);
         }
 
-        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian);
+        AntrianModel responseQueue;
+        if (isSameSchedule)
+            responseQueue = queOldContext.Que;
+        else
+            responseQueue = antrian ?? AntrianModel.Default;
+
+        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian,
+            responseQueue.FormatClinicQueueLabel(noAntrian), responseQueue.QueuePrefixSnapshot);
         return result;
     }
 
@@ -352,6 +384,24 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
         return PasienTrackerStableIdentity.ForVisitChange(existing, reg, occurredAt);
     }
+    private static void TryUpdateAntrianPrefix(AntrianModel antrian, string? rawPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(rawPrefix) || rawPrefix.Trim() == "-")
+            return;
+
+        var normalized = rawPrefix.Trim();
+        if (normalized.Length > 2)
+            normalized = normalized.Substring(0, 2);
+
+        try
+        {
+            antrian.TryUpdatePrefix(AntrianModel.NormalizeClinicPrefix(normalized));
+        }
+        catch
+        {
+        }
+    }
+
     private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
     {
         var map = _mapJaminanJkRepo.LoadEntity(key).GetValueOrDefault(MapJaminanJkType.Default);

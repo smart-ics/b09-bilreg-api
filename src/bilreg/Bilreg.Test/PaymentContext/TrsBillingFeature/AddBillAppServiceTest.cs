@@ -5,9 +5,11 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -343,5 +345,284 @@ public class AddBillAppServiceTest
 
         _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
         _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenExistingTataRekening_WhenFromAmbulanceUsage_ThenPersistsBillOnly()
+    {
+        var reg = CreateRegForTindakan("REG-AMB-APP-01");
+        var existingTataRekening = TataRekeningModel.Create(reg.RegId);
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(existingTataRekening));
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP010",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01");
+
+        transport.AddItem(new TrsTransportItemModel("TP010", "KOMP-01", 100_000m, 1m));
+
+        var jaminan = CreateJaminanForReg(reg);
+        var groupKomp = GroupKomponenType.Default;
+        var listReffKomp = new List<KomponenType>
+        {
+            new("KOMP-01", "Ambulans", groupKomp, new CoaType("PDPT", ""), new CoaType("DISC", ""), [])
+        };
+
+        var result = _sut.FromAmbulanceUsage(transport, reg, jaminan, listReffKomp);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be("TP010");
+        result.ModulGroup.Should().Be(BillModulGroup.Jasa);
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == "TP010")), Times.Once);
+    }
+
+    [Fact]
+    public void GivenMissingTataRekening_WhenFromAmbulanceUsage_ThenCreatesTataRekeningAndBill()
+    {
+        var reg = CreateRegForTindakan("REG-AMB-APP-02");
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe<TataRekeningModel>.None);
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP011",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01");
+
+        transport.AddItem(new TrsTransportItemModel("TP011", "KOMP-01", 150_000m, 1m));
+
+        var jaminan = CreateJaminanForReg(reg);
+        var listReffKomp = new List<KomponenType>
+        {
+            new("KOMP-01", "Ambulans", GroupKomponenType.Default, new CoaType("PDPT", ""), new CoaType("DISC", ""), [])
+        };
+
+        var result = _sut.FromAmbulanceUsage(transport, reg, jaminan, listReffKomp);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be("TP011");
+
+        _tataRekeningRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TataRekeningModel>(t =>
+                t.RegId == reg.RegId && t.Status == TataRekeningStatusEnum.Opened)),
+            Times.Once);
+        _trsBillingRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == "TP011")),
+            Times.Once);
+    }
+
+    [Fact]
+    public void GivenClosedTataRekening_WhenFromAmbulanceUsage_ThenThrowsInvalidOperationExceptionAndDoesNotPersist()
+    {
+        var reg = CreateRegForTindakan("REG-AMB-APP-03");
+        var closedTataRekening = TataRekeningModel.Create(reg.RegId);
+        closedTataRekening.Close();
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(closedTataRekening));
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP012",
+            DateTime.Now,
+            regId: reg.RegId,
+            tujuanTransportId: "TJ01");
+
+        transport.AddItem(new TrsTransportItemModel("TP012", "KOMP-01", 100_000m, 1m));
+        var jaminan = CreateJaminanForReg(reg);
+
+        Action act = () => _sut.FromAmbulanceUsage(transport, reg, jaminan, []);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*OPEN*");
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNonRegAmbulance_WhenFromAmbulanceUsage_ThenThrowsArgumentExceptionAndDoesNotPersist()
+    {
+        var reg = CreateRegForTindakan("REG-AMB-APP-04");
+
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP013",
+            DateTime.Now,
+            regId: "",
+            tujuanTransportId: "TJ01");
+
+        var jaminan = CreateJaminanForReg(reg);
+
+        Action act = () => _sut.FromAmbulanceUsage(transport, reg, jaminan, []);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*non-registrasi*");
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenExistingTataRekening_WhenFromBhpRanap_ThenPersistsBillOnly()
+    {
+        var reg = CreateInpatientReg("REG-BHP-01");
+        var existingTataRekening = TataRekeningModel.Create(reg.RegId);
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(existingTataRekening));
+
+        var layanan = new LayananType("LY-MELATI", "Bangsal Melati", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var audit = new AuditInfoType("nurse1", new DateTime(2026, 6, 16, 9, 0, 0));
+        var bhp = BhpRanapModel.Create("BED-01", reg.RegId, layanan.LayananId, "BHP-01", "Infus Set Makro", 2, 25000m, audit);
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId,
+            Rekening = new JaminanRekeningType(
+                new CoaType("JASA-RJ", ""), new CoaType("PPDP-OBAT-RJ", ""),
+                new CoaType("JASA-RI", ""), new CoaType("PPDP-OBAT-RI", ""))
+        };
+
+        var groupRek = new GroupRekType(
+            "GR-BHP", "BHP Medis", GroupRekDkType.Default, "RK01",
+            new CoaType("REK-JUAL-BHP", ""),
+            new CoaType("REK-JUAL-RJ-BHP", ""),
+            new CoaType("REK-DISC", ""),
+            new CoaType("REK-TAX", ""),
+            new CoaType("REK-PERSED-BHP", ""));
+
+        var result = _sut.FromBhpRanap(bhp, reg, layanan, jaminan, groupRek);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be(bhp.BhpRanapId);
+        result.ModulGroup.Should().Be(BillModulGroup.Obat);
+        result.Nilai.Total.Should().Be(50000m);
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == bhp.BhpRanapId)), Times.Once);
+    }
+
+    [Fact]
+    public void GivenMissingTataRekening_WhenFromBhpRanap_ThenCreatesTataRekeningAndBill()
+    {
+        var reg = CreateInpatientReg("REG-BHP-02");
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe<TataRekeningModel>.None);
+
+        var layanan = new LayananType("LY-MELATI", "Bangsal Melati", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var audit = new AuditInfoType("nurse1", new DateTime(2026, 6, 16, 9, 0, 0));
+        var bhp = BhpRanapModel.Create("BED-01", reg.RegId, layanan.LayananId, "BHP-01", "Infus Set Makro", 2, 25000m, audit);
+
+        var jaminan = JaminanType.Default with
+        {
+            JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId,
+            Rekening = new JaminanRekeningType(
+                new CoaType("JASA-RJ", ""), new CoaType("PPDP-OBAT-RJ", ""),
+                new CoaType("JASA-RI", ""), new CoaType("PPDP-OBAT-RI", ""))
+        };
+
+        var groupRek = new GroupRekType(
+            "GR-BHP", "BHP Medis", GroupRekDkType.Default, "RK01",
+            new CoaType("REK-JUAL-BHP", ""),
+            new CoaType("REK-JUAL-RJ-BHP", ""),
+            new CoaType("REK-DISC", ""),
+            new CoaType("REK-TAX", ""),
+            new CoaType("REK-PERSED-BHP", ""));
+
+        var result = _sut.FromBhpRanap(bhp, reg, layanan, jaminan, groupRek);
+
+        result.Should().NotBeNull();
+        result.TrsBillingId.Should().Be(bhp.BhpRanapId);
+
+        _tataRekeningRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TataRekeningModel>(t =>
+                t.RegId == reg.RegId && t.Status == TataRekeningStatusEnum.Opened)),
+            Times.Once);
+        _trsBillingRepoMock.Verify(
+            x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == bhp.BhpRanapId)),
+            Times.Once);
+    }
+
+    [Fact]
+    public void GivenClosedTataRekening_WhenFromBhpRanap_ThenThrowsInvalidOperationExceptionAndDoesNotPersist()
+    {
+        var reg = CreateInpatientReg("REG-BHP-03");
+        var closedTataRekening = TataRekeningModel.Create(reg.RegId);
+        closedTataRekening.Close();
+        _tataRekeningRepoMock
+            .Setup(x => x.LoadEntity(reg))
+            .Returns(MayBe.From(closedTataRekening));
+
+        var layanan = new LayananType("LY-MELATI", "Bangsal Melati", true,
+            InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            TipeLayananDkType.Default, InstalasiDkType.Default,
+            Bilreg.Domain.AccountingContext.UnitFeature.UnitType.Default.ToReff(),
+            new PoliBpjsReff("-", "-"));
+
+        var audit = new AuditInfoType("nurse1", DateTime.Now);
+        var bhp = BhpRanapModel.Create("BED-01", reg.RegId, layanan.LayananId, "BHP-01", "Spuit", 1, 5000m, audit);
+
+        var jaminan = JaminanType.Default with { JaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3 ? reg.TipeJaminan.TipeJaminanId[..3] : reg.TipeJaminan.TipeJaminanId };
+        var groupRek = new GroupRekType("G1", "BHP", GroupRekDkType.Default);
+
+        Action act = () => _sut.FromBhpRanap(bhp, reg, layanan, jaminan, groupRek);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*OPEN*");
+
+        _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+    }
+
+    private static RegModel CreateInpatientReg(string regId)
+    {
+        return new RegModel(
+            regId,
+            new DateOnly(2026, 6, 16),
+            new AuditInfoType("tester", new DateTime(2026, 6, 16, 8, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            PasienModel.Default.ToReff(),
+            new TipeJaminanReff("J0101", "BPJS Kesehatan"),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            []);
     }
 }

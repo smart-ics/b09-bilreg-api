@@ -298,4 +298,140 @@ public class SmassAssessmentGatewayTest : IDisposable
         result.ErrorMessage.Should().BeNull();
         result.LinkedAssessmentIds.Should().BeNull();
     }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenHttp200_ReturnsSuccessAndSendsBearerToken()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-01")
+                .WithHeader("Authorization", "Bearer test-bearer-token")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(JsonSerializer.Serialize(new { status = "success", data = "Done" })));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-01");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.AssessmentId.Should().Be("ASM-DEL-01");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenHttp204NoContent_ReturnsSuccess()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-204")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(204));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-204");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.AssessmentId.Should().Be("ASM-DEL-204");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenHttp404NotFound_ReturnsIdempotentSuccess()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-404")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(404)
+                .WithBody("Not Found"));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-404");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.AssessmentId.Should().Be("ASM-DEL-404");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenHttp500_ReturnsFailureWithoutThrowing()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-500")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(500)
+                .WithBody("Internal Server Error"));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-500");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeFalse();
+        result.AssessmentId.Should().BeNull();
+        result.ErrorMessage.Should().Contain("500");
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenAssessmentIdIsEmpty_ReturnsFailureWithoutCallingToken()
+    {
+        // Act
+        var result = await _sut.DeleteAssesment("   ");
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("AssessmentId");
+        _tokenServiceMock.Verify(x => x.GetToken(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenTokenServiceThrows_IsolatesExceptionIntoFailure()
+    {
+        // Arrange
+        _tokenServiceMock
+            .Setup(x => x.GetToken(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Token endpoint unreachable"));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-EX");
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Token endpoint unreachable");
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenBaseApiUrlMissing_ReturnsFailureWithoutCallingToken()
+    {
+        // Arrange
+        var gateway = new SmassAssessmentGateway(
+            Options.Create(new SmassOptions { BaseApiUrl = "", TokenEmail = "a", TokenPass = "b" }),
+            Options.Create(new IgdVisitOptions()),
+            new RestClientFactory(),
+            _tokenServiceMock.Object);
+
+        // Act
+        var result = await gateway.DeleteAssesment("ASM-DEL-CFG");
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("BaseApiUrl");
+        _tokenServiceMock.Verify(x => x.GetToken(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

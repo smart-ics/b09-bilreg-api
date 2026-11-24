@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -264,6 +265,262 @@ public class AntrianFactoryTests
             jamSelesai,
             maxPasien,
             AntrianPatternType.Default);
+    }
+
+    #endregion
+}
+
+public class AntrianModelTest
+{
+    private static AntrianModel CreateAntrian(string prefix = "")
+    {
+        return new AntrianModel(
+            "ANT001",
+            new DateOnly(2026, 11, 12),
+            new TimeOnly(8, 0),
+            new TimeOnly(12, 0),
+            "AN2611120800_DOK001",
+            "Praktek Dokter DOK001",
+            new ServicePointType("DOK001", "Poli Umum"),
+            new List<AntrianEntryModel>(),
+            Mock.Of<ISequencer>(),
+            queuePrefixSnapshot: prefix);
+    }
+
+    #region NormalizeClinicPrefix Tests
+
+    [Theory]
+    [InlineData("a", "A")]
+    [InlineData("A", "A")]
+    [InlineData("z", "Z")]
+    [InlineData("ob", "OB")]
+    [InlineData("OB", "OB")]
+    [InlineData(" Ob ", "OB")]
+    [InlineData("  g  ", "G")]
+    public void NormalizeClinicPrefix_GivenValidOneOrTwoLetters_ShouldReturnUppercase(string input, string expected)
+    {
+        AntrianModel.NormalizeClinicPrefix(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("-")]
+    [InlineData(" - ")]
+    public void NormalizeClinicPrefix_GivenNullEmptyWhitespaceOrDash_ShouldReturnEmptyString(string? input)
+    {
+        AntrianModel.NormalizeClinicPrefix(input).Should().Be(string.Empty);
+    }
+
+    [Theory]
+    [InlineData("ABC")]
+    [InlineData("ABCD")]
+    [InlineData("1")]
+    [InlineData("12")]
+    [InlineData("A1")]
+    [InlineData("1A")]
+    [InlineData("A-B")]
+    [InlineData("A!")]
+    [InlineData("@")]
+    [InlineData("Å")]
+    public void NormalizeClinicPrefix_GivenInvalidInput_ShouldThrowArgumentException(string input)
+    {
+        var act = () => AntrianModel.NormalizeClinicPrefix(input);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    #endregion
+
+    #region FormatClinicQueueLabel Tests
+
+    [Fact]
+    public void FormatClinicQueueLabel_GivenSingleLetterPrefix_ShouldReturnCompactFormatWithoutLeadingZero()
+    {
+        var queue = CreateAntrian("A");
+        queue.FormatClinicQueueLabel(1).Should().Be("A1");
+        queue.FormatClinicQueueLabel(3).Should().Be("A3");
+        queue.FormatClinicQueueLabel(25).Should().Be("A25");
+    }
+
+    [Fact]
+    public void FormatClinicQueueLabel_GivenTwoLetterPrefix_ShouldReturnCompactFormatWithoutLeadingZero()
+    {
+        var queue = CreateAntrian("OB");
+        queue.FormatClinicQueueLabel(1).Should().Be("OB1");
+        queue.FormatClinicQueueLabel(12).Should().Be("OB12");
+        queue.FormatClinicQueueLabel(105).Should().Be("OB105");
+    }
+
+    [Fact]
+    public void FormatClinicQueueLabel_GivenEmptyPrefix_ShouldReturnNumberOnlyWithoutLeadingZero()
+    {
+        var queue = CreateAntrian("");
+        queue.FormatClinicQueueLabel(1).Should().Be("1");
+        queue.FormatClinicQueueLabel(3).Should().Be("3");
+        queue.FormatClinicQueueLabel(42).Should().Be("42");
+    }
+
+    #endregion
+
+    #region FormatQueueLabel Tests (Admission Desk)
+
+    [Fact]
+    public void FormatQueueLabel_GivenPrefix_ShouldReturnFourDigitFormat()
+    {
+        var queue = CreateAntrian("A");
+        queue.FormatQueueLabel(1).Should().Be("A0001");
+        queue.FormatQueueLabel(3).Should().Be("A0003");
+        queue.FormatQueueLabel(9999).Should().Be("A9999");
+    }
+
+    [Fact]
+    public void FormatQueueLabel_GivenEmptyPrefix_ShouldReturnNull()
+    {
+        var queue = CreateAntrian("");
+        queue.FormatQueueLabel(3).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(10000)]
+    public void FormatQueueLabel_GivenOutOfRangeNumber_ShouldThrowArgumentOutOfRangeException(int invalidNoUrut)
+    {
+        var queue = CreateAntrian("A");
+        var act = () => queue.FormatQueueLabel(invalidNoUrut);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    #endregion
+
+    #region TryUpdatePrefix Tests
+
+    [Fact]
+    public void TryUpdatePrefix_WhenSnapshotEmpty_GivenValidOneLetterPrefix_ShouldUpdateAndReturnTrue()
+    {
+        var queue = CreateAntrian("");
+        var updated = queue.TryUpdatePrefix("A");
+
+        updated.Should().BeTrue();
+        queue.QueuePrefixSnapshot.Should().Be("A");
+    }
+
+    [Fact]
+    public void TryUpdatePrefix_WhenSnapshotEmpty_GivenValidTwoLetterPrefix_ShouldUpdateAndReturnTrue()
+    {
+        var queue = CreateAntrian("");
+        var updated = queue.TryUpdatePrefix("ob");
+
+        updated.Should().BeTrue();
+        queue.QueuePrefixSnapshot.Should().Be("OB");
+    }
+
+    [Fact]
+    public void TryUpdatePrefix_WhenSnapshotAlreadyPopulated_ShouldRejectOverwriteAndReturnFalse()
+    {
+        var queue = CreateAntrian("A");
+        var updated = queue.TryUpdatePrefix("B");
+
+        updated.Should().BeFalse();
+        queue.QueuePrefixSnapshot.Should().Be("A");
+    }
+
+    [Fact]
+    public void TryUpdatePrefix_WhenUpdatedOnce_SubsequentUpdatesShouldBeRejectedDueToImmutability()
+    {
+        var queue = CreateAntrian("");
+        var firstUpdate = queue.TryUpdatePrefix("A");
+        firstUpdate.Should().BeTrue();
+        queue.QueuePrefixSnapshot.Should().Be("A");
+
+        var secondUpdate = queue.TryUpdatePrefix("OB");
+        secondUpdate.Should().BeFalse();
+        queue.QueuePrefixSnapshot.Should().Be("A");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("-")]
+    public void TryUpdatePrefix_WhenSnapshotEmpty_GivenEmptyOrSentinel_ShouldReturnFalseAndNotChangeSnapshot(string? emptyPrefix)
+    {
+        var queue = CreateAntrian("");
+        var updated = queue.TryUpdatePrefix(emptyPrefix);
+
+        updated.Should().BeFalse();
+        queue.QueuePrefixSnapshot.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void TryUpdatePrefix_WhenSnapshotEmpty_GivenInvalidPrefix_ShouldThrowArgumentException()
+    {
+        var queue = CreateAntrian("");
+        var act = () => queue.TryUpdatePrefix("ABC");
+
+        act.Should().Throw<ArgumentException>();
+        queue.QueuePrefixSnapshot.Should().Be(string.Empty);
+    }
+
+    #endregion
+
+    #region AntrianView and AntrianViewDto Tests
+
+    [Fact]
+    public void AntrianView_GivenSingleLetterPrefix_ShouldReturnCompactQueueLabel()
+    {
+        var view = new AntrianView("AN01", 0, 7, "Pasien", "REG01", "REG",
+            DateTime.Today, "TAG_DR01", "DR01", "Poli", new TimeOnly(8, 0), new TimeOnly(12, 0),
+            QueuePrefixSnapshot: "C");
+
+        view.QueueLabel.Should().Be("C7");
+    }
+
+    [Fact]
+    public void AntrianView_GivenTwoLetterPrefix_ShouldReturnCompactQueueLabel()
+    {
+        var view = new AntrianView("AN01", 0, 12, "Pasien", "REG01", "REG",
+            DateTime.Today, "TAG_DR01", "DR01", "Poli", new TimeOnly(8, 0), new TimeOnly(12, 0),
+            QueuePrefixSnapshot: "OB");
+
+        view.QueueLabel.Should().Be("OB12");
+    }
+
+    [Fact]
+    public void AntrianView_GivenEmptyPrefix_ShouldReturnNumberOnly()
+    {
+        var view = new AntrianView("AN01", 0, 7, "Pasien", "REG01", "REG",
+            DateTime.Today, "TAG_DR01", "DR01", "Poli", new TimeOnly(8, 0), new TimeOnly(12, 0),
+            QueuePrefixSnapshot: "");
+
+        view.QueueLabel.Should().Be("7");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void AntrianView_GivenZeroOrNegativeNoUrut_ShouldReturnEmptyString(int noUrut)
+    {
+        var view = new AntrianView("AN01", 0, noUrut, "Pasien", "REG01", "REG",
+            DateTime.Today, "TAG_DR01", "DR01", "Poli", new TimeOnly(8, 0), new TimeOnly(12, 0),
+            QueuePrefixSnapshot: "C");
+
+        view.QueueLabel.Should().Be("");
+    }
+
+    [Fact]
+    public void AntrianViewDto_ToView_ShouldForwardQueuePrefixSnapshot()
+    {
+        var dto = new AntrianViewDto("AN01", 0, 7, "Pasien", "REG01", "REG",
+            DateTime.Today, "TAG_DR01", "Poli", "08:00", "12:00",
+            QueuePrefixSnapshot: "C");
+
+        var view = dto.ToView();
+
+        view.QueuePrefixSnapshot.Should().Be("C");
+        view.QueueLabel.Should().Be("C7");
+        view.NoUrut.Should().Be(7);
     }
 
     #endregion

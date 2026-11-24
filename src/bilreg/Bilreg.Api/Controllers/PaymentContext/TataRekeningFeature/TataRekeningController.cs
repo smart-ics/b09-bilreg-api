@@ -264,4 +264,15 @@ public class TataRekeningController : ControllerBase
             new SettlementInitiationCommand(regId, petugas, request?.InitiatedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
+
+    /// <summary>9. List active Tata Rekening patient queue (filtered to registrations with billing).</summary>
+    [HttpGet("queue")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetQueue([FromQuery] int? jenisReg = null)
+    {
+        var query = new TataRekeningQueueQuery(jenisReg);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }

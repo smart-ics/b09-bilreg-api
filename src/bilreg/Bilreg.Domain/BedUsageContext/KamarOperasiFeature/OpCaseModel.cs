@@ -45,7 +45,7 @@ public class OpCaseModel : IOrderOpKey
         {
             new(0, OpCaseStateEnum.Requested, createdAt)
         };
-        var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", createdAt);
+        var dokterRequester = new OpCasePpaType(0, orderOp.DokterPengorder, "REQUESTER", createdAt);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
             ScheduleOpReff.Default, DischargeOpReff.Default, DuranteOpReff.Default,
@@ -89,6 +89,42 @@ public class OpCaseModel : IOrderOpKey
     #endregion
 
     #region BEHAVIOUR
+    public void ScheduleDraft(ScheduleOpModel schedule, DateTime scheduledAt = default)
+    {
+        if (OrderOpState != OpCaseStateEnum.Requested)
+            throw new InvalidOperationException($"Jadwal draf hanya dapat dialokasikan pada order berstatus Requested! Status saat ini: {OrderOpState}");
+
+        ScheduleOp = schedule.ToReff();
+        DuranteOp = DuranteOpReff.Default;
+        SetListPpa(schedule.ListPpa
+                    .Select(x =>
+                    {
+                        string profesi = x.Profesi.ProfesiName;
+                        return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                    }), scheduledAt);
+    }
+
+    public void ConfirmSchedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
+    {
+        if (OrderOpState != OpCaseStateEnum.Requested)
+            throw new InvalidOperationException($"Konfirmasi jadwal hanya dapat dilakukan pada order berstatus Requested! Status saat ini: {OrderOpState}");
+
+        if (schedule.IsDraft)
+            throw new InvalidOperationException("Tidak dapat mengonfirmasi jadwal operasi yang masih berstatus draf!");
+
+        ScheduleOp = schedule.ToReff();
+        DuranteOp = DuranteOpReff.Default;
+        OrderOpState = OpCaseStateEnum.Scheduled;
+        SetListPpa(schedule.ListPpa
+                    .Select(x =>
+                    {
+                        string profesi = x.Profesi.ProfesiName;
+                        return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                    }), scheduledAt);
+
+        UpsertStateHistory(OrderOpState, scheduledAt);
+    }
+
     public void Schedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
@@ -164,6 +200,18 @@ public class OpCaseModel : IOrderOpKey
         OrderOpState = OpCaseStateEnum.Requested;
         ScheduleOp = ScheduleOpReff.Default;
         DuranteOp = DuranteOpReff.Default;
+    }
+
+    public void CancelOrder(DateTime cancelledAt = default)
+    {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
+            throw new InvalidOperationException("Status Operasi tidak dapat dibatalkan!");
+
+        OrderOpState = OpCaseStateEnum.Cancelled;
+        ScheduleOp = ScheduleOpReff.Default;
+        DuranteOp = DuranteOpReff.Default;
+
+        UpsertStateHistory(OrderOpState, cancelledAt);
     }
 
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,

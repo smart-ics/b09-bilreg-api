@@ -82,20 +82,14 @@ public class DeliveryOrderDalTest
             DoId = doId,
             NoUrut = noUrut,
             BrgId = "BRG0001",
-            PoId = "PO26100001",
             PoNoUrut = 1,
             QtyKirim = 10m,
             QtyDiterima = 10m,
             QtyDitolak = 0m,
             AlasanTolak = string.Empty,
             IsBonus = false,
-            HasJaminanRetur = false,
             NoSuratJaminan = string.Empty,
-            Status = "Draft",
-            CreatedAt = new DateTime(2026, 10, 15, 10, 0, 0),
-            CreatedBy = "USR01",
-            UpdatedAt = new DateTime(2026, 10, 15, 10, 0, 0),
-            UpdatedBy = "USR01"
+            Status = "Draft"
         };
     }
 
@@ -147,6 +141,39 @@ public class DeliveryOrderDalTest
         actual.Keterangan.Should().Be("Updated Keterangan");
         actual.SuratJalanNo.Should().Be("SJ-UPDATED-001");
         actual.UpdUsr.Should().Be("USR02");
+        actual.UpdTgl.Should().Be(new DateTime(2026, 10, 15, 11, 0, 0));
+    }
+
+    [Fact]
+    public void Order_Update_WhenVoidDtoWithEmptyUpdUsr_ShouldSetAuditParamsToDefaultVoidSentinel()
+    {
+        using var trans = TransHelper.NewScope();
+        var initial = FakerOrder("DO_VD01");
+        _orderDal.Insert(initial);
+
+        // Simulate void update without user modification (UpdUsr empty, UpdTgl sentinel)
+        initial.TglVoid = new DateTime(2026, 11, 16, 14, 0, 0);
+        initial.JamVoid = "14:00:00";
+        initial.PetugasVoid = "USR01";
+        initial.UpdTgl = new DateTime(3000, 1, 1);
+        initial.UpdUsr = string.Empty;
+
+        _orderDal.Update(initial);
+
+        var actual = _orderDal.GetData(FakerKey("DO_VD01"));
+        actual.Should().NotBeNull();
+        actual.TglVoid.Should().Be(new DateTime(2026, 11, 16, 14, 0, 0));
+        actual.PetugasVoid.Should().Be("USR01");
+        actual.UpdTgl.Year.Should().Be(3000);
+        actual.UpdUsr.Should().BeEmpty();
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        var raw = conn.QuerySingle<(string UpdTgl, string UpdJam, string UpdUsr)>(
+            "SELECT UPDTGL AS UpdTgl, UPDJAM AS UpdJam, UPDUSR AS UpdUsr FROM TB_TRS_DO WHERE fs_kd_trs = @id",
+            new { id = "DO_VD01" });
+        raw.UpdTgl.Should().Be("3000-01-01");
+        raw.UpdJam.Should().Be("00:00:00");
+        raw.UpdUsr.Trim().Should().BeEmpty();
     }
 
     [Fact]
@@ -278,7 +305,6 @@ public class DeliveryOrderDalTest
         actual!.DoId.Should().Be("DO_IN01");
         actual.NoUrut.Should().Be(1);
         actual.BrgId.Should().Be(inspection.BrgId);
-        actual.PoId.Should().Be(inspection.PoId);
         actual.PoNoUrut.Should().Be(inspection.PoNoUrut);
         actual.QtyKirim.Should().Be(inspection.QtyKirim);
         actual.QtyDiterima.Should().Be(inspection.QtyDiterima);
@@ -296,7 +322,6 @@ public class DeliveryOrderDalTest
         inspection.QtyDitolak = 2m;
         inspection.QtyDiterima = 8m;
         inspection.AlasanTolak = "Kemasan penyok";
-        inspection.HasJaminanRetur = true;
         inspection.NoSuratJaminan = "SURAT-RETUR-01";
         inspection.Status = "Confirmed";
         inspection.ConfirmedAt = new DateTime(2026, 10, 15, 12, 0, 0);

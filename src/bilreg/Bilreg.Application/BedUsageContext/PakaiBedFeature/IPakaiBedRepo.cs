@@ -15,4 +15,6 @@ public interface IPakaiBedRepo :
     MayBe<PakaiBedModel> GetActiveOccupant(IBedKey bedKey);
     Task<List<string>> VoidBedAndRoomChargeAsync(string pakaiBedId, string userId, string alasanBatal, DateTime? voidTime = null);
     Task<List<string>> GetRoomingInBabyRegIdsAsync(string pakaiBedId) => Task.FromResult(new List<string>());
+    Task<List<string>> GetRoomingInBabyTrsIdsAsync(string bedId, string? babyRegId = null) => Task.FromResult(new List<string>());
+    Task<List<string>> ReleaseRoomingInBabyAsync(string bedId, string? babyRegId, string userId, DateTime dischargeTime) => Task.FromResult(new List<string>());
 }

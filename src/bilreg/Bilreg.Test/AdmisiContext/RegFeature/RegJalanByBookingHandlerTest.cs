@@ -140,6 +140,8 @@ public class RegJalanByBookingHandlerTest
         // Assert
         result.RegId.Should().Be("RG00000001");
         result.NoAntrian.Should().Be(1);
+        result.QueueLabel.Should().Be("1");
+        result.PrefixAntrian.Should().Be("");
         _publisher.Verify(x => x.PublishRajalCreatedAsync("RG00000001", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -447,5 +449,34 @@ public class RegJalanByBookingHandlerTest
 
         var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue!.PayloadJson);
         payload.PrefixAntrian.Should().Be(expectedPrefix);
+    }
+
+    [Fact]
+    public async Task Handle_WhenQueueHasPrefix_ReturnsPrefixedQueueLabelAndPrefixAntrian()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulBooking(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var jamPraktek = new TimeOnly(8, 0);
+        var dokter = new PpaType("DR01", "dr. Budi", "Dokter Umum", SmfType.Default, GroupSpesialisType.Default, [], [], []);
+        var person = new PersonInfoType("BUDI", new DateOnly(1990, 1, 1), "L",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var tracker = PasienTrackerModel.Key("-");
+        var entry = AntrianEntryModel.Create(1, person, tracker, cmd.BookingId, "BOOKING", TestTglJamProvider.Instance.Now);
+        var sequenceTag = AntrianModel.GenSequenceTag(tglBerobat, jamPraktek, dokter);
+        var queue = new AntrianModel("AN01", tglBerobat, jamPraktek, new TimeOnly(12, 0),
+            sequenceTag, "Poli Kebidanan", new ServicePointType("TAG1", "desc"), [entry], null!, queuePrefixSnapshot: "OB");
+
+        _antrianRepo.Setup(x => x.LoadEntity(It.Is<IAntrianKey>(k => k.AntrianId == "AN01"))).Returns(MayBe.From(queue));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.NoAntrian.Should().Be(1);
+        result.QueueLabel.Should().Be("OB1");
+        result.PrefixAntrian.Should().Be("OB");
     }
 }

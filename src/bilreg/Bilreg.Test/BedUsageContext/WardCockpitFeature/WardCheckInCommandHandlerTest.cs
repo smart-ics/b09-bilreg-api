@@ -29,6 +29,7 @@ public class WardCheckInCommandHandlerTest
     private readonly Mock<IKamarRepo> _kamarRepoMock = new();
     private readonly Mock<IBangsalRepo> _bangsalRepoMock = new();
     private readonly Mock<IRoomRateRepo> _roomRateRepoMock = new();
+    private readonly Mock<IWardCockpitDal> _wardCockpitDalMock = new();
     private readonly Mock<IMediator> _mediatorMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
 
@@ -46,6 +47,7 @@ public class WardCheckInCommandHandlerTest
             _kamarRepoMock.Object,
             _bangsalRepoMock.Object,
             _roomRateRepoMock.Object,
+            _wardCockpitDalMock.Object,
             _mediatorMock.Object,
             _tglJamProviderMock.Object);
     }
@@ -436,5 +438,143 @@ public class WardCheckInCommandHandlerTest
         // Assert
         result.Should().NotBeNull();
         result.BangsalId.Should().Be("BGS-FROM-BED");
+    }
+
+    [Fact]
+    public async Task Handle_WhenTipeKamarIdEmpty_ShouldResolveFromGuarantorAndUseIt()
+    {
+        // Arrange
+        var waitingList = CreateSampleWaitingList();
+        _waitingListRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe.From(waitingList));
+
+        var readyBedOp = CreateReadyBedOperational("BED-01");
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<IBedOperationalKey>()))
+            .Returns(MayBe.From(readyBedOp));
+
+        var bedType = new BedType(
+            "BED-01",
+            "Bed 01",
+            new KamarReff("KMR-01", "Kamar Dahlia 1"),
+            new BangsalReff("BGS-01", "Bangsal Dahlia"),
+            true);
+        _bedRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedKey>())).Returns(MayBe.From(bedType));
+
+        var kamarType = KamarType.Default with
+        {
+            KamarId = "KMR-01",
+            KamarName = "Kamar Dahlia 1",
+            Kelas = new KelasReff("KLS-01", "Kelas 1"),
+            Bangsal = new BangsalReff("BGS-01", "Bangsal Dahlia")
+        };
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKamarKey>())).Returns(MayBe.From(kamarType));
+
+        var roomRate = new RoomRateRegulerType(
+            "KMR-01",
+            new KamarReff("KMR-01", "Kamar Dahlia 1"),
+            new[]
+            {
+                new RoomRateRegulerTipeType(
+                    new TipeKamarReff("0", "Umum", true),
+                    new[] { new RoomRateKomponenType(new KomponenReff("KM-01", "Sewa"), 300000m) }),
+                new RoomRateRegulerTipeType(
+                    new TipeKamarReff("1", "KPC", true),
+                    new[] { new RoomRateKomponenType(new KomponenReff("KM-01", "Sewa"), 345000m) })
+            });
+        _roomRateRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKamarKey>()))
+            .Returns(MayBe.From<IRoomRate<IRoomRateDetail>>(roomRate));
+
+        _wardCockpitDalMock
+            .Setup(x => x.GetKamarTipeByRegIdAsync("REG-01", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("1");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<PakaiBedCreateCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PakaiBedCreateResult("PKB-AUTO-01"));
+
+        var cmd = new WardCheckInCommand(
+            WaitingListId: "WTL-01",
+            BedId: "BED-01",
+            TipeKamarId: string.Empty,
+            UserId: "NURSE-01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _mediatorMock.Verify(m => m.Send(It.Is<PakaiBedCreateCommand>(c =>
+            c.TipeKamarId == "1"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenGuarantorTipeKamarNotFoundInRoomRate_ShouldFallbackToFirstTipe()
+    {
+        // Arrange
+        var waitingList = CreateSampleWaitingList();
+        _waitingListRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<IWaitingListKey>()))
+            .Returns(MayBe.From(waitingList));
+
+        var readyBedOp = CreateReadyBedOperational("BED-01");
+        _bedOperationalRepoMock
+            .Setup(x => x.LoadEntity(It.IsAny<IBedOperationalKey>()))
+            .Returns(MayBe.From(readyBedOp));
+
+        var bedType = new BedType(
+            "BED-01",
+            "Bed 01",
+            new KamarReff("KMR-01", "Kamar Dahlia 1"),
+            new BangsalReff("BGS-01", "Bangsal Dahlia"),
+            true);
+        _bedRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBedKey>())).Returns(MayBe.From(bedType));
+
+        var kamarType = KamarType.Default with
+        {
+            KamarId = "KMR-01",
+            KamarName = "Kamar Dahlia 1",
+            Kelas = new KelasReff("KLS-01", "Kelas 1"),
+            Bangsal = new BangsalReff("BGS-01", "Bangsal Dahlia")
+        };
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKamarKey>())).Returns(MayBe.From(kamarType));
+
+        var roomRate = new RoomRateRegulerType(
+            "KMR-01",
+            new KamarReff("KMR-01", "Kamar Dahlia 1"),
+            new[]
+            {
+                new RoomRateRegulerTipeType(
+                    new TipeKamarReff("0", "Umum", true),
+                    new[] { new RoomRateKomponenType(new KomponenReff("KM-01", "Sewa"), 300000m) }),
+                new RoomRateRegulerTipeType(
+                    new TipeKamarReff("1", "KPC", true),
+                    new[] { new RoomRateKomponenType(new KomponenReff("KM-01", "Sewa"), 345000m) })
+            });
+        _roomRateRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKamarKey>()))
+            .Returns(MayBe.From<IRoomRate<IRoomRateDetail>>(roomRate));
+
+        _wardCockpitDalMock
+            .Setup(x => x.GetKamarTipeByRegIdAsync("REG-01", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("99");
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<PakaiBedCreateCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PakaiBedCreateResult("PKB-AUTO-02"));
+
+        var cmd = new WardCheckInCommand(
+            WaitingListId: "WTL-01",
+            BedId: "BED-01",
+            TipeKamarId: null,
+            UserId: "NURSE-01");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        _mediatorMock.Verify(m => m.Send(It.Is<PakaiBedCreateCommand>(c =>
+            c.TipeKamarId == "0"), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

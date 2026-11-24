@@ -15,7 +15,8 @@ public record PasienCreateCommand(
     string Alamat1, string Alamat2, string Alamat3,
     string Kota, string KodePos,
     //
-    string NoTelp, string NoKtp) : IRequest<PasienCreateResponse>;
+    string NoTelp, string NoKtp,
+    string MrIbu = "") : IRequest<PasienCreateResponse>;
 
 public record PasienCreateResponse(string PasienId);
 
@@ -41,18 +42,31 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.Against.NullOrEmpty(request.Alamat1);
         Guard.Against.NullOrEmpty(request.TglLahir);
         Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
-        Guard.Against.NullOrEmpty(request.NoTelp);
         Guard.Against.NullOrWhiteSpace(request.IbuKandung);
 
         var tglLahir = DateOnly.Parse(request.TglLahir);
+        var now = _tglJamProvider?.Now ?? default;
+        var today = (now == default || now == DateTime.MinValue)
+            ? DateOnly.FromDateTime(DateTime.Today)
+            : DateOnly.FromDateTime(now);
+        var usia = CalculateAge(tglLahir, today);
+
+        if (usia >= 17)
+        {
+            Guard.Against.NullOrWhiteSpace(request.NoTelp, nameof(request.NoTelp),
+                "Pasien berusia 17 tahun ke atas wajib memiliki nomor telepon/HP.");
+        }
+
         GuardNoKtp(request.NoKtp, tglLahir);
-        GuardAgainstDuplicate(request);
+        GuardAgainstDuplicate(request, tglLahir);
 
         //  BUILD
         var alamat = new AlamatType(
             [request.Alamat1, request.Alamat2, request.Alamat3],
             request.Kota, request.KodePos);
-        var contactPhone = new ContactType(JenisContactEnum.Phone, request.NoTelp);
+        var contactPhone = !string.IsNullOrWhiteSpace(request.NoTelp)
+            ? new ContactType(JenisContactEnum.Phone, request.NoTelp)
+            : ContactType.Default;
         var identitasKtp = !string.IsNullOrWhiteSpace(request.NoKtp)
             ? IdentitasType.Ktp(request.NoKtp)
             : IdentitasType.Default;
@@ -67,15 +81,21 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
             pasien.SetDataKtp(ktp);
         }
 
+        if (!string.IsNullOrWhiteSpace(request.MrIbu))
+        {
+            pasien.SetMrIbu(request.MrIbu.Trim());
+        }
+
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);
         return Task.FromResult(new PasienCreateResponse(result.Value.PasienId));
     }
-    private void GuardAgainstDuplicate(PasienCreateCommand request)
+    private void GuardAgainstDuplicate(PasienCreateCommand request, DateOnly tglLahir)
     {
         if (!string.IsNullOrWhiteSpace(request.NoKtp) && _pasienRepo.GetDataByNik(request.NoKtp).HasValue)
             throw new InvalidOperationException("Patient with the supplied NIK already exists.");
 
+        var cleanPhone = NormalizePhone(request.NoTelp);
         var demographicMatches = _pasienRepo.SearchPasien(
                 $"{request.PasienName} {request.TglLahir}")
             .Where(x =>
@@ -83,13 +103,14 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
                     x.Person.PersonName.Trim(),
                     request.PasienName.Trim(),
                     StringComparison.OrdinalIgnoreCase)
-                && x.Person.TglLahir == DateOnly.Parse(request.TglLahir)
-                && string.Equals(
+                && x.Person.TglLahir == tglLahir
+                && (string.IsNullOrEmpty(cleanPhone) || string.Equals(
                     NormalizePhone(x.Person.Contact.ContactDetail),
-                    NormalizePhone(request.NoTelp),
-                    StringComparison.Ordinal))
+                    cleanPhone,
+                    StringComparison.Ordinal)))
             .Take(1);
-        if (demographicMatches.Any())
+
+        if (!string.IsNullOrEmpty(cleanPhone) && demographicMatches.Any())
             throw new InvalidOperationException("Patient with matching identity already exists.");
     }
 

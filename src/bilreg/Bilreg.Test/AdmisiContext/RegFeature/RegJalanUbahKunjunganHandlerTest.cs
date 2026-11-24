@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -14,6 +16,7 @@ using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -61,12 +64,15 @@ public class RegJalanUbahKunjunganHandlerTest
     private readonly Mock<IMapJaminanJkRepo> _mapJaminanJkRepo = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
+    private readonly Mock<IEmrAntrianOutboundQueueRepo> _emrOutboundQueueRepo = new();
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
 
     private readonly RegJalanUbahKunjunganHandler _sut;
 
     public RegJalanUbahKunjunganHandlerTest()
     {
         _featureResolver.Setup(x => x.UseResolver).Returns(false);
+        _emrOutboundEnqueue = new EmrAntrianOutboundEnqueueService(_emrOutboundQueueRepo.Object);
 
         _sut = new RegJalanUbahKunjunganHandler(
             _regRepo.Object,
@@ -92,7 +98,8 @@ public class RegJalanUbahKunjunganHandlerTest
             _mapJaminanJkRepo.Object,
             _featureResolver.Object,
             TestTglJamProvider.Instance,
-            clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object);
+            clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object,
+            emrOutboundEnqueue: _emrOutboundEnqueue);
     }
 
     [Fact]
@@ -173,6 +180,7 @@ public class RegJalanUbahKunjunganHandlerTest
         _regRepo.Verify(x => x.SaveChanges(It.Is<RegModel>(r => r.Karcis.KarcisId == "KC02")), Times.Once);
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
+        _emrOutboundQueueRepo.Verify(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()), Times.Never);
     }
 
     [Fact]
@@ -279,6 +287,11 @@ public class RegJalanUbahKunjunganHandlerTest
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR02", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
+        _emrOutboundQueueRepo.Verify(x => x.SaveChanges(It.Is<EmrAntrianOutboundQueueModel>(q =>
+            q.SourceId == "RG00000001" &&
+            q.MessageType == "AddReg" &&
+            q.PayloadJson.Contains("DR02") &&
+            q.PayloadJson.Contains("LAY01"))), Times.Once);
     }
 
     [Fact]
@@ -363,6 +376,11 @@ public class RegJalanUbahKunjunganHandlerTest
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY02", "DR01", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
+        _emrOutboundQueueRepo.Verify(x => x.SaveChanges(It.Is<EmrAntrianOutboundQueueModel>(q =>
+            q.SourceId == "RG00000001" &&
+            q.MessageType == "AddReg" &&
+            q.PayloadJson.Contains("DR01") &&
+            q.PayloadJson.Contains("LAY02"))), Times.Once);
     }
 
     [Fact]
@@ -448,6 +466,11 @@ public class RegJalanUbahKunjunganHandlerTest
         _queueNumberAdapter.Verify(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>()), Times.Once);
         _clinicQueueRefreshPublisher.Verify(x => x.PublishRefreshHint("LAY01", "DR01", It.IsAny<CancellationToken>()), Times.Once);
         _clinicQueueRefreshPublisher.VerifyNoOtherCalls();
+        _emrOutboundQueueRepo.Verify(x => x.SaveChanges(It.Is<EmrAntrianOutboundQueueModel>(q =>
+            q.SourceId == "RG00000001" &&
+            q.MessageType == "AddReg" &&
+            q.PayloadJson.Contains("DR01") &&
+            q.PayloadJson.Contains("LAY01"))), Times.Once);
     }
 
     [Fact]

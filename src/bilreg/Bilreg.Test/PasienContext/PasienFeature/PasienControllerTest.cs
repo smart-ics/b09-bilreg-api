@@ -282,4 +282,57 @@ public class PasienControllerTest
         jsend.data.Should().Be(expectedList);
         _mediatorMock.Verify(x => x.Send(It.Is<PasienSearchQuery>(q => q.Keyword == keyword), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task UT13_GivenPasienCreateCommandWithMrIbu_WhenCreate_ThenSendsCommandWithMrIbuToMediator()
+    {
+        // Arrange
+        var cmd = new PasienCreateCommand(
+            "Bayi Ny. Siti", "Surabaya", "2026-10-14",
+            "L", "Bayi", "Siti Aminah", "O",
+            "Jl. Basuki Rahmat", "RT 01", "Genteng",
+            "Surabaya", "60271", "081234567890", "",
+            "00100000001");
+        var expectedResponse = new PasienCreateResponse("00100000015");
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<PasienCreateCommand>(c => c.MrIbu == "00100000001"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _controller.Create(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedResponse);
+        _mediatorMock.Verify(x => x.Send(It.Is<PasienCreateCommand>(c => c.MrIbu == "00100000001"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UT14_GivenPasienSetDemografiCommandWithMrIbu_WhenSetStatusSosial_ThenSendsCommandWithMrIbuToMediator()
+    {
+        // Arrange
+        var cmd = new PasienSetDemografiCommand(
+            "00100123456", "SK-01", "AG-01", "SKU-01", "PK-01", "PD-01",
+            "Jl. A", "B", "C", "KEL-01", "Sby", "60111", "3578", "a@b.com", "081",
+            "Dewi", "Istri", "082", "Jl. A", "B", "Sby", "60111", "Ibu",
+            "00100000001")
+        {
+            UserId = "user-test"
+        };
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<PasienSetDemografiCommand>(c => c.MrIbu == "00100000001"), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.SetStatusSosial(cmd);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be("Done");
+        _mediatorMock.Verify(x => x.Send(It.Is<PasienSetDemografiCommand>(c => c.MrIbu == "00100000001"), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

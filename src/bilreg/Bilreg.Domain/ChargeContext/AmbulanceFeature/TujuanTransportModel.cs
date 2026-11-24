@@ -1,6 +1,6 @@
 namespace Bilreg.Domain.ChargeContext.AmbulanceFeature;
 
-public class TujuanTransportModel(string id, string name, decimal konstanta, bool isPerkiraan): ITujuanTransportKey
+public class TujuanTransportModel(string id, string name, decimal konstanta, bool isPerkiraan) : ITujuanTransportKey
 {
     // PROPERTIES
     public string TujuanTransportId { get; protected set; } = id;
@@ -14,7 +14,8 @@ public class TujuanTransportModel(string id, string name, decimal konstanta, boo
     public void SetKonstanta(decimal konstanta) => Konstanta = konstanta;
     public void SetPerkiraan() => IsPerkiraan = true;
     public void UnSetPerkiraan() => IsPerkiraan = false;
-    public void SetDefaultAmbulance(AmbulanceModel ambulance) => DefaultAmbulanceId = ambulance.AmbulanceId;
+    public void SetDefaultAmbulance(AmbulanceModel ambulance) => DefaultAmbulanceId = ambulance?.AmbulanceId ?? string.Empty;
+    public void SetDefaultAmbulance(string ambulanceId) => DefaultAmbulanceId = ambulanceId ?? string.Empty;
     public void UnSetDefaultAmbulance() => DefaultAmbulanceId = string.Empty;
 }
 
@@ -22,3 +23,5 @@ public interface ITujuanTransportKey
 {
     string TujuanTransportId { get; }
 }
+
+public record TujuanTransportKey(string TujuanTransportId) : ITujuanTransportKey;

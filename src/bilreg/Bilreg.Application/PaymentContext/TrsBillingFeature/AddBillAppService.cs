@@ -3,10 +3,13 @@ using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.BhpRanapFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
@@ -46,6 +49,30 @@ public interface IAddBillAppService
         PenjualanModel penjualan,
         PenjualanItemType item,
         RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
+
+    TrsBillType FromAmbulanceUsage(
+        TrsTransportModel transport,
+        RegModel reg,
+        JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        RekapCetakType? rekapCetak = null,
+        DateTime createdAt = default);
+
+    TrsBillType FromTindakanBarang(
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default);
+
+    TrsBillType FromBhpRanap(
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
         JaminanType jaminan,
         GroupRekType groupRek,
         DateTime createdAt = default);
@@ -107,6 +134,26 @@ public sealed class AddBillAppService : IAddBillAppService
         return bill;
     }
 
+    public TrsBillType FromTindakanBarang(
+        TindakanModel tindakan,
+        TindakanBarangType barang,
+        RegModel reg,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromTindakanBarang(
+            tataRekening, tindakan, barang, reg, jaminan, groupRek, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
     public TrsBillType FromLabOrderItem(
         LabOrderModel labOrder,
         LabOrderItemModel labOrderItem,
@@ -141,6 +188,52 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromPenjualanItem(
             tataRekening, penjualan, item, reg, jaminan, groupRek, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromAmbulanceUsage(
+        TrsTransportModel transport,
+        RegModel reg,
+        JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        RekapCetakType? rekapCetak = null,
+        DateTime createdAt = default)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(reg);
+
+        if (transport.IsNonReg || string.IsNullOrWhiteSpace(transport.RegId))
+            throw new ArgumentException("Transaksi ambulans non-registrasi tidak dapat diposting ke Billing.", nameof(transport));
+
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromAmbulanceUsage(
+            tataRekening, transport, reg, jaminan, listReffKomp, rekapCetak, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromBhpRanap(
+        BhpRanapModel bhp,
+        RegModel reg,
+        LayananType layanan,
+        JaminanType jaminan,
+        GroupRekType groupRek,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromBhpRanap(
+            tataRekening, bhp, reg, layanan, jaminan, groupRek, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

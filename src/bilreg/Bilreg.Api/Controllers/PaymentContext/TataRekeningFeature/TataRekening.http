@@ -53,9 +53,7 @@ Content-Type: application/json
       "paymentName": "KAS",
       "isTipeJaminan": false,
       "nilaiJasa": 100000,
-      "nilaiObat": 0,
-      "coaId": "COA-01",
-      "coaName": "COA"
+      "nilaiObat": 0
     }
   ]
 }

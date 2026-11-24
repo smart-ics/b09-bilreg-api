@@ -19,7 +19,9 @@ public record AdmAdmissionListItem(
     string KelasDkName,
     string BangsalId,
     string BangsalName,
-    DateTime AdmissionDate);
+    DateTime AdmissionDate,
+    string JenisInapId = "",
+    string JenisInapName = "");
 
 public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, AdmLookupAdmissionResponse>
 {
@@ -50,5 +52,7 @@ public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, 
             admission.KelasDk.KelasDkName,
             admission.Bangsal.BangsalId,
             admission.Bangsal.BangsalName,
-            admission.AdmissionDate);
+            admission.AdmissionDate,
+            admission.JenisInap.JenisInapId,
+            admission.JenisInap.JenisInapName);
 }
