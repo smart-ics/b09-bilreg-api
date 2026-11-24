@@ -10,6 +10,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.RadContext.RadOrderFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -38,6 +39,18 @@ public interface ICreateBillDomService
         TataRekeningModel tataRekening,
         LabOrderModel labOrder, 
         LabOrderItemModel labOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
+        DateTime createdAt = default);
+
+    TrsBillType FromRadOrderItem(
+        TataRekeningModel tataRekening,
+        RadOrderModel radOrder,
+        RadOrderItemModel radOrderItem,
         RegModel reg,
         JaminanType jaminan,
         TarifType tarif,
@@ -122,6 +135,14 @@ public sealed class CreateBillDomService : ICreateBillDomService
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromLabOrderItem(labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp, layanan, createdAt);
+    }
+
+    public TrsBillType FromRadOrderItem(TataRekeningModel tataRekening, RadOrderModel radOrder, RadOrderItemModel radOrderItem, RegModel reg,
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, 
+        LayananReff? layanan = null, DateTime createdAt = default)
+    {
+        ValidateReg(tataRekening, reg.RegId);
+        return TrsBillFactory.CreateFromRadOrderItem(radOrder, radOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp, layanan, createdAt);
     }
 
     public TrsBillType FromPenjualanItem(
