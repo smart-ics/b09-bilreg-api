@@ -103,7 +103,8 @@ public class RadOrderModel : IRadOrderKey
         string layananPengorderId = "",
         string layananPengorderName = "",
         string clinicalNote = "",
-        RadUrgencyEnum urgency = RadUrgencyEnum.Rutin)
+        RadUrgencyEnum urgency = RadUrgencyEnum.Rutin,
+        string orderId = "")
     {
         Guard.Against.NullOrWhiteSpace(emrOrderId, nameof(emrOrderId));
         Guard.Against.Null(patient, nameof(patient));
@@ -123,11 +124,11 @@ public class RadOrderModel : IRadOrderKey
                     nameof(items));
         }
 
-        var orderId = NunaId.New(IdPrefix);
+        var finalOrderId = string.IsNullOrWhiteSpace(orderId) ? NunaId.New(IdPrefix) : orderId;
         var auditTrail = AuditTrailType.Create(audit.UserId, audit.Timestamp);
 
         return new RadOrderModel(
-            orderId,
+            finalOrderId,
             emrOrderId,
             orderNo,
             RadOrderSourceEnum.Internal,
@@ -159,7 +160,8 @@ public class RadOrderModel : IRadOrderKey
         string layananPengorderId = "",
         string layananPengorderName = "",
         string clinicalNote = "",
-        RadUrgencyEnum urgency = RadUrgencyEnum.Rutin)
+        RadUrgencyEnum urgency = RadUrgencyEnum.Rutin,
+        string orderId = "")
         => CreateFromEmr(
             emrOrderId,
             patient,
@@ -172,7 +174,8 @@ public class RadOrderModel : IRadOrderKey
             layananPengorderId,
             layananPengorderName,
             clinicalNote,
-            urgency);
+            urgency,
+            orderId);
 
     public static RadOrderModel CreateExternal(
         string? emrOrderId,
