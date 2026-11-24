@@ -3,15 +3,12 @@ using Bilreg.Application.BrgContext.BrgFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.InventoryContext.PakaiBrgFeature;
-using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
-using Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.InventoryContext.PakaiBrgFeature;
-using MediatR;
 using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature;
@@ -21,35 +18,29 @@ public class TindakanBomProcessor : ITindakanBomProcessor
     private readonly ITarifRepo _tarifRepo;
     private readonly ITarifBarangRepo _tarifBarangRepo;
     private readonly IBrgRepo _brgRepo;
-    private readonly IStockBatchRepo _stockBatchRepo;
     private readonly IPakaiBrgInternalService _pakaiBrgInternalService;
     private readonly ITindakanBarangRepo _tindakanBarangRepo;
     private readonly ITindakanStokPendingRepo _tindakanStokPendingRepo;
     private readonly IBrgPricingService _brgPricingService;
-    private readonly IMediator _mediator;
-    private readonly ILegacyStockReadPort? _legacyStockReadPort;
+    private readonly ILegacyStockReadPort _legacyStockReadPort;
 
     public TindakanBomProcessor(
         ITarifRepo tarifRepo,
         ITarifBarangRepo tarifBarangRepo,
         IBrgRepo brgRepo,
-        IStockBatchRepo stockBatchRepo,
         IPakaiBrgInternalService pakaiBrgInternalService,
         ITindakanBarangRepo tindakanBarangRepo,
         ITindakanStokPendingRepo tindakanStokPendingRepo,
         IBrgPricingService brgPricingService,
-        IMediator mediator,
-        ILegacyStockReadPort? legacyStockReadPort = null)
+        ILegacyStockReadPort legacyStockReadPort)
     {
         _tarifRepo = tarifRepo;
         _tarifBarangRepo = tarifBarangRepo;
         _brgRepo = brgRepo;
-        _stockBatchRepo = stockBatchRepo;
         _pakaiBrgInternalService = pakaiBrgInternalService;
         _tindakanBarangRepo = tindakanBarangRepo;
         _tindakanStokPendingRepo = tindakanStokPendingRepo;
         _brgPricingService = brgPricingService;
-        _mediator = mediator;
         _legacyStockReadPort = legacyStockReadPort;
     }
 
@@ -146,45 +137,25 @@ public class TindakanBomProcessor : ITindakanBomProcessor
                 hargaJualTotal));
         }
 
-        // 3. Freshness Gate
-        var distinctBrgIds = resolvedItems
-            .Select(x => x.Bom.BrgId)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
-
-        var allScopes = new List<ScopeKeyDto>();
-        foreach (var brgId in distinctBrgIds)
-        {
-            var candidates = _stockBatchRepo.ListAllocationCandidates(brgId, layananId).ToList();
-            var activeDos = _legacyStockReadPort?.ListActiveDoIdsAtLocation(brgId, layananId) ?? [];
-            var scopes = candidates
-                .Select(c => new ScopeKeyDto(brgId, c.BrgMasukReffId))
-                .Concat(activeDos.Select(doId => new ScopeKeyDto(brgId, doId)))
-                .Distinct();
-            allScopes.AddRange(scopes);
-        }
-
-        var distinctScopes = allScopes.Distinct().ToList();
-        if (distinctScopes.Count > 0)
-        {
-            var freshnessResult = await _mediator.Send(
-                new EnsureFreshnessForScopesCommand(distinctScopes, userId),
-                cancellationToken);
-
-            if (freshnessResult.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
-            {
-                throw new InvalidOperationException(
-                    $"Freshness gate gagal untuk barang '{freshnessResult.FailedBrgId}': {freshnessResult.InconsistencyReason}");
-            }
-        }
-
-        // 4. Stock Allocation (Immediate Cut vs Pending)
+        // 3. Stock Allocation (Immediate Cut vs Pending) from legacy tb_stok
         var availableStockByBrg = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in resolvedItems)
         {
             if (!availableStockByBrg.ContainsKey(item.Bom.BrgId))
             {
-                var total = _stockBatchRepo.ListAllocationCandidates(item.Bom.BrgId, layananId).Sum(c => c.QtySisa);
+                decimal total;
+                try
+                {
+                    total = _legacyStockReadPort.ListBalancesAtLocation(item.Bom.BrgId, layananId)
+                        .Where(c => c.QtySisa > 0m)
+                        .Sum(c => c.QtySisa);
+                }
+                catch
+                {
+                    // Legacy stock read failure routes full quantity to BILRG_TindakanStokPending
+                    // so clinical procedure saving never fails due to stock anomalies.
+                    total = 0m;
+                }
                 availableStockByBrg[item.Bom.BrgId] = total;
             }
         }
@@ -203,7 +174,7 @@ public class TindakanBomProcessor : ITindakanBomProcessor
             calculatedItems.Add(new CalculatedItem(item, qtyImmediateCut, qtyPending));
         }
 
-        // 5. Publish tb_trs_pakai via IPakaiBrgInternalService if any qtyImmediateCut >= 1
+        // 4. Publish tb_trs_pakai via IPakaiBrgInternalService if any qtyImmediateCut >= 1
         var immediateCutItems = calculatedItems
             .Where(x => x.QtyImmediateCut >= 1m)
             .Select(x => new PakaiBrgCreateFromTindakanItem(
@@ -221,8 +192,20 @@ public class TindakanBomProcessor : ITindakanBomProcessor
                 KeteranganHeader: $"TDK:{tindakan.TindakanId} {tarifId}",
                 ListItem: immediateCutItems);
 
-            var pakaiResult = await _pakaiBrgInternalService.CreateFromTindakan(pakaiCmd, cancellationToken);
-            pakaiBrgId = pakaiResult.PakaiBrgId;
+            try
+            {
+                var pakaiResult = await _pakaiBrgInternalService.CreateFromTindakan(pakaiCmd, cancellationToken);
+                pakaiBrgId = pakaiResult.PakaiBrgId;
+            }
+            catch
+            {
+                // If stock deduction fails (e.g. concurrent depletion or legacy evidence failure),
+                // route all requested quantities to BILRG_TindakanStokPending.
+                pakaiBrgId = string.Empty;
+                calculatedItems = calculatedItems
+                    .Select(x => new CalculatedItem(x.Resolved, 0m, x.Resolved.QtyKecilRequested))
+                    .ToList();
+            }
         }
 
         // 6. Insert BILRG_TindakanBarang (all items) and BILRG_TindakanStokPending (only if qtyPending > 0)

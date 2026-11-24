@@ -50,7 +50,6 @@ public class PenjualanPoliCreateHandlerTest
     private readonly Mock<IBrgPricingService> _pricingServiceMock = new();
     private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
     private readonly Mock<IMediator> _mediatorMock = new();
-    private readonly Mock<IStockBatchRepo> _batchRepoMock = new();
     private readonly Mock<IPenjualanRepo> _penjualanRepoMock = new();
     private readonly Mock<IAddBillAppService> _addBillServiceMock = new();
     private readonly Mock<IJurnalRepo> _jurnalRepoMock = new();
@@ -69,7 +68,6 @@ public class PenjualanPoliCreateHandlerTest
             _pricingServiceMock.Object,
             _tglJamProviderMock.Object,
             _mediatorMock.Object,
-            _batchRepoMock.Object,
             _penjualanRepoMock.Object,
             _addBillServiceMock.Object,
             _jurnalRepoMock.Object);
@@ -142,7 +140,8 @@ public class PenjualanPoliCreateHandlerTest
 
         var issueLines = new List<PostSaleIssueLineResult>
         {
-            new("STM01", "STL01", "STB01", "DO-01", "BK01", "STK01", qty)
+            new("STM01", "STL01", "STB01", "DO-01", "BK01", "STK01", qty,
+                PoReffId: "PO-01", NoBatch: "BATCH-ABC", TglEd: new DateTime(2027, 1, 1), Hpp: 5000m)
         };
         var issueResult = new PostSaleIssueConsequenceResult(
             PostSaleIssueOutcomeEnum.Success,
@@ -151,12 +150,6 @@ public class PenjualanPoliCreateHandlerTest
 
         _mediatorMock.Setup(x => x.Send(It.IsAny<PostSaleIssueConsequenceCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(issueResult);
-
-        var location = LocationStockBalanceModel.Create("STB01", brgId, "DO-01", lynId, new DateTime(2027, 1, 1), new DateTime(2026, 1, 1), 100, "BATCH-ABC");
-        var stockBatch = new StockBatchModel(
-            "STB01", brgId, "DO-01", 100, 5000m, new DateTime(2026, 1, 1), "PO-01", 1, [location]);
-        _batchRepoMock.Setup(x => x.LoadByNaturalKey(brgId, "DO-01"))
-            .Returns(MayBe.From(stockBatch));
 
         _addBillServiceMock.Setup(x => x.FromPenjualanItem(
                 It.IsAny<PenjualanModel>(),

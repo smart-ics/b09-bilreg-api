@@ -21,8 +21,7 @@ public class BrgStockMovementCheckDal : IBrgStockMovementCheck
     {
         const string sql = """
             SELECT CASE 
-                WHEN EXISTS (SELECT 1 FROM BILRG_StokMutasi WHERE BrgId = @BrgId) THEN 1
-                WHEN EXISTS (SELECT 1 FROM BILRG_StokLokasi WHERE BrgId = @BrgId AND QtySisa > 0) THEN 1
+                WHEN EXISTS (SELECT 1 FROM tb_buku WHERE fs_kd_barang = @BrgId) THEN 1
                 WHEN EXISTS (SELECT 1 FROM tb_stok WHERE fs_kd_barang = @BrgId AND fn_qty > 0) THEN 1
                 ELSE 0 
             END
