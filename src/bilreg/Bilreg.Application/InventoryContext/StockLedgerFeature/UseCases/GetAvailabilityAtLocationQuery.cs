@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using MediatR;
 
@@ -31,10 +32,10 @@ public record GetAvailabilityAtLocationResponse(
 public class GetAvailabilityAtLocationHandler
     : IRequestHandler<GetAvailabilityAtLocationQuery, GetAvailabilityAtLocationResponse>
 {
-    private readonly IStockBatchRepo _batchRepo;
+    private readonly ILegacyStockReadPort _legacyRead;
 
-    public GetAvailabilityAtLocationHandler(IStockBatchRepo batchRepo) =>
-        _batchRepo = batchRepo;
+    public GetAvailabilityAtLocationHandler(ILegacyStockReadPort legacyRead) =>
+        _legacyRead = legacyRead;
 
     public Task<GetAvailabilityAtLocationResponse> Handle(
         GetAvailabilityAtLocationQuery request,
@@ -43,10 +44,18 @@ public class GetAvailabilityAtLocationHandler
         Guard.Against.NullOrWhiteSpace(request.BrgId);
         Guard.Against.NullOrWhiteSpace(request.LayananId);
 
-        var candidates = _batchRepo
-            .ListAllocationCandidates(request.BrgId, request.LayananId)
-            .Select(StockAllocationCandidateType.FromLokasi)
-            .Where(c => c.QtySisa > 0)
+        var candidates = _legacyRead
+            .ListBalancesAtLocation(request.BrgId, request.LayananId)
+            .Where(b => b.QtySisa > 0)
+            .Select(b => new StockAllocationCandidateType(
+                b.LegacyStokId,
+                b.LegacyStokId,
+                b.BrgId,
+                b.LayananId,
+                b.BrgMasukReffId,
+                b.TglEd,
+                b.TglMasuk,
+                b.QtySisa))
             .ToList();
 
         // OrderForPreview applies Explicit-ED filter when TglEd is supplied (BR-STL-023).

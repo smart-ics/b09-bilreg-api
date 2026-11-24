@@ -21,7 +21,20 @@ public class StokLokasiDal : IStokLokasiDal, Bilreg.Application.InventoryContext
 {
     IEnumerable<Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiCandidate>
         Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiDal.ListAllocationCandidates(string brgId, string layananId)
-        => ListAllocationCandidates(brgId, layananId);
+    {
+        const string sql = """
+            SELECT fn_qty AS QtySisa
+            FROM tb_stok
+            WHERE fs_kd_barang = @BrgId
+              AND fs_kd_layanan = @LayananId
+              AND fn_qty > 0
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@LayananId", layananId, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<Bilreg.Application.InventoryContext.MutasiFeature.StokLokasiCandidate>(sql, dp);
+    }
 
     private const string SelectFrom = """
         SELECT

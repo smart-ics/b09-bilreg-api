@@ -52,7 +52,7 @@ public class StockPharmacyAdapter : IStockPharmacyPort
     {
         var result = _mediator.Send(new PostStockTransferConsequenceCommand(
             brgId, qty, ApotekLocationIds.PharmacyUnitLayananId, ApotekLocationIds.DispensingTemporaryUnitLayananId,
-            $"{dispensingId}:{itemNo}:R", DateTime.Now, AptIntegrationWorkerUser.Id)).GetAwaiter().GetResult();
+            dispensingId.Trim(), DateTime.Now, AptIntegrationWorkerUser.Id)).GetAwaiter().GetResult();
         return result.Lines.FirstOrDefault()?.StokMutasiOutId ?? $"{dispensingId}:R{itemNo}";
     }
 
@@ -62,7 +62,7 @@ public class StockPharmacyAdapter : IStockPharmacyPort
             brgId,
             ApotekLocationIds.DispensingTemporaryUnitLayananId,
             qty,
-            $"{dispensingId}:{itemNo}:I",
+            dispensingId.Trim(),
             DateTime.Now,
             AptIntegrationWorkerUser.Id)).GetAwaiter().GetResult();
         return result.Lines.FirstOrDefault()?.StokMutasiId ?? $"{dispensingId}:I{itemNo}";
@@ -72,7 +72,7 @@ public class StockPharmacyAdapter : IStockPharmacyPort
     {
         var result = _mediator.Send(new PostStockTransferConsequenceCommand(
             brgId, qty, ApotekLocationIds.DispensingTemporaryUnitLayananId, ApotekLocationIds.PharmacyUnitLayananId,
-            $"{dispensingId}:{itemNo}:N", DateTime.Now, AptIntegrationWorkerUser.Id)).GetAwaiter().GetResult();
+            dispensingId.Trim(), DateTime.Now, AptIntegrationWorkerUser.Id)).GetAwaiter().GetResult();
         return result.Lines.FirstOrDefault()?.StokMutasiOutId ?? $"{dispensingId}:N{itemNo}";
     }
 }

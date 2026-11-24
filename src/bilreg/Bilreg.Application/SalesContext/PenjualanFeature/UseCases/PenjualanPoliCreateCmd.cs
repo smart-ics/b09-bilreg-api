@@ -47,7 +47,6 @@ public class PenjualanPoliCreateHandler : IRequestHandler<PenjualanPoliCreateCmd
     private readonly IBrgPricingService _pricingService;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IMediator _mediator;
-    private readonly IStockBatchRepo _batchRepo;
     private readonly IPenjualanRepo _penjualanRepo;
     private readonly IAddBillAppService _addBillService;
     private readonly IJurnalRepo _jurnalRepo;
@@ -62,7 +61,6 @@ public class PenjualanPoliCreateHandler : IRequestHandler<PenjualanPoliCreateCmd
         IBrgPricingService pricingService,
         ITglJamProvider tglJamProvider,
         IMediator mediator,
-        IStockBatchRepo batchRepo,
         IPenjualanRepo penjualanRepo,
         IAddBillAppService addBillService,
         IJurnalRepo jurnalRepo)
@@ -76,7 +74,6 @@ public class PenjualanPoliCreateHandler : IRequestHandler<PenjualanPoliCreateCmd
         _pricingService = pricingService;
         _tglJamProvider = tglJamProvider;
         _mediator = mediator;
-        _batchRepo = batchRepo;
         _penjualanRepo = penjualanRepo;
         _addBillService = addBillService;
         _jurnalRepo = jurnalRepo;
@@ -175,26 +172,7 @@ public class PenjualanPoliCreateHandler : IRequestHandler<PenjualanPoliCreateCmd
         {
             foreach (var line in issueResult.Lines)
             {
-                var batchModel = _batchRepo.LoadByNaturalKey(request.BrgId, line.BrgMasukReffId)
-                    .Match(onSome: x => x, onNone: () => (StockBatchModel?)null);
-
-                var noBatch = string.Empty;
-                var tglEd = new DateTime(3000, 1, 1);
-                var poId = string.Empty;
-                var hpp = 0m;
-
-                if (batchModel is not null)
-                {
-                    var lokasi = batchModel.ListLokasi.FirstOrDefault(l => l.StokLokasiId == line.StokLokasiId)
-                        ?? batchModel.ListLokasi.FirstOrDefault();
-
-                    noBatch = lokasi?.NoBatch ?? string.Empty;
-                    tglEd = lokasi?.TglEd ?? new DateTime(3000, 1, 1);
-                    poId = batchModel.PoReffId ?? string.Empty;
-                    hpp = batchModel.Hpp;
-                }
-
-                item.AddBatch(noBatch, tglEd, poId, line.BrgMasukReffId, line.QtyOut, hpp);
+                item.AddBatch(line.NoBatch, line.TglEd ?? new DateTime(3000, 1, 1), line.PoReffId, line.BrgMasukReffId, line.QtyOut, line.Hpp);
             }
         }
 

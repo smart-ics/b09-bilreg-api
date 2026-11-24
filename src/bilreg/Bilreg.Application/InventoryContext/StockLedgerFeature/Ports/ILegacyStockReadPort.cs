@@ -11,6 +11,14 @@ public interface ILegacyStockReadPort
     IReadOnlyList<LegacyStockBalanceReadModel> ListBalances(string brgId, string brgMasukReffId);
 
     IReadOnlyList<string> ListActiveDoIdsAtLocation(string brgId, string layananId);
+
+    IReadOnlyList<LegacyStockBalanceReadModel> ListBalancesAtLocation(string brgId, string layananId);
+
+    IReadOnlyList<LegacyStockJournalReadModel> ListJournalsBySource(
+        string trsReffId,
+        string? brgId = null,
+        string? layananId = null,
+        string? movementKindString = null);
 }
 
 /// <summary>
@@ -29,7 +37,8 @@ public sealed record LegacyStockJournalReadModel(
     string MovementKindString,
     string TrsReffId,
     DateTime TglMutasi,
-    DateTime TglEd);
+    DateTime TglEd,
+    string SatuanId = "");
 
 /// <summary>
 /// Application-facing projection of one <c>tb_stok</c> row for a scoped Item + DO.
@@ -43,4 +52,6 @@ public sealed record LegacyStockBalanceReadModel(
     string NoBatch,
     decimal QtySisa,
     decimal Hpp,
-    DateTime TglMasuk);
+    DateTime TglMasuk,
+    string PoReffId = "",
+    string SatuanId = "");

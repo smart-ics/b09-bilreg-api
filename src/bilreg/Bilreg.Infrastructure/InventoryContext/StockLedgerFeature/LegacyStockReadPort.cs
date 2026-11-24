@@ -36,7 +36,8 @@ public class LegacyStockReadPort : ILegacyStockReadPort
                 aa.fd_tgl_mutasi,
                 aa.fs_jam_mutasi,
                 aa.fd_tgl_jam_mutasi,
-                aa.fs_kd_jenis_mutasi
+                aa.fs_kd_jenis_mutasi,
+                aa.fs_kd_satuan
             FROM tb_buku aa
             WHERE
                 aa.fs_kd_barang = @fs_kd_barang
@@ -64,13 +65,15 @@ public class LegacyStockReadPort : ILegacyStockReadPort
                 aa.fs_kd_trs,
                 aa.fs_kd_barang,
                 aa.fs_kd_layanan,
+                aa.fs_kd_po,
                 aa.fs_kd_do,
                 aa.fd_tgl_ed,
                 aa.fs_no_batch,
                 aa.fn_qty,
                 aa.fn_hpp,
                 aa.fd_tgl_do,
-                aa.fs_jam_do
+                aa.fs_jam_do,
+                aa.fs_kd_satuan
             FROM tb_stok aa
             WHERE
                 aa.fs_kd_barang = @fs_kd_barang
@@ -111,33 +114,125 @@ public class LegacyStockReadPort : ILegacyStockReadPort
             .ToList();
     }
 
+    public IReadOnlyList<LegacyStockBalanceReadModel> ListBalancesAtLocation(string brgId, string layananId)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_trs,
+                aa.fs_kd_barang,
+                aa.fs_kd_layanan,
+                aa.fs_kd_po,
+                aa.fs_kd_do,
+                aa.fd_tgl_ed,
+                aa.fs_no_batch,
+                aa.fn_qty,
+                aa.fn_hpp,
+                aa.fd_tgl_do,
+                aa.fs_jam_do,
+                aa.fs_kd_satuan
+            FROM tb_stok aa
+            WHERE
+                aa.fs_kd_barang = @fs_kd_barang
+                AND aa.fs_kd_layanan = @fs_kd_layanan
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_barang", brgId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", layananId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var rows = conn.Read<LegacyStokRow>(sql, dp) ?? [];
+        return rows.Select(MapBalance).ToList();
+    }
+
+    public IReadOnlyList<LegacyStockJournalReadModel> ListJournalsBySource(
+        string trsReffId,
+        string? brgId = null,
+        string? layananId = null,
+        string? movementKindString = null)
+    {
+        var sql = """
+            SELECT
+                aa.fs_kd_trs,
+                aa.fs_kd_barang,
+                aa.fs_kd_layanan,
+                aa.fs_kd_po,
+                aa.fs_kd_do,
+                aa.fd_tgl_ed,
+                aa.fs_no_batch,
+                aa.fn_stok_in,
+                aa.fn_stok_out,
+                aa.fn_hpp,
+                aa.fs_kd_mutasi,
+                aa.fd_tgl_mutasi,
+                aa.fs_jam_mutasi,
+                aa.fd_tgl_jam_mutasi,
+                aa.fs_kd_jenis_mutasi,
+                aa.fs_kd_satuan
+            FROM tb_buku aa
+            WHERE aa.fs_kd_mutasi = @fs_kd_mutasi
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
+
+        if (!string.IsNullOrWhiteSpace(brgId))
+        {
+            sql += " AND aa.fs_kd_barang = @fs_kd_barang";
+            dp.AddParam("@fs_kd_barang", brgId, SqlDbType.VarChar);
+        }
+
+        if (!string.IsNullOrWhiteSpace(layananId))
+        {
+            sql += " AND aa.fs_kd_layanan = @fs_kd_layanan";
+            dp.AddParam("@fs_kd_layanan", layananId, SqlDbType.VarChar);
+        }
+
+        if (!string.IsNullOrWhiteSpace(movementKindString))
+        {
+            sql += " AND aa.fs_kd_jenis_mutasi = @fs_kd_jenis_mutasi";
+            dp.AddParam("@fs_kd_jenis_mutasi", movementKindString, SqlDbType.VarChar);
+        }
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var rows = conn.Read<LegacyBukuRow>(sql, dp) ?? [];
+        return rows
+            .Select(MapJournal)
+            .OrderBy(x => x.TglMutasi)
+            .ThenBy(x => x.LegacyBukuId, StringComparer.Ordinal)
+            .ToList();
+    }
+
     private static LegacyStockJournalReadModel MapJournal(LegacyBukuRow row) =>
         new(
-            LegacyBukuId: row.fs_kd_trs ?? string.Empty,
-            BrgId: row.fs_kd_barang ?? string.Empty,
-            BrgMasukReffId: row.fs_kd_do ?? string.Empty,
-            LayananId: row.fs_kd_layanan ?? string.Empty,
-            PoReffId: row.fs_kd_po ?? string.Empty,
-            NoBatch: row.fs_no_batch ?? string.Empty,
+            LegacyBukuId: row.fs_kd_trs?.Trim() ?? string.Empty,
+            BrgId: row.fs_kd_barang?.Trim() ?? string.Empty,
+            BrgMasukReffId: row.fs_kd_do?.Trim() ?? string.Empty,
+            LayananId: row.fs_kd_layanan?.Trim() ?? string.Empty,
+            PoReffId: row.fs_kd_po?.Trim() ?? string.Empty,
+            NoBatch: row.fs_no_batch?.Trim() ?? string.Empty,
             QtyIn: row.fn_stok_in,
             QtyOut: row.fn_stok_out,
             Hpp: row.fn_hpp,
-            MovementKindString: row.fs_kd_jenis_mutasi ?? string.Empty,
-            TrsReffId: string.IsNullOrWhiteSpace(row.fs_kd_mutasi) ? row.fs_kd_trs ?? string.Empty : row.fs_kd_mutasi,
+            MovementKindString: row.fs_kd_jenis_mutasi?.Trim() ?? string.Empty,
+            TrsReffId: string.IsNullOrWhiteSpace(row.fs_kd_mutasi) ? row.fs_kd_trs?.Trim() ?? string.Empty : row.fs_kd_mutasi.Trim(),
             TglMutasi: LegacyStockDateHelper.ComposeMutasiDateTime(row.fd_tgl_jam_mutasi, row.fd_tgl_mutasi, row.fs_jam_mutasi),
-            TglEd: LegacyStockDateHelper.ParseLegacyDate(row.fd_tgl_ed));
+            TglEd: LegacyStockDateHelper.ParseLegacyDate(row.fd_tgl_ed),
+            SatuanId: row.fs_kd_satuan?.Trim() ?? string.Empty);
 
     private static LegacyStockBalanceReadModel MapBalance(LegacyStokRow row) =>
         new(
-            LegacyStokId: row.fs_kd_trs ?? string.Empty,
-            BrgId: row.fs_kd_barang ?? string.Empty,
-            BrgMasukReffId: row.fs_kd_do ?? string.Empty,
-            LayananId: row.fs_kd_layanan ?? string.Empty,
+            LegacyStokId: row.fs_kd_trs?.Trim() ?? string.Empty,
+            BrgId: row.fs_kd_barang?.Trim() ?? string.Empty,
+            BrgMasukReffId: row.fs_kd_do?.Trim() ?? string.Empty,
+            LayananId: row.fs_kd_layanan?.Trim() ?? string.Empty,
             TglEd: LegacyStockDateHelper.ParseLegacyDate(row.fd_tgl_ed),
-            NoBatch: row.fs_no_batch ?? string.Empty,
+            NoBatch: row.fs_no_batch?.Trim() ?? string.Empty,
             QtySisa: row.fn_qty,
             Hpp: row.fn_hpp,
-            TglMasuk: LegacyStockDateHelper.ComposeDateAndTime(row.fd_tgl_do, row.fs_jam_do));
+            TglMasuk: LegacyStockDateHelper.ComposeDateAndTime(row.fd_tgl_do, row.fs_jam_do),
+            PoReffId: row.fs_kd_po?.Trim() ?? string.Empty,
+            SatuanId: row.fs_kd_satuan?.Trim() ?? string.Empty);
 
     // Test-facing wrappers (LegacyStockReadPortTest asserts these helpers).
     internal static DateTime ParseLegacyDate(string? value) => LegacyStockDateHelper.ParseLegacyDate(value);
@@ -166,6 +261,7 @@ public class LegacyStockReadPort : ILegacyStockReadPort
         public string? fs_jam_mutasi { get; init; }
         public string? fd_tgl_jam_mutasi { get; init; }
         public string? fs_kd_jenis_mutasi { get; init; }
+        public string? fs_kd_satuan { get; init; }
     }
 
     private sealed class LegacyStokRow
@@ -173,6 +269,7 @@ public class LegacyStockReadPort : ILegacyStockReadPort
         public string? fs_kd_trs { get; init; }
         public string? fs_kd_barang { get; init; }
         public string? fs_kd_layanan { get; init; }
+        public string? fs_kd_po { get; init; }
         public string? fs_kd_do { get; init; }
         public string? fd_tgl_ed { get; init; }
         public string? fs_no_batch { get; init; }
@@ -180,6 +277,7 @@ public class LegacyStockReadPort : ILegacyStockReadPort
         public decimal fn_hpp { get; init; }
         public string? fd_tgl_do { get; init; }
         public string? fs_jam_do { get; init; }
+        public string? fs_kd_satuan { get; init; }
     }
     // ReSharper restore InconsistentNaming
 }

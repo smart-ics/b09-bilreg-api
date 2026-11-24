@@ -54,7 +54,7 @@ public class GetAvailabilityAtLocationQueryTest
         // Deplete early DO fully.
         await SeedSale(qty: 5, trsReffId: "TRSAVL01S", tglEd: TglEdEarly);
 
-        var sut = new GetAvailabilityAtLocationHandler(_batchRepo);
+        var sut = new GetAvailabilityAtLocationHandler(_legacyRead);
         var result = await sut.Handle(
             new GetAvailabilityAtLocationQuery(BrgId, LayananId),
             default);
@@ -76,7 +76,7 @@ public class GetAvailabilityAtLocationQueryTest
         await SeedReceipt("DOSTLH2D", qty: 6, hpp: 45m, trsReffId: "TRSAVL02B",
             tglEd: TglEdLate, tglMutasi: new DateTime(2026, 7, 2, 9, 0, 0));
 
-        var sut = new GetAvailabilityAtLocationHandler(_batchRepo);
+        var sut = new GetAvailabilityAtLocationHandler(_legacyRead);
         var result = await sut.Handle(
             new GetAvailabilityAtLocationQuery(BrgId, LayananId, TglEd: TglEdLate),
             default);
@@ -98,7 +98,7 @@ public class GetAvailabilityAtLocationQueryTest
         await SeedReceipt("DOSTLH2F", qty: 8, hpp: 60m, trsReffId: "TRSAVL03B",
             tglEd: TglEdLate, tglMutasi: new DateTime(2026, 7, 2, 9, 0, 0));
 
-        var sut = new GetAvailabilityAtLocationHandler(_batchRepo);
+        var sut = new GetAvailabilityAtLocationHandler(_legacyRead);
         var result = await sut.Handle(
             new GetAvailabilityAtLocationQuery(BrgId, LayananId),
             default);
@@ -166,16 +166,9 @@ public class GetAvailabilityAtLocationQueryTest
             mediator.Object,
             Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
 
-        var uow = new StockConsequenceUnitOfWork(
-            _writer,
-            _batchRepo,
-            _mutasiRepo,
-            _bindingRepo,
-            _scopeRepo,
-            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
+        var uow = new StockConsequenceUnitOfWork(_writer);
 
-        return new PostGoodsReceiptConsequenceHandler(
-            gate, _batchRepo, _mutasiRepo, _bindingRepo, _scopeRepo, uow);
+        return new PostGoodsReceiptConsequenceHandler(_legacyRead, uow);
     }
 
     private PostSaleIssueConsequenceHandler CreateSaleHandler()
@@ -190,15 +183,8 @@ public class GetAvailabilityAtLocationQueryTest
             mediator.Object,
             Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
 
-        var uow = new StockConsequenceUnitOfWork(
-            _writer,
-            _batchRepo,
-            _mutasiRepo,
-            _bindingRepo,
-            _scopeRepo,
-            Options.Create(new StockLedgerCoexistenceOptions { CoexistenceEnabled = true }));
+        var uow = new StockConsequenceUnitOfWork(_writer);
 
-        return new PostSaleIssueConsequenceHandler(
-            gate, _batchRepo, _mutasiRepo, _bindingRepo, _scopeRepo, _legacyRead, uow);
+        return new PostSaleIssueConsequenceHandler(_legacyRead, uow);
     }
 }
