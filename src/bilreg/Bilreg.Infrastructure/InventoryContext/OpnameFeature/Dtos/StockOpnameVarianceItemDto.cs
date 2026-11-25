@@ -60,7 +60,7 @@ public record StockOpnameVarianceItemDto(
             FinalQuantity: model.IsVerified ? (model.RecountResult != null ? model.RecountResult.RecountQty : model.CountQty) : null
         );
 
-    public StockOpnameVarianceItemModel ToModel(StockOpnameRecountResultModel? recountResult = null) =>
+    public StockOpnameVarianceItemModel ToModel(StockOpnameRecountResultModel? recountResult = null, decimal hpp = 0m) =>
         new(
             varianceItemId: VarianceItemId,
             sessionId: SessionId,
@@ -71,8 +71,8 @@ public record StockOpnameVarianceItemDto(
             countQty: PhysicalCountQty,
             systemQty: SystemQtyAtCount,
             varianceQty: InitialVarianceQty,
-            hpp: 0m,
-            varianceValuation: 0m,
+            hpp: hpp,
+            varianceValuation: InitialVarianceQty * hpp,
             state: VerificationStatus == "Verified" ? 1 : 0,
             recountResult: recountResult
         );

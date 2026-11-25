@@ -1,4 +1,5 @@
 using Bilreg.Application.InventoryContext.OpnameFeature.Ports;
+using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
 using Bilreg.Domain.InventoryContext.OpnameFeature;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dals;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
@@ -17,14 +18,16 @@ public class StockOpnameRepoTests
     private readonly Mock<IStockOpnameVarianceItemDal> _varianceItemDalMock = new();
     private readonly Mock<IStockOpnameRecountResultDal> _recountResultDalMock = new();
     private readonly Mock<IStockOpnameAdjustmentDal> _adjustmentDalMock = new();
+    private readonly Mock<IOpnameItemInfoProvider> _itemInfoProviderMock = new();
 
-    private StockOpnameSessionRepo CreateSessionRepo() =>
+    private StockOpnameSessionRepo CreateSessionRepo(IOpnameItemInfoProvider? itemInfoProvider = null) =>
         new(
             _sessionDalMock.Object,
             _scopeItemDalMock.Object,
             _countedItemDalMock.Object,
             _varianceItemDalMock.Object,
-            _recountResultDalMock.Object);
+            _recountResultDalMock.Object,
+            itemInfoProvider ?? _itemInfoProviderMock.Object);
 
     private StockOpnameAdjustmentRepo CreateAdjustmentRepo() =>
         new(_adjustmentDalMock.Object);
@@ -97,6 +100,7 @@ public class StockOpnameRepoTests
         _countedItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([countedDto]);
         _varianceItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([varianceDto]);
         _recountResultDalMock.Setup(d => d.ListBySession("SES-001")).Returns([recountDto]);
+        _itemInfoProviderMock.Setup(d => d.GetHpp("BRG01")).Returns(2500m);
 
         var sut = CreateSessionRepo();
 
@@ -116,9 +120,74 @@ public class StockOpnameRepoTests
         model.CountedItems[0].TotalCountQty.Should().Be(95);
         model.VarianceItems.Should().HaveCount(1);
         model.VarianceItems[0].VarianceQty.Should().Be(-5);
+        model.VarianceItems[0].Hpp.Should().Be(2500m);
+        model.VarianceItems[0].VarianceValuation.Should().Be(-5 * 2500m);
         model.VarianceItems[0].RecountResult.Should().NotBeNull();
         model.VarianceItems[0].RecountResult!.FinalVarianceQty.Should().Be(-2);
+        model.VarianceItems[0].RecountResult!.FinalValuation.Should().Be(-2 * 2500m);
         model.VarianceItems[0].FinalVarianceQty.Should().Be(-2);
+        model.VarianceItems[0].FinalValuation.Should().Be(-2 * 2500m);
+
+        _itemInfoProviderMock.Verify(d => d.GetHpp("BRG01"), Times.Once);
+    }
+
+    [Fact]
+    public void LoadEntity_WhenVarianceItemsExist_CallsItemInfoProvider_AndHydratesHppAndVarianceValuation()
+    {
+        // Arrange
+        const string sessionId = "SES-VAR-HPP";
+        const string brgId = "BRG-VAL-01";
+        const decimal resolvedHpp = 15000m;
+        const decimal varianceQty = 4m;
+
+        var sessionDto = new StockOpnameSessionDto(
+            SessionId: sessionId,
+            LayananId: "FAR01",
+            ScopeType: "Partial",
+            Status: "Verifying",
+            CutoffTime: new DateTime(2026, 11, 25, 8, 0, 0),
+            StartedAt: null,
+            CountingFinishedAt: new DateTime(2026, 11, 25, 10, 0, 0),
+            VerifiedAt: null,
+            ApprovedAt: null,
+            ApprovedBy: "",
+            RejectedAt: null,
+            RejectedBy: "",
+            RejectionNotes: "",
+            RejectionDisposition: null,
+            CancelledAt: null,
+            CancelledBy: "",
+            CancellationReason: "",
+            CreatedBy: "USR01",
+            CreatedAt: new DateTime(2026, 11, 25, 8, 0, 0)
+        );
+
+        var varianceDto = new StockOpnameVarianceItemDto(
+            sessionId, brgId, "BATCH-V", "2027-12-31", "BOT", 14, 10, varianceQty, "PendingVerification", null);
+
+        _sessionDalMock.Setup(d => d.GetData(sessionId)).Returns(sessionDto);
+        _scopeItemDalMock.Setup(d => d.ListBySession(sessionId)).Returns([]);
+        _countedItemDalMock.Setup(d => d.ListBySession(sessionId)).Returns([]);
+        _varianceItemDalMock.Setup(d => d.ListBySession(sessionId)).Returns([varianceDto]);
+        _recountResultDalMock.Setup(d => d.ListBySession(sessionId)).Returns([]);
+
+        _itemInfoProviderMock.Setup(p => p.GetHpp(brgId)).Returns(resolvedHpp);
+        var sut = CreateSessionRepo();
+
+        // Act
+        var result = sut.LoadEntity(new StockOpnameSessionKey(sessionId));
+
+        // Assert
+        result.HasValue.Should().BeTrue();
+        var model = result.Value;
+        _itemInfoProviderMock.Verify(p => p.GetHpp(brgId), Times.Once);
+
+        model.VarianceItems.Should().HaveCount(1);
+        var item = model.VarianceItems[0];
+        item.BrgId.Should().Be(brgId);
+        item.Hpp.Should().Be(resolvedHpp);
+        item.VarianceValuation.Should().Be(varianceQty * resolvedHpp);
+        item.FinalValuation.Should().Be(varianceQty * resolvedHpp);
     }
 
     [Fact]

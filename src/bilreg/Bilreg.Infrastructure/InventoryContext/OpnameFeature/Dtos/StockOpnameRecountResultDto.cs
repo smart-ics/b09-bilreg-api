@@ -83,7 +83,7 @@ public record StockOpnameRecountResultDto(
         );
     }
 
-    public StockOpnameRecountResultModel ToModel()
+    public StockOpnameRecountResultModel ToModel(decimal hpp = 0m)
     {
         return new StockOpnameRecountResultModel(
             recountResultId: RecountResultId,
@@ -91,7 +91,7 @@ public record StockOpnameRecountResultDto(
             recountQty: RecountQty,
             reconstructedSystemQty: SystemQtyAtRecount,
             finalVarianceQty: ResidualVarianceQty,
-            finalValuation: 0m,
+            finalValuation: ResidualVarianceQty * hpp,
             discrepancyReason: ParseReason(DiscrepancyReason),
             notes: SupervisorNotes ?? string.Empty,
             recountedBy: SupervisorUserId ?? string.Empty,
