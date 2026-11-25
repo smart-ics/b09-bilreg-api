@@ -40,9 +40,38 @@ public class LabResultPaPdfRenderer
 
         var y = Margin;
 
-        // 1. Hospital Header
+        // 1. Hospital Kop Header
         gfx.DrawString(view.HospitalName, fontHospital, XBrushes.Black, new XPoint(Margin, y));
-        y += LineHeight * 1.4;
+        y += LineHeight * 1.1;
+
+        var addressText = string.Join(", ", new[] { view.HospitalAddress, view.HospitalCity }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(addressText))
+        {
+            gfx.DrawString(addressText, fontSmall, new XSolidBrush(XColor.FromArgb(71, 85, 105)), new XPoint(Margin, y));
+            y += LineHeight * 0.9;
+        }
+
+        var contactParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(view.HospitalPhone)) contactParts.Add($"Telp: {view.HospitalPhone}");
+        if (!string.IsNullOrWhiteSpace(view.HospitalEmail)) contactParts.Add($"Email: {view.HospitalEmail}");
+        var contactText = string.Join(" | ", contactParts);
+        if (!string.IsNullOrWhiteSpace(contactText))
+        {
+            gfx.DrawString(contactText, fontSmall, new XSolidBrush(XColor.FromArgb(71, 85, 105)), new XPoint(Margin, y));
+            y += LineHeight * 0.9;
+        }
+
+        if (!string.IsNullOrWhiteSpace(addressText) || !string.IsNullOrWhiteSpace(contactText))
+        {
+            y += 2;
+            var dividerWidth = page.Width.Point - Margin * 2;
+            gfx.DrawLine(new XPen(XColor.FromArgb(203, 213, 225), 0.75), Margin, y, Margin + dividerWidth, y);
+            y += LineHeight * 0.9;
+        }
+        else
+        {
+            y += LineHeight * 0.5;
+        }
 
         // Document Title
         gfx.DrawString("HASIL PEMERIKSAAN PATOLOGI ANATOMI", fontTitle, new XSolidBrush(XColor.FromArgb(15, 23, 42)), new XPoint(Margin, y));

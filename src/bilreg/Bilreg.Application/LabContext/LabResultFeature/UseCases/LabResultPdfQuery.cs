@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.PatternHelper;
@@ -35,7 +36,11 @@ public record LabResultPdfView(
     string CriticalNote = "",
     LaboratoryServiceType ServiceType = LaboratoryServiceType.ClinicalPathology,
     string DokterPerujukName = "",
-    string LayananPerujukName = "");
+    string LayananPerujukName = "",
+    string HospitalAddress = "",
+    string HospitalCity = "",
+    string HospitalPhone = "",
+    string HospitalEmail = "");
 
 public record LabResultPdfItemView(
     string TestName,
@@ -58,17 +63,20 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
     private readonly ILabResultPdfRenderer _pdfRenderer;
     private readonly LabResultPdfOptions _pdfOptions;
+    private readonly IGetHospitalProfileService _hospitalProfileService;
 
     public LabResultPdfHandler(
         ILabOrderRepo labOrderRepo,
         ILabResultDocumentRepo labResultDocumentRepo,
         ILabResultPdfRenderer pdfRenderer,
-        IOptions<LabResultPdfOptions> pdfOptions)
+        IOptions<LabResultPdfOptions> pdfOptions,
+        IGetHospitalProfileService hospitalProfileService)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
         _pdfRenderer = pdfRenderer;
         _pdfOptions = pdfOptions.Value;
+        _hospitalProfileService = hospitalProfileService;
     }
 
     public Task<LabResultPdfFile> Handle(LabResultPdfQuery request, CancellationToken cancellationToken)
@@ -116,8 +124,13 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             return MapItem(item, disciplineName, testGroupName);
         }).ToList();
 
+        var profile = _hospitalProfileService.Execute();
+        var hospitalName = !string.IsNullOrWhiteSpace(profile?.NamaRs)
+            ? profile.NamaRs
+            : _pdfOptions.HospitalName;
+
         return new LabResultPdfView(
-            HospitalName: _pdfOptions.HospitalName,
+            HospitalName: hospitalName,
             OrderNo: order.OrderNo,
             OrderId: order.OrderId,
             RegId: order.Patient.RegId,
@@ -138,7 +151,11 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             CriticalNote: result.CriticalNote,
             ServiceType: order.ServiceType,
             DokterPerujukName: order.DokterPerujukName,
-            LayananPerujukName: order.LayananPerujukName);
+            LayananPerujukName: order.LayananPerujukName,
+            HospitalAddress: profile?.Alamat ?? string.Empty,
+            HospitalCity: profile?.Kota ?? string.Empty,
+            HospitalPhone: profile?.Telepon ?? string.Empty,
+            HospitalEmail: profile?.Email ?? string.Empty);
     }
 
     private static LabResultPdfItemView MapItem(
