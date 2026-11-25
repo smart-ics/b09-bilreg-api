@@ -73,7 +73,7 @@ Rencana kerja ini mencakup perubahan pada backend Core Bilreg (`b09-bilreg-api`)
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
 | P1 - Application View Model Enrichment | IMPLEMENTED | GO | 1/1 |
-| P2 - Specialized PDF Renderers & Strategy Orchestration | NOT-STARTED | NOT-REVIEWED | 0/4 |
+| P2 - Specialized PDF Renderers & Strategy Orchestration | IN-PROGRESS | NOT-REVIEWED | 2/4 |
 | P3 - Frontend Dialog Preview Alignment | NOT-STARTED | NOT-REVIEWED | 0/1 |
 
 ---
@@ -103,13 +103,13 @@ Notes: Diimplementasikan pengayaan LabResultPdfView (ServiceType, DokterPerujukN
 
 ## P2 - Specialized PDF Renderers & Strategy Orchestration
 
-Implementation Status: NOT-STARTED  
+Implementation Status: IN-PROGRESS  
 Review Status: NOT-REVIEWED  
 
 ### P2-S02
 Title: Implementasi LabResultPkPdfRenderer (Tabel 5 Kolom Berjenjang Disiplin & Group)  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Membangun renderer PDF khusus untuk Patologi Klinik (`LabResultPkPdfRenderer`) yang mengelompokkan analit berdasarkan Disiplin (Level 1) dan Group Pemeriksaan (Level 2), menampilkan hanya nama parameter di kolom pemeriksaan, menyajikan tabel 5 kolom terpisah (`Parameter` | `Hasil` | `Satuan` | `Nilai Rujukan` | `Flag`), serta mempertahankan banner nilai kritis dan tanda tangan Sp.PK.  
 Depends On: P1-S01  
 Repository: `b09-bilreg-api`  
@@ -122,13 +122,13 @@ Completion Criteria:
 - Kolom `Pemeriksaan / Parameter` hanya menampilkan nama parameter (`ComponentName` atau fallback `TestName`), tanpa format ganda `TestName / ComponentName`.
 - Menampilkan kotak peringatan merah jika terdapat flag kritis (`FlagLabel == "C"`).
 - Menampilkan catatan ekspertise Patologi Klinik dan tanda tangan validator/Sp.PK.  
-Notes: Menggunakan PdfSharp dengan pagination handling yang aman dari pemotongan baris.
+Notes: Mengimplementasikan LabResultPkPdfRenderer di Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultPkPdfRenderer.cs dengan tabel 5 kolom berjenjang (Disiplin shaded Level 1, Group bullet indent Level 2, Parameter indent Level 3), pemformatan nama parameter tunggal (ComponentName / fallback TestName), nilai tanpa satuan di kolom hasil, alert banner nilai kritis merah, catatan ekspertise, tanda tangan validator Sp.PK digital, dan pagination handling aman. Pengujian unit komprehensif ditambahkan di Bilreg.Test/LabContext/LabResultFeature/LabResultPkPdfRendererTest.cs dan seluruh pengujian lolos (3/3 passed).
 
 ---
 
 ### P2-S03
 Title: Implementasi LabResultPaPdfRenderer (Laporan Naratif Diagnosis Patologi Anatomi)  
-Implementation Status: NOT-STARTED  
+Implementation Status: IN-PROGRESS  
 Review Status: NOT-REVIEWED  
 Objective: Membangun renderer PDF khusus untuk Patologi Anatomi (`LabResultPaPdfRenderer`) yang menyajikan laporan diagnostik naratif formal dengan identitas nomor registrasi PA, sediaan/slide, topografi spesimen, uraian makroskopis & mikroskopis, blok sorotan diagnosis patologi, rekomendasi klinis, dan tanda tangan Sp.PA.  
 Depends On: P1-S01  
@@ -147,7 +147,7 @@ Notes: Mendukung dokumen multi-halaman jika teks makroskopis/mikroskopis panjang
 
 ### P2-S04
 Title: Implementasi LabResultMicroPdfRenderer (Laporan Kultur & Matriks Antibiogram AST)  
-Implementation Status: NOT-STARTED  
+Implementation Status: IMPLEMENTED  
 Review Status: NOT-REVIEWED  
 Objective: Membangun renderer PDF khusus untuk Mikrobiologi (`LabResultMicroPdfRenderer`) yang menyajikan sediaan langsung mikroskopis, hasil biakan & koloni kuman, serta tabel kepekaan antibiotik (AST) dengan deteksi otomatis kondisi steril (tanpa pertumbuhan kuman).  
 Depends On: P1-S01  
@@ -160,7 +160,7 @@ Completion Criteria:
 - Jika terdapat pertumbuhan kuman: Menyajikan tabel antibiogram 3 kolom: `[Nama Antibiotik]` | `[Nilai MIC]` | `[Interpretasi (S / I / R)]` beserta keterangan legenda (S=Sensitif, I=Intermediet, R=Resisten).
 - Jika biakan steril (tidak ada pertumbuhan kuman): Menyembunyikan tabel antibiogram dan menampilkan kalimat informatif penjelas.
 - Area verifikasi menampilkan label penanggung jawab "Dokter Spesialis Mikrobiologi Klinik (Sp.MK)".  
-Notes: Mengabaikan baris AST kosong atau tidak lengkap.
+Notes: Mengimplementasikan LabResultMicroPdfRenderer di Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultMicroPdfRenderer.cs dengan struktur laporan mikrobiologi formal: judul 'HASIL PEMERIKSAAN MIKROBIOLOGI', patient info header 2-kolom, Seksi 1 Sediaan Mikroskopis Langsung (MIC_DIRECT_SMEAR), Seksi 2 Hasil Biakan & Identifikasi Mikroorganisme (Status Pertumbuhan, Hitung Koloni, Organisme Diisolasi), Seksi 3 Uji Kepekaan Antibiotik (AST) dengan deteksi otomatis kondisi steril (banner informatif tanpa tabel AST jika tidak ada pertumbuhan) vs tabel antibiogram 3 kolom (Nama Antibiotik, Nilai MIC, Sensitivitas/Interpretasi) dengan highlighting resisten dan legenda standar CLSI/EUCAST, catatan ekspertise Mikrobiologi Klinik, blok tanda tangan digital penanggung jawab Sp.MK, serta safe multi-page pagination with continuation headers. Pengujian unit komprehensif ditambahkan di Bilreg.Test/LabContext/LabResultFeature/LabResultMicroPdfRendererTest.cs (5/5 passed).
 
 ---
 
