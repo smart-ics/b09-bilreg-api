@@ -7,7 +7,7 @@ namespace Bilreg.Test.InventoryContext.OpnameFeature;
 public class StockOpnameSessionModelTests
 {
     private const string DefaultSessionId = "OPN-202611-0001";
-    private const string DefaultLayananId = "FAR-01";
+    private const string DefaultLayananId = "FAR01";
     private const string DefaultUser = "USER-SPV";
     private readonly DateTime _baseDate = new(2026, 11, 20, 8, 0, 0);
 
@@ -124,10 +124,12 @@ public class StockOpnameSessionModelTests
     }
 
     [Theory]
-    [InlineData("", "FAR-01", "USER")]
-    [InlineData("   ", "FAR-01", "USER")]
+    [InlineData("", "FAR01", "USER")]
+    [InlineData("   ", "FAR01", "USER")]
     [InlineData("OPN-1", "", "USER")]
-    [InlineData("OPN-1", "FAR-01", "")]
+    [InlineData("OPN-1", "FAR01", "")]
+    [InlineData("OPN-1", "FAR012", "USER")]
+    [InlineData("SO123456789012345678901", "FAR01", "USER")]
     public void Create_InvalidParameters_ShouldThrowArgumentException(string sessionId, string layananId, string createdBy)
     {
         var act = () => StockOpnameSessionModel.Create(

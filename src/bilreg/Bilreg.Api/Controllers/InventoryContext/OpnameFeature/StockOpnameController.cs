@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
 using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Queries;
 using Bilreg.Domain.InventoryContext.OpnameFeature;
@@ -9,13 +10,117 @@ using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.InventoryContext.OpnameFeature;
 
-public record CreateSessionRequest(
-    string LayananId,
-    SessionScopeEnum ScopeMode,
-    DateTime CutoffDate,
-    string? CreatedBy = null,
-    IEnumerable<CreateSessionScopeItemRequest>? ScopeItems = null,
-    string? SessionId = null);
+public class CreateSessionRequest
+{
+    public string LayananId { get; set; } = string.Empty;
+    public SessionScopeEnum? ScopeMode { get; set; }
+    public object? Scope { get; set; }
+    public DateTime? CutoffDate { get; set; }
+    public DateTime? CutoffTime { get; set; }
+    public string? CreatedBy { get; set; }
+    public string? OpenedBy { get; set; }
+    public string? Notes { get; set; }
+    public IEnumerable<CreateSessionScopeItemRequest>? ScopeItems { get; set; }
+    public string? SessionId { get; set; }
+
+    public CreateSessionRequest() { }
+
+    public CreateSessionRequest(
+        string LayananId,
+        SessionScopeEnum ScopeMode,
+        DateTime CutoffDate,
+        string? CreatedBy = null,
+        IEnumerable<CreateSessionScopeItemRequest>? ScopeItems = null,
+        string? SessionId = null)
+    {
+        this.LayananId = LayananId;
+        this.ScopeMode = ScopeMode;
+        this.CutoffDate = CutoffDate;
+        this.CreatedBy = CreatedBy;
+        this.ScopeItems = ScopeItems;
+        this.SessionId = SessionId;
+    }
+
+    public SessionScopeEnum ResolvedScopeMode
+    {
+        get
+        {
+            if (ScopeMode.HasValue)
+                return ScopeMode.Value;
+
+            if (Scope is not null)
+            {
+                if (Scope is SessionScopeEnum sse)
+                    return sse;
+
+                if (Scope is JsonElement elem)
+                {
+                    if (elem.ValueKind == JsonValueKind.Number && elem.TryGetInt32(out var jsonInt) && Enum.IsDefined(typeof(SessionScopeEnum), jsonInt))
+                        return (SessionScopeEnum)jsonInt;
+                    if (elem.ValueKind == JsonValueKind.String)
+                    {
+                        var jsonStr = elem.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(jsonStr))
+                        {
+                            if (Enum.TryParse<SessionScopeEnum>(jsonStr, ignoreCase: true, out var parsed))
+                                return parsed;
+                            if (int.TryParse(jsonStr, out var intParsed) && Enum.IsDefined(typeof(SessionScopeEnum), intParsed))
+                                return (SessionScopeEnum)intParsed;
+                        }
+                    }
+                }
+                else if (Scope is string str)
+                {
+                    var trimmed = str.Trim();
+                    if (Enum.TryParse<SessionScopeEnum>(trimmed, ignoreCase: true, out var parsed))
+                        return parsed;
+                    if (int.TryParse(trimmed, out var intParsed) && Enum.IsDefined(typeof(SessionScopeEnum), intParsed))
+                        return (SessionScopeEnum)intParsed;
+                }
+                else
+                {
+                    try
+                    {
+                        var intVal = Convert.ToInt32(Scope);
+                        if (Enum.IsDefined(typeof(SessionScopeEnum), intVal))
+                            return (SessionScopeEnum)intVal;
+                    }
+                    catch
+                    {
+                        // Fallback to default
+                    }
+                }
+            }
+
+            return SessionScopeEnum.Full;
+        }
+    }
+
+    public string? ResolvedCreatedBy
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(CreatedBy))
+                return CreatedBy;
+            if (!string.IsNullOrWhiteSpace(OpenedBy))
+                return OpenedBy;
+            return null;
+        }
+    }
+
+    public DateTime ResolvedCutoffDate
+    {
+        get
+        {
+            var minSqlDate = new DateTime(1753, 1, 1);
+            if (CutoffDate.HasValue && CutoffDate.Value > minSqlDate)
+                return CutoffDate.Value;
+            if (CutoffTime.HasValue && CutoffTime.Value > minSqlDate)
+                return CutoffTime.Value;
+            return DateTime.Now;
+        }
+    }
+}
 
 public record SubmitCountingRequest(
     string? SubmittedBy = null,
@@ -83,13 +188,13 @@ public class StockOpnameController : ControllerBase
     [HttpPost("session")]
     public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest req)
     {
-        var createdBy = !string.IsNullOrWhiteSpace(req.CreatedBy)
-            ? req.CreatedBy
+        var createdBy = !string.IsNullOrWhiteSpace(req.ResolvedCreatedBy)
+            ? req.ResolvedCreatedBy
             : GetCurrentUserId();
         var cmd = new CreateSessionCommand(
             req.LayananId,
-            req.ScopeMode,
-            req.CutoffDate,
+            req.ResolvedScopeMode,
+            req.ResolvedCutoffDate,
             createdBy,
             req.ScopeItems,
             req.SessionId);

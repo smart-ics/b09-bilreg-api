@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.InventoryContext.OpnameFeature;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -14,21 +15,21 @@ public interface IStockOpnameSessionDal :
 {
     StockOpnameSessionDto? GetData(string sessionId);
     bool HasActiveSessionAtLocation(string layananId);
-    IEnumerable<StockOpnameSessionDto> ListData(string? layananId = null, int? state = null, DateTime? fromDate = null, DateTime? toDate = null);
+    IEnumerable<StockOpnameSessionDto> ListData(string? layananId = null, string? status = null, DateTime? fromDate = null, DateTime? toDate = null);
+    IEnumerable<StockOpnameSessionDto> ListData(string? layananId, int? state, DateTime? fromDate = null, DateTime? toDate = null);
     void Delete(string sessionId);
 }
 
 public class StockOpnameSessionDal : IStockOpnameSessionDal
 {
     private const string SelectColumns = """
-        SessionId, LayananId, ScopeMode, State, CutoffDate,
-        CreatedBy, CreatedAt,
-        CountingSubmittedBy, CountingSubmittedAt,
-        VerifiedBy, VerifiedAt,
-        ApprovedBy, ApprovedAt,
-        RejectedBy, RejectedAt,
-        CancelledBy, CancelledAt,
-        CancelReason, RevisionNotes
+        SessionId, LayananId, ScopeType, Status, CutoffTime,
+        StartedAt, CountingFinishedAt,
+        VerifiedAt,
+        ApprovedAt, ApprovedBy,
+        RejectedAt, RejectedBy, RejectionNotes, RejectionDisposition,
+        CancelledAt, CancelledBy, CancellationReason,
+        CreatedBy, CreatedAt
         """;
 
     private readonly DatabaseOptions _opt;
@@ -44,14 +45,13 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
             INSERT INTO FARPU_StockOpnameSession (
                 {SelectColumns}
             ) VALUES (
-                @SessionId, @LayananId, @ScopeMode, @State, @CutoffDate,
-                @CreatedBy, @CreatedAt,
-                @CountingSubmittedBy, @CountingSubmittedAt,
-                @VerifiedBy, @VerifiedAt,
-                @ApprovedBy, @ApprovedAt,
-                @RejectedBy, @RejectedAt,
-                @CancelledBy, @CancelledAt,
-                @CancelReason, @RevisionNotes
+                @SessionId, @LayananId, @ScopeType, @Status, @CutoffTime,
+                @StartedAt, @CountingFinishedAt,
+                @VerifiedAt,
+                @ApprovedAt, @ApprovedBy,
+                @RejectedAt, @RejectedBy, @RejectionNotes, @RejectionDisposition,
+                @CancelledAt, @CancelledBy, @CancellationReason,
+                @CreatedBy, @CreatedAt
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -63,23 +63,23 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
         const string sql = """
             UPDATE FARPU_StockOpnameSession SET
                 LayananId = @LayananId,
-                ScopeMode = @ScopeMode,
-                State = @State,
-                CutoffDate = @CutoffDate,
-                CreatedBy = @CreatedBy,
-                CreatedAt = @CreatedAt,
-                CountingSubmittedBy = @CountingSubmittedBy,
-                CountingSubmittedAt = @CountingSubmittedAt,
-                VerifiedBy = @VerifiedBy,
+                ScopeType = @ScopeType,
+                Status = @Status,
+                CutoffTime = @CutoffTime,
+                StartedAt = @StartedAt,
+                CountingFinishedAt = @CountingFinishedAt,
                 VerifiedAt = @VerifiedAt,
-                ApprovedBy = @ApprovedBy,
                 ApprovedAt = @ApprovedAt,
-                RejectedBy = @RejectedBy,
+                ApprovedBy = @ApprovedBy,
                 RejectedAt = @RejectedAt,
-                CancelledBy = @CancelledBy,
+                RejectedBy = @RejectedBy,
+                RejectionNotes = @RejectionNotes,
+                RejectionDisposition = @RejectionDisposition,
                 CancelledAt = @CancelledAt,
-                CancelReason = @CancelReason,
-                RevisionNotes = @RevisionNotes
+                CancelledBy = @CancelledBy,
+                CancellationReason = @CancellationReason,
+                CreatedBy = @CreatedBy,
+                CreatedAt = @CreatedAt
             WHERE SessionId = @SessionId
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -105,7 +105,7 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
             SELECT COUNT(1)
             FROM FARPU_StockOpnameSession WITH (NOLOCK)
             WHERE LayananId = @LayananId
-              AND State IN (0, 1, 2, 3, 4)
+              AND Status NOT IN ('Approved', 'Rejected', 'Cancelled')
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@LayananId", layananId, SqlDbType.VarChar);
@@ -115,7 +115,7 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
 
     public IEnumerable<StockOpnameSessionDto> ListData(
         string? layananId = null,
-        int? state = null,
+        string? status = null,
         DateTime? fromDate = null,
         DateTime? toDate = null)
     {
@@ -132,21 +132,21 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
             dp.AddParam("@LayananId", layananId, SqlDbType.VarChar);
         }
 
-        if (state.HasValue)
+        if (!string.IsNullOrWhiteSpace(status))
         {
-            sql += " AND State = @State";
-            dp.AddParam("@State", state.Value, SqlDbType.Int);
+            sql += " AND Status = @Status";
+            dp.AddParam("@Status", status, SqlDbType.VarChar);
         }
 
         if (fromDate.HasValue)
         {
-            sql += " AND CutoffDate >= @FromDate";
+            sql += " AND CutoffTime >= @FromDate";
             dp.AddParam("@FromDate", fromDate.Value, SqlDbType.DateTime);
         }
 
         if (toDate.HasValue)
         {
-            sql += " AND CutoffDate <= @ToDate";
+            sql += " AND CutoffTime <= @ToDate";
             dp.AddParam("@ToDate", toDate.Value, SqlDbType.DateTime);
         }
 
@@ -154,6 +154,16 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<StockOpnameSessionDto>(sql, dp);
+    }
+
+    public IEnumerable<StockOpnameSessionDto> ListData(
+        string? layananId,
+        int? state,
+        DateTime? fromDate = null,
+        DateTime? toDate = null)
+    {
+        var statusStr = state.HasValue ? ((SessionStatusEnum)state.Value).ToString() : null;
+        return ListData(layananId, statusStr, fromDate, toDate);
     }
 
     public void Delete(string sessionId)
@@ -168,28 +178,29 @@ public class StockOpnameSessionDal : IStockOpnameSessionDal
         conn.Execute(sql, dp);
     }
 
-    private static DynamicParameters BuildParams(StockOpnameSessionDto dto)
+    internal static DynamicParameters BuildParams(StockOpnameSessionDto dto)
     {
         var dp = new DynamicParameters();
         dp.AddParam("@SessionId", dto.SessionId, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
-        dp.AddParam("@ScopeMode", dto.ScopeMode, SqlDbType.Int);
-        dp.AddParam("@State", dto.State, SqlDbType.Int);
-        dp.AddParam("@CutoffDate", dto.CutoffDate, SqlDbType.DateTime);
+        dp.AddParam("@ScopeType", dto.ScopeType, SqlDbType.VarChar);
+        dp.AddParam("@Status", dto.Status, SqlDbType.VarChar);
+        var cutoffTime = dto.CutoffTime > new DateTime(1753, 1, 1) ? dto.CutoffTime : DateTime.Now;
+        dp.AddParam("@CutoffTime", cutoffTime, SqlDbType.DateTime);
+        dp.AddParam("@StartedAt", dto.StartedAt, SqlDbType.DateTime);
+        dp.AddParam("@CountingFinishedAt", dto.CountingFinishedAt, SqlDbType.DateTime);
+        dp.AddParam("@VerifiedAt", dto.VerifiedAt, SqlDbType.DateTime);
+        dp.AddParam("@ApprovedAt", dto.ApprovedAt, SqlDbType.DateTime);
+        dp.AddParam("@ApprovedBy", dto.ApprovedBy ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@RejectedAt", dto.RejectedAt, SqlDbType.DateTime);
+        dp.AddParam("@RejectedBy", dto.RejectedBy ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@RejectionNotes", dto.RejectionNotes ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@RejectionDisposition", dto.RejectionDisposition ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@CancelledAt", dto.CancelledAt, SqlDbType.DateTime);
+        dp.AddParam("@CancelledBy", dto.CancelledBy ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@CancellationReason", dto.CancellationReason ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@CreatedBy", dto.CreatedBy, SqlDbType.VarChar);
         dp.AddParam("@CreatedAt", dto.CreatedAt, SqlDbType.DateTime);
-        dp.AddParam("@CountingSubmittedBy", dto.CountingSubmittedBy, SqlDbType.VarChar);
-        dp.AddParam("@CountingSubmittedAt", dto.CountingSubmittedAt, SqlDbType.DateTime);
-        dp.AddParam("@VerifiedBy", dto.VerifiedBy, SqlDbType.VarChar);
-        dp.AddParam("@VerifiedAt", dto.VerifiedAt, SqlDbType.DateTime);
-        dp.AddParam("@ApprovedBy", dto.ApprovedBy, SqlDbType.VarChar);
-        dp.AddParam("@ApprovedAt", dto.ApprovedAt, SqlDbType.DateTime);
-        dp.AddParam("@RejectedBy", dto.RejectedBy, SqlDbType.VarChar);
-        dp.AddParam("@RejectedAt", dto.RejectedAt, SqlDbType.DateTime);
-        dp.AddParam("@CancelledBy", dto.CancelledBy, SqlDbType.VarChar);
-        dp.AddParam("@CancelledAt", dto.CancelledAt, SqlDbType.DateTime);
-        dp.AddParam("@CancelReason", dto.CancelReason, SqlDbType.VarChar);
-        dp.AddParam("@RevisionNotes", dto.RevisionNotes, SqlDbType.VarChar);
         return dp;
     }
 }

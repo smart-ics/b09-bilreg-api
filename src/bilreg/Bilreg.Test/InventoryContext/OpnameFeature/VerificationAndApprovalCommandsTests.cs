@@ -675,6 +675,42 @@ public class VerificationAndApprovalCommandsTests
                 n.Items.Count == 2),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ApproveSession_WhenMediatorPublishThrows_ShouldPropagateExceptionAndRollbackTransaction()
+    {
+        // Arrange
+        var varItemSurplus = CreateVarianceItem("VAR-01", "SES-001", "BRG01", "BATCH01", "2027-12-31", countQty: 110, systemQty: 100, hpp: 1000);
+        varItemSurplus.MarkVerifiedWithReason(DiscrepancyReasonEnum.ADMIN_ERROR, "Surplus", "SPV01", DateTime.Now);
+
+        var session = CreateSampleSession(
+            sessionId: "SES-001",
+            layananId: "FAR01",
+            status: SessionStatusEnum.WaitingApproval,
+            varianceItems: [varItemSurplus]);
+
+        _sessionRepoMock
+            .Setup(r => r.LoadEntity(It.IsAny<StockOpnameSessionKey>()))
+            .Returns(MayBe.From(session));
+
+        _mediatorMock
+            .Setup(m => m.Publish(It.IsAny<StockOpnameApprovedNotification>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Downstream stock adjustment failure: String or binary data would be truncated."));
+
+        var sut = new ApproveSessionHandler(_sessionRepoMock.Object, _mediatorMock.Object);
+        var approvedAt = new DateTime(2026, 11, 20, 14, 0, 0);
+        var cmd = new ApproveSessionCommand(session.SessionId, "MGR01", approvedAt);
+
+        // Act
+        var act = () => sut.Handle(cmd, CancellationToken.None);
+
+        // Assert: Exception is propagated, preventing trans.Complete()
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*String or binary data would be truncated*");
+
+        _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
+        _mediatorMock.Verify(m => m.Publish(It.IsAny<StockOpnameApprovedNotification>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
     #endregion
 
     #region REJECT SESSION TESTS

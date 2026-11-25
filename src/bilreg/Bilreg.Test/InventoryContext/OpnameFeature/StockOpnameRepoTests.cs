@@ -65,38 +65,38 @@ public class StockOpnameRepoTests
         var sessionDto = new StockOpnameSessionDto(
             SessionId: "SES-001",
             LayananId: "FAR01",
-            ScopeMode: (int)SessionScopeEnum.Partial,
-            State: (int)SessionStatusEnum.Verifying,
-            CutoffDate: new DateTime(2026, 11, 20, 8, 0, 0),
-            CreatedBy: "USR01",
-            CreatedAt: new DateTime(2026, 11, 20, 8, 0, 0),
-            CountingSubmittedBy: "USR02",
-            CountingSubmittedAt: new DateTime(2026, 11, 20, 10, 0, 0),
-            VerifiedBy: "SPV01",
+            ScopeType: "Partial",
+            Status: "Verifying",
+            CutoffTime: new DateTime(2026, 11, 20, 8, 0, 0),
+            StartedAt: null,
+            CountingFinishedAt: new DateTime(2026, 11, 20, 10, 0, 0),
             VerifiedAt: new DateTime(2026, 11, 20, 11, 0, 0),
-            ApprovedBy: "",
             ApprovedAt: null,
-            RejectedBy: "",
+            ApprovedBy: "",
             RejectedAt: null,
-            CancelledBy: "",
+            RejectedBy: "",
+            RejectionNotes: "",
+            RejectionDisposition: null,
             CancelledAt: null,
-            CancelReason: "",
-            RevisionNotes: ""
+            CancelledBy: "",
+            CancellationReason: "",
+            CreatedBy: "USR01",
+            CreatedAt: new DateTime(2026, 11, 20, 8, 0, 0)
         );
 
-        var scopeDto = new StockOpnameScopeItemDto("SCP-001", "SES-001", "BRG01", "Paracetamol");
+        var scopeDto = new StockOpnameScopeItemDto("SES-001", "BRG01", "Paracetamol");
         var countedDto = new StockOpnameCountedItemDto(
-            "CNT-001", "SES-001", "BRG01", "BATCH01", "2027-12-31", "TAB", 95, new DateTime(2026, 11, 20, 9, 30, 0));
+            "SES-001", "BRG01", "BATCH01", "2027-12-31", "TAB", 95, new DateTime(2026, 11, 20, 9, 30, 0));
         var varianceDto = new StockOpnameVarianceItemDto(
-            "VAR-001", "SES-001", "BRG01", "BATCH01", "2027-12-31", "TAB", 95, 100, -5, 1500, -7500, 1);
+            "SES-001", "BRG01", "BATCH01", "2027-12-31", "TAB", 95, 100, -5, "Verified", null);
         var recountDto = new StockOpnameRecountResultDto(
-            "REC-001", "VAR-001", 98, 100, -2, -3000, (int)DiscrepancyReasonEnum.DAMAGED_EXPIRED, "Rusak", "SPV01", new DateTime(2026, 11, 20, 11, 0, 0));
+            "REC-001", "SES-001", "BRG01", "BATCH01", "2027-12-31", 98, new DateTime(2026, 11, 20, 11, 0, 0), 100, -2, DiscrepancyReasonEnum.DAMAGED_EXPIRED.ToString(), "Rusak", "SPV01");
 
         _sessionDalMock.Setup(d => d.GetData("SES-001")).Returns(sessionDto);
         _scopeItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([scopeDto]);
         _countedItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([countedDto]);
         _varianceItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([varianceDto]);
-        _recountResultDalMock.Setup(d => d.ListByVarianceItems(It.IsAny<IEnumerable<string>>())).Returns([recountDto]);
+        _recountResultDalMock.Setup(d => d.ListBySession("SES-001")).Returns([recountDto]);
 
         var sut = CreateSessionRepo();
 
@@ -146,11 +146,11 @@ public class StockOpnameRepoTests
         sut.SaveChanges(sessionWithItems);
 
         // Assert
-        _sessionDalMock.Verify(d => d.Insert(It.Is<StockOpnameSessionDto>(x => x.SessionId == "SES-NEW")), Times.Once);
+        _sessionDalMock.Verify(d => d.Insert(It.Is<StockOpnameSessionDto>(x => x.SessionId == "SES-NEW" && x.Status == "WaitingVerification" && x.ScopeType == "Partial")), Times.Once);
         _scopeItemDalMock.Verify(d => d.Insert(It.IsAny<IEnumerable<StockOpnameScopeItemDto>>()), Times.Once);
         _countedItemDalMock.Verify(d => d.Insert(It.IsAny<IEnumerable<StockOpnameCountedItemDto>>()), Times.Once);
-        _varianceItemDalMock.Verify(d => d.Insert(It.Is<StockOpnameVarianceItemDto>(x => x.VarianceItemId == "VAR-1")), Times.Once);
-        _recountResultDalMock.Verify(d => d.Insert(It.Is<StockOpnameRecountResultDto>(x => x.RecountResultId == "REC-1")), Times.Once);
+        _varianceItemDalMock.Verify(d => d.Insert(It.Is<StockOpnameVarianceItemDto>(x => x.SessionId == "SES-NEW" && x.BrgId == "BRG01" && x.BatchNo == "B01" && x.ExpiredDate == "2027-12-31")), Times.Once);
+        _recountResultDalMock.Verify(d => d.Insert(It.Is<StockOpnameRecountResultDto>(x => x.RecountResultId == "REC-1" && x.SessionId == "SES-NEW" && x.BrgId == "BRG01")), Times.Once);
     }
 
     [Fact]
@@ -158,19 +158,19 @@ public class StockOpnameRepoTests
     {
         // Arrange
         var existingDto = new StockOpnameSessionDto(
-            "SES-001", "FAR01", (int)SessionScopeEnum.Full, (int)SessionStatusEnum.Counting,
-            DateTime.Today, "USR01", DateTime.Now, "", null, "", null, "", null, "", null, "", null, "", "");
+            "SES-001", "FAR01", "Full", "Counting",
+            DateTime.Today, null, null, null, null, "", null, "", "", null, null, "", "", "USR01", DateTime.Now);
         _sessionDalMock.Setup(d => d.GetData("SES-001")).Returns(existingDto);
 
-        var existingVarDto = new StockOpnameVarianceItemDto("VAR-1", "SES-001", "BRG01", "B01", "2027-12-31", "TAB", 10, 12, -2, 1000, -2000, 0);
+        var existingVarDto = new StockOpnameVarianceItemDto("SES-001", "BRG01", "B01", "2027-12-31", "TAB", 10, 12, -2, "PendingVerification", null);
         _varianceItemDalMock.Setup(d => d.ListBySession("SES-001")).Returns([existingVarDto]);
 
         var variance = StockOpnameVarianceItemModel.Create("VAR-1", "SES-001", "BRG01", "B01", "2027-12-31", "TAB", 10, 12, 1000);
         var recount = StockOpnameRecountResultModel.Create("REC-1", "VAR-1", 11, 12, 1000, DiscrepancyReasonEnum.MISPLACED, "Catatan", "SPV01", DateTime.Now);
         variance.SetRecountResult(recount);
 
-        var existingRecountDto = new StockOpnameRecountResultDto("REC-1", "VAR-1", 10, 12, -2, -2000, (int)DiscrepancyReasonEnum.MISPLACED, "Lama", "SPV01", DateTime.Now);
-        _recountResultDalMock.Setup(d => d.GetByVarianceItem("VAR-1")).Returns(existingRecountDto);
+        var existingRecountDto = new StockOpnameRecountResultDto("REC-1", "SES-001", "BRG01", "B01", "2027-12-31", 10, DateTime.Now, 12, -2, DiscrepancyReasonEnum.MISPLACED.ToString(), "Lama", "SPV01");
+        _recountResultDalMock.Setup(d => d.GetByTuple("SES-001", "BRG01", "B01", "2027-12-31")).Returns(existingRecountDto);
 
         var session = StockOpnameSessionModel.Load(
             "SES-001", "FAR01", SessionScopeEnum.Full, SessionStatusEnum.Verifying, DateTime.Today,
@@ -182,9 +182,29 @@ public class StockOpnameRepoTests
         sut.SaveChanges(session);
 
         // Assert
-        _sessionDalMock.Verify(d => d.Update(It.Is<StockOpnameSessionDto>(x => x.SessionId == "SES-001")), Times.Once);
-        _varianceItemDalMock.Verify(d => d.Update(It.Is<StockOpnameVarianceItemDto>(x => x.VarianceItemId == "VAR-1")), Times.Once);
-        _recountResultDalMock.Verify(d => d.Update(It.Is<StockOpnameRecountResultDto>(x => x.VarianceItemId == "VAR-1")), Times.Once);
+        _sessionDalMock.Verify(d => d.Update(It.Is<StockOpnameSessionDto>(x => x.SessionId == "SES-001" && x.Status == "Verifying")), Times.Once);
+        _varianceItemDalMock.Verify(d => d.Update(It.Is<StockOpnameVarianceItemDto>(x => x.SessionId == "SES-001" && x.BrgId == "BRG01" && x.BatchNo == "B01" && x.ExpiredDate == "2027-12-31")), Times.Once);
+        _recountResultDalMock.Verify(d => d.Update(It.Is<StockOpnameRecountResultDto>(x => x.RecountResultId == "REC-1" && x.SessionId == "SES-001")), Times.Once);
+    }
+
+    [Fact]
+    public void ListData_ShouldPassStatusAsStringToDal()
+    {
+        // Arrange
+        var sessionDto = new StockOpnameSessionDto(
+            "SES-001", "FAR01", "Full", "WaitingApproval",
+            DateTime.Today, null, null, null, null, "", null, "", "", null, null, "", "", "USR01", DateTime.Now);
+        _sessionDalMock.Setup(d => d.ListData("FAR01", "WaitingApproval", null, null))
+            .Returns([sessionDto]);
+        var sut = CreateSessionRepo();
+
+        // Act
+        var result = sut.ListData("FAR01", SessionStatusEnum.WaitingApproval, null, null).ToList();
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].SessionId.Should().Be("SES-001");
+        _sessionDalMock.Verify(d => d.ListData("FAR01", "WaitingApproval", null, null), Times.Once);
     }
 
     [Fact]

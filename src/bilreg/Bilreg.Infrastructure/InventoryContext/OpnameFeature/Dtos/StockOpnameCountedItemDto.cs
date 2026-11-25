@@ -3,25 +3,43 @@ using Bilreg.Domain.InventoryContext.OpnameFeature;
 namespace Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
 
 public record StockOpnameCountedItemDto(
-    string CountedItemId,
     string SessionId,
     string BrgId,
     string BatchNo,
     string ExpiredDate,
     string BaseSatuanId,
     decimal TotalCountQty,
-    DateTime LastCountTime)
+    DateTime LatestCountTime,
+    int EntryCount = 0)
 {
+    // Computed property for backwards compatibility with legacy callers
+    public string CountedItemId => $"{SessionId}_{BrgId}_{BatchNo}_{ExpiredDate}";
+
+    // Backwards compatibility constructor for tests / legacy callers until P2-S03
+    [Obsolete("Use primary constructor matching FARPU_StockOpnameCountedItem schema")]
+    public StockOpnameCountedItemDto(
+        string countedItemId,
+        string sessionId,
+        string brgId,
+        string batchNo,
+        string expiredDate,
+        string baseSatuanId,
+        decimal totalCountQty,
+        DateTime lastCountTime)
+        : this(sessionId, brgId, batchNo, expiredDate, baseSatuanId, totalCountQty, lastCountTime, 0)
+    {
+    }
+
     public static StockOpnameCountedItemDto FromModel(StockOpnameCountedItemModel model) =>
         new(
-            CountedItemId: model.CountedItemId,
             SessionId: model.SessionId,
             BrgId: model.BrgId,
             BatchNo: model.BatchNo,
             ExpiredDate: model.ExpiredDate,
             BaseSatuanId: model.BaseSatuanId,
             TotalCountQty: model.TotalCountQty,
-            LastCountTime: model.LastCountTime
+            LatestCountTime: model.LastCountTime,
+            EntryCount: 0
         );
 
     public StockOpnameCountedItemModel ToModel() =>
@@ -33,6 +51,6 @@ public record StockOpnameCountedItemDto(
             expiredDate: ExpiredDate,
             baseSatuanId: BaseSatuanId,
             totalCountQty: TotalCountQty,
-            lastCountTime: LastCountTime
+            lastCountTime: LatestCountTime
         );
 }

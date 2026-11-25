@@ -60,12 +60,12 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
         if (model.VarianceItems.Count > 0)
         {
             var existingVariances = (_varianceItemDal.ListBySession(model.SessionId) ?? [])
-                .ToDictionary(x => x.VarianceItemId);
+                .ToDictionary(x => (x.BrgId, x.BatchNo, x.ExpiredDate));
 
             foreach (var v in model.VarianceItems)
             {
                 var vDto = StockOpnameVarianceItemDto.FromModel(v);
-                if (existingVariances.ContainsKey(v.VarianceItemId))
+                if (existingVariances.ContainsKey((v.BrgId, v.BatchNo, v.ExpiredDate)))
                 {
                     _varianceItemDal.Update(vDto);
                 }
@@ -76,8 +76,8 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
 
                 if (v.RecountResult != null)
                 {
-                    var rDto = StockOpnameRecountResultDto.FromModel(v.RecountResult);
-                    var existingRecount = _recountResultDal.GetByVarianceItem(v.VarianceItemId);
+                    var rDto = StockOpnameRecountResultDto.FromModel(v.RecountResult, model.SessionId, v.BrgId, v.BatchNo, v.ExpiredDate);
+                    var existingRecount = _recountResultDal.GetByTuple(model.SessionId, v.BrgId, v.BatchNo, v.ExpiredDate);
                     if (existingRecount == null)
                     {
                         _recountResultDal.Insert(rDto);
@@ -108,13 +108,14 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
 
         if (varianceItemDtos.Count > 0)
         {
-            var recountResultDtos = _recountResultDal.ListByVarianceItems(
-                varianceItemDtos.Select(v => v.VarianceItemId)) ?? [];
-            var recountMap = recountResultDtos.ToDictionary(r => r.VarianceItemId, r => r.ToModel());
+            var recountResultDtos = _recountResultDal.ListBySession(key.SessionId) ?? [];
+            var recountMap = recountResultDtos.ToDictionary(
+                r => (r.BrgId, r.BatchNo, r.ExpiredDate),
+                r => r.ToModel());
 
             foreach (var vDto in varianceItemDtos)
             {
-                recountMap.TryGetValue(vDto.VarianceItemId, out var recountModel);
+                recountMap.TryGetValue((vDto.BrgId, vDto.BatchNo, vDto.ExpiredDate), out var recountModel);
                 varianceItems.Add(vDto.ToModel(recountModel));
             }
         }
@@ -134,7 +135,7 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
     {
         var dtos = _sessionDal.ListData(
             layananId,
-            status.HasValue ? (int)status.Value : null,
+            status.HasValue ? status.Value.ToString() : null,
             fromDate,
             toDate) ?? [];
 

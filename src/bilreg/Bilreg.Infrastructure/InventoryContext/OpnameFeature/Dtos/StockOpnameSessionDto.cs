@@ -5,45 +5,54 @@ namespace Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
 public record StockOpnameSessionDto(
     string SessionId,
     string LayananId,
-    int ScopeMode,
-    int State,
-    DateTime CutoffDate,
-    string CreatedBy,
-    DateTime CreatedAt,
-    string CountingSubmittedBy,
-    DateTime? CountingSubmittedAt,
-    string VerifiedBy,
-    DateTime? VerifiedAt,
-    string ApprovedBy,
-    DateTime? ApprovedAt,
-    string RejectedBy,
-    DateTime? RejectedAt,
-    string CancelledBy,
-    DateTime? CancelledAt,
-    string CancelReason,
-    string RevisionNotes)
+    string ScopeType,
+    string Status,
+    DateTime CutoffTime,
+    DateTime? StartedAt = null,
+    DateTime? CountingFinishedAt = null,
+    DateTime? VerifiedAt = null,
+    DateTime? ApprovedAt = null,
+    string? ApprovedBy = null,
+    DateTime? RejectedAt = null,
+    string? RejectedBy = null,
+    string? RejectionNotes = null,
+    string? RejectionDisposition = null,
+    DateTime? CancelledAt = null,
+    string? CancelledBy = null,
+    string? CancellationReason = null,
+    string CreatedBy = "",
+    DateTime CreatedAt = default)
 {
+    public SessionStatusEnum StatusEnum => ParseStatus(Status);
+    public SessionScopeEnum ScopeEnum => ParseScope(ScopeType);
+
+    public static string StatusToString(SessionStatusEnum status) => status.ToString();
+    public static SessionStatusEnum ParseStatus(string status) => Enum.Parse<SessionStatusEnum>(status, true);
+
+    public static string ScopeToString(SessionScopeEnum scope) => scope.ToString();
+    public static SessionScopeEnum ParseScope(string scope) => Enum.Parse<SessionScopeEnum>(scope, true);
+
     public static StockOpnameSessionDto FromModel(StockOpnameSessionModel model) =>
         new(
             SessionId: model.SessionId,
             LayananId: model.LayananId,
-            ScopeMode: (int)model.ScopeMode,
-            State: (int)model.Status,
-            CutoffDate: model.CutoffDate,
-            CreatedBy: model.CreatedBy,
-            CreatedAt: model.CreatedAt,
-            CountingSubmittedBy: model.CountingSubmittedBy,
-            CountingSubmittedAt: model.CountingSubmittedAt,
-            VerifiedBy: model.VerifiedBy,
+            ScopeType: model.ScopeMode.ToString(),
+            Status: model.Status.ToString(),
+            CutoffTime: model.CutoffDate,
+            StartedAt: null,
+            CountingFinishedAt: model.CountingSubmittedAt,
             VerifiedAt: model.VerifiedAt,
-            ApprovedBy: model.ApprovedBy,
             ApprovedAt: model.ApprovedAt,
-            RejectedBy: model.RejectedBy,
+            ApprovedBy: model.ApprovedBy,
             RejectedAt: model.RejectedAt,
-            CancelledBy: model.CancelledBy,
+            RejectedBy: model.RejectedBy,
+            RejectionNotes: model.RevisionNotes,
+            RejectionDisposition: model.Status == SessionStatusEnum.Rejected ? "Terminal" : null,
             CancelledAt: model.CancelledAt,
-            CancelReason: model.CancelReason,
-            RevisionNotes: model.RevisionNotes
+            CancelledBy: model.CancelledBy,
+            CancellationReason: model.CancelReason,
+            CreatedBy: model.CreatedBy,
+            CreatedAt: model.CreatedAt
         );
 
     public StockOpnameSessionModel ToModel(
@@ -53,14 +62,14 @@ public record StockOpnameSessionDto(
         StockOpnameSessionModel.Load(
             sessionId: SessionId,
             layananId: LayananId,
-            scopeMode: (SessionScopeEnum)ScopeMode,
-            status: (SessionStatusEnum)State,
-            cutoffDate: CutoffDate,
+            scopeMode: ParseScope(ScopeType),
+            status: ParseStatus(Status),
+            cutoffDate: CutoffTime,
             createdBy: CreatedBy,
             createdAt: CreatedAt,
-            countingSubmittedBy: CountingSubmittedBy ?? string.Empty,
-            countingSubmittedAt: CountingSubmittedAt,
-            verifiedBy: VerifiedBy ?? string.Empty,
+            countingSubmittedBy: string.Empty,
+            countingSubmittedAt: CountingFinishedAt,
+            verifiedBy: string.Empty,
             verifiedAt: VerifiedAt,
             approvedBy: ApprovedBy ?? string.Empty,
             approvedAt: ApprovedAt,
@@ -68,8 +77,8 @@ public record StockOpnameSessionDto(
             rejectedAt: RejectedAt,
             cancelledBy: CancelledBy ?? string.Empty,
             cancelledAt: CancelledAt,
-            cancelReason: CancelReason ?? string.Empty,
-            revisionNotes: RevisionNotes ?? string.Empty,
+            cancelReason: CancellationReason ?? string.Empty,
+            revisionNotes: RejectionNotes ?? string.Empty,
             scopeItems: scopeItems,
             countedItems: countedItems,
             varianceItems: varianceItems

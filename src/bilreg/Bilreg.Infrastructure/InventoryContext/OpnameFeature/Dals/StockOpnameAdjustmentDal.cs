@@ -124,7 +124,7 @@ public class StockOpnameAdjustmentDal : IStockOpnameAdjustmentDal
         return conn.ExecuteScalar<int>(sql, dp) > 0;
     }
 
-    private static DynamicParameters BuildParams(StockOpnameAdjustmentDto dto)
+    internal static DynamicParameters BuildParams(StockOpnameAdjustmentDto dto)
     {
         var dp = new DynamicParameters();
         dp.AddParam("@AdjustmentId", dto.AdjustmentId, SqlDbType.VarChar);
@@ -134,14 +134,14 @@ public class StockOpnameAdjustmentDal : IStockOpnameAdjustmentDal
         dp.AddParam("@ExpiredDate", dto.ExpiredDate, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@AdjustmentQty", dto.AdjustmentQty, SqlDbType.Decimal);
-        dp.AddParam("@BaseSatuanId", dto.BaseSatuanId, SqlDbType.VarChar);
+        dp.AddParam("@BaseSatuanId", dto.BaseSatuanId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@Hpp", dto.Hpp, SqlDbType.Decimal);
         dp.AddParam("@NilaiFinansial", dto.NilaiFinansial, SqlDbType.Decimal);
-        dp.AddParam("@StokMutasiId", dto.StokMutasiId, SqlDbType.VarChar);
-        dp.AddParam("@LegacyBukuId", dto.LegacyBukuId, SqlDbType.VarChar);
+        dp.AddParam("@StokMutasiId", dto.StokMutasiId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@LegacyBukuId", dto.LegacyBukuId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@MovementKind", dto.MovementKind, SqlDbType.Int);
         dp.AddParam("@ExecutedAt", dto.ExecutedAt, SqlDbType.DateTime);
-        dp.AddParam("@ExecutedBy", dto.ExecutedBy, SqlDbType.VarChar);
+        dp.AddParam("@ExecutedBy", dto.ExecutedBy ?? string.Empty, SqlDbType.VarChar);
         return dp;
     }
 }

@@ -89,7 +89,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         bukuDp.AddParam("@fn_stok_in", request.Qty, SqlDbType.Decimal);
         bukuDp.AddParam("@fn_stok_out", 0m, SqlDbType.Decimal);
         bukuDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
-        bukuDp.AddParam("@fs_kd_mutasi", request.TrsReffId, SqlDbType.VarChar);
+        var safeBukuMutasi = request.TrsReffId.Length > 10 ? request.TrsReffId[..10] : request.TrsReffId;
+        bukuDp.AddParam("@fs_kd_mutasi", safeBukuMutasi, SqlDbType.VarChar);
         bukuDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
         bukuDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         bukuDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);

@@ -3,14 +3,22 @@ using Bilreg.Domain.InventoryContext.OpnameFeature;
 namespace Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
 
 public record StockOpnameScopeItemDto(
-    string ScopeItemId,
     string SessionId,
     string BrgId,
     string BrgName = "")
 {
+    public StockOpnameScopeItemDto(string SessionId, string BrgId)
+        : this(SessionId, BrgId, string.Empty)
+    {
+    }
+
+    public StockOpnameScopeItemDto()
+        : this(string.Empty, string.Empty, string.Empty)
+    {
+    }
+
     public static StockOpnameScopeItemDto FromModel(StockOpnameScopeItemModel model) =>
         new(
-            ScopeItemId: model.ScopeItemId,
             SessionId: model.SessionId,
             BrgId: model.BrgId,
             BrgName: model.BrgName
@@ -18,7 +26,7 @@ public record StockOpnameScopeItemDto(
 
     public StockOpnameScopeItemModel ToModel() =>
         new(
-            scopeItemId: ScopeItemId,
+            scopeItemId: string.Empty,
             sessionId: SessionId,
             brgId: BrgId,
             brgName: BrgName ?? string.Empty

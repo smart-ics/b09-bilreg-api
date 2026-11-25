@@ -3,6 +3,7 @@ using Bilreg.Application.InventoryContext.OpnameFeature.EventHandlers;
 using Bilreg.Application.InventoryContext.OpnameFeature.Ports;
 using Bilreg.Domain.InventoryContext.OpnameFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
 
@@ -46,6 +47,8 @@ public class ApproveSessionHandler : IRequestHandler<ApproveSessionCommand, Appr
         if (!maybe.HasValue)
             throw new KeyNotFoundException($"Stock opname session with ID '{request.SessionId}' not found.");
 
+        using var trans = TransHelper.NewScope();
+
         var session = maybe.Value;
         var domainEvent = session.Approve(request.ApprovedBy, request.ApprovedAt);
 
@@ -53,6 +56,8 @@ public class ApproveSessionHandler : IRequestHandler<ApproveSessionCommand, Appr
 
         // TD-09: Publish event to trigger downstream stock adjustment
         await _mediator.Publish(new StockOpnameApprovedNotification(domainEvent), cancellationToken);
+
+        trans.Complete();
 
         return new ApproveSessionResponse(
             session.SessionId,

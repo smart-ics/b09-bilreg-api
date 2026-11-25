@@ -5,7 +5,10 @@ using MediatR;
 
 namespace Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
 
-public record CreateSessionScopeItemRequest(string BrgId, string? BrgName = null);
+public record CreateSessionScopeItemRequest(
+    string BrgId,
+    string? BrgName = null,
+    string? Kategori = null);
 
 public record CreateSessionCommand(
     string LayananId,
@@ -40,6 +43,7 @@ public class CreateSessionHandler : IRequestHandler<CreateSessionCommand, Create
     {
         Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.LayananId, nameof(request.LayananId));
+        Guard.Against.LengthOutOfRange(request.LayananId.Trim(), 1, 5, nameof(request.LayananId));
         Guard.Against.NullOrWhiteSpace(request.CreatedBy, nameof(request.CreatedBy));
 
         // BR-SO-002: Single active session per location
@@ -50,7 +54,16 @@ public class CreateSessionHandler : IRequestHandler<CreateSessionCommand, Create
 
         var sessionId = !string.IsNullOrWhiteSpace(request.SessionId)
             ? request.SessionId.Trim()
-            : $"SO{DateTime.Now:yyyyMMdd}{Guid.NewGuid():N}"[..24];
+            : $"SO{DateTime.Now:yyyyMMdd}{Guid.NewGuid():N}"[..20];
+
+        if (sessionId.Length > 20)
+        {
+            throw new ArgumentException("SessionId length cannot exceed 20 characters.", nameof(sessionId));
+        }
+
+        var cutoffDate = request.CutoffDate <= new DateTime(1753, 1, 1)
+            ? DateTime.Now
+            : request.CutoffDate;
 
         var scopeItems = new List<StockOpnameScopeItemModel>();
         if (request.ScopeMode == SessionScopeEnum.Partial && request.ScopeItems != null)
@@ -73,7 +86,7 @@ public class CreateSessionHandler : IRequestHandler<CreateSessionCommand, Create
             sessionId: sessionId,
             layananId: request.LayananId,
             scopeMode: request.ScopeMode,
-            cutoffDate: request.CutoffDate,
+            cutoffDate: cutoffDate,
             createdBy: request.CreatedBy,
             createdAt: DateTime.Now,
             scopeItems: scopeItems);

@@ -108,6 +108,7 @@ public class PostStockAdjustmentConsequenceHandler
             var tglEd = DateTime.TryParse(item.ExpiredDate, out var parsedEd)
                 ? parsedEd.Date
                 : StockLedgerSentinel.EmptyDate;
+            var adjustmentId = NunaId.NewLegacyCompact("AJ");
 
             if (item.AdjustmentQty > 0)
             {
@@ -134,7 +135,7 @@ public class PostStockAdjustmentConsequenceHandler
                     brgMasukReffId,
                     request.LayananId,
                     tglEd,
-                    request.SessionId,
+                    adjustmentId,
                     MovementKindEnum.AdjustmentPlus,
                     item.AdjustmentQty,
                     item.Hpp,
@@ -145,7 +146,7 @@ public class PostStockAdjustmentConsequenceHandler
                 var binding = StockLegacyBindingModel.CreateMutasiBuku(
                     mutasi.StokMutasiId,
                     legacyBukuId,
-                    request.SessionId,
+                    adjustmentId,
                     lokasi.StokLokasiId,
                     legacyStokId);
 
@@ -160,7 +161,7 @@ public class PostStockAdjustmentConsequenceHandler
                     TglEd: tglEd,
                     TglMasuk: executedAt,
                     TglMutasi: executedAt,
-                    TrsReffId: request.SessionId,
+                    TrsReffId: adjustmentId,
                     MovementKindString: "AJ_PLUS",
                     NoBatch: item.BatchNo,
                     SatuanId: item.SatuanId,
@@ -171,7 +172,7 @@ public class PostStockAdjustmentConsequenceHandler
                 scopeModel.MarkAligned(executedAt, legacyBukuId, executedAt);
 
                 var adjModel = StockOpnameAdjustmentModel.Create(
-                    adjustmentId: NunaId.New("ADJ"),
+                    adjustmentId: adjustmentId,
                     sessionId: request.SessionId,
                     brgId: item.BrgId,
                     batchNo: item.BatchNo ?? string.Empty,
@@ -300,7 +301,7 @@ public class PostStockAdjustmentConsequenceHandler
                         Hpp: batch.Hpp,
                         TglEd: cand.TglEd,
                         TglMutasi: executedAt,
-                        TrsReffId: request.SessionId,
+                        TrsReffId: adjustmentId,
                         MovementKindString: "AJ_MIN",
                         NoBatch: cand.NoBatch,
                         SatuanId: item.SatuanId,
@@ -313,7 +314,7 @@ public class PostStockAdjustmentConsequenceHandler
                         cand.BrgMasukReffId,
                         request.LayananId,
                         cand.TglEd,
-                        request.SessionId,
+                        adjustmentId,
                         MovementKindEnum.AdjustmentMinus,
                         deductQty,
                         batch.Hpp,
@@ -324,7 +325,7 @@ public class PostStockAdjustmentConsequenceHandler
                     var binding = StockLegacyBindingModel.CreateMutasiBuku(
                         mutasi.StokMutasiId,
                         legacyBukuId,
-                        request.SessionId,
+                        adjustmentId,
                         cand.StokLokasiId,
                         legacyStokIdForBinding);
 
@@ -340,7 +341,7 @@ public class PostStockAdjustmentConsequenceHandler
                 }
 
                 var adjModel = StockOpnameAdjustmentModel.Create(
-                    adjustmentId: NunaId.New("ADJ"),
+                    adjustmentId: adjustmentId,
                     sessionId: request.SessionId,
                     brgId: item.BrgId,
                     batchNo: item.BatchNo ?? string.Empty,

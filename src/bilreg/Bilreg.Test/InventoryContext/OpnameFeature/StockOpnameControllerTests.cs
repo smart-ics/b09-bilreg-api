@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Bilreg.Api.Controllers.InventoryContext.OpnameFeature;
 using Bilreg.Application.InventoryContext.OpnameFeature.Ports;
 using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
@@ -119,6 +120,66 @@ public class StockOpnameControllerTests
 
         _mediatorMock.Verify(x => x.Send(
             It.Is<CreateSessionCommand>(cmd => cmd.LayananId == "LY01" && cmd.CreatedBy == "USER001"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void CreateSessionRequest_DeserializationFromClientJsonPayload_ResolvesFieldsCorrectly()
+    {
+        // Arrange: Payload JSON pengujian TC-SO-01
+        var json = """{"layananId":"GDFAR","scope":1,"openedBy":"4FM01","notes":"Stok opname rutin","scopeItems":[]}""";
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Act
+        var request = JsonSerializer.Deserialize<CreateSessionRequest>(json, options);
+
+        // Assert
+        request.Should().NotBeNull();
+        request!.LayananId.Should().Be("GDFAR");
+        request.ResolvedCreatedBy.Should().Be("4FM01");
+        request.ResolvedScopeMode.Should().Be(SessionScopeEnum.Full);
+        request.ResolvedCutoffDate.Should().BeAfter(new DateTime(1753, 1, 1));
+        request.Notes.Should().Be("Stok opname rutin");
+        request.ScopeItems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateSession_WithClientPayloadTCSO01_SendsCommandWithResolvedCreatedByAndValidCutoffDate()
+    {
+        // Arrange: Payload JSON pengujian TC-SO-01
+        var json = """{"layananId":"GDFAR","scope":1,"openedBy":"4FM01","notes":"Stok opname rutin","scopeItems":[]}""";
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var request = JsonSerializer.Deserialize<CreateSessionRequest>(json, options);
+        request.Should().NotBeNull();
+
+        var expectedResponse = new CreateSessionResponse(
+            SessionId: "SO-20261123-0001",
+            LayananId: "GDFAR",
+            ScopeMode: SessionScopeEnum.Full,
+            Status: SessionStatusEnum.Draft,
+            CutoffDate: request!.ResolvedCutoffDate,
+            CreatedBy: "4FM01",
+            CreatedAt: DateTime.UtcNow,
+            ScopeItemsCount: 0);
+
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<CreateSessionCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _sut.CreateSession(request!);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().BeEquivalentTo(expectedResponse);
+
+        _mediatorMock.Verify(x => x.Send(
+            It.Is<CreateSessionCommand>(cmd =>
+                cmd.LayananId == "GDFAR" &&
+                cmd.CreatedBy == "4FM01" &&
+                cmd.ScopeMode == SessionScopeEnum.Full &&
+                cmd.CutoffDate > new DateTime(1753, 1, 1)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

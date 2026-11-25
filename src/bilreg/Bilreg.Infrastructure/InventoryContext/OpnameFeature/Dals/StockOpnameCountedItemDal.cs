@@ -21,8 +21,8 @@ public interface IStockOpnameCountedItemDal :
 public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
 {
     private const string SelectColumns = """
-        CountedItemId, SessionId, BrgId, BatchNo, ExpiredDate,
-        BaseSatuanId, TotalCountQty, LastCountTime
+        SessionId, BrgId, BatchNo, ExpiredDate,
+        BaseSatuanId, TotalCountQty, LatestCountTime, EntryCount
         """;
 
     private readonly DatabaseOptions _opt;
@@ -38,8 +38,8 @@ public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
             INSERT INTO FARPU_StockOpnameCountedItem (
                 {SelectColumns}
             ) VALUES (
-                @CountedItemId, @SessionId, @BrgId, @BatchNo, @ExpiredDate,
-                @BaseSatuanId, @TotalCountQty, @LastCountTime
+                @SessionId, @BrgId, @BatchNo, @ExpiredDate,
+                @BaseSatuanId, @TotalCountQty, @LatestCountTime, @EntryCount
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -52,8 +52,8 @@ public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
             INSERT INTO FARPU_StockOpnameCountedItem (
                 {SelectColumns}
             ) VALUES (
-                @CountedItemId, @SessionId, @BrgId, @BatchNo, @ExpiredDate,
-                @BaseSatuanId, @TotalCountQty, @LastCountTime
+                @SessionId, @BrgId, @BatchNo, @ExpiredDate,
+                @BaseSatuanId, @TotalCountQty, @LatestCountTime, @EntryCount
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -67,10 +67,14 @@ public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
     {
         const string sql = """
             UPDATE FARPU_StockOpnameCountedItem SET
+                BaseSatuanId = @BaseSatuanId,
                 TotalCountQty = @TotalCountQty,
-                LastCountTime = @LastCountTime,
-                BaseSatuanId = @BaseSatuanId
-            WHERE CountedItemId = @CountedItemId
+                LatestCountTime = @LatestCountTime,
+                EntryCount = @EntryCount
+            WHERE SessionId = @SessionId
+              AND BrgId = @BrgId
+              AND BatchNo = @BatchNo
+              AND ExpiredDate = @ExpiredDate
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, BuildParams(dto));
@@ -115,7 +119,7 @@ public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
               AND BrgId = @BrgId
               AND BatchNo = @BatchNo
               AND ExpiredDate = @ExpiredDate
-              AND CountedBy = @UserId
+              AND CounterUserId = @UserId
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@SessionId", sessionId, SqlDbType.VarChar);
@@ -130,14 +134,14 @@ public class StockOpnameCountedItemDal : IStockOpnameCountedItemDal
     private static DynamicParameters BuildParams(StockOpnameCountedItemDto dto)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@CountedItemId", dto.CountedItemId, SqlDbType.VarChar);
         dp.AddParam("@SessionId", dto.SessionId, SqlDbType.VarChar);
         dp.AddParam("@BrgId", dto.BrgId, SqlDbType.VarChar);
         dp.AddParam("@BatchNo", dto.BatchNo, SqlDbType.VarChar);
         dp.AddParam("@ExpiredDate", dto.ExpiredDate, SqlDbType.VarChar);
         dp.AddParam("@BaseSatuanId", dto.BaseSatuanId, SqlDbType.VarChar);
         dp.AddParam("@TotalCountQty", dto.TotalCountQty, SqlDbType.Decimal);
-        dp.AddParam("@LastCountTime", dto.LastCountTime, SqlDbType.DateTime);
+        dp.AddParam("@LatestCountTime", dto.LatestCountTime, SqlDbType.DateTime);
+        dp.AddParam("@EntryCount", dto.EntryCount, SqlDbType.Int);
         return dp;
     }
 }

@@ -87,27 +87,30 @@ public class PostStockAdjustmentConsequenceHandlerTests
         result.SessionId.Should().Be(sessionId);
         result.Adjustments.Should().HaveCount(1);
 
+        _adjustmentRepoMock.Verify(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()), Times.Once);
+        capturedAdjustments.Should().NotBeNull();
+        var audit = capturedAdjustments!.Single();
+        audit.SessionId.Should().Be(sessionId);
+        audit.AdjustmentId.Should().StartWith("AJ").And.HaveLength(10);
+        audit.BrgId.Should().Be(brgId);
+        audit.BatchNo.Should().Be(batchNo);
+        audit.AdjustmentQty.Should().Be(10m);
+        audit.MovementKind.Should().Be((int)MovementKindEnum.AdjustmentPlus);
+        audit.NilaiFinansial.Should().Be(25000m);
+
         _uowMock.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Once);
         capturedDraft.Should().NotBeNull();
         capturedDraft!.MutasiInserts.Should().ContainSingle(m =>
             m.MovementKind == MovementKindEnum.AdjustmentPlus
             && m.QtyIn == 10m
             && m.QtyOut == 0m
-            && m.BrgId == brgId);
+            && m.BrgId == brgId
+            && m.TrsReffId == audit.AdjustmentId);
 
         capturedDraft.LegacyOperations.OfType<LegacyInboundWriteOperation>().Should().ContainSingle(inOp =>
             inOp.Request.MovementKindString == "AJ_PLUS"
-            && inOp.Request.Qty == 10m);
-
-        _adjustmentRepoMock.Verify(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()), Times.Once);
-        capturedAdjustments.Should().NotBeNull();
-        var audit = capturedAdjustments!.Single();
-        audit.SessionId.Should().Be(sessionId);
-        audit.BrgId.Should().Be(brgId);
-        audit.BatchNo.Should().Be(batchNo);
-        audit.AdjustmentQty.Should().Be(10m);
-        audit.MovementKind.Should().Be((int)MovementKindEnum.AdjustmentPlus);
-        audit.NilaiFinansial.Should().Be(25000m);
+            && inOp.Request.Qty == 10m
+            && inOp.Request.TrsReffId == audit.AdjustmentId);
     }
 
     [Fact]
@@ -164,26 +167,31 @@ public class PostStockAdjustmentConsequenceHandlerTests
 
         lokasi.QtySisa.Should().Be(15m); // 20 - 5 = 15
 
+        _adjustmentRepoMock.Verify(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()), Times.Once);
+        capturedAdjustments.Should().NotBeNull();
+        var audit = capturedAdjustments!.Single();
+        audit.SessionId.Should().Be(sessionId);
+        audit.AdjustmentId.Should().StartWith("AJ").And.HaveLength(10);
+        audit.AdjustmentQty.Should().Be(-5m);
+        audit.MovementKind.Should().Be((int)MovementKindEnum.AdjustmentMinus);
+        audit.NilaiFinansial.Should().Be(-25000m);
+
         _uowMock.Verify(x => x.Commit(It.IsAny<StockConsequenceDraft>()), Times.Once);
         capturedDraft.Should().NotBeNull();
         capturedDraft!.MutasiInserts.Should().ContainSingle(m =>
             m.MovementKind == MovementKindEnum.AdjustmentMinus
             && m.QtyOut == 5m
-            && m.QtyIn == 0m);
+            && m.QtyIn == 0m
+            && m.TrsReffId == audit.AdjustmentId);
 
         capturedDraft.LegacyOperations.OfType<LegacyOutboundBukuWriteOperation>().Should().Contain(outOp =>
             outOp.Request.MovementKindString == "AJ_MIN"
-            && outOp.Request.QtyOut == 5m);
+            && outOp.Request.QtyOut == 5m
+            && outOp.Request.TrsReffId == audit.AdjustmentId);
 
         capturedDraft.LegacyOperations.OfType<LegacyStokDepleteWriteOperation>().Should().Contain(depOp =>
             depOp.Request.LegacyStokId == "ST001"
             && depOp.Request.QtyOut == 5m);
-
-        var audit = capturedAdjustments!.Single();
-        audit.SessionId.Should().Be(sessionId);
-        audit.AdjustmentQty.Should().Be(-5m);
-        audit.MovementKind.Should().Be((int)MovementKindEnum.AdjustmentMinus);
-        audit.NilaiFinansial.Should().Be(-25000m);
     }
 
     [Fact]
@@ -235,6 +243,10 @@ public class PostStockAdjustmentConsequenceHandlerTests
         _uowMock.Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
             .Callback<StockConsequenceDraft>(d => capturedDraft = d);
 
+        IEnumerable<StockOpnameAdjustmentModel>? capturedAdjustments = null;
+        _adjustmentRepoMock.Setup(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()))
+            .Callback<IEnumerable<StockOpnameAdjustmentModel>>(a => capturedAdjustments = a);
+
         var command = new PostStockAdjustmentConsequenceCommand(
             sessionId,
             layananId,
@@ -256,11 +268,22 @@ public class PostStockAdjustmentConsequenceHandlerTests
         lokasiFb2.QtySisa.Should().Be(7m);
         // Total allocated: 3 + 4 + 3 = 10 units!
 
+        _adjustmentRepoMock.Verify(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()), Times.Once);
+        capturedAdjustments.Should().NotBeNull();
+        var audit = capturedAdjustments!.Single();
+        audit.SessionId.Should().Be(sessionId);
+        audit.AdjustmentId.Should().StartWith("AJ").And.HaveLength(10);
+        audit.AdjustmentQty.Should().Be(-10m);
+
         capturedDraft.Should().NotBeNull();
         capturedDraft!.MutasiInserts.Should().HaveCount(3);
         capturedDraft.MutasiInserts.Sum(m => m.QtyOut).Should().Be(10m);
+        capturedDraft.MutasiInserts.Should().OnlyContain(m => m.TrsReffId == audit.AdjustmentId);
 
-        _adjustmentRepoMock.Verify(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()), Times.Once);
+        capturedDraft.LegacyOperations.OfType<LegacyOutboundBukuWriteOperation>().Should().HaveCount(3);
+        capturedDraft.LegacyOperations.OfType<LegacyOutboundBukuWriteOperation>().Should().OnlyContain(outOp =>
+            outOp.Request.MovementKindString == "AJ_MIN"
+            && outOp.Request.TrsReffId == audit.AdjustmentId);
     }
 
     [Fact]

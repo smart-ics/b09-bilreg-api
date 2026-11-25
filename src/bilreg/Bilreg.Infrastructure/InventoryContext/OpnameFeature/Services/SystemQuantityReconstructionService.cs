@@ -56,25 +56,19 @@ public class SystemQuantityReconstructionService : ISystemQuantityReconstruction
 
         var hasFilter = brgList != null && brgList.Count > 0;
 
-        var filterClauseIn = hasFilter ? "AND b.fs_kd_barang IN @BrgIds" : string.Empty;
-        var filterClauseOut = hasFilter ? "AND b.fs_kd_barang IN @BrgIds" : string.Empty;
+        var filterClauseMutasi = hasFilter ? "AND b.fs_kd_barang IN @BrgIds" : string.Empty;
         var filterClauseStok = hasFilter ? "AND s.fs_kd_barang IN @BrgIds" : string.Empty;
 
         var sql = $"""
-            WITH InboundAfterCount AS (
-                SELECT b.fs_kd_barang, b.fs_no_batch, b.fd_tgl_ed, b.fs_kd_layanan, SUM(b.fn_stok_in) AS TotalIn
+            WITH MutasiAfterCount AS (
+                SELECT b.fs_kd_barang, b.fs_no_batch, b.fd_tgl_ed, b.fs_kd_layanan,
+                       SUM(b.fn_stok_in) AS TotalIn,
+                       SUM(b.fn_stok_out) AS TotalOut
                 FROM tb_buku b WITH (NOLOCK)
                 WHERE b.fs_kd_layanan = @LayananId
-                  AND CAST(CONVERT(VARCHAR(10), b.fd_tgl_jam_mutasi, 120) + ' ' + b.fs_jam_mutasi AS DATETIME) > @CutoffTime
-                  {filterClauseIn}
-                GROUP BY b.fs_kd_barang, b.fs_no_batch, b.fd_tgl_ed, b.fs_kd_layanan
-            ),
-            OutboundAfterCount AS (
-                SELECT b.fs_kd_barang, b.fs_no_batch, b.fd_tgl_ed, b.fs_kd_layanan, SUM(b.fn_stok_out) AS TotalOut
-                FROM tb_buku b WITH (NOLOCK)
-                WHERE b.fs_kd_layanan = @LayananId
-                  AND CAST(CONVERT(VARCHAR(10), b.fd_tgl_jam_mutasi, 120) + ' ' + b.fs_jam_mutasi AS DATETIME) > @CutoffTime
-                  {filterClauseOut}
+                  AND b.fd_tgl_jam_mutasi > @CutoffTimeStr
+                  AND b.fd_tgl_jam_mutasi < '3000-01-01'
+                  {filterClauseMutasi}
                 GROUP BY b.fs_kd_barang, b.fs_no_batch, b.fd_tgl_ed, b.fs_kd_layanan
             )
             SELECT 
@@ -82,28 +76,24 @@ public class SystemQuantityReconstructionService : ISystemQuantityReconstruction
                 s.fs_no_batch AS BatchNo,
                 s.fd_tgl_ed AS ExpiredDate,
                 SUM(s.fn_qty) AS CurrentQty,
-                ISNULL(ib.TotalIn, 0) AS InAfterCutoff,
-                ISNULL(ob.TotalOut, 0) AS OutAfterCutoff,
-                (SUM(s.fn_qty) - ISNULL(ib.TotalIn, 0) + ISNULL(ob.TotalOut, 0)) AS ReconstructedQty
+                ISNULL(m.TotalIn, 0) AS InAfterCutoff,
+                ISNULL(m.TotalOut, 0) AS OutAfterCutoff,
+                (SUM(s.fn_qty) - ISNULL(m.TotalIn, 0) + ISNULL(m.TotalOut, 0)) AS ReconstructedQty
             FROM tb_stok s WITH (NOLOCK)
-            LEFT JOIN InboundAfterCount ib 
-                ON s.fs_kd_barang = ib.fs_kd_barang 
-               AND s.fs_no_batch = ib.fs_no_batch 
-               AND s.fd_tgl_ed = ib.fd_tgl_ed 
-               AND s.fs_kd_layanan = ib.fs_kd_layanan
-            LEFT JOIN OutboundAfterCount ob 
-                ON s.fs_kd_barang = ob.fs_kd_barang 
-               AND s.fs_no_batch = ob.fs_no_batch 
-               AND s.fd_tgl_ed = ob.fd_tgl_ed 
-               AND s.fs_kd_layanan = ob.fs_kd_layanan
+            LEFT JOIN MutasiAfterCount m 
+                ON s.fs_kd_barang = m.fs_kd_barang 
+               AND s.fs_no_batch = m.fs_no_batch 
+               AND s.fd_tgl_ed = m.fd_tgl_ed 
+               AND s.fs_kd_layanan = m.fs_kd_layanan
             WHERE s.fs_kd_layanan = @LayananId
               {filterClauseStok}
-            GROUP BY s.fs_kd_barang, s.fs_no_batch, s.fd_tgl_ed, ib.TotalIn, ob.TotalOut;
+            GROUP BY s.fs_kd_barang, s.fs_no_batch, s.fd_tgl_ed, m.TotalIn, m.TotalOut;
             """;
 
         var parameters = new DynamicParameters();
         parameters.Add("@LayananId", layananId.Trim(), DbType.AnsiString);
-        parameters.Add("@CutoffTime", cutoffTime, DbType.DateTime);
+        var cutoffTimeStr = cutoffTime.ToString("yyyy-MM-dd HH:mm:ss");
+        parameters.Add("@CutoffTimeStr", cutoffTimeStr, DbType.AnsiString);
         if (hasFilter)
         {
             parameters.Add("@BrgIds", brgList);
@@ -136,7 +126,7 @@ public class SystemQuantityReconstructionService : ISystemQuantityReconstruction
                 await conn.OpenAsync(cancellationToken);
             }
 
-            var commandDef = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+            var commandDef = new CommandDefinition(sql, parameters, commandTimeout: 120, cancellationToken: cancellationToken);
             rows = await conn.QueryAsync<ReconstructedRowDto>(commandDef);
         }
 

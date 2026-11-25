@@ -13,18 +13,24 @@ public interface IStockOpnameVarianceItemDal :
     IUpdate<StockOpnameVarianceItemDto>
 {
     void Insert(IEnumerable<StockOpnameVarianceItemDto> dtos);
-    void UpdateState(string varianceItemId, int state);
+    void UpdateStatus(string sessionId, string brgId, string batchNo, string expiredDate, string status, decimal? finalQuantity = null);
     void Delete(string sessionId);
-    StockOpnameVarianceItemDto? GetData(string varianceItemId);
+    StockOpnameVarianceItemDto? GetData(string sessionId, string brgId, string batchNo, string expiredDate);
     IEnumerable<StockOpnameVarianceItemDto> ListBySession(string sessionId);
+
+    // Transition support for Repo / tests prior to P2-S03
+    [Obsolete("Use UpdateStatus with composite tuple")]
+    void UpdateState(string varianceItemId, int state);
+    [Obsolete("Use GetData with composite tuple")]
+    StockOpnameVarianceItemDto? GetData(string varianceItemId);
 }
 
 public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
 {
     private const string SelectColumns = """
-        VarianceItemId, SessionId, BrgId, BatchNo, ExpiredDate,
-        BaseSatuanId, CountQty, SystemQty, VarianceQty,
-        Hpp, VarianceValuation, State
+        SessionId, BrgId, BatchNo, ExpiredDate,
+        BaseSatuanId, PhysicalCountQty, SystemQtyAtCount,
+        InitialVarianceQty, VerificationStatus, FinalQuantity
         """;
 
     private readonly DatabaseOptions _opt;
@@ -40,9 +46,9 @@ public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
             INSERT INTO FARPU_StockOpnameVarianceItem (
                 {SelectColumns}
             ) VALUES (
-                @VarianceItemId, @SessionId, @BrgId, @BatchNo, @ExpiredDate,
-                @BaseSatuanId, @CountQty, @SystemQty, @VarianceQty,
-                @Hpp, @VarianceValuation, @State
+                @SessionId, @BrgId, @BatchNo, @ExpiredDate,
+                @BaseSatuanId, @PhysicalCountQty, @SystemQtyAtCount,
+                @InitialVarianceQty, @VerificationStatus, @FinalQuantity
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -55,9 +61,9 @@ public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
             INSERT INTO FARPU_StockOpnameVarianceItem (
                 {SelectColumns}
             ) VALUES (
-                @VarianceItemId, @SessionId, @BrgId, @BatchNo, @ExpiredDate,
-                @BaseSatuanId, @CountQty, @SystemQty, @VarianceQty,
-                @Hpp, @VarianceValuation, @State
+                @SessionId, @BrgId, @BatchNo, @ExpiredDate,
+                @BaseSatuanId, @PhysicalCountQty, @SystemQtyAtCount,
+                @InitialVarianceQty, @VerificationStatus, @FinalQuantity
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -71,30 +77,57 @@ public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
     {
         const string sql = """
             UPDATE FARPU_StockOpnameVarianceItem SET
-                CountQty = @CountQty,
-                SystemQty = @SystemQty,
-                VarianceQty = @VarianceQty,
-                Hpp = @Hpp,
-                VarianceValuation = @VarianceValuation,
-                State = @State
-            WHERE VarianceItemId = @VarianceItemId
+                BaseSatuanId = @BaseSatuanId,
+                PhysicalCountQty = @PhysicalCountQty,
+                SystemQtyAtCount = @SystemQtyAtCount,
+                InitialVarianceQty = @InitialVarianceQty,
+                VerificationStatus = @VerificationStatus,
+                FinalQuantity = @FinalQuantity
+            WHERE SessionId = @SessionId
+              AND BrgId = @BrgId
+              AND BatchNo = @BatchNo
+              AND ExpiredDate = @ExpiredDate
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, BuildParams(dto));
     }
 
-    public void UpdateState(string varianceItemId, int state)
+    public void UpdateStatus(
+        string sessionId,
+        string brgId,
+        string batchNo,
+        string expiredDate,
+        string status,
+        decimal? finalQuantity = null)
     {
         const string sql = """
             UPDATE FARPU_StockOpnameVarianceItem SET
-                State = @State
-            WHERE VarianceItemId = @VarianceItemId
+                VerificationStatus = @VerificationStatus,
+                FinalQuantity = @FinalQuantity
+            WHERE SessionId = @SessionId
+              AND BrgId = @BrgId
+              AND BatchNo = @BatchNo
+              AND ExpiredDate = @ExpiredDate
             """;
         var dp = new DynamicParameters();
-        dp.AddParam("@VarianceItemId", varianceItemId, SqlDbType.VarChar);
-        dp.AddParam("@State", state, SqlDbType.Int);
+        dp.AddParam("@SessionId", sessionId, SqlDbType.VarChar);
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@BatchNo", batchNo, SqlDbType.VarChar);
+        dp.AddParam("@ExpiredDate", expiredDate, SqlDbType.VarChar);
+        dp.AddParam("@VerificationStatus", status ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@FinalQuantity", finalQuantity, SqlDbType.Decimal);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+
+    [Obsolete("Use UpdateStatus with composite tuple")]
+    public void UpdateState(string varianceItemId, int state)
+    {
+        var parts = varianceItemId.Split('_');
+        if (parts.Length >= 4)
+        {
+            UpdateStatus(parts[0], parts[1], parts[2], parts[3], state == 1 ? "Verified" : "PendingVerification");
+        }
     }
 
     public void Delete(string sessionId)
@@ -109,17 +142,34 @@ public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
         conn.Execute(sql, dp);
     }
 
-    public StockOpnameVarianceItemDto? GetData(string varianceItemId)
+    public StockOpnameVarianceItemDto? GetData(string sessionId, string brgId, string batchNo, string expiredDate)
     {
         var sql = $"""
             SELECT {SelectColumns}
             FROM FARPU_StockOpnameVarianceItem WITH (NOLOCK)
-            WHERE VarianceItemId = @VarianceItemId
+            WHERE SessionId = @SessionId
+              AND BrgId = @BrgId
+              AND BatchNo = @BatchNo
+              AND ExpiredDate = @ExpiredDate
             """;
         var dp = new DynamicParameters();
-        dp.AddParam("@VarianceItemId", varianceItemId, SqlDbType.VarChar);
+        dp.AddParam("@SessionId", sessionId, SqlDbType.VarChar);
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@BatchNo", batchNo, SqlDbType.VarChar);
+        dp.AddParam("@ExpiredDate", expiredDate, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<StockOpnameVarianceItemDto>(sql, dp);
+    }
+
+    [Obsolete("Use GetData with composite tuple")]
+    public StockOpnameVarianceItemDto? GetData(string varianceItemId)
+    {
+        var parts = varianceItemId.Split('_');
+        if (parts.Length >= 4)
+        {
+            return GetData(parts[0], parts[1], parts[2], parts[3]);
+        }
+        return null;
     }
 
     public IEnumerable<StockOpnameVarianceItemDto> ListBySession(string sessionId)
@@ -135,21 +185,19 @@ public class StockOpnameVarianceItemDal : IStockOpnameVarianceItemDal
         return conn.Read<StockOpnameVarianceItemDto>(sql, dp);
     }
 
-    private static DynamicParameters BuildParams(StockOpnameVarianceItemDto dto)
+    internal static DynamicParameters BuildParams(StockOpnameVarianceItemDto dto)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@VarianceItemId", dto.VarianceItemId, SqlDbType.VarChar);
         dp.AddParam("@SessionId", dto.SessionId, SqlDbType.VarChar);
         dp.AddParam("@BrgId", dto.BrgId, SqlDbType.VarChar);
         dp.AddParam("@BatchNo", dto.BatchNo, SqlDbType.VarChar);
         dp.AddParam("@ExpiredDate", dto.ExpiredDate, SqlDbType.VarChar);
-        dp.AddParam("@BaseSatuanId", dto.BaseSatuanId, SqlDbType.VarChar);
-        dp.AddParam("@CountQty", dto.CountQty, SqlDbType.Decimal);
-        dp.AddParam("@SystemQty", dto.SystemQty, SqlDbType.Decimal);
-        dp.AddParam("@VarianceQty", dto.VarianceQty, SqlDbType.Decimal);
-        dp.AddParam("@Hpp", dto.Hpp, SqlDbType.Decimal);
-        dp.AddParam("@VarianceValuation", dto.VarianceValuation, SqlDbType.Decimal);
-        dp.AddParam("@State", dto.State, SqlDbType.Int);
+        dp.AddParam("@BaseSatuanId", dto.BaseSatuanId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@PhysicalCountQty", dto.PhysicalCountQty, SqlDbType.Decimal);
+        dp.AddParam("@SystemQtyAtCount", dto.SystemQtyAtCount, SqlDbType.Decimal);
+        dp.AddParam("@InitialVarianceQty", dto.InitialVarianceQty, SqlDbType.Decimal);
+        dp.AddParam("@VerificationStatus", dto.VerificationStatus ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@FinalQuantity", dto.FinalQuantity, SqlDbType.Decimal);
         return dp;
     }
 }

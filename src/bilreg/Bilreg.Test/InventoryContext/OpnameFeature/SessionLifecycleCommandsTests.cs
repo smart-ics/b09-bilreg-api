@@ -139,6 +139,108 @@ public class SessionLifecycleCommandsTests
         savedModel!.ScopeItems.Should().HaveCount(2);
         savedModel.ScopeItems.Select(s => s.BrgId).Should().Contain(["BRG01", "BRG02"]);
     }
+
+    [Fact]
+    public async Task CreateSession_WithoutExplicitSessionId_ShouldGenerateSessionIdWithLengthUpTo20Characters()
+    {
+        // Arrange
+        _sessionRepoMock.Setup(r => r.HasActiveSessionAtLocation("FAR01")).Returns(false);
+        StockOpnameSessionModel? savedModel = null;
+        _sessionRepoMock.Setup(r => r.SaveChanges(It.IsAny<StockOpnameSessionModel>()))
+            .Callback<StockOpnameSessionModel>(m => savedModel = m);
+
+        var handler = new CreateSessionHandler(_sessionRepoMock.Object);
+        var cmd = new CreateSessionCommand(
+            LayananId: "FAR01",
+            ScopeMode: SessionScopeEnum.Full,
+            CutoffDate: new DateTime(2026, 11, 20, 8, 0, 0),
+            CreatedBy: "USR01",
+            ScopeItems: null,
+            SessionId: null);
+
+        // Act
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SessionId.Should().NotBeNullOrWhiteSpace();
+        result.SessionId.Length.Should().BeLessThanOrEqualTo(20);
+
+        savedModel.Should().NotBeNull();
+        savedModel!.SessionId.Should().NotBeNullOrWhiteSpace();
+        savedModel.SessionId.Length.Should().BeLessThanOrEqualTo(20);
+        savedModel.SessionId.Should().Be(result.SessionId);
+    }
+
+    [Fact]
+    public async Task CreateSession_WhenLayananIdExceeds5Characters_ShouldThrowArgumentException()
+    {
+        // Arrange
+        _sessionRepoMock.Setup(r => r.HasActiveSessionAtLocation(It.IsAny<string>())).Returns(false);
+        var handler = new CreateSessionHandler(_sessionRepoMock.Object);
+        var cmd = new CreateSessionCommand(
+            LayananId: "FAR001", // 6 characters (> 5)
+            ScopeMode: SessionScopeEnum.Full,
+            CutoffDate: new DateTime(2026, 11, 20, 8, 0, 0),
+            CreatedBy: "USR01");
+
+        // Act
+        var act = () => handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+        _sessionRepoMock.Verify(r => r.SaveChanges(It.IsAny<StockOpnameSessionModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateSession_WhenSessionIdExceeds20Characters_ShouldThrowArgumentException()
+    {
+        // Arrange
+        _sessionRepoMock.Setup(r => r.HasActiveSessionAtLocation(It.IsAny<string>())).Returns(false);
+        var handler = new CreateSessionHandler(_sessionRepoMock.Object);
+        var cmd = new CreateSessionCommand(
+            LayananId: "FAR01",
+            ScopeMode: SessionScopeEnum.Full,
+            CutoffDate: new DateTime(2026, 11, 20, 8, 0, 0),
+            CreatedBy: "USR01",
+            ScopeItems: null,
+            SessionId: "123456789012345678901"); // 21 characters (> 20)
+
+        // Act
+        var act = () => handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+        _sessionRepoMock.Verify(r => r.SaveChanges(It.IsAny<StockOpnameSessionModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateSession_WhenCutoffDateIsDateTimeMinValue_ShouldResolveValidCutoffDate()
+    {
+        // Arrange
+        _sessionRepoMock.Setup(r => r.HasActiveSessionAtLocation("FAR01")).Returns(false);
+        StockOpnameSessionModel? savedModel = null;
+        _sessionRepoMock.Setup(r => r.SaveChanges(It.IsAny<StockOpnameSessionModel>()))
+            .Callback<StockOpnameSessionModel>(m => savedModel = m);
+
+        var handler = new CreateSessionHandler(_sessionRepoMock.Object);
+        var cmd = new CreateSessionCommand(
+            LayananId: "FAR01",
+            ScopeMode: SessionScopeEnum.Full,
+            CutoffDate: DateTime.MinValue,
+            CreatedBy: "USR01");
+
+        // Act
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.CutoffDate.Should().BeOnOrAfter(new DateTime(1753, 1, 1));
+
+        savedModel.Should().NotBeNull();
+        savedModel!.CutoffDate.Should().BeOnOrAfter(new DateTime(1753, 1, 1));
+        _sessionRepoMock.Verify(r => r.SaveChanges(It.IsAny<StockOpnameSessionModel>()), Times.Once);
+    }
     #endregion
 
     #region START COUNTING COMMAND TESTS
@@ -161,6 +263,39 @@ public class SessionLifecycleCommandsTests
         result.SessionId.Should().Be("SES-DRAFT");
         result.Status.Should().Be(SessionStatusEnum.Counting);
         session.Status.Should().Be(SessionStatusEnum.Counting);
+        _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartCounting_WhenPartialSessionWithScopeItemsInDraft_ShouldTransitionToCounting()
+    {
+        // Arrange
+        var scopeItems = new List<StockOpnameScopeItemModel>
+        {
+            new("ITEM01", "SES-PARTIAL-DRAFT", "BRG01", "Paracetamol 500mg"),
+            new("ITEM02", "SES-PARTIAL-DRAFT", "BRG02", "Amoxicillin 500mg")
+        };
+        var session = CreateSampleSession(
+            sessionId: "SES-PARTIAL-DRAFT",
+            scopeMode: SessionScopeEnum.Partial,
+            status: SessionStatusEnum.Draft,
+            scopeItems: scopeItems);
+
+        _sessionRepoMock.Setup(r => r.LoadEntity(It.Is<IStockOpnameSessionKey>(k => k.SessionId == "SES-PARTIAL-DRAFT")))
+            .Returns(MayBe.From(session));
+
+        var handler = new StartCountingHandler(_sessionRepoMock.Object);
+        var cmd = new StartCountingCommand("SES-PARTIAL-DRAFT");
+
+        // Act
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SessionId.Should().Be("SES-PARTIAL-DRAFT");
+        result.Status.Should().Be(SessionStatusEnum.Counting);
+        session.Status.Should().Be(SessionStatusEnum.Counting);
+        session.ScopeItems.Should().HaveCount(2);
         _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
     }
 
@@ -454,6 +589,87 @@ public class SessionLifecycleCommandsTests
         session.CancelReason.Should().Be("Emergency surgery inventory recall");
         session.CancelledBy.Should().Be("MGR01");
         session.CancelledAt.Should().Be(cancelTime);
+        _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelSession_WhenPartialSessionWithScopeItemsInDraft_ShouldCancelSessionAndRecordReasonAndUser()
+    {
+        // Arrange
+        var scopeItems = new List<StockOpnameScopeItemModel>
+        {
+            new("ITEM01", "SES-PART-DRF-CNC", "BRG01", "Paracetamol 500mg")
+        };
+        var session = CreateSampleSession(
+            sessionId: "SES-PART-DRF-CNC",
+            scopeMode: SessionScopeEnum.Partial,
+            status: SessionStatusEnum.Draft,
+            scopeItems: scopeItems);
+
+        _sessionRepoMock.Setup(r => r.LoadEntity(It.Is<IStockOpnameSessionKey>(k => k.SessionId == "SES-PART-DRF-CNC")))
+            .Returns(MayBe.From(session));
+
+        var handler = new CancelSessionHandler(_sessionRepoMock.Object);
+        var cancelTime = new DateTime(2026, 11, 24, 10, 0, 0);
+        var cmd = new CancelSessionCommand("SES-PART-DRF-CNC", "Salah pilih cakupan barang", "USR01", cancelTime);
+
+        // Act
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SessionId.Should().Be("SES-PART-DRF-CNC");
+        result.Status.Should().Be(SessionStatusEnum.Cancelled);
+        result.CancelReason.Should().Be("Salah pilih cakupan barang");
+        result.CancelledBy.Should().Be("USR01");
+        result.CancelledAt.Should().Be(cancelTime);
+
+        session.Status.Should().Be(SessionStatusEnum.Cancelled);
+        session.CancelReason.Should().Be("Salah pilih cakupan barang");
+        session.CancelledBy.Should().Be("USR01");
+        session.CancelledAt.Should().Be(cancelTime);
+        session.ScopeItems.Should().HaveCount(1);
+        _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelSession_WhenPartialSessionWithScopeItemsInCounting_ShouldCancelSessionAndRecordReasonAndUser()
+    {
+        // Arrange
+        var scopeItems = new List<StockOpnameScopeItemModel>
+        {
+            new("ITEM01", "SES-PART-CNT-CNC", "BRG01", "Paracetamol 500mg"),
+            new("ITEM02", "SES-PART-CNT-CNC", "BRG02", "Amoxicillin 500mg")
+        };
+        var session = CreateSampleSession(
+            sessionId: "SES-PART-CNT-CNC",
+            scopeMode: SessionScopeEnum.Partial,
+            status: SessionStatusEnum.Counting,
+            scopeItems: scopeItems);
+
+        _sessionRepoMock.Setup(r => r.LoadEntity(It.Is<IStockOpnameSessionKey>(k => k.SessionId == "SES-PART-CNT-CNC")))
+            .Returns(MayBe.From(session));
+
+        var handler = new CancelSessionHandler(_sessionRepoMock.Object);
+        var cancelTime = new DateTime(2026, 11, 24, 11, 0, 0);
+        var cmd = new CancelSessionCommand("SES-PART-CNT-CNC", "Pembatalan saat penghitungan parsial berlangsung", "MGR01", cancelTime);
+
+        // Act
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SessionId.Should().Be("SES-PART-CNT-CNC");
+        result.Status.Should().Be(SessionStatusEnum.Cancelled);
+        result.CancelReason.Should().Be("Pembatalan saat penghitungan parsial berlangsung");
+        result.CancelledBy.Should().Be("MGR01");
+        result.CancelledAt.Should().Be(cancelTime);
+
+        session.Status.Should().Be(SessionStatusEnum.Cancelled);
+        session.CancelReason.Should().Be("Pembatalan saat penghitungan parsial berlangsung");
+        session.CancelledBy.Should().Be("MGR01");
+        session.CancelledAt.Should().Be(cancelTime);
+        session.ScopeItems.Should().HaveCount(2);
         _sessionRepoMock.Verify(r => r.SaveChanges(session), Times.Once);
     }
 

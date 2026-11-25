@@ -70,10 +70,16 @@ public class StockOpnameSessionModel : IStockOpnameSessionKey
         IEnumerable<StockOpnameVarianceItemModel>? varianceItems = null)
     {
         SessionId = sessionId?.Trim() ?? string.Empty;
+        if (SessionId.Length > 20)
+            throw new ArgumentException("SessionId length cannot exceed 20 characters.", nameof(sessionId));
+
         LayananId = layananId?.Trim() ?? string.Empty;
+        if (LayananId.Length > 5)
+            throw new ArgumentException("LayananId length cannot exceed 5 characters.", nameof(layananId));
+
         ScopeMode = scopeMode;
         Status = status;
-        CutoffDate = cutoffDate;
+        CutoffDate = cutoffDate <= new DateTime(1753, 1, 1) ? DateTime.Now : cutoffDate;
         CreatedBy = createdBy?.Trim() ?? string.Empty;
         CreatedAt = createdAt;
         CountingSubmittedBy = countingSubmittedBy?.Trim() ?? string.Empty;
@@ -110,12 +116,20 @@ public class StockOpnameSessionModel : IStockOpnameSessionKey
         Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
         Guard.Against.NullOrWhiteSpace(createdBy, nameof(createdBy));
 
+        if (sessionId.Trim().Length > 20)
+            throw new ArgumentException("SessionId length cannot exceed 20 characters.", nameof(sessionId));
+
+        if (layananId.Trim().Length > 5)
+            throw new ArgumentException("LayananId length cannot exceed 5 characters.", nameof(layananId));
+
+        var safeCutoff = cutoffDate <= new DateTime(1753, 1, 1) ? DateTime.Now : cutoffDate;
+
         return new StockOpnameSessionModel(
             sessionId: sessionId,
             layananId: layananId,
             scopeMode: scopeMode,
             status: SessionStatusEnum.Draft,
-            cutoffDate: cutoffDate,
+            cutoffDate: safeCutoff,
             createdBy: createdBy,
             createdAt: createdAt ?? DateTime.Now,
             scopeItems: scopeItems);

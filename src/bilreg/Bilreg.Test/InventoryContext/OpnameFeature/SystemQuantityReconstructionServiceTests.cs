@@ -42,15 +42,16 @@ public class SystemQuantityReconstructionServiceTests
         // Assert
         sql.Should().Contain("tb_stok s WITH (NOLOCK)");
         sql.Should().Contain("tb_buku b WITH (NOLOCK)");
-        sql.Should().Contain("WITH InboundAfterCount AS");
-        sql.Should().Contain("OutboundAfterCount AS");
-        sql.Should().Contain("(SUM(s.fn_qty) - ISNULL(ib.TotalIn, 0) + ISNULL(ob.TotalOut, 0)) AS ReconstructedQty");
+        sql.Should().Contain("WITH MutasiAfterCount AS");
+        sql.Should().Contain("b.fd_tgl_jam_mutasi > @CutoffTimeStr");
+        sql.Should().Contain("b.fd_tgl_jam_mutasi < '3000-01-01'");
+        sql.Should().Contain("LEFT JOIN MutasiAfterCount m");
+        sql.Should().Contain("(SUM(s.fn_qty) - ISNULL(m.TotalIn, 0) + ISNULL(m.TotalOut, 0)) AS ReconstructedQty");
         sql.Should().Contain("WHERE s.fs_kd_layanan = @LayananId");
-        sql.Should().Contain("CAST(CONVERT(VARCHAR(10), b.fd_tgl_jam_mutasi, 120) + ' ' + b.fs_jam_mutasi AS DATETIME) > @CutoffTime");
         sql.Should().NotContain("IN @BrgIds");
 
         parameters.ParameterNames.Should().Contain("LayananId");
-        parameters.ParameterNames.Should().Contain("CutoffTime");
+        parameters.ParameterNames.Should().Contain("CutoffTimeStr");
         parameters.ParameterNames.Should().NotContain("BrgIds");
     }
 

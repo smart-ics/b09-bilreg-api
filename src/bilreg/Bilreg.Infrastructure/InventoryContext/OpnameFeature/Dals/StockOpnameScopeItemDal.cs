@@ -19,7 +19,7 @@ public interface IStockOpnameScopeItemDal :
 public class StockOpnameScopeItemDal : IStockOpnameScopeItemDal
 {
     private const string SelectColumns = """
-        ScopeItemId, SessionId, BrgId
+        SessionId, BrgId
         """;
 
     private readonly DatabaseOptions _opt;
@@ -33,9 +33,9 @@ public class StockOpnameScopeItemDal : IStockOpnameScopeItemDal
     {
         const string sql = """
             INSERT INTO FARPU_StockOpnameScopeItem (
-                ScopeItemId, SessionId, BrgId
+                SessionId, BrgId
             ) VALUES (
-                @ScopeItemId, @SessionId, @BrgId
+                @SessionId, @BrgId
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -46,9 +46,9 @@ public class StockOpnameScopeItemDal : IStockOpnameScopeItemDal
     {
         const string sql = """
             INSERT INTO FARPU_StockOpnameScopeItem (
-                ScopeItemId, SessionId, BrgId
+                SessionId, BrgId
             ) VALUES (
-                @ScopeItemId, @SessionId, @BrgId
+                @SessionId, @BrgId
             )
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -86,7 +86,6 @@ public class StockOpnameScopeItemDal : IStockOpnameScopeItemDal
     private static DynamicParameters BuildParams(StockOpnameScopeItemDto dto)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@ScopeItemId", dto.ScopeItemId, SqlDbType.VarChar);
         dp.AddParam("@SessionId", dto.SessionId, SqlDbType.VarChar);
         dp.AddParam("@BrgId", dto.BrgId, SqlDbType.VarChar);
         return dp;
