@@ -12,6 +12,7 @@ using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
+using Bilreg.Domain.RadContext.RadOrderFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 
 namespace Bilreg.Application.PaymentContext.TrsBillingFeature;
@@ -42,6 +43,18 @@ public interface IAddBillAppService
         TarifType tarif,
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
+        DateTime createdAt = default);
+
+    TrsBillType FromRadOrderItem(
+        RadOrderModel radOrder,
+        RadOrderItemModel radOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
         DateTime createdAt = default);
 
     TrsBillType FromPenjualanItem(
@@ -161,11 +174,35 @@ public sealed class AddBillAppService : IAddBillAppService
         TarifType tarif,
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
         DateTime createdAt = default)
     {
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromLabOrderItem(tataRekening, labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif,
-            listReffKomp, createdAt);
+            listReffKomp, layanan, createdAt);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromRadOrderItem(
+        RadOrderModel radOrder,
+        RadOrderItemModel radOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null,
+        DateTime createdAt = default)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromRadOrderItem(tataRekening, radOrder, radOrderItem, reg, jaminan, tarif, nilaiTarif,
+            listReffKomp, layanan, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

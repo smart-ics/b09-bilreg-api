@@ -10,6 +10,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.RadContext.RadOrderFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.DataTypeExtension;
@@ -134,7 +135,8 @@ public class TrsBillFactory
     }
 
     public static TrsBillType CreateFromLabOrderItem(LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
-        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, DateTime createdAt = default)
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null, DateTime createdAt = default)
     {
         var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
             ? reg.TipeJaminan.TipeJaminanId[..3]
@@ -143,7 +145,7 @@ public class TrsBillFactory
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
         var audit = AuditTrailType.Create(labOrder.AuditTrail.Created.UserId, createdAt);
-        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, labOrder.OrderId);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
@@ -179,8 +181,71 @@ public class TrsBillFactory
         var nilai = new TrsBillNilaiType(nilaiTarif.Nilai, 0, 0, 0);
         var billId = $"{labOrder.OrderId}-{labOrderItem.ItemNo:D2}";
 
+        var effectiveLayanan = (layanan is not null && layanan.LayananId != "-")
+            ? layanan
+            : (reg.Layanan.LayananId != "-" ? reg.Layanan : LayananType.Default.ToReff());
+
         var result = new TrsBillType(billId, BillModulGroup.Jasa, DateTime.Now,
-            reg.ToReff(), LayananType.Default.ToReff(), nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
+            reg.ToReff(), effectiveLayanan, nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
+            nilai, ketBilling, listBill2TransEvent, [], []);
+        return result;
+    }
+
+    public static TrsBillType CreateFromRadOrderItem(RadOrderModel radOrder, RadOrderItemModel radOrderItem, RegModel reg,
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp,
+        LayananReff? layanan = null, DateTime createdAt = default)
+    {
+        var expectedJaminanId = reg.TipeJaminan.TipeJaminanId.Length >= 3
+            ? reg.TipeJaminan.TipeJaminanId[..3]
+            : reg.TipeJaminan.TipeJaminanId;
+        if (jaminan.JaminanId != expectedJaminanId)
+            throw new ArgumentException("Jaminan tidak sesuai registrasi");
+
+        var audit = AuditTrailType.Create(radOrder.AuditTrail.Created.UserId, createdAt);
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, radOrder.OrderId);
+
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap.CoaId
+            : jaminan.Rekening.PpdpJasaRajal.CoaId;
+
+        var ppa = new PpaReff(radOrder.DokterPengorderId, radOrder.DokterPengorderName);
+        var i = 0;
+        var listReffKompFetched = listReffKomp.ToList();
+        var listBill2TransEvent = new List<TrsBill2TransEventType>();
+
+        nilaiTarif.ListKomponen.ForEach(item =>
+        {
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
+
+            var rekPdpt = reffKomp?.RekPdpt.CoaId ?? string.Empty;
+            var rekDiskon = reffKomp?.RekDiskon.CoaId ?? string.Empty;
+
+            var bill2Coa = new TrsBill2CoaType(
+                new CoaType(rekPpdp, ""),
+                new CoaType(rekPdpt, ""),
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                new CoaType(rekDiskon, ""));
+
+            var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
+
+            var trsBill2 = new TrsBill2TransEventType(i++, komponen, TrsBillJenisBayarType.Pdp,
+                item.Nilai, ppa, bill2Coa);
+
+            listBill2TransEvent.Add(trsBill2);
+        });
+
+        var nilai = new TrsBillNilaiType(nilaiTarif.Nilai, 0, 0, 0);
+        var billId = $"{radOrder.OrderId}-{radOrderItem.ItemNo}";
+        var billDate = createdAt == default ? DateTime.Now : createdAt;
+
+        var effectiveLayanan = (layanan is not null && !string.IsNullOrWhiteSpace(layanan.LayananId) && layanan.LayananId != "-")
+            ? layanan
+            : (reg.Layanan.LayananId != "-" ? reg.Layanan : LayananType.Default.ToReff());
+
+        var result = new TrsBillType(billId, BillModulGroup.Jasa, billDate,
+            reg.ToReff(), effectiveLayanan, reg.Kelas, audit.Created, tarif.RekapCetak,
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;
     }

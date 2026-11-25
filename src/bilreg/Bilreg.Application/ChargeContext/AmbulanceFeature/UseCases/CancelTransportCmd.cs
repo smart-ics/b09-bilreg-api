@@ -63,6 +63,9 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
             onSome: t => t,
             onNone: () => throw new KeyNotFoundException($"Transaksi transport dengan id '{request.TrsTransportId}' tidak ditemukan."));
 
+        if (transport.IsPostedBilling)
+            throw new InvalidOperationException("Transaksi transport yang sudah dibebankan ke Billing pasien tidak dapat dibatalkan dari operasional.");
+
         var cancelTime = request.CancelTime ?? _tglJamProvider.Now;
         var biayaBatal = 0m;
 

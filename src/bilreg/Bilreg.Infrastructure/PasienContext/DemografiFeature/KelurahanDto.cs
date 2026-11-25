@@ -5,9 +5,14 @@ namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
 
 public record KelurahanDto(string fs_kd_kelurahan, string fs_nm_kelurahan,
     string fs_kd_kecamatan, string fs_nm_kecamatan, 
-    string fs_kd_kabupaten, string fs_nm_kabupaten, 
-    string fs_kd_propinsi, string fs_nm_propinsi)
+    string fs_kd_kabupaten = "", string fs_nm_kabupaten = "", 
+    string fs_kd_propinsi = "", string fs_nm_propinsi = "")
 {
+    public KelurahanDto(string fs_kd_kelurahan, string fs_nm_kelurahan,
+        string fs_kd_kecamatan, string fs_nm_kecamatan)
+        : this(fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_kecamatan, fs_nm_kecamatan, "", "", "", "")
+    {
+    }
     public static KelurahanDto FromModel(KelurahanType kelurahan)
     {
         return new KelurahanDto(

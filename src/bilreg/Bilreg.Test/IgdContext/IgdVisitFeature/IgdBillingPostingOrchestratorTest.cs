@@ -41,14 +41,12 @@ public class IgdBillingPostingOrchestratorTest
     private readonly Mock<IKomponenRepo> _komponenRepoMock = new();
     private readonly Mock<IJaminanRepo> _jaminanRepoMock = new();
     private readonly Mock<IPpaRepo> _ppaRepoMock = new();
-    private readonly Mock<ITindakanRepo> _tindakanRepoMock = new();
     private readonly Mock<ITindakanIgdRepo> _tindakanIgdRepoMock = new();
     private readonly Mock<IBhpIgdRepo> _bhpIgdRepoMock = new();
     private readonly Mock<IBrgRepo> _brgRepoMock = new();
     private readonly Mock<IGroupRekRepo> _groupRekRepoMock = new();
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepoMock = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepoMock = new();
-    private readonly Mock<IAddBillAppService> _addBillAppServiceMock = new();
     private readonly Mock<ILogger<IgdBillingPostingOrchestrator>> _loggerMock = new();
 
     private readonly IgdBillingPostingOrchestrator _sut;
@@ -61,14 +59,12 @@ public class IgdBillingPostingOrchestratorTest
             _komponenRepoMock.Object,
             _jaminanRepoMock.Object,
             _ppaRepoMock.Object,
-            _tindakanRepoMock.Object,
             _tindakanIgdRepoMock.Object,
             _bhpIgdRepoMock.Object,
             _brgRepoMock.Object,
             _groupRekRepoMock.Object,
             _tataRekeningRepoMock.Object,
             _trsBillingRepoMock.Object,
-            _addBillAppServiceMock.Object,
             _loggerMock.Object);
     }
 
@@ -194,13 +190,7 @@ public class IgdBillingPostingOrchestratorTest
 
         // Assert
         result.Should().BeTrue();
-        _addBillAppServiceMock.Verify(x => x.FromTindakan(
-            It.IsAny<TindakanModel>(),
-            It.IsAny<RegModel>(),
-            It.IsAny<TarifType>(),
-            It.IsAny<JaminanType>(),
-            It.IsAny<IEnumerable<KomponenType>>(),
-            It.IsAny<DateTime>()), Times.Never);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
     }
 
     [Fact]
@@ -248,7 +238,7 @@ public class IgdBillingPostingOrchestratorTest
     }
 
     [Fact]
-    public async Task PostTindakanAsync_WhenValid_ResolvesTarif3D_CallsAddBillAppService_MarksAsPosted_AndReturnsTrue()
+    public async Task PostTindakanAsync_WhenValid_ResolvesTarif3D_SavesDirectToBilling_MarksAsPosted_AndReturnsTrue()
     {
         // Arrange
         var visit = CreateVisit();
@@ -270,29 +260,17 @@ public class IgdBillingPostingOrchestratorTest
         _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>()))
             .Returns(MayBe.From(PpaType.Default with { PpaId = "DOK01", PpaName = "dr. Test" }));
 
-        var dummyBill = TrsBillType.Default with { TrsBillingId = "BILL_TDK_01" };
-        _addBillAppServiceMock.Setup(x => x.FromTindakan(
-            It.IsAny<TindakanModel>(),
-            It.IsAny<RegModel>(),
-            It.IsAny<TarifType>(),
-            It.IsAny<JaminanType>(),
-            It.IsAny<IEnumerable<KomponenType>>(),
-            It.IsAny<DateTime>()))
-            .Returns(dummyBill);
-
         // Act
         var result = await _sut.PostTindakanAsync(visit, reg, tindakan);
 
         // Assert
         result.Should().BeTrue();
         tindakan.IsPosted.Should().BeTrue();
-        tindakan.TrsBillId.Should().Be("BILL_TDK_01");
-        tindakan.TrsTdkId.Should().NotBeNullOrWhiteSpace();
+        tindakan.TrsBillId.Should().Be(tindakan.TindakanIgdId);
+        tindakan.TrsTdkId.Should().Be(tindakan.TindakanIgdId);
         tindakan.PostedDate.Should().NotBeNull();
 
-        _tindakanRepoMock.Verify(x => x.SaveChanges(It.IsAny<TindakanModel>()), Times.Once);
-        _addBillAppServiceMock.Verify(x => x.FromTindakan(
-            It.IsAny<TindakanModel>(), reg, tarif, jaminan, It.IsAny<IEnumerable<KomponenType>>(), It.IsAny<DateTime>()), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.SaveChanges(It.Is<TrsBillType>(b => b.TrsBillingId == tindakan.TindakanIgdId)), Times.Once);
         _tindakanIgdRepoMock.Verify(x => x.SaveChanges(tindakan), Times.Once);
     }
 
@@ -393,8 +371,6 @@ public class IgdBillingPostingOrchestratorTest
             .Returns([]);
         _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>()))
             .Returns(MayBe.From(PpaType.Default with { PpaId = "D01", PpaName = "Dr" }));
-        _addBillAppServiceMock.Setup(x => x.FromTindakan(It.IsAny<TindakanModel>(), It.IsAny<RegModel>(), It.IsAny<TarifType>(), It.IsAny<JaminanType>(), It.IsAny<IEnumerable<KomponenType>>(), It.IsAny<DateTime>()))
-            .Returns(TrsBillType.Default with { TrsBillingId = "BILL01" });
 
         _brgRepoMock.Setup(x => x.LoadEntity(It.IsAny<IBrgKey>()))
             .Returns(MayBe<IBrg>.None);

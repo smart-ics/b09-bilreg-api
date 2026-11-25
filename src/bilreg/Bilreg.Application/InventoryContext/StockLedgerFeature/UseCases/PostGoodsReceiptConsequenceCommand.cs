@@ -23,7 +23,8 @@ public record PostGoodsReceiptConsequenceCommand(
     DateTime? TglEd = null,
     string? PoReffId = null,
     string? NoBatch = null,
-    string? SatuanId = null) : IRequest<PostGoodsReceiptConsequenceResult>;
+    string? SatuanId = null,
+    bool AllowAdditiveLine = false) : IRequest<PostGoodsReceiptConsequenceResult>;
 
 public enum PostGoodsReceiptOutcomeEnum
 {
@@ -46,30 +47,18 @@ public record PostGoodsReceiptConsequenceResult(
 public class PostGoodsReceiptConsequenceHandler
     : IRequestHandler<PostGoodsReceiptConsequenceCommand, PostGoodsReceiptConsequenceResult>
 {
-    private readonly LegacyFreshnessGate _freshnessGate;
-    private readonly IStockBatchRepo _batchRepo;
-    private readonly IStockMutasiRepo _mutasiRepo;
-    private readonly IStockLegacyBindingRepo _bindingRepo;
-    private readonly IStockLegacyScopeRepo _scopeRepo;
+    private readonly ILegacyStockReadPort _legacyRead;
     private readonly IStockConsequenceUnitOfWork _uow;
     private readonly ISender? _sender;
     private readonly ILogger<PostGoodsReceiptConsequenceHandler>? _logger;
 
     public PostGoodsReceiptConsequenceHandler(
-        LegacyFreshnessGate freshnessGate,
-        IStockBatchRepo batchRepo,
-        IStockMutasiRepo mutasiRepo,
-        IStockLegacyBindingRepo bindingRepo,
-        IStockLegacyScopeRepo scopeRepo,
+        ILegacyStockReadPort legacyRead,
         IStockConsequenceUnitOfWork uow,
         ISender? sender = null,
         ILogger<PostGoodsReceiptConsequenceHandler>? logger = null)
     {
-        _freshnessGate = freshnessGate;
-        _batchRepo = batchRepo;
-        _mutasiRepo = mutasiRepo;
-        _bindingRepo = bindingRepo;
-        _scopeRepo = scopeRepo;
+        _legacyRead = legacyRead;
         _uow = uow;
         _sender = sender;
         _logger = logger;
@@ -84,144 +73,47 @@ public class PostGoodsReceiptConsequenceHandler
         Guard.Against.NullOrWhiteSpace(request.LayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
+        if (request.TrsReffId.Trim().Length > 10)
+            throw new ArgumentException("TrsReffId must not exceed 10 characters.", nameof(request.TrsReffId));
+        if (request.BrgMasukReffId.Trim().Length > 10)
+            throw new ArgumentException("BrgMasukReffId must not exceed 10 characters.", nameof(request.BrgMasukReffId));
         if (request.Qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.Qty), "Qty must be positive.");
         if (request.Hpp < 0)
             throw new ArgumentOutOfRangeException(nameof(request.Hpp), "Hpp must not be negative.");
 
-        var freshness = await _freshnessGate.EnsureFreshAsync(
-            [new ScopeKeyDto(request.BrgId, request.BrgMasukReffId)],
-            request.UserId,
-            cancellationToken);
-
-        if (freshness.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
-        {
-            return new PostGoodsReceiptConsequenceResult(
-                PostGoodsReceiptOutcomeEnum.AbortedInconsistent,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                freshness.InconsistencyReason,
-                freshness.FailedBrgId,
-                freshness.FailedBrgMasukReffId);
-        }
-
         var tglEd = request.TglEd ?? StockLedgerSentinel.EmptyDate;
 
-        // Always reload from persistence — never reuse a StockBatchModel after AcceptPersisted / failed Commit.
-        var batchMaybe = _batchRepo.LoadByNaturalKey(request.BrgId, request.BrgMasukReffId);
-        StockBatchModel batch;
-        LocationStockBalanceModel? existingLokasi = null;
-
-        if (batchMaybe.HasValue)
+        if (!request.AllowAdditiveLine)
         {
-            batch = batchMaybe.Value;
-            existingLokasi = batch.ListLokasi.FirstOrDefault(x =>
-                x.LayananId == request.LayananId && x.TglEd == tglEd);
+            var priorJournals = _legacyRead
+                .ListJournalsBySource(request.TrsReffId, request.BrgId, request.LayananId, "DO")
+                .Where(x => x.TglEd == tglEd)
+                .ToList();
 
-            if (existingLokasi is not null
-                && _mutasiRepo.Exists(
-                    request.TrsReffId,
-                    MovementKindEnum.GoodsReceipt,
-                    existingLokasi.StokLokasiId))
+            if (priorJournals.Count > 0 && priorJournals.Sum(x => x.QtyIn) == request.Qty)
             {
-                var prior = _mutasiRepo.ListByTrsReffId(request.TrsReffId)
-                    .FirstOrDefault(x =>
-                        x.MovementKind == MovementKindEnum.GoodsReceipt
-                        && x.StokLokasiId == existingLokasi.StokLokasiId);
-
-                var legacyBuku = string.Empty;
-                var legacyStok = string.Empty;
-                if (prior is not null)
-                {
-                    var bindingMaybe = _bindingRepo.FindByStokMutasiId(prior.StokMutasiId);
-                    if (bindingMaybe.HasValue)
-                    {
-                        legacyBuku = bindingMaybe.Value.LegacyBukuId;
-                        legacyStok = bindingMaybe.Value.LegacyStokId;
-                    }
-                }
-
                 return new PostGoodsReceiptConsequenceResult(
                     PostGoodsReceiptOutcomeEnum.Idempotent,
-                    prior?.StokMutasiId ?? string.Empty,
-                    existingLokasi.StokLokasiId,
-                    batch.StokBatchId,
-                    legacyBuku,
-                    legacyStok,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    priorJournals[0].LegacyBukuId,
+                    string.Empty,
                     string.Empty,
                     string.Empty,
                     string.Empty);
             }
         }
-        else
-        {
-            batch = StockBatchModel.Create(
-                request.BrgId,
-                request.BrgMasukReffId,
-                request.Hpp,
-                tglMasuk: request.TglMutasi,
-                poReffId: request.PoReffId);
-        }
-
-        var lokasi = batch.IncreaseLokasi(
-            request.LayananId,
-            tglEd,
-            request.Qty,
-            request.NoBatch);
 
         var legacyBukuId = NunaId.NewLegacyCompact("BK");
         var legacyStokId = NunaId.NewLegacyCompact("ST");
 
-        var mutasi = StockMovementModel.CreateInbound(
-            lokasi.StokLokasiId,
-            batch.StokBatchId,
-            request.BrgId,
-            request.BrgMasukReffId,
-            request.LayananId,
-            tglEd,
-            request.TrsReffId,
-            MovementKindEnum.GoodsReceipt,
-            qtyIn: request.Qty,
-            hpp: request.Hpp,
-            tglMutasi: request.TglMutasi,
-            poReffId: request.PoReffId);
-
-        var binding = StockLegacyBindingModel.CreateMutasiBuku(
-            mutasi.StokMutasiId,
-            legacyBukuId,
-            request.TrsReffId,
-            lokasi.StokLokasiId,
-            legacyStokId);
-
-        var scopeKey = StockLegacyScopeModel.Key(request.BrgId, request.BrgMasukReffId);
-        var scopeMaybe = _scopeRepo.LoadEntity(scopeKey);
-        var scope = scopeMaybe.HasValue
-            ? scopeMaybe.Value
-            : StockLegacyScopeModel.CreateNotAligned(request.BrgId, request.BrgMasukReffId);
-
-        var syncedAt = DateTime.Now;
-        var candidateAfter = LegacyWatermarkHelper.IsAfterWatermark(
-            request.TglMutasi, legacyBukuId, scope.TglMutasiLast, scope.LastLegacyBukuId);
-
-        if (scope.AlignmentStatus is AlignmentStatusEnum.Aligned or AlignmentStatusEnum.Stale)
-        {
-            if (candidateAfter)
-                scope.AdvanceWatermark(request.TglMutasi, legacyBukuId, syncedAt);
-            else
-                // Keep forward catch-up cursor; refresh LastSyncedAt (and clear Stale) only.
-                scope.AdvanceWatermark(scope.TglMutasiLast, scope.LastLegacyBukuId, syncedAt);
-        }
-        else
-            scope.MarkAligned(request.TglMutasi, legacyBukuId, syncedAt);
-
         var draft = new StockConsequenceDraft(
-            BatchUpserts: [batch],
-            MutasiInserts: [mutasi],
-            BindingInserts: [binding],
-            ScopeUpdates: [scope],
+            BatchUpserts: [],
+            MutasiInserts: [],
+            BindingInserts: [],
+            ScopeUpdates: [],
             LegacyOperations:
             [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
@@ -231,7 +123,7 @@ public class PostGoodsReceiptConsequenceHandler
                     Qty: request.Qty,
                     Hpp: request.Hpp,
                     TglEd: tglEd,
-                    TglMasuk: batch.TglMasuk,
+                    TglMasuk: request.TglMutasi,
                     TglMutasi: request.TglMutasi,
                     TrsReffId: request.TrsReffId,
                     MovementKindString: "DO",
@@ -249,9 +141,9 @@ public class PostGoodsReceiptConsequenceHandler
 
         return new PostGoodsReceiptConsequenceResult(
             PostGoodsReceiptOutcomeEnum.Success,
-            mutasi.StokMutasiId,
-            lokasi.StokLokasiId,
-            batch.StokBatchId,
+            string.Empty,
+            string.Empty,
+            string.Empty,
             legacyBukuId,
             legacyStokId,
             string.Empty,

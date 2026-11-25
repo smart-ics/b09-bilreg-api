@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.Integration;
@@ -17,6 +18,7 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
 {
     private const string GenerateRoute = "/api/Assesment/generateIgdTriage";
     private const string LinkRoute = "/api/Assesment/linkIgdVisit";
+    private const string DeleteRoutePrefix = "/api/Assesment/";
     private const int DefaultTimeoutSeconds = 10;
     private const int MaxTimeoutSeconds = 120;
     private const int ErrorBodyLength = 300;
@@ -142,6 +144,45 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
         }
     }
 
+    public async Task<SmassGatewayResult> DeleteAssesment(
+        string assessmentId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var configurationError = ValidateBaseConfiguration();
+            if (configurationError is not null)
+                return Failed(configurationError);
+
+            if (string.IsNullOrWhiteSpace(assessmentId))
+                return Failed("AssessmentId SMASS kosong.");
+
+            var token = await _tokenService.GetToken(cancellationToken);
+            if (string.IsNullOrWhiteSpace(token))
+                return Failed("Token SMASS tidak tersedia.");
+
+            var trimmedId = assessmentId.Trim();
+            var client = _restClientFactory.Create(_smass.BaseApiUrl);
+            var restRequest = new RestRequest(
+                    $"{DeleteRoutePrefix}{Uri.EscapeDataString(trimmedId)}",
+                    Method.Delete)
+                .AddHeader("Authorization", $"Bearer {token}");
+            restRequest.Timeout = RequestTimeout;
+
+            var response = await client.ExecuteDeleteAsync(restRequest, cancellationToken);
+
+            // HTTP 2xx and 404 NotFound are both treated as idempotent success (TD-03).
+            if (response.IsSuccessful || response.StatusCode == HttpStatusCode.NotFound)
+                return new SmassGatewayResult(true, trimmedId, null);
+
+            return Failed(DescribeHttpFailure("deleteAssesment", response));
+        }
+        catch (Exception ex)
+        {
+            return Failed($"SMASS deleteAssesment gagal: {ex.Message}");
+        }
+    }
+
     private TimeSpan RequestTimeout
     {
         get
@@ -161,16 +202,25 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
     /// </summary>
     private string? ValidateConfiguration()
     {
+        var baseError = ValidateBaseConfiguration();
+        if (baseError is not null)
+            return baseError;
+        if (string.IsNullOrWhiteSpace(_igdVisit.SmassLayananId))
+            return "Konfigurasi IgdVisit:SmassLayananId belum diisi.";
+        if (string.IsNullOrWhiteSpace(_igdVisit.SmassTriagePaperId))
+            return "Konfigurasi IgdVisit:SmassTriagePaperId belum diisi.";
+
+        return null;
+    }
+
+    private string? ValidateBaseConfiguration()
+    {
         if (string.IsNullOrWhiteSpace(_smass.BaseApiUrl))
             return "Konfigurasi Smass:BaseApiUrl belum diisi.";
         if (string.IsNullOrWhiteSpace(_smass.TokenEmail))
             return "Konfigurasi Smass:TokenEmail belum diisi.";
         if (string.IsNullOrWhiteSpace(_smass.TokenPass))
             return "Konfigurasi Smass:TokenPass belum diisi.";
-        if (string.IsNullOrWhiteSpace(_igdVisit.SmassLayananId))
-            return "Konfigurasi IgdVisit:SmassLayananId belum diisi.";
-        if (string.IsNullOrWhiteSpace(_igdVisit.SmassTriagePaperId))
-            return "Konfigurasi IgdVisit:SmassTriagePaperId belum diisi.";
 
         return null;
     }

@@ -56,7 +56,8 @@ public class IgdVisitSmassTaskModel : IIgdVisitSmassTaskKey
         string igdVisitId,
         int noTriage,
         SmassTaskTypeEnum taskType,
-        DateTime createdAt = default)
+        DateTime createdAt = default,
+        string assessmentId = "")
     {
         Guard.Against.NullOrWhiteSpace(igdVisitId, nameof(igdVisitId));
 
@@ -66,7 +67,7 @@ public class IgdVisitSmassTaskModel : IIgdVisitSmassTaskKey
             noTriage,
             taskType,
             SmassTaskStatusEnum.Pending,
-            assessmentId: "",
+            assessmentId: assessmentId ?? "",
             retryCount: 0,
             lastRetryDate: EmptyDate,
             processedDate: EmptyDate,
@@ -153,6 +154,19 @@ public class IgdVisitSmassTaskModel : IIgdVisitSmassTaskKey
                 $"Task {IgdVisitSmassTaskId} berstatus {TaskStatus}; retry manual hanya diperbolehkan dari Failed.");
     }
 
+    /// <summary>
+    /// Populates <see cref="AssessmentId"/> on a non-terminal task (used by Void tasks
+    /// when carrying the target SMASS assessment identifier before/between attempts).
+    /// </summary>
+    public void SetAssessmentId(string assessmentId)
+    {
+        if (TaskStatus == SmassTaskStatusEnum.Succeeded)
+            throw new InvalidOperationException(
+                $"Task {IgdVisitSmassTaskId} sudah Succeeded; AssessmentId tidak dapat diubah.");
+
+        AssessmentId = assessmentId?.Trim() ?? "";
+    }
+
     public string IgdVisitSmassTaskId { get; }
     public string IgdVisitId { get; }
     public int NoTriage { get; }
@@ -174,6 +188,10 @@ public class IgdVisitSmassTaskModel : IIgdVisitSmassTaskKey
         if (taskType == SmassTaskTypeEnum.Generate && noTriage <= 0)
             throw new ArgumentException(
                 "Task Generate mensyaratkan NoTriage > 0 (INV-T3).", nameof(noTriage));
+
+        if (taskType == SmassTaskTypeEnum.Void && noTriage <= 0)
+            throw new ArgumentException(
+                "Task Void mensyaratkan NoTriage > 0.", nameof(noTriage));
     }
 
     private sealed record TaskKey(string IgdVisitSmassTaskId) : IIgdVisitSmassTaskKey;

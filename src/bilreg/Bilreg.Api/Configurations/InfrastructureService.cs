@@ -10,6 +10,8 @@ using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.RadContext.RadOrderFeature;
+using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabExternalFeature;
 using Bilreg.Application.LabContext.LabMasterFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
@@ -42,6 +44,8 @@ using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.User;
+using Bilreg.Infrastructure.Shared.User;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -68,9 +72,12 @@ using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabMasterFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.RadContext.RadOrderFeature;
+using Bilreg.Infrastructure.RadContext.Integration;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
+using Bilreg.Infrastructure.PaymentContext.KasirFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.AccountingContext.JurnalFeature;
@@ -109,6 +116,7 @@ public static class InfrastructureService
         IConfiguration configuration)
     {
         services
+            .AddScoped<ISqlConnectionScope, SqlConnectionScope>()
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ISqlServerClock, SqlServerClock>()
@@ -120,6 +128,14 @@ public static class InfrastructureService
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<ILabOrderRepo, LabOrderRepo>()
+            .AddScoped<IRadOrderRepo, RadOrderRepo>()
+            .AddScoped<IRadOrderDal, RadOrderDal>()
+            .AddScoped<IRadOrderTableDal, RadOrderDal>()
+            .AddScoped<IRadOrderItemDal, RadOrderItemDal>()
+            .AddScoped<IRadOrderItemTableDal, RadOrderItemDal>()
+            .AddScoped<IRadTarifModalityDal, RadTarifModalityDal>()
+            .AddScoped<IRadItemResolutionService, RadItemResolutionService>()
+            .AddScoped<IRadBillingIntegration, RadBillingIntegration>()
             .AddScoped<IRegAktifRepo, RegAktifRepo>()
             .AddScoped<Bilreg.Application.AdmisiContext.LayananFeature.ILayananRepo, Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananRepo>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
@@ -220,6 +236,7 @@ public static class InfrastructureService
             .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
             .AddScoped<ITransferReceivableService, TransferReceivableService>()
             .AddScoped<IUsmanGetTokenService,  UsmanGetTokenService>()
+            .AddScoped<IUsmanGetUserService, UsmanGetUserService>()
             .AddScoped<ISmassTokenService, SmassTokenService>()
             .AddScoped<ISmassAssessmentGateway, SmassAssessmentGateway>()
             .AddScoped<IEmrLabelGateway, EmrLabelGateway>()
@@ -359,6 +376,7 @@ public static class InfrastructureService
         services.AddBrgFeature();
         services.AddScoped<IBrgHargaJualDal, BrgHargaJualDal>();
         services.AddTataRekeningFeature();
+        services.AddKasirFeature();
         services.AddScoped<ITrsDirectDal, TrsDirectDal>();
         services.AddScoped<Bilreg.Application.PaymentContext.TrsBillingFeature.ITrsDirectDal, TrsDirectDal>();
         services.AddScoped<IJurnalDal, JurnalDal>();

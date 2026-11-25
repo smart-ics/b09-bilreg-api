@@ -1,0 +1,12 @@
+-- Migration: IGD-TRIAGE-COCKPIT-UX-AND-ACTIONS
+-- Adds soft-void columns to BILRG_IgdVisitTriage
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'BILRG_IgdVisitTriage' AND COLUMN_NAME = 'IsVoided')
+BEGIN
+    ALTER TABLE BILRG_IgdVisitTriage ADD
+        IsVoided BIT NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_IsVoided DEFAULT(0),
+        VoidUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidUserId DEFAULT(''),
+        VoidDateTime DATETIME NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidDateTime DEFAULT('3000-01-01'),
+        VoidReason VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_VoidReason DEFAULT('');
+END
+GO

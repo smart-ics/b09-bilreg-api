@@ -44,80 +44,19 @@ public class EnsureFreshnessForScopesHandler
         _mediator = mediator;
     }
 
-    public async Task<EnsureFreshnessForScopesResult> Handle(
+    public Task<EnsureFreshnessForScopesResult> Handle(
         EnsureFreshnessForScopesCommand request,
         CancellationToken cancellationToken)
     {
         Guard.Against.Null(request.Scopes);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        foreach (var key in request.Scopes)
-        {
-            Guard.Against.NullOrWhiteSpace(key.BrgId);
-            Guard.Against.NullOrWhiteSpace(key.BrgMasukReffId);
-
-            var scopeKey = StockLegacyScopeModel.Key(key.BrgId, key.BrgMasukReffId);
-            var scopeMaybe = _scopeRepo.LoadEntity(scopeKey);
-            var scope = scopeMaybe.HasValue
-                ? scopeMaybe.Value
-                : StockLegacyScopeModel.CreateNotAligned(key.BrgId, key.BrgMasukReffId);
-
-            if (scope.AlignmentStatus == AlignmentStatusEnum.Inconsistent)
-            {
-                return Abort(key, scope.InconsistencyReason);
-            }
-
-            if (scope.AlignmentStatus == AlignmentStatusEnum.NotAligned)
-            {
-                var hydrate = await _mediator.Send(
-                    new HydrateScopeFromLegacyCommand(key.BrgId, key.BrgMasukReffId, request.UserId),
-                    cancellationToken);
-
-                if (hydrate.Outcome == HydrateScopeOutcomeEnum.Inconsistent)
-                    return Abort(key, hydrate.InconsistencyReason);
-
-                // Fresh inbound scope optimization:
-                // When a new goods receipt is hydrated with 0 legacy journals, the scope is aligned at empty date baseline.
-                // Catch-up is skipped since there are no legacy journal deltas to replay.
-                if (hydrate.Outcome == HydrateScopeOutcomeEnum.Success &&
-                    hydrate.AlignmentStatus == AlignmentStatusEnum.Aligned &&
-                    hydrate.AppliedJournalCount == 0)
-                {
-                    continue;
-                }
-            }
-            else if (scope.AlignmentStatus == AlignmentStatusEnum.Aligned)
-            {
-                var journals = _legacyRead.ListJournals(key.BrgId, key.BrgMasukReffId);
-                if (LegacyWatermarkHelper.HasLegacyRowsBeyondWatermark(journals, scope))
-                {
-                    scope.MarkStale();
-                    _scopeRepo.SaveChanges(scope);
-                }
-            }
-
-            var catchUp = await _mediator.Send(
-                new CatchUpScopeFromLegacyCommand(key.BrgId, key.BrgMasukReffId, request.UserId),
-                cancellationToken);
-
-            if (catchUp.Outcome == CatchUpScopeOutcomeEnum.Inconsistent)
-                return Abort(key, catchUp.InconsistencyReason);
-
-            if (catchUp.Outcome == CatchUpScopeOutcomeEnum.NotAligned)
-            {
-                return Abort(
-                    key,
-                    catchUp.InconsistencyReason.Length > 0
-                        ? catchUp.InconsistencyReason
-                        : "Catch-up reported NotAligned after hydrate.");
-            }
-        }
-
-        return new EnsureFreshnessForScopesResult(
+        // Deactivated (P1-S02): legacy tables are the system of record; no-op fresh result.
+        return Task.FromResult(new EnsureFreshnessForScopesResult(
             EnsureFreshnessOutcomeEnum.Success,
             string.Empty,
             string.Empty,
-            string.Empty);
+            string.Empty));
     }
 
     private static EnsureFreshnessForScopesResult Abort(ScopeKeyDto key, string reason) =>
