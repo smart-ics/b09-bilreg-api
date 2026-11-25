@@ -3,11 +3,14 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.BillingLockFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -35,6 +38,30 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
     private readonly IJaminanRepo _jaminanRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IBillingLockValidationService _billingLockValidator;
+    private readonly ITrsBillingRepo _trsBillingRepo;
+
+    public CancelTransportHandler(
+        ITrsTransportRepo trsTransportRepo,
+        IAmbulanceRepo ambulanceRepo,
+        IAddBillAppService addBillAppService,
+        IRegRepo regRepo,
+        IJaminanRepo jaminanRepo,
+        IKomponenRepo komponenRepo,
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator,
+        ITrsBillingRepo trsBillingRepo)
+    {
+        _trsTransportRepo = trsTransportRepo;
+        _ambulanceRepo = ambulanceRepo;
+        _addBillAppService = addBillAppService;
+        _regRepo = regRepo;
+        _jaminanRepo = jaminanRepo;
+        _komponenRepo = komponenRepo;
+        _tglJamProvider = tglJamProvider;
+        _billingLockValidator = billingLockValidator;
+        _trsBillingRepo = trsBillingRepo;
+    }
 
     public CancelTransportHandler(
         ITrsTransportRepo trsTransportRepo,
@@ -44,17 +71,35 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
         IJaminanRepo jaminanRepo,
         IKomponenRepo komponenRepo,
         ITglJamProvider tglJamProvider)
+        : this(
+            trsTransportRepo,
+            ambulanceRepo,
+            addBillAppService,
+            regRepo,
+            jaminanRepo,
+            komponenRepo,
+            tglJamProvider,
+            new NoOpBillingLockValidator(),
+            new NoOpTrsBillingRepo())
     {
-        _trsTransportRepo = trsTransportRepo;
-        _ambulanceRepo = ambulanceRepo;
-        _addBillAppService = addBillAppService;
-        _regRepo = regRepo;
-        _jaminanRepo = jaminanRepo;
-        _komponenRepo = komponenRepo;
-        _tglJamProvider = tglJamProvider;
     }
 
-    public Task<CancelTransportResponse> Handle(CancelTransportCmd request, CancellationToken cancellationToken)
+    private sealed class NoOpBillingLockValidator : IBillingLockValidationService
+    {
+        public Task EnsureCanModifyBillingAsync(string regId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class NoOpTrsBillingRepo : ITrsBillingRepo
+    {
+        public void SaveChanges(TrsBillType model) { }
+        public MayBe<TrsBillType> LoadEntity(ITrsBillingKey key) => MayBe<TrsBillType>.None;
+        public void DeleteEntity(ITrsBillingKey key) { }
+        public IEnumerable<TrsBillType> ListEntity(IRegKey regKey) => [];
+        public IEnumerable<TrsBillView> ListData(IRegKey filter) => [];
+    }
+
+    public async Task<CancelTransportResponse> Handle(CancelTransportCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.TrsTransportId, nameof(request.TrsTransportId));
         Guard.Against.NullOrWhiteSpace(request.AlasanBatal, nameof(request.AlasanBatal));
@@ -63,8 +108,11 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
             onSome: t => t,
             onNone: () => throw new KeyNotFoundException($"Transaksi transport dengan id '{request.TrsTransportId}' tidak ditemukan."));
 
-        if (transport.IsPostedBilling)
-            throw new InvalidOperationException("Transaksi transport yang sudah dibebankan ke Billing pasien tidak dapat dibatalkan dari operasional.");
+        var wasPostedBilling = transport.IsPostedBilling;
+        if (wasPostedBilling && !string.IsNullOrWhiteSpace(transport.RegId))
+        {
+            await _billingLockValidator.EnsureCanModifyBillingAsync(transport.RegId, cancellationToken);
+        }
 
         var cancelTime = request.CancelTime ?? _tglJamProvider.Now;
         var biayaBatal = 0m;
@@ -85,9 +133,14 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
             }
         }
 
-        transport.Cancel(request.AlasanBatal, biayaBatal, request.PetugasVoidId, cancelTime);
+        transport.Cancel(request.AlasanBatal, biayaBatal, request.PetugasVoidId, cancelTime, allowPostedBillingReversal: true);
 
         using var scope = TransHelper.NewScope();
+
+        if (wasPostedBilling)
+        {
+            _trsBillingRepo.DeleteEntity(TrsBillType.Key(transport.TrsTransportId));
+        }
 
         if (!transport.IsNonReg && !string.IsNullOrWhiteSpace(transport.RegId) && biayaBatal > 0)
         {
@@ -120,10 +173,10 @@ public class CancelTransportHandler : IRequestHandler<CancelTransportCmd, Cancel
         _trsTransportRepo.SaveChanges(transport);
         scope.Complete();
 
-        return Task.FromResult(new CancelTransportResponse(
+        return new CancelTransportResponse(
             transport.TrsTransportId,
             transport.Status.ToString(),
             transport.BiayaBatal,
-            transport.IsPostedBilling));
+            transport.IsPostedBilling);
     }
 }

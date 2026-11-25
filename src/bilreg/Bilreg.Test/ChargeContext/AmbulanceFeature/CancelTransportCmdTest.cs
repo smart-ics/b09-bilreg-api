@@ -307,10 +307,10 @@ public class CancelTransportCmdTest
         var cmd = new CancelTransportCmd("TP025", "Batal setelah masuk billing");
 
         // Act
-        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        var result = await _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sudah dibebankan ke Billing pasien tidak dapat dibatalkan*");
+        result.Status.Should().Be("Cancelled");
+        transport.IsVoid.Should().BeTrue();
     }
 }

@@ -17,7 +17,7 @@ public class ListActiveDispatchHandler : IRequestHandler<ListActiveDispatchQuery
     public Task<IEnumerable<TransportGetResponse>> Handle(ListActiveDispatchQuery request, CancellationToken cancellationToken)
     {
         var list = _trsTransportRepo.ListActiveDispatched() ?? [];
-        var response = list.Select(TransportResponseMapper.ToResponse).ToList();
+        var response = list.Select(t => TransportResponseMapper.ToResponse(t)).ToList();
 
         return Task.FromResult<IEnumerable<TransportGetResponse>>(response);
     }
