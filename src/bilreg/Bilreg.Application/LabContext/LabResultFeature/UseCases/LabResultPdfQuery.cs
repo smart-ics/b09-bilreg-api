@@ -49,7 +49,8 @@ public record LabResultPdfItemView(
     string ComponentCode = "",
     LabResultTypeEnum ResultType = LabResultTypeEnum.Numeric,
     string NarrativeValue = "",
-    string OptionValue = "");
+    string OptionValue = "",
+    string TextValue = "");
 
 public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultPdfFile>
 {
@@ -175,7 +176,8 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             ComponentCode: item.ComponentCode,
             ResultType: item.ResultType,
             NarrativeValue: item.NarrativeValue ?? string.Empty,
-            OptionValue: item.OptionValue ?? string.Empty);
+            OptionValue: item.OptionValue ?? string.Empty,
+            TextValue: item.TextValue ?? string.Empty);
     }
 
     private sealed record OrderIdKey(string OrderId) : ILabOrderKey;
