@@ -73,7 +73,7 @@ Rencana kerja ini mencakup perubahan pada backend Core Bilreg (`b09-bilreg-api`)
 | Phase | Implementation Status | Review Status | Progress |
 |---|---|---|---|
 | P1 - Application View Model Enrichment | IMPLEMENTED | GO | 1/1 |
-| P2 - Specialized PDF Renderers & Strategy Orchestration | IN-PROGRESS | NOT-REVIEWED | 3/4 |
+| P2 - Specialized PDF Renderers & Strategy Orchestration | IMPLEMENTED | GO | 4/4 |
 | P3 - Frontend Dialog Preview Alignment | NOT-STARTED | NOT-REVIEWED | 0/1 |
 
 ---
@@ -103,8 +103,8 @@ Notes: Diimplementasikan pengayaan LabResultPdfView (ServiceType, DokterPerujukN
 
 ## P2 - Specialized PDF Renderers & Strategy Orchestration
 
-Implementation Status: IN-PROGRESS  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 
 ### P2-S02
 Title: Implementasi LabResultPkPdfRenderer (Tabel 5 Kolom Berjenjang Disiplin & Group)  
@@ -166,8 +166,8 @@ Notes: Mengimplementasikan LabResultMicroPdfRenderer di Bilreg.Infrastructure/La
 
 ### P2-S05
 Title: Integrasi Orchestrator LabResultPdfRenderer & Pengujian Unit Komprehensif  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperbarui kelas orkestrator utama `LabResultPdfRenderer` agar mendelegasikan proses rendering ke `LabResultPkPdfRenderer`, `LabResultPaPdfRenderer`, atau `LabResultMicroPdfRenderer` berdasarkan nilai `view.ServiceType`, serta menulis pengujian unit lengkap di `Bilreg.Test`.  
 Depends On: P2-S02, P2-S03, P2-S04  
 Repository: `b09-bilreg-api`  
@@ -184,7 +184,7 @@ Completion Criteria:
   - Render hasil Mikro dengan pertumbuhan dan tabel antibiogram.
   - Render hasil Mikro steril tanpa tabel antibiogram.
 - Seluruh pengujian pada `b09-bilreg-api` lulus dengan `dotnet test`.  
-Notes: Memastikan kompatibilitas backward terhadap semua pemanggil `ILabResultPdfRenderer`.
+Notes: Memperbarui LabResultPdfRenderer sebagai orkestrator strategi yang mengevaluasi view.ServiceType dan mendelegasikan ke LabResultPkPdfRenderer (Patologi Klinik / fallback), LabResultPaPdfRenderer (Patologi Anatomi), atau LabResultMicroPdfRenderer (Mikrobiologi). Mempertahankan backward compatibility penuh untuk ILabResultPdfRenderer. Menambahkan pengujian unit komprehensif di Bilreg.Test/LabContext/LabResultFeature/LabResultPdfRendererTest.cs (16 unit tests, seluruhnya lulus verifikasi). File diubah: src/bilreg/Bilreg.Infrastructure/LabContext/LabResultFeature/LabResultPdfRenderer.cs dan src/bilreg/Bilreg.Test/LabContext/LabResultFeature/LabResultPdfRendererTest.cs.
 
 ---
 
