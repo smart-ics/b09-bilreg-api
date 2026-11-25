@@ -113,16 +113,25 @@ public class PostStockAdjustmentConsequenceHandler
             if (item.AdjustmentQty > 0)
             {
                 // Surplus: AJ_PLUS (16)
-                var candidates = _batchRepo.ListAllocationCandidates(item.BrgId, request.LayananId).ToList();
-                var matchCandidate = candidates.FirstOrDefault(c =>
-                    string.Equals(c.NoBatch, item.BatchNo, StringComparison.OrdinalIgnoreCase));
+                var effectiveHpp = item.Hpp;
+                if (effectiveHpp <= 0)
+                {
+                    var locBalances = _legacyRead.ListBalancesAtLocation(item.BrgId, request.LayananId);
+                    var activeHpp = locBalances.FirstOrDefault(b => b.Hpp > 0)?.Hpp;
+                    if (!activeHpp.HasValue || activeHpp.Value <= 0)
+                    {
+                        var globalBalances = _legacyRead.ListBalances(item.BrgId, string.Empty);
+                        activeHpp = globalBalances.FirstOrDefault(b => b.Hpp > 0)?.Hpp;
+                    }
+                    if (activeHpp.HasValue && activeHpp.Value > 0)
+                    {
+                        effectiveHpp = activeHpp.Value;
+                    }
+                }
 
-                var brgMasukReffId = matchCandidate?.BrgMasukReffId
-                    ?? (!string.IsNullOrWhiteSpace(item.BatchNo) && item.BatchNo.Length <= 10
-                        ? item.BatchNo
-                        : NunaId.NewLegacyCompact("DO"));
+                var brgMasukReffId = adjustmentId;
 
-                var batch = GetOrLoadBatch(item.BrgId, brgMasukReffId, item.Hpp, executedAt, batchesByNaturalKey);
+                var batch = GetOrLoadBatch(item.BrgId, brgMasukReffId, effectiveHpp, executedAt, batchesByNaturalKey, poReffId: adjustmentId);
                 var lokasi = batch.IncreaseLokasi(request.LayananId, tglEd, item.AdjustmentQty, item.BatchNo);
 
                 var legacyBukuId = NunaId.NewLegacyCompact("BK");
@@ -138,7 +147,7 @@ public class PostStockAdjustmentConsequenceHandler
                     adjustmentId,
                     MovementKindEnum.AdjustmentPlus,
                     item.AdjustmentQty,
-                    item.Hpp,
+                    effectiveHpp,
                     executedAt);
 
                 mutasiInserts.Add(mutasi);
@@ -157,12 +166,13 @@ public class PostStockAdjustmentConsequenceHandler
                     BrgMasukReffId: brgMasukReffId,
                     LayananId: request.LayananId,
                     Qty: item.AdjustmentQty,
-                    Hpp: item.Hpp,
+                    Hpp: effectiveHpp,
                     TglEd: tglEd,
                     TglMasuk: executedAt,
                     TglMutasi: executedAt,
                     TrsReffId: adjustmentId,
                     MovementKindString: "AJ_PLUS",
+                    PoReffId: adjustmentId,
                     NoBatch: item.BatchNo,
                     SatuanId: item.SatuanId,
                     LegacyBukuId: legacyBukuId,
@@ -180,7 +190,7 @@ public class PostStockAdjustmentConsequenceHandler
                     layananId: request.LayananId,
                     adjustmentQty: item.AdjustmentQty,
                     baseSatuanId: item.SatuanId ?? string.Empty,
-                    hpp: item.Hpp,
+                    hpp: effectiveHpp,
                     stokMutasiId: mutasi.StokMutasiId,
                     legacyBukuId: legacyBukuId,
                     movementKind: (int)MovementKindEnum.AdjustmentPlus,
@@ -384,7 +394,8 @@ public class PostStockAdjustmentConsequenceHandler
         string brgMasukReffId,
         decimal hpp,
         DateTime now,
-        Dictionary<(string BrgId, string DoId), StockBatchModel> cache)
+        Dictionary<(string BrgId, string DoId), StockBatchModel> cache,
+        string? poReffId = null)
     {
         if (cache.TryGetValue((brgId, brgMasukReffId), out var existing))
             return existing;
@@ -392,7 +403,7 @@ public class PostStockAdjustmentConsequenceHandler
         var loaded = _batchRepo.LoadByNaturalKey(brgId, brgMasukReffId);
         var batch = loaded.HasValue
             ? loaded.Value
-            : StockBatchModel.Create(brgId, brgMasukReffId, hpp, now);
+            : StockBatchModel.Create(brgId, brgMasukReffId, hpp, now, poReffId);
 
         cache[(brgId, brgMasukReffId)] = batch;
         return batch;

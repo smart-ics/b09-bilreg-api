@@ -110,7 +110,149 @@ public class PostStockAdjustmentConsequenceHandlerTests
         capturedDraft.LegacyOperations.OfType<LegacyInboundWriteOperation>().Should().ContainSingle(inOp =>
             inOp.Request.MovementKindString == "AJ_PLUS"
             && inOp.Request.Qty == 10m
+            && inOp.Request.TrsReffId == audit.AdjustmentId
+            && inOp.Request.PoReffId == audit.AdjustmentId
+            && inOp.Request.BrgMasukReffId == audit.AdjustmentId
+            && inOp.Request.Hpp == hpp
+            && inOp.Request.Hpp > 0m);
+
+        capturedDraft.BatchUpserts.Should().ContainSingle(b =>
+            b.BrgId == brgId
+            && b.BrgMasukReffId == audit.AdjustmentId
+            && b.PoReffId == audit.AdjustmentId
+            && b.Hpp == hpp);
+    }
+
+    [Fact]
+    public async Task Handle_SurplusAdjustment_WhenInputHppIsZero_FallsBackToLegacyReadLocationHpp()
+    {
+        // Arrange
+        const string sessionId = "SO-SESSION-HPP-FALLBACK";
+        const string layananId = "FAR-01";
+        const string brgId = "BRG-001";
+        const string batchNo = "BATCH-ZERO-HPP";
+        const string expDate = "2027-12-31";
+        const decimal adjQty = 5m;
+        const decimal zeroHpp = 0m;
+        const decimal fallbackHpp = 4500m;
+        const string satuanId = "TAB";
+        const string executedBy = "USER-SPV";
+
+        _batchRepoMock.Setup(x => x.ListAllocationCandidates(brgId, layananId))
+            .Returns([]);
+        _batchRepoMock.Setup(x => x.LoadByNaturalKey(brgId, It.IsAny<string>()))
+            .Returns(MayBe<StockBatchModel>.None);
+        _scopeRepoMock.Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
+            .Returns(MayBe<StockLegacyScopeModel>.None);
+
+        _legacyReadMock.Setup(x => x.ListBalancesAtLocation(brgId, layananId))
+            .Returns([
+                new LegacyStockBalanceReadModel("ST-LOC-01", brgId, "DO-HISTORIC", layananId, DateTime.Parse(expDate), "BATCH-OLD", 10m, fallbackHpp, DateTime.Now)
+            ]);
+
+        StockConsequenceDraft? capturedDraft = null;
+        _uowMock.Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
+            .Callback<StockConsequenceDraft>(d => capturedDraft = d);
+
+        IEnumerable<StockOpnameAdjustmentModel>? capturedAdjustments = null;
+        _adjustmentRepoMock.Setup(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()))
+            .Callback<IEnumerable<StockOpnameAdjustmentModel>>(a => capturedAdjustments = a);
+
+        var command = new PostStockAdjustmentConsequenceCommand(
+            sessionId,
+            layananId,
+            [
+                new StockAdjustmentItemRequest(brgId, batchNo, expDate, adjQty, zeroHpp, satuanId, executedBy)
+            ]);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Outcome.Should().Be(PostStockAdjustmentOutcomeEnum.Success);
+        _legacyReadMock.Verify(x => x.ListBalancesAtLocation(brgId, layananId), Times.Once);
+
+        capturedAdjustments.Should().NotBeNull();
+        var audit = capturedAdjustments!.Single();
+        audit.AdjustmentId.Should().StartWith("AJ").And.HaveLength(10);
+        audit.NilaiFinansial.Should().Be(5m * fallbackHpp);
+
+        capturedDraft.Should().NotBeNull();
+        capturedDraft!.MutasiInserts.Should().ContainSingle(m =>
+            m.MovementKind == MovementKindEnum.AdjustmentPlus
+            && m.Hpp == fallbackHpp
+            && m.TrsReffId == audit.AdjustmentId);
+
+        capturedDraft.BatchUpserts.Should().ContainSingle(b =>
+            b.BrgMasukReffId == audit.AdjustmentId
+            && b.PoReffId == audit.AdjustmentId
+            && b.Hpp == fallbackHpp);
+
+        capturedDraft.LegacyOperations.OfType<LegacyInboundWriteOperation>().Should().ContainSingle(inOp =>
+            inOp.Request.MovementKindString == "AJ_PLUS"
+            && inOp.Request.Hpp == fallbackHpp
+            && inOp.Request.PoReffId == audit.AdjustmentId
+            && inOp.Request.BrgMasukReffId == audit.AdjustmentId
             && inOp.Request.TrsReffId == audit.AdjustmentId);
+    }
+
+    [Fact]
+    public async Task Handle_SurplusAdjustment_WhenLocationHppZero_FallsBackToGlobalBalancesHpp()
+    {
+        // Arrange
+        const string sessionId = "SO-SESSION-HPP-GLOBAL-FB";
+        const string layananId = "FAR-01";
+        const string brgId = "BRG-001";
+        const string batchNo = "BATCH-ZERO-HPP";
+        const string expDate = "2027-12-31";
+        const decimal adjQty = 2m;
+        const decimal fallbackGlobalHpp = 7800m;
+
+        _batchRepoMock.Setup(x => x.ListAllocationCandidates(brgId, layananId))
+            .Returns([]);
+        _batchRepoMock.Setup(x => x.LoadByNaturalKey(brgId, It.IsAny<string>()))
+            .Returns(MayBe<StockBatchModel>.None);
+        _scopeRepoMock.Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
+            .Returns(MayBe<StockLegacyScopeModel>.None);
+
+        _legacyReadMock.Setup(x => x.ListBalancesAtLocation(brgId, layananId))
+            .Returns([]);
+        _legacyReadMock.Setup(x => x.ListBalances(brgId, string.Empty))
+            .Returns([
+                new LegacyStockBalanceReadModel("ST-GLB-01", brgId, "DO-GLOBAL", "GUDANG", DateTime.Parse(expDate), "BATCH-G", 50m, fallbackGlobalHpp, DateTime.Now)
+            ]);
+
+        StockConsequenceDraft? capturedDraft = null;
+        _uowMock.Setup(x => x.Commit(It.IsAny<StockConsequenceDraft>()))
+            .Callback<StockConsequenceDraft>(d => capturedDraft = d);
+
+        IEnumerable<StockOpnameAdjustmentModel>? capturedAdjustments = null;
+        _adjustmentRepoMock.Setup(x => x.Insert(It.IsAny<IEnumerable<StockOpnameAdjustmentModel>>()))
+            .Callback<IEnumerable<StockOpnameAdjustmentModel>>(a => capturedAdjustments = a);
+
+        var command = new PostStockAdjustmentConsequenceCommand(
+            sessionId,
+            layananId,
+            [
+                new StockAdjustmentItemRequest(brgId, batchNo, expDate, adjQty, 0m, "TAB", "USER-SPV")
+            ]);
+
+        // Act
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Outcome.Should().Be(PostStockAdjustmentOutcomeEnum.Success);
+        _legacyReadMock.Verify(x => x.ListBalancesAtLocation(brgId, layananId), Times.Once);
+        _legacyReadMock.Verify(x => x.ListBalances(brgId, string.Empty), Times.Once);
+
+        capturedAdjustments.Should().NotBeNull();
+        var expectedAdjId = capturedAdjustments!.Single().AdjustmentId;
+
+        capturedDraft!.LegacyOperations.OfType<LegacyInboundWriteOperation>().Should().ContainSingle(inOp =>
+            inOp.Request.Hpp == fallbackGlobalHpp
+            && inOp.Request.PoReffId == expectedAdjId
+            && inOp.Request.BrgMasukReffId == expectedAdjId
+            && inOp.Request.TrsReffId == expectedAdjId);
     }
 
     [Fact]

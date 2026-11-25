@@ -29,7 +29,7 @@ public static class InventoryContextConfig
         services.AddScoped<IStockOpnameSessionRepo, StockOpnameSessionRepo>();
         services.AddScoped<IStockOpnameAdjustmentRepo, StockOpnameAdjustmentRepo>();
         services.AddScoped<ISystemQuantityReconstructionService, SystemQuantityReconstructionService>();
-        services.AddScoped<IOpnameItemInfoProvider, DefaultOpnameItemInfoProvider>();
+        services.AddScoped<IOpnameItemInfoProvider, OpnameItemInfoProvider>();
 
         return services;
     }

@@ -1,4 +1,5 @@
 using Bilreg.Application.InventoryContext.OpnameFeature.Ports;
+using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
 using Bilreg.Domain.InventoryContext.OpnameFeature;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dals;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dtos;
@@ -13,19 +14,22 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
     private readonly IStockOpnameCountedItemDal _countedItemDal;
     private readonly IStockOpnameVarianceItemDal _varianceItemDal;
     private readonly IStockOpnameRecountResultDal _recountResultDal;
+    private readonly IOpnameItemInfoProvider _itemInfoProvider;
 
     public StockOpnameSessionRepo(
         IStockOpnameSessionDal sessionDal,
         IStockOpnameScopeItemDal scopeItemDal,
         IStockOpnameCountedItemDal countedItemDal,
         IStockOpnameVarianceItemDal varianceItemDal,
-        IStockOpnameRecountResultDal recountResultDal)
+        IStockOpnameRecountResultDal recountResultDal,
+        IOpnameItemInfoProvider? itemInfoProvider = null)
     {
         _sessionDal = sessionDal;
         _scopeItemDal = scopeItemDal;
         _countedItemDal = countedItemDal;
         _varianceItemDal = varianceItemDal;
         _recountResultDal = recountResultDal;
+        _itemInfoProvider = itemInfoProvider ?? new DefaultOpnameItemInfoProvider();
     }
 
     public void SaveChanges(StockOpnameSessionModel model)
@@ -110,13 +114,14 @@ public class StockOpnameSessionRepo : IStockOpnameSessionRepo
         {
             var recountResultDtos = _recountResultDal.ListBySession(key.SessionId) ?? [];
             var recountMap = recountResultDtos.ToDictionary(
-                r => (r.BrgId, r.BatchNo, r.ExpiredDate),
-                r => r.ToModel());
+                r => (r.BrgId, r.BatchNo, r.ExpiredDate));
 
             foreach (var vDto in varianceItemDtos)
             {
-                recountMap.TryGetValue((vDto.BrgId, vDto.BatchNo, vDto.ExpiredDate), out var recountModel);
-                varianceItems.Add(vDto.ToModel(recountModel));
+                var hpp = _itemInfoProvider.GetHpp(vDto.BrgId);
+                recountMap.TryGetValue((vDto.BrgId, vDto.BatchNo, vDto.ExpiredDate), out var rDto);
+                var recountModel = rDto?.ToModel(hpp);
+                varianceItems.Add(vDto.ToModel(recountModel, hpp));
             }
         }
 
