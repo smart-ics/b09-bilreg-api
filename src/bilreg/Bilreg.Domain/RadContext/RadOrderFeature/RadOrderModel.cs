@@ -33,7 +33,9 @@ public class RadOrderModel : IRadOrderKey
         DateTime cancelledDate,
         string cancelledUserId,
         AuditTrailType auditTrail,
-        IEnumerable<RadOrderItemModel>? items = null)
+        IEnumerable<RadOrderItemModel>? items = null,
+        string billingTindakanId = "",
+        string billingLastError = "")
     {
         OrderId = orderId ?? string.Empty;
         EmrOrderId = emrOrderId ?? string.Empty;
@@ -53,6 +55,8 @@ public class RadOrderModel : IRadOrderKey
         CancelledDate = cancelledDate == default ? EmptyDate : cancelledDate;
         CancelledUserId = cancelledUserId ?? string.Empty;
         AuditTrail = auditTrail ?? AuditTrailType.Default;
+        BillingTindakanId = billingTindakanId ?? string.Empty;
+        BillingLastError = billingLastError ?? string.Empty;
 
         _items = new List<RadOrderItemModel>();
         if (items != null)
@@ -89,7 +93,10 @@ public class RadOrderModel : IRadOrderKey
         cancelledReason: string.Empty,
         cancelledDate: EmptyDate,
         cancelledUserId: string.Empty,
-        auditTrail: AuditTrailType.Default);
+        auditTrail: AuditTrailType.Default,
+        items: null,
+        billingTindakanId: string.Empty,
+        billingLastError: string.Empty);
 
     public static RadOrderModel CreateFromEmr(
         string emrOrderId,
@@ -146,7 +153,9 @@ public class RadOrderModel : IRadOrderKey
             EmptyDate,
             string.Empty,
             auditTrail,
-            itemList);
+            itemList,
+            billingTindakanId: string.Empty,
+            billingLastError: string.Empty);
     }
 
     public static RadOrderModel CreateFromEmr(
@@ -228,7 +237,9 @@ public class RadOrderModel : IRadOrderKey
             EmptyDate,
             string.Empty,
             auditTrail,
-            itemList);
+            itemList,
+            billingTindakanId: string.Empty,
+            billingLastError: string.Empty);
     }
 
     public static RadOrderModel CreateExternal(
@@ -291,6 +302,46 @@ public class RadOrderModel : IRadOrderKey
         AuditTrail.Modif(userId, at);
     }
 
+    public void Charge(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException($"Order {OrderId} sudah void; charge tidak diizinkan.");
+
+        if (RadOrderStatus != RadOrderStatusEnum.Requested && RadOrderStatus != RadOrderStatusEnum.Scheduled)
+            throw new InvalidOperationException(
+                $"Order {OrderId} berstatus {RadOrderStatus}; charge hanya diizinkan untuk status Requested atau Scheduled.");
+
+        if (!string.IsNullOrWhiteSpace(BillingTindakanId))
+            throw new InvalidOperationException(
+                $"Order {OrderId} sudah memiliki BillingTindakanId '{BillingTindakanId}'.");
+    }
+
+    public void MarkCharged(string tindakanId, string userId, DateTime chargedAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(tindakanId, nameof(tindakanId));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        RadOrderStatus = RadOrderStatusEnum.Charged;
+        BillingTindakanId = tindakanId.Trim();
+        BillingLastError = string.Empty;
+        AuditTrail.Modif(userId, chargedAt);
+    }
+
+    public void RecordBillingError(string error, string userId, DateTime recordedAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(error, nameof(error));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        var err = error.Trim();
+        if (err.Length > 200)
+            err = err[..200];
+
+        BillingLastError = err;
+        AuditTrail.Modif(userId, recordedAt);
+    }
+
     public void Cancel(string reason, string userId, DateTime cancelDate = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -301,9 +352,11 @@ public class RadOrderModel : IRadOrderKey
         if (AuditTrail.IsVoided)
             throw new InvalidOperationException($"Order {OrderId} sudah void; pembatalan tidak diizinkan.");
 
-        if (RadOrderStatus != RadOrderStatusEnum.Requested && RadOrderStatus != RadOrderStatusEnum.Scheduled)
+        if (RadOrderStatus != RadOrderStatusEnum.Requested
+            && RadOrderStatus != RadOrderStatusEnum.Scheduled
+            && RadOrderStatus != RadOrderStatusEnum.Charged)
             throw new InvalidOperationException(
-                $"Order {OrderId} berstatus {RadOrderStatus}; pembatalan hanya diizinkan untuk status Requested atau Scheduled.");
+                $"Order {OrderId} berstatus {RadOrderStatus}; pembatalan hanya diizinkan untuk status Requested, Scheduled, atau Charged.");
 
         var at = cancelDate == default ? DateTime.Now : cancelDate;
         var r = reason.Trim();
@@ -338,11 +391,14 @@ public class RadOrderModel : IRadOrderKey
     public string CancelledReason { get; set; }
     public DateTime CancelledDate { get; set; }
     public string CancelledUserId { get; set; }
+    public string BillingTindakanId { get; private set; } = string.Empty;
+    public string BillingLastError { get; private set; } = string.Empty;
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<RadOrderItemModel> Items => _items;
 
     public bool IsCito => Urgency == RadUrgencyEnum.Cito || _items.Any(x => x.IsCito);
     public bool IsCancelled => RadOrderStatus == RadOrderStatusEnum.Cancelled;
+    public bool IsCharged => RadOrderStatus == RadOrderStatusEnum.Charged;
     public bool IsActive => !IsCancelled && !AuditTrail.IsVoided;
 
     #endregion

@@ -47,6 +47,15 @@ public class RadOrderController : ControllerBase
         return Ok(new JSendOk(new { message = "Order cancelled successfully." }));
     }
 
+    [HttpPost("{id}/charge")]
+    [HttpPatch("charge")]
+    public async Task<IActionResult> Charge(string id, [FromBody] ChargeRadOrderRequest req)
+    {
+        var effectiveId = string.IsNullOrWhiteSpace(id) ? req.OrderId : id;
+        var response = await _mediator.Send(new RadOrderChargeCmd(effectiveId, req.UserId));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {
@@ -80,6 +89,7 @@ public class RadOrderController : ControllerBase
 }
 
 public record CancelRadOrderRequest(string UserId, string Reason);
+public record ChargeRadOrderRequest(string UserId, string OrderId = "");
 
 public class JSendFail
 {

@@ -6,6 +6,12 @@ CREATE TABLE ta_kelurahan (
     
     CONSTRAINT PK_ta_kelurahan PRIMARY KEY CLUSTERED(fs_kd_kelurahan)
 )
+GO
+
+CREATE NONCLUSTERED INDEX IX_ta_kelurahan_fs_kd_kecamatan 
+ON ta_kelurahan(fs_kd_kecamatan) 
+INCLUDE(fs_nm_kelurahan, fs_kd_pos);
+GO
 
 CREATE FULLTEXT CATALOG PatientCatalog AS DEFAULT;
 GO

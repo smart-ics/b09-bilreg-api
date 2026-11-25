@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Domain.RadContext.RadOrderFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -13,13 +14,16 @@ public record RadOrderCancelCmd(
 public class RadOrderCancelHandler : IRequestHandler<RadOrderCancelCmd>
 {
     private readonly IRadOrderRepo _radOrderRepo;
+    private readonly IRadBillingIntegration _radBillingIntegration;
     private readonly ITglJamProvider _tglJamProvider;
 
     public RadOrderCancelHandler(
         IRadOrderRepo radOrderRepo,
+        IRadBillingIntegration radBillingIntegration,
         ITglJamProvider tglJamProvider)
     {
         _radOrderRepo = radOrderRepo;
+        _radBillingIntegration = radBillingIntegration;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -39,7 +43,18 @@ public class RadOrderCancelHandler : IRequestHandler<RadOrderCancelCmd>
         if (order is null)
             throw new KeyNotFoundException($"Order radiologi dengan OrderId '{request.OrderId}' tidak ditemukan.");
 
-        order.Cancel(request.Reason, request.UserId, _tglJamProvider.Now);
+        var now = _tglJamProvider.Now;
+        if (order.RadOrderStatus == RadOrderStatusEnum.Charged)
+        {
+            _radBillingIntegration.CancelCharge(
+                order.OrderId,
+                order.Patient.RegId,
+                request.UserId,
+                request.Reason,
+                now);
+        }
+
+        order.Cancel(request.Reason, request.UserId, now);
 
         _radOrderRepo.SaveChanges(order);
 
