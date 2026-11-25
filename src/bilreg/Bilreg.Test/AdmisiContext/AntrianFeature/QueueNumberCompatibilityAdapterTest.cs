@@ -124,4 +124,43 @@ public class QueueNumberCompatibilityAdapterTest
 
         act.Should().Throw<NotSupportedException>();
     }
+
+    [Fact]
+    public void ReserveForBooking_WithOccupiedSessionNumbers_ForwardsToResolver()
+    {
+        var tgl = new DateOnly(2025, 10, 24);
+        var jadwal = JadwalPraktekType.Default with { Hari = tgl.DayOfWeek, JamMulai = new TimeOnly(8, 0), JamSelesai = new TimeOnly(12, 0) };
+        var booking = BookingModel.CreateLocal(PersonInfoType.Default, tgl, jadwal, "U1", new DateTime(2025, 10, 1, 9, 0, 0));
+        var pasien = PasienModel.Default;
+        var occupied = new[] { 1, 2 };
+        var mapDetil = new AntrianMapDetilModel(3, "", "", "", "AUTO", false);
+
+        _bookingResolver
+            .Setup(x => x.Resolve(jadwal, tgl, booking, pasien, occupied))
+            .Returns(Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((AntrianMapModel.Default, mapDetil)));
+
+        var reserved = _sut.ReserveForBooking(jadwal, tgl, booking, pasien, occupied).Value;
+
+        reserved.NoUrut.Should().Be(3);
+        _bookingResolver.Verify(x => x.Resolve(jadwal, tgl, booking, pasien, occupied), Times.Once);
+    }
+
+    [Fact]
+    public void ReserveForRegistration_WithOccupiedSessionNumbers_ForwardsToResolver()
+    {
+        var tgl = new DateOnly(2025, 10, 24);
+        var jadwal = JadwalPraktekType.Default with { Hari = tgl.DayOfWeek, JamMulai = new TimeOnly(8, 0), JamSelesai = new TimeOnly(12, 0) };
+        var reg = RegModel.Default;
+        var occupied = new[] { 1 };
+        var mapDetil = new AntrianMapDetilModel(2, "", "", "", "AUTO", false);
+
+        _regResolver
+            .Setup(x => x.Resolve(jadwal, tgl, reg, occupied))
+            .Returns(Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((AntrianMapModel.Default, mapDetil)));
+
+        var reserved = _sut.ReserveForRegistration(jadwal, tgl, reg, occupied).Value;
+
+        reserved.NoUrut.Should().Be(2);
+        _regResolver.Verify(x => x.Resolve(jadwal, tgl, reg, occupied), Times.Once);
+    }
 }

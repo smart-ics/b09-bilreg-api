@@ -150,6 +150,56 @@ public class AntrianMapWithRegResolverTest
         _getGrupJaminanJetliService.Verify(x => x.Execute(It.IsAny<GetGrupJaminanJetliRequest>()), Times.Never);
     }
 
+    [Fact]
+    public void Resolve_WhenSlot1FreeInMapButOccupiedInSession_SkipsSlot1AcrossFlagStrictTimeAndAuto()
+    {
+        // Arrange: Flag UMUM at 1..2, Strict Time 08:00 at 3, AUTO at 4
+        var detils = new[]
+        {
+            new AntrianMapDetilModel(1, "", "", "", "UMUM", false),
+            new AntrianMapDetilModel(2, "", "", "", "UMUM", false),
+            new AntrianMapDetilModel(3, "", "", "", "08:00", false),
+            new AntrianMapDetilModel(4, "", "", "", "AUTO", false)
+        };
+        var antrianMap = new AntrianMapModel(
+            "MAP01", _jadwal.JadwalPraktekId, _jadwal.Dokter, _jadwal.Layanan,
+            _tgl, _jadwal.JamMulai, _jadwal.JamMulai, _jadwal.AntrianPattern, 4, detils);
+
+        _antrianMapRepo.Setup(x => x.Find(_jadwal, _tgl)).Returns(MayBe.From(antrianMap));
+        _getGrupJaminanJetliService
+            .Setup(x => x.Execute(It.IsAny<GetGrupJaminanJetliRequest>()))
+            .Returns(new GetGrupJaminanJetliResponse(TipeJaminanType.Default.ToReff(), "NON-JKN", "UMUM"));
+
+        // Slot 1 is occupied in BILRG_AntrianEntry (e.g. HiDok booking), even though free in map
+        var r1 = _sut.Resolve(_jadwal, _tgl, CreateReg("RG01", "P1", "P01"), [1]);
+        r1.Value.Item2.NoUrut.Should().Be(2);
+
+        // Now slot 2 is taken; slot 3 (strict time) is occupied in session -> falls through to slot 4 (AUTO)
+        var r2 = _sut.Resolve(_jadwal, _tgl, CreateReg("RG02", "P2", "P02"), [1, 3]);
+        r2.Value.Item2.NoUrut.Should().Be(4);
+
+        // Now all seeded slots (1..4) are taken or occupied, and 5 is also occupied in session -> overflow AddAuto picks 6
+        var r3 = _sut.Resolve(_jadwal, _tgl, CreateReg("RG03", "P3", "P03"), [1, 3, 5]);
+        r3.Value.Item2.NoUrut.Should().Be(6);
+    }
+
+    [Fact]
+    public void Resolve_WhenExistingSlotCollidesWithOccupiedSession_DoesNotReuseCollidingSlot()
+    {
+        var antrianMap = AntrianMapModel.CreateFromJadwal(_jadwal, _tgl);
+        antrianMap.ListMap.First(x => x.NoUrut == 1).SetPasien("Old", "P01", "RG00000001");
+
+        _antrianMapRepo.Setup(x => x.Find(_jadwal, _tgl)).Returns(MayBe.From(antrianMap));
+        _getGrupJaminanJetliService
+            .Setup(x => x.Execute(It.IsAny<GetGrupJaminanJetliRequest>()))
+            .Returns(new GetGrupJaminanJetliResponse(TipeJaminanType.Default.ToReff(), "NON-JKN", "UMUM"));
+
+        var result = _sut.Resolve(_jadwal, _tgl, CreateReg("RG00000001", "Old", "P01"), [1]);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Item2.NoUrut.Should().Be(2);
+    }
+
     private static RegModel CreateReg(string regId, string pasienName, string pasienId) => new(
         regId,
         new DateOnly(2025, 10, 24),
