@@ -17,6 +17,7 @@ public record StartOpDto(
     string RegId,
     string PasienId,
     string KamarOpId,
+    string ClearanceId,
 
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
@@ -39,6 +40,7 @@ public record StartOpDto(
             RegId: model.Reg?.RegId ?? string.Empty,
             PasienId: model.Pasien?.PasienId ?? string.Empty,
             KamarOpId: model.KamarOp?.KamarId ?? string.Empty,
+            ClearanceId: model.ClearanceId ?? string.Empty,
 
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
@@ -77,7 +79,8 @@ public record StartOpDto(
             scheduleOpReff,
             kamar,
             pasien,
-            reg
+            reg,
+            ClearanceId
         );
     }
 

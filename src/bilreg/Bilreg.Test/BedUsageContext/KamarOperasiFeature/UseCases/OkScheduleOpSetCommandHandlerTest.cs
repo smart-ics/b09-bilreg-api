@@ -91,9 +91,16 @@ public class OkScheduleOpSetCommandHandlerTest
             []);
     }
 
-    private static OpCaseModel CreateSampleOpCase(OrderOpModel orderOp)
+    private static OpCaseModel CreateSampleOpCase(OrderOpModel orderOp, OpCaseStateEnum state = OpCaseStateEnum.Requested)
     {
-        return OpCaseModel.Create(orderOp, new DateTime(2026, 10, 20));
+        var opCase = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 20));
+        if (state == OpCaseStateEnum.PreOpCleared)
+        {
+            var schedule = CreateSampleScheduleOp();
+            opCase.Schedule(schedule, new DateTime(2026, 10, 20, 7, 0, 0));
+            opCase.PreOpClear("user-01", new DateTime(2026, 10, 20, 7, 30, 0));
+        }
+        return opCase;
     }
 
     private static ScheduleOpModel CreateSampleScheduleOp(
@@ -127,6 +134,25 @@ public class OkScheduleOpSetCommandHandlerTest
             turnoverBuffer,
             [],
             isDraft: false);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPreOpCleared_ThrowsInvalidOperationExceptionBeforeSaveChanges()
+    {
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 7, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1", "OK 1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.PreOpCleared);
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<IKamarKey>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(opCase));
+
+        var cmd = new OkScheduleOpSetCommand("ORD-001", "KAMAR-1", "2026-10-20", "08:00", 60, "user1", DokterOperatorId: "DOC-01");
+        var act = () => CreateSut().Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pre-Operative Clearance*ditolak*");
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<ScheduleOpModel>()), Times.Never);
+        _opCaseRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpCaseModel>()), Times.Never);
     }
 
     [Fact]

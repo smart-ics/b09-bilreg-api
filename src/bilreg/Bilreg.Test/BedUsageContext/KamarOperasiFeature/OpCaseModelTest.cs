@@ -309,4 +309,70 @@ public class OpCaseModelTest
             .Should().Throw<InvalidOperationException>()
             .WithMessage("*Requested*");
     }
+
+    [Fact]
+    public void PreOpClear_FromScheduled_ShouldTransitionToPreOpClearedAndRecordHistory()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp);
+        var schedule = CreateSampleSchedule(orderOp);
+        var scheduledAt = new DateTime(2026, 10, 16, 9, 0, 0);
+        var clearedAt = new DateTime(2026, 10, 16, 9, 30, 0);
+        sut.Schedule(schedule, scheduledAt);
+
+        // Act
+        sut.PreOpClear("user-clearance", clearedAt);
+
+        // Assert
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.PreOpCleared);
+        sut.ActiveOpCase.Should().NotBeNull();
+        sut.ActiveOpCase!.OpCaseState.Should().Be(OpCaseStateEnum.PreOpCleared);
+        sut.ListStateHistory.Should().Contain(x =>
+            x.OpCaseState == OpCaseStateEnum.PreOpCleared && x.StateTimestamp == clearedAt);
+    }
+
+    [Fact]
+    public void PreOpClear_WhenStateIsNotScheduled_ShouldThrowInvalidOperationException()
+    {
+        var requested = OpCaseModel.Create(CreateSampleOrderOp());
+        var preOpClearedOrder = CreateSampleOrderOp();
+        var preOpCleared = OpCaseModel.Create(preOpClearedOrder);
+        var preOpSchedule = CreateSampleSchedule(preOpClearedOrder);
+        preOpCleared.Schedule(preOpSchedule);
+        preOpCleared.PreOpClear("user-clearance", DateTime.Now);
+
+        var startedOrder = CreateSampleOrderOp();
+        var started = OpCaseModel.Create(startedOrder);
+        var startedSchedule = CreateSampleSchedule(startedOrder);
+        started.Schedule(startedSchedule);
+        started.Start(DateTime.Now);
+
+        var cancelled = OpCaseModel.Create(CreateSampleOrderOp());
+        cancelled.CancelOrder(DateTime.Now);
+
+        foreach (var sut in new[] { requested, preOpCleared, started, cancelled })
+        {
+            FluentActions.Invoking(() => sut.PreOpClear("user-clearance", DateTime.Now))
+                .Should().Throw<InvalidOperationException>();
+        }
+    }
+
+    [Fact]
+    public void CancelStart_AfterPreOpClear_ShouldReturnToPreOpCleared()
+    {
+        // Arrange
+        var orderOp = CreateSampleOrderOp();
+        var sut = OpCaseModel.Create(orderOp);
+        var schedule = CreateSampleSchedule(orderOp);
+        sut.Schedule(schedule, new DateTime(2026, 10, 16, 9, 0, 0));
+        sut.PreOpClear("user-clearance", new DateTime(2026, 10, 16, 9, 30, 0));
+        sut.Start(new DateTime(2026, 10, 16, 10, 0, 0));
+
+        // Act
+        sut.CancelStart();
+
+        // Assert
+        sut.OrderOpState.Should().Be(OpCaseStateEnum.PreOpCleared);
+    }
 }

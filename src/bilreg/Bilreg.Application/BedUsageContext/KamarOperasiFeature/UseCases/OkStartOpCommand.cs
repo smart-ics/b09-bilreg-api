@@ -1,4 +1,6 @@
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -21,14 +23,26 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IPreOpClearanceRepo _preOpClearanceRepo;
+    private readonly IStartOpRepo _startOpRepo;
+    private readonly IKamarRepo _kamarRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkStartOpHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        IPreOpClearanceRepo preOpClearanceRepo,
+        IStartOpRepo startOpRepo,
+        IKamarRepo kamarRepo,
+        ITglJamProvider tglJamProvider)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _opCaseRepo = opCaseRepo;
+        _preOpClearanceRepo = preOpClearanceRepo;
+        _startOpRepo = startOpRepo;
+        _kamarRepo = kamarRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<OkStartOpResponse> Handle(OkStartOpCommand request, CancellationToken cancellationToken)
@@ -51,17 +65,44 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        if (scheduleOp.IsDraft || opCase.OrderOpState != OpCaseStateEnum.Scheduled)
-            throw new InvalidOperationException("Tindakan operasi tidak dapat diproses karena jadwal operasi masih berstatus DRAFT.");
+        // Hard Gate 1: Jadwal harus resmi (bukan draf)
+        if (scheduleOp.IsDraft)
+            throw new InvalidOperationException(
+                "Tindakan operasi tidak dapat dimulai karena jadwal operasi masih berstatus DRAFT.");
+
+        // Hard Gate 2: OpCase harus sudah PreOpCleared
+        if (opCase.OrderOpState != OpCaseStateEnum.PreOpCleared)
+            throw new InvalidOperationException(
+                $"Tindakan operasi hanya dapat dimulai setelah Pre-Operative Clearance selesai " +
+                $"(status PreOpCleared). Status saat ini: {opCase.OrderOpState}");
+
+        // Hard Gate 3: Clearance aktif harus berstatus CLEARED atau EMERGENCY_OVERRIDDEN
+        var clearanceOpt = _preOpClearanceRepo.GetLatestByScheduleOpId(scheduleOp.ScheduleOpId);
+        if (!clearanceOpt.HasValue)
+            throw new InvalidOperationException(
+                "Catatan Pre-Operative Clearance tidak ditemukan untuk jadwal ini.");
+
+        var activeClearance = clearanceOpt.Value;
+        if (activeClearance.ClearanceStatus is not (PreOpClearanceStatusEnum.Cleared or PreOpClearanceStatusEnum.EmergencyOverridden))
+            throw new InvalidOperationException(
+                "Tindakan operasi hanya dapat dimulai jika Pre-Operative Clearance berstatus " +
+                "CLEARED atau EMERGENCY_OVERRIDDEN.");
 
         var tglOp = DateTime.ParseExact(
             $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+        var kamar = _kamarRepo.LoadEntity(KamarType.Key(scheduleOp.KamarOp.KamarId))
+            .GetValueOrDefault(KamarType.Default);
+        var createdAt = _tglJamProvider.Now;
+        var startOp = StartOpModel.CreateFromSchedule(
+            scheduleOp, tglOp, kamar, activeClearance.ClearanceId, request.UserId, createdAt);
 
         opCase.Start(tglOp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
         _opCaseRepo.SaveChanges(opCase);
+        _startOpRepo.SaveChanges(startOp);
         trans.Complete();
 
         return Task.FromResult(Response(opCase));

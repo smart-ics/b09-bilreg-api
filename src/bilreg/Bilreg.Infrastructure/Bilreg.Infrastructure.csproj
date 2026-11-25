@@ -13,10 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpDal.cs" />
-    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpDto.cs" />
     <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpPpaDto.cs" />
-    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpRepo.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MassTransit" Version="8.2.5" />

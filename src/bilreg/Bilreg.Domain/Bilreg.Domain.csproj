@@ -13,10 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpModel.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="Bilreg.Test" />
   </ItemGroup>
 

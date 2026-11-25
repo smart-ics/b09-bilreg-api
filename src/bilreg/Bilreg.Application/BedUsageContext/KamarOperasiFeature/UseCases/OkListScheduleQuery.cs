@@ -54,6 +54,7 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
         string result = opCaseState switch
         {
             OpCaseStateEnum.Scheduled => opCaseState.ToString(),
+            OpCaseStateEnum.PreOpCleared => opCaseState.ToString(),
             OpCaseStateEnum.OpStarted => "In-Progress",
             OpCaseStateEnum.RecoveryStarted => "In-Recovery",
             _ => "Others"

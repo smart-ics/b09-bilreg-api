@@ -54,6 +54,12 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var opCase = _opCaseRepo.LoadEntity(orderOp)
             .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
 
+        if ((int)opCase.OrderOpState >= (int)OpCaseStateEnum.PreOpCleared)
+            throw new InvalidOperationException(
+                "Jadwal operasi telah melalui Pre-Operative Clearance (PreOpCleared). " +
+                "Perubahan jadwal, kamar, durasi, maupun tim bedah ditolak. " +
+                "Batalkan jadwal secara resmi jika perubahan mutlak diperlukan.");
+
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule

@@ -33,12 +33,12 @@ public class StartOpDal : IStartOpDal
         const string sql = @"
             INSERT INTO BILRG_StartOp (
                 StartOpId, StartOpTime, OrderOpId, ScheduleOpId,
-                RegId, PasienId, KamarOpId,
+                RegId, PasienId, KamarOpId, ClearanceId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
             )
             VALUES (
                 @StartOpId, @StartOpTime, @OrderOpId, @ScheduleOpId,
-                @RegId, @PasienId, @KamarOpId,
+                @RegId, @PasienId, @KamarOpId, @ClearanceId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate
             )";
 
@@ -50,6 +50,7 @@ public class StartOpDal : IStartOpDal
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@KamarOpId", dto.KamarOpId, SqlDbType.VarChar);
+        dp.AddParam("@ClearanceId", dto.ClearanceId, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
@@ -73,6 +74,7 @@ public class StartOpDal : IStartOpDal
                 RegId = @RegId,
                 PasienId = @PasienId,
                 KamarOpId = @KamarOpId,
+                ClearanceId = @ClearanceId,
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
@@ -87,6 +89,7 @@ public class StartOpDal : IStartOpDal
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@KamarOpId", dto.KamarOpId, SqlDbType.VarChar);
+        dp.AddParam("@ClearanceId", dto.ClearanceId, SqlDbType.VarChar);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
@@ -115,7 +118,7 @@ public class StartOpDal : IStartOpDal
         const string sql = @"
             SELECT
                 aa.StartOpId, aa.StartOpTime, aa.OrderOpId, aa.ScheduleOpId,
-                aa.RegId, aa.PasienId, aa.KamarOpId,
+                aa.RegId, aa.PasienId, aa.KamarOpId, aa.ClearanceId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -142,7 +145,7 @@ public class StartOpDal : IStartOpDal
         const string sql = @"
             SELECT
                 aa.StartOpId, aa.StartOpTime, aa.OrderOpId, aa.ScheduleOpId,
-                aa.RegId, aa.PasienId, aa.KamarOpId,
+                aa.RegId, aa.PasienId, aa.KamarOpId, aa.ClearanceId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -172,7 +175,7 @@ public class StartOpDal : IStartOpDal
         const string sql = @"
             SELECT
                 aa.StartOpId, aa.StartOpTime, aa.OrderOpId, aa.ScheduleOpId,
-                aa.RegId, aa.PasienId, aa.KamarOpId,
+                aa.RegId, aa.PasienId, aa.KamarOpId, aa.ClearanceId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,

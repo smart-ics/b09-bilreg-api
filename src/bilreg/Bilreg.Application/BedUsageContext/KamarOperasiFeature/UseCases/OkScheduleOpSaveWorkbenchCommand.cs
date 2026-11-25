@@ -122,6 +122,12 @@ public class OkScheduleOpSaveWorkbenchHandler : IRequestHandler<OkScheduleOpSave
         if (opCase.OrderOpState == OpCaseStateEnum.Cancelled)
             throw new InvalidOperationException($"Order Operasi ID {request.OrderOpId} telah dibatalkan.");
 
+        if ((int)opCase.OrderOpState >= (int)OpCaseStateEnum.PreOpCleared)
+            throw new InvalidOperationException(
+                "Jadwal operasi telah melalui Pre-Operative Clearance (PreOpCleared). " +
+                "Perubahan jadwal, kamar, durasi, maupun tim bedah ditolak. " +
+                "Batalkan jadwal secara resmi jika perubahan mutlak diperlukan.");
+
         if ((int)opCase.OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new InvalidOperationException($"Status Operasi ({opCase.OrderOpState}) tidak dapat dijadwalkan ulang karena operasi telah dimulai atau selesai.");
 

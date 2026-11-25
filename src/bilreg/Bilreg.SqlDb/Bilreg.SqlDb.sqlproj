@@ -303,6 +303,7 @@
     <None Include="ChargeContext\AmbulanceFeature\Migration_ta_transport_AmbulanceFeature.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
+     <None Include="BedUsageContext\KamarOperasiFeature\20261124_01_AddClearanceIdToStartOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_dtl.sql" />
     <None Include="AccountingContext\UnitFeature\t_jk.sql" />
@@ -333,6 +334,8 @@
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOpHist.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_OrderOpResource.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_PreOpClearance.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_PreOpClearanceChecklist.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedOperational.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessTransaction.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessCorrection.sql" />

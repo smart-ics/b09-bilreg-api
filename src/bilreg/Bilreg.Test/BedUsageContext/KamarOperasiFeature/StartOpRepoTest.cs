@@ -33,7 +33,8 @@ public class StartOpRepoTests
         _sut.SaveChanges(model);
 
         // Assert
-        _dalMock.Verify(x => x.Insert(It.IsAny<StartOpDto>()), Times.Once);
+        _dalMock.Verify(x => x.Insert(It.Is<StartOpDto>(d =>
+            d.StartOpId == model.StartOpId && d.ClearanceId == model.ClearanceId)), Times.Once);
         _dalMock.Verify(x => x.Update(It.IsAny<StartOpDto>()), Times.Never);
     }
 
@@ -51,7 +52,8 @@ public class StartOpRepoTests
         _sut.SaveChanges(model);
 
         // Assert
-        _dalMock.Verify(x => x.Update(It.Is<StartOpDto>(d => d.StartOpId == model.StartOpId)), Times.Once);
+        _dalMock.Verify(x => x.Update(It.Is<StartOpDto>(d =>
+            d.StartOpId == model.StartOpId && d.ClearanceId == model.ClearanceId)), Times.Once);
         _dalMock.Verify(x => x.Insert(It.IsAny<StartOpDto>()), Times.Never);
     }
 
@@ -60,6 +62,7 @@ public class StartOpRepoTests
     {
         // Arrange
         var startOpId = "OP-123";
+        var clearanceId = "CLR-123";
         var keyMock = new Mock<IStartOpKey>();
         keyMock.Setup(x => x.StartOpId).Returns(startOpId);
 
@@ -71,6 +74,7 @@ public class StartOpRepoTests
             RegId: "REG-1",
             PasienId: "PAS-1",
             KamarOpId: "KM-1",
+            ClearanceId: clearanceId,
             CrtUser: "User", CrtDate: DateTime.Now,
             UpdUser: "User", UpdDate: DateTime.Now,
             VodUser: "", VodDate: DateTime.MinValue,
@@ -91,6 +95,7 @@ public class StartOpRepoTests
         // Assert
         result.HasValue.Should().BeTrue();
         result.Value.StartOpId.Should().Be(startOpId);
+        result.Value.ClearanceId.Should().Be(clearanceId);
     }
 
     [Fact]
@@ -124,7 +129,8 @@ public class StartOpRepoTests
             new ScheduleOpReff("SCH-1", DateTime.MaxValue),
             new KamarReff("KM-1", "Kamar 1"),
             new PasienReff("P-1", "Pasien A", DateOnly.Parse("2000-01-01"), "L"),
-            new RegReff("REG-1", "P-1", "Pasien A")
+            new RegReff("REG-1", "P-1", "Pasien A"),
+            "CLR-TEST-001"
         );
     }
 
