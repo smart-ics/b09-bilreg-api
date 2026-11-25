@@ -122,6 +122,7 @@
     <Folder Include="BrgContext\StandardFeature\" />
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
+    <Folder Include="InventoryContext\OpnameFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
     <Folder Include="PaymentContext\DepositFeature" />
     <Folder Include="PaymentContext\KasirFeature\" />
@@ -477,6 +478,7 @@
     <None Include="InventoryContext\StokFeature\ta_layanan_AddJenisLokasi.sql" />
     <None Include="InventoryContext\StokFeature\tb_buku.sql" />
     <None Include="InventoryContext\StokFeature\tb_stok.sql" />
+    <Build Include="InventoryContext\OpnameFeature\BILRG_StockOpnameAdjustment.sql" />
     <Build Include="PurchaseContext\DeliveryFeature\BILRG_DoInspeksi.sql" />
   </ItemGroup>
 </Project>
