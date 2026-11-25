@@ -4,7 +4,7 @@ Code: LAB-RESULT-PRINTOUT-DIFFERENTIATION-IMPLEMENTATION-PLAN
 Artifact: IMPLEMENTATION-PLAN
 Version: 1.0
 LastUpdated: 2026-11-25
-Status: IN-PROGRESS
+Status: COMPLETED
 Execution Approval: APPROVED
 ---
 
@@ -74,7 +74,7 @@ Rencana kerja ini mencakup perubahan pada backend Core Bilreg (`b09-bilreg-api`)
 |---|---|---|---|
 | P1 - Application View Model Enrichment | IMPLEMENTED | GO | 1/1 |
 | P2 - Specialized PDF Renderers & Strategy Orchestration | IMPLEMENTED | GO | 4/4 |
-| P3 - Frontend Dialog Preview Alignment | NOT-STARTED | NOT-REVIEWED | 0/1 |
+| P3 - Frontend Dialog Preview Alignment | IMPLEMENTED | GO | 1/1 |
 
 ---
 
@@ -190,13 +190,13 @@ Notes: Memperbarui LabResultPdfRenderer sebagai orkestrator strategi yang mengev
 
 ## P3 - Frontend Dialog Preview Alignment
 
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 
 ### P3-S06
 Title: Penyesuaian Judul Dialog Kontekstual pada LabResultPdfPreviewDialog.vue  
-Implementation Status: NOT-STARTED  
-Review Status: NOT-REVIEWED  
+Implementation Status: IMPLEMENTED  
+Review Status: GO  
 Objective: Memperbarui komponen `LabResultPdfPreviewDialog.vue` di `c012_myhospital_web` agar dapat menerima atau mendeteksi tipe layanan order (`serviceType`) dan menyajikan judul dialog yang kontekstual (*Preview Lembar Hasil Patologi Klinik / Patologi Anatomi / Mikrobiologi*).  
 Depends On: P2-S05  
 Repository: `c012_myhospital_web`  
@@ -205,7 +205,7 @@ Completion Criteria:
 - Judul default menjadi kontekstual: "Preview Lembar Hasil Patologi Klinik", "Preview Lembar Hasil Patologi Anatomi", atau "Preview Lembar Hasil Mikrobiologi".
 - Unit test `LabResultPdfPreviewDialog.spec.ts` diperbarui untuk memverifikasi variasi judul kontekstual.
 - Verifikasi frontend lulus: `pnpm tc:app`, `pnpm test src/modules/Laboratory/__tests__/LabResultPdfPreviewDialog.spec.ts`, dan `pnpm lint`.  
-Notes: Mengikuti standar working directory `c012_myhospital_web` dan single-spec targeted testing.
+Notes: Menambahkan prop opsional serviceType pada LabResultPdfPreviewDialog.vue dan computed effectiveTitle untuk diferensiasi kontekstual: Patologi Anatomi ('Preview Lembar Hasil Patologi Anatomi'), Mikrobiologi ('Preview Lembar Hasil Mikrobiologi'), dan default/PK ('Preview Lembar Hasil Patologi Klinik'), dengan penanganan override judul kustom. Menyelaraskan LabReleaseQueuePanel.vue untuk meneruskan order.serviceType. Unit test di LabResultPdfPreviewDialog.spec.ts diperkaya mencakup seluruh varian serviceType dan custom title (13/13 tests passed). Seluruh verifikasi c012_myhospital_web lulus: prettier, tc:app, targeted test, dan lint.
 
 ---
 
