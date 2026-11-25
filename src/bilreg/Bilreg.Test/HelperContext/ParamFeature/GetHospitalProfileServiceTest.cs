@@ -21,11 +21,11 @@ public class GetHospitalProfileServiceTest
     [Fact]
     public void Execute_WhenParamsExist_ReturnsDecodedAndPlainValues()
     {
-        // Arrange
+        // Arrange - exact real hospital data
         var encodedKode = X1EncryptionHelper.CodingNeo("3375022");
-        var encodedNama = X1EncryptionHelper.CodingNeo("RS SIMRS NEO");
-        var encodedAlamat = X1EncryptionHelper.CodingNeo("Jl. Protokol No. 10");
-        var encodedKota = X1EncryptionHelper.CodingNeo("Surabaya");
+        var encodedNama = X1EncryptionHelper.CodingNeo("RSU Budi Rahayu");
+        var encodedAlamat = X1EncryptionHelper.CodingNeo("Jl. Barito No. 5");
+        var encodedKota = X1EncryptionHelper.CodingNeo("Pekalongan");
 
         _paramSistemDalMock.Setup(d => d.GetData(GetHospitalProfileService.ParamKeyKode))
             .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyKode, "Kode", encodedKode));
@@ -36,20 +36,20 @@ public class GetHospitalProfileServiceTest
         _paramSistemDalMock.Setup(d => d.GetData(GetHospitalProfileService.ParamKeyKota))
             .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyKota, "Kota", encodedKota));
         _paramSistemDalMock.Setup(d => d.GetData(GetHospitalProfileService.ParamKeyTelepon))
-            .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyTelepon, "Telp", "031-1234567"));
+            .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyTelepon, "Telp", "[0285] 423491"));
         _paramSistemDalMock.Setup(d => d.GetData(GetHospitalProfileService.ParamKeyEmail))
-            .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyEmail, "Email", "info@simrsneo.com"));
+            .Returns(new ParamSistemModel(GetHospitalProfileService.ParamKeyEmail, "Email", "rs_br@yahoo.co.id"));
 
         // Act
         var result = _sut.Execute();
 
         // Assert
         result.KodeRs.Should().Be("3375022");
-        result.NamaRs.Should().Be("RS SIMRS NEO");
-        result.Alamat.Should().Be("Jl. Protokol No. 10");
-        result.Kota.Should().Be("Surabaya");
-        result.Telepon.Should().Be("031-1234567");
-        result.Email.Should().Be("info@simrsneo.com");
+        result.NamaRs.Should().Be("RSU Budi Rahayu");
+        result.Alamat.Should().Be("Jl. Barito No. 5");
+        result.Kota.Should().Be("Pekalongan");
+        result.Telepon.Should().Be("[0285] 423491");
+        result.Email.Should().Be("rs_br@yahoo.co.id");
     }
 
     [Fact]
