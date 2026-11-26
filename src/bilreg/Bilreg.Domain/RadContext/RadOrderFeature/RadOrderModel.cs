@@ -302,6 +302,22 @@ public class RadOrderModel : IRadOrderKey
         AuditTrail.Modif(userId, at);
     }
 
+    public void Unschedule(string userId, DateTime unscheduledAt = default)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException($"Order {OrderId} sudah void; pembatalan jadwal tidak diizinkan.");
+
+        if (RadOrderStatus != RadOrderStatusEnum.Scheduled)
+            throw new InvalidOperationException(
+                $"Order {OrderId} berstatus {RadOrderStatus}; pembatalan jadwal hanya diizinkan untuk status Scheduled.");
+
+        var at = unscheduledAt == default ? DateTime.Now : unscheduledAt;
+        RadOrderStatus = RadOrderStatusEnum.Requested;
+        AuditTrail.Modif(userId, at);
+    }
+
     public void Charge(string userId)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
