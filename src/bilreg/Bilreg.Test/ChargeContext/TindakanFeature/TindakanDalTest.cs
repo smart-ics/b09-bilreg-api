@@ -14,6 +14,26 @@ public class TindakanDalTest
 {
     private readonly TindakanDal _sut = new(ConnStringHelper.GetTestEnv());
 
+    public TindakanDalTest()
+    {
+        EnsurePakaiBedIdColumn();
+    }
+
+    private static void EnsurePakaiBedIdColumn()
+    {
+        const string sql = """
+            IF COL_LENGTH('BILRG_Tindakan', 'PakaiBedId') IS NULL
+            BEGIN
+                ALTER TABLE BILRG_Tindakan
+                    ADD PakaiBedId VARCHAR(30) NOT NULL
+                        CONSTRAINT DF_BILRG_Tindakan_PakaiBedId DEFAULT('');
+            END
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Execute(sql);
+    }
+
     private static TindakanDto Faker(int qty = 1)
         => new TindakanDto(
             TindakanId: "TND0000001",
@@ -38,7 +58,7 @@ public class TindakanDalTest
             UpdDate: new DateTime(2025, 2, 4),
             VodUser: "",
             VodDate: new DateTime(3000, 1, 1),
-            PakaiBedId: "",
+            PakaiBedId: "BED01",
             IsDiskonDokter: false,
             DiskonDokter: 0m
         );
@@ -54,6 +74,9 @@ public class TindakanDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().NotBeNull();
+        actual.PakaiBedId.Should().Be("BED01");
     }
     
     [Fact]
@@ -61,13 +84,14 @@ public class TindakanDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var updated = Faker() with { Total = 250000, UpdUser = "USR002" };
+        var updated = Faker() with { Total = 250000, UpdUser = "USR002", PakaiBedId = "BED02" };
         _sut.Update(updated);
         var actual = _sut.GetData(FakerKey());
         actual.Should().NotBeNull();
         actual.TindakanId.Should().Be("TND0000001");
         actual.Total.Should().Be(250000);
         actual.UpdUser.Should().Be("USR002");
+        actual.PakaiBedId.Should().Be("BED02");
     }
     
     [Fact]
@@ -91,6 +115,7 @@ public class TindakanDalTest
         actual.KelasName.Should().Be("NON KELAS");
         actual.TarifName.Should().Be("Abdomen 1 Posisi");
         actual.Total.Should().Be(150000);
+        actual.PakaiBedId.Should().Be("BED01");
     }
     
     [Fact]
@@ -98,8 +123,8 @@ public class TindakanDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(FakerRegKey());
-        actual.Should().Contain(x => x.TindakanId == "TND0000001");
+        var actual = _sut.ListData(FakerRegKey()).ToList();
+        actual.Should().Contain(x => x.TindakanId == "TND0000001" && x.PakaiBedId == "BED01");
     }
 
     [Fact]
@@ -111,6 +136,7 @@ public class TindakanDalTest
         var item = actual.FirstOrDefault(x => x.TransaksiId == "TND0000001");
         item.Should().NotBeNull();
         item!.Total.Should().Be(150000);
+        item.PakaiBedId.Should().Be("BED01");
     }
 
     [Fact]
