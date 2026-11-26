@@ -38,34 +38,28 @@ public class TindakanKomponenDal : ITindakanKomponenDal
         if (list.Count == 0) return;
 
         const string sql = """
-            INSERT INTO TA_TRS_TINDAKAN2(
-                FS_KD_TRS, FS_KD_DETIL_TARIF, FN_TARIF, FN_JML, FN_SUB_TOTAL, FN_DISKON, FN_TOTAL,
-                FS_KD_PETUGAS_MEDIS, FB_VOID, FS_KD_REK_PDPT, FS_KD_REK_DISKON, FS_KD_PETUGAS_EDIT_MEDIS,
-                CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR, UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR
+            INSERT INTO BILRG_TindakanKomponen(
+                TindakanId, NoUrut, KomponenTarifId, KomponenTarifName,
+                PpaId, PpaName, Nilai, Diskon, Qty, SubTotal
             )
             VALUES(
-                @FS_KD_TRS, @FS_KD_DETIL_TARIF, @FN_TARIF, @FN_JML, @FN_SUB_TOTAL, @FN_DISKON, @FN_TOTAL,
-                @FS_KD_PETUGAS_MEDIS, 0, '', '', '',
-                @CRTTGL, @CRTJAM, '', '', @CRTUSR, '3000-01-01', '00:00:00', '', '', ''
+                @TindakanId, @NoUrut, @KomponenTarifId, @KomponenTarifName,
+                @PpaId, @PpaName, @Nilai, @Diskon, @Qty, @SubTotal
             )
             """;
 
-        var today = DateTime.Today.ToString("yyyy-MM-dd");
-        var nowTime = DateTime.Now.ToString("HH:mm:ss");
-
         var entries = list.Select(x => new
         {
-            FS_KD_TRS = SafeTruncate(x.TindakanId, 10),
-            FS_KD_DETIL_TARIF = SafeTruncate(x.KomponenTarifId, 3),
-            FN_TARIF = x.Nilai,
-            FN_JML = x.Qty,
-            FN_SUB_TOTAL = x.SubTotal + x.Diskon,
-            FN_DISKON = x.Diskon,
-            FN_TOTAL = x.SubTotal,
-            FS_KD_PETUGAS_MEDIS = SafeTruncate(x.PpaId, 10),
-            CRTTGL = today,
-            CRTJAM = nowTime,
-            CRTUSR = ""
+            TindakanId = SafeTruncate(x.TindakanId, 26),
+            NoUrut = x.NoUrut,
+            KomponenTarifId = SafeTruncate(x.KomponenTarifId, 3),
+            KomponenTarifName = SafeTruncate(x.KomponenTarifName, 30),
+            PpaId = SafeTruncate(x.PpaId, 10),
+            PpaName = SafeTruncate(x.PpaName, 60),
+            Nilai = x.Nilai,
+            Diskon = x.Diskon,
+            Qty = x.Qty,
+            SubTotal = x.SubTotal
         });
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -76,13 +70,13 @@ public class TindakanKomponenDal : ITindakanKomponenDal
     {
         const string sql = """
             DELETE FROM
-                TA_TRS_TINDAKAN2
+                BILRG_TindakanKomponen
             WHERE
-                FS_KD_TRS = @FS_KD_TRS
+                TindakanId = @TindakanId
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@FS_KD_TRS", key.TindakanId, SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", SafeTruncate(key.TindakanId, 26), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -92,84 +86,74 @@ public class TindakanKomponenDal : ITindakanKomponenDal
     {
         const string sql = """
             SELECT
-                k.FS_KD_TRS AS TindakanId,
-                CAST(ROW_NUMBER() OVER(ORDER BY k.FS_KD_DETIL_TARIF) AS INT) AS NoUrut,
-                k.FS_KD_DETIL_TARIF AS KomponenTarifId,
-                ISNULL(d.FS_NM_DETIL_TARIF, '') AS KomponenTarifName,
-                ISNULL(k.FS_KD_PETUGAS_MEDIS, '') AS PpaId,
-                ISNULL(p.FS_NM_PEG, '') AS PpaName,
-                k.FN_JML AS Qty,
-                k.FN_TARIF AS Nilai,
-                ISNULL(k.FN_DISKON, 0) AS Diskon,
-                k.FN_TOTAL AS SubTotal
+                TindakanId,
+                NoUrut,
+                KomponenTarifId,
+                KomponenTarifName,
+                PpaId,
+                PpaName,
+                Qty,
+                Nilai,
+                Diskon,
+                SubTotal
             FROM
-                TA_TRS_TINDAKAN2 k
-                LEFT JOIN TA_DETIL_TARIF d ON k.FS_KD_DETIL_TARIF = d.FS_KD_DETIL_TARIF
-                LEFT JOIN td_peg p ON k.FS_KD_PETUGAS_MEDIS = p.FS_KD_PEG
+                BILRG_TindakanKomponen
             WHERE
-                k.FS_KD_TRS = @FS_KD_TRS
+                TindakanId = @TindakanId
+            ORDER BY
+                NoUrut, KomponenTarifId
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@FS_KD_TRS", filter.TindakanId, SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", SafeTruncate(filter.TindakanId, 26), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TindakanKomponenDto>(sql, dp);
+        return conn.Read<TindakanKomponenDto>(sql, dp) ?? [];
     }
 
     public void UpdatePetugas(string tindakanId, string ppaId, string userId)
     {
         const string sql = """
-            DECLARE @Today VARCHAR(10) = CONVERT(VARCHAR(10), GETDATE(), 120);
-            DECLARE @NowTime VARCHAR(8) = CONVERT(VARCHAR(8), GETDATE(), 108);
+            DECLARE @PpaName VARCHAR(60) = ISNULL((SELECT TOP 1 fs_nm_peg FROM td_peg WHERE fs_kd_peg = @PpaId), '');
 
-            -- 1. Update TA_TRS_TINDAKAN2
+            -- 1. Update BILRG_TindakanKomponen
             IF EXISTS (
-                SELECT 1 FROM TA_TRS_TINDAKAN2 
-                WHERE FS_KD_TRS = @TindakanId AND ISNULL(FS_KD_PETUGAS_MEDIS, '') <> ''
+                SELECT 1 FROM BILRG_TindakanKomponen 
+                WHERE TindakanId = @TindakanId AND ISNULL(PpaId, '') <> ''
             )
             BEGIN
-                UPDATE TA_TRS_TINDAKAN2
+                UPDATE BILRG_TindakanKomponen
                 SET 
-                    FS_KD_PETUGAS_MEDIS = @PpaId,
-                    FS_KD_PETUGAS_EDIT_MEDIS = @UserId,
-                    UPDTGL = @Today,
-                    UPDJAM = @NowTime,
-                    UPDUSR = @UserId
+                    PpaId = @PpaId,
+                    PpaName = @PpaName
                 WHERE 
-                    FS_KD_TRS = @TindakanId
-                    AND ISNULL(FS_KD_PETUGAS_MEDIS, '') <> '';
+                    TindakanId = @TindakanId
+                    AND ISNULL(PpaId, '') <> '';
             END
             ELSE IF EXISTS (
-                SELECT 1 FROM TA_TRS_TINDAKAN2 tk
-                INNER JOIN ta_detil_tarif2 dt ON tk.FS_KD_DETIL_TARIF = dt.fs_kd_detil_tarif
-                WHERE tk.FS_KD_TRS = @TindakanId AND ISNULL(dt.fs_kd_sat_tugas, '') <> ''
+                SELECT 1 FROM BILRG_TindakanKomponen tk
+                INNER JOIN ta_detil_tarif2 dt ON tk.KomponenTarifId = dt.fs_kd_detil_tarif
+                WHERE tk.TindakanId = @TindakanId AND ISNULL(dt.fs_kd_sat_tugas, '') <> ''
             )
             BEGIN
                 UPDATE tk
                 SET 
-                    tk.FS_KD_PETUGAS_MEDIS = @PpaId,
-                    tk.FS_KD_PETUGAS_EDIT_MEDIS = @UserId,
-                    tk.UPDTGL = @Today,
-                    tk.UPDJAM = @NowTime,
-                    tk.UPDUSR = @UserId
-                FROM TA_TRS_TINDAKAN2 tk
-                INNER JOIN ta_detil_tarif2 dt ON tk.FS_KD_DETIL_TARIF = dt.fs_kd_detil_tarif
+                    tk.PpaId = @PpaId,
+                    tk.PpaName = @PpaName
+                FROM BILRG_TindakanKomponen tk
+                INNER JOIN ta_detil_tarif2 dt ON tk.KomponenTarifId = dt.fs_kd_detil_tarif
                 WHERE 
-                    tk.FS_KD_TRS = @TindakanId
+                    tk.TindakanId = @TindakanId
                     AND ISNULL(dt.fs_kd_sat_tugas, '') <> '';
             END
             ELSE
             BEGIN
-                UPDATE TA_TRS_TINDAKAN2
+                UPDATE BILRG_TindakanKomponen
                 SET 
-                    FS_KD_PETUGAS_MEDIS = @PpaId,
-                    FS_KD_PETUGAS_EDIT_MEDIS = @UserId,
-                    UPDTGL = @Today,
-                    UPDJAM = @NowTime,
-                    UPDUSR = @UserId
+                    PpaId = @PpaId,
+                    PpaName = @PpaName
                 WHERE 
-                    FS_KD_TRS = @TindakanId;
+                    TindakanId = @TindakanId;
             END
 
             -- 2. Update ta_trs_billing2 if matching
@@ -181,7 +165,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@TindakanId", SafeTruncate(tindakanId, 10), SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", SafeTruncate(tindakanId, 26), SqlDbType.VarChar);
         dp.AddParam("@PpaId", SafeTruncate(ppaId, 10), SqlDbType.VarChar);
         dp.AddParam("@UserId", SafeTruncate(userId, 20), SqlDbType.VarChar);
 

@@ -31,20 +31,26 @@ public sealed class QueueNumberCompatibilityAdapter : IQueueNumberCompatibilityA
         JadwalPraktekType jadwal,
         DateOnly tgl,
         BookingModel booking,
-        PasienModel pasien)
+        PasienModel pasien,
+        IReadOnlyCollection<int>? occupiedSessionNumbers = null)
     {
         EnsureLegacyMapAuthority();
-        var result = _bookingResolver.Resolve(jadwal, tgl, booking, pasien);
+        var result = occupiedSessionNumbers is null
+            ? _bookingResolver.Resolve(jadwal, tgl, booking, pasien)
+            : _bookingResolver.Resolve(jadwal, tgl, booking, pasien, occupiedSessionNumbers);
         return ToReserved(result);
     }
 
     public Result<ReservedQueueNumber> ReserveForRegistration(
         JadwalPraktekType jadwal,
         DateOnly tgl,
-        RegModel reg)
+        RegModel reg,
+        IReadOnlyCollection<int>? occupiedSessionNumbers = null)
     {
         EnsureLegacyMapAuthority();
-        var result = _regResolver.Resolve(jadwal, tgl, reg);
+        var result = occupiedSessionNumbers is null
+            ? _regResolver.Resolve(jadwal, tgl, reg)
+            : _regResolver.Resolve(jadwal, tgl, reg, occupiedSessionNumbers);
         return ToReserved(result);
     }
 

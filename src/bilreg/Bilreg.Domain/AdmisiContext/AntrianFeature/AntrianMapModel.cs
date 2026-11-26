@@ -171,19 +171,31 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
         _listMap.Clear();
         _listMap.AddRange(listDetil);
     }
-    public AntrianMapDetilModel AddAuto(RegModel reg)
+    public AntrianMapDetilModel AddAuto(RegModel reg, IReadOnlySet<int>? occupiedNumbers = null)
     {
-        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+        var nextNoUrut = GetNextAutoNoUrut(occupiedNumbers);
+        var newDetil = AntrianMapDetilModel.AutoSlot(nextNoUrut)
             .SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
         _listMap.Add(newDetil);
         return newDetil;
     }
-    public AntrianMapDetilModel AddAuto(BookingModel booking)
+    public AntrianMapDetilModel AddAuto(BookingModel booking, IReadOnlySet<int>? occupiedNumbers = null)
     {
-        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+        var nextNoUrut = GetNextAutoNoUrut(occupiedNumbers);
+        var newDetil = AntrianMapDetilModel.AutoSlot(nextNoUrut)
             .SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
         _listMap.Add(newDetil);
         return newDetil;
+    }
+    private int GetNextAutoNoUrut(IReadOnlySet<int>? occupiedNumbers)
+    {
+        var nextNoUrut = _listMap.Count == 0 ? 1 : LastNoUrut + 1;
+        while ((occupiedNumbers is not null && occupiedNumbers.Contains(nextNoUrut))
+               || _listMap.Any(x => x.NoUrut == nextNoUrut))
+        {
+            nextNoUrut++;
+        }
+        return nextNoUrut;
     }
     private void SeedingMapAuto()
     {

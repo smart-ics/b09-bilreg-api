@@ -14,7 +14,9 @@ public interface IMutasiBrgItemDal :
     IListData<MutasiBrgItemDto, IMutasiBrgKey>
 {
     void Insert(IEnumerable<MutasiBrgItemDto> listModel, SqlConnection conn, SqlTransaction? trans = null);
+    void Insert(IEnumerable<MutasiBrgItemDto> listModel, IDbConnection conn, IDbTransaction? trans = null);
     void Delete(IMutasiBrgKey key, IDbConnection conn, IDbTransaction? trans = null);
+    IEnumerable<MutasiBrgItemDto> ListData(IMutasiBrgKey filter, IDbConnection conn, IDbTransaction? trans = null);
 }
 
 public class MutasiBrgItemDal : IMutasiBrgItemDal
@@ -64,6 +66,29 @@ public class MutasiBrgItemDal : IMutasiBrgItemDal
         bcp.WriteToServer(list.AsDataTable());
     }
 
+    public void Insert(IEnumerable<MutasiBrgItemDto> listModel, IDbConnection conn, IDbTransaction? trans = null)
+    {
+        if (conn is SqlConnection sqlConn)
+        {
+            Insert(listModel, sqlConn, trans as SqlTransaction);
+            return;
+        }
+
+        var list = listModel.ToList();
+        if (list.Count == 0)
+            return;
+
+        const string sql = """
+            INSERT INTO BILRG_MutasiBrgItem (
+                MutasiBrgId, NoUrut, BrgId, BrgName,
+                BatchNo, ExpiredDate, QtyKirim, SatuanId, SatuanName)
+            VALUES (
+                @MutasiBrgId, @NoUrut, @BrgId, @BrgName,
+                @BatchNo, @ExpiredDate, @QtyKirim, @SatuanId, @SatuanName)
+            """;
+        conn.Execute(sql, list, trans);
+    }
+
     public void Delete(IMutasiBrgKey key)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -84,6 +109,12 @@ public class MutasiBrgItemDal : IMutasiBrgItemDal
 
     public IEnumerable<MutasiBrgItemDto> ListData(IMutasiBrgKey filter)
     {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return ListData(filter, conn, null);
+    }
+
+    public IEnumerable<MutasiBrgItemDto> ListData(IMutasiBrgKey filter, IDbConnection conn, IDbTransaction? trans = null)
+    {
         const string sql = """
             SELECT
                 MutasiBrgId, NoUrut,
@@ -100,7 +131,6 @@ public class MutasiBrgItemDal : IMutasiBrgItemDal
         var dp = new DynamicParameters();
         dp.AddParam("@MutasiBrgId", filter.MutasiBrgId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<MutasiBrgItemDto>(sql, dp) ?? [];
+        return conn.Query<MutasiBrgItemDto>(sql, dp, trans) ?? [];
     }
 }

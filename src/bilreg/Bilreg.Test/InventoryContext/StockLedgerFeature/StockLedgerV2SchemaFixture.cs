@@ -43,12 +43,6 @@ public static class StockLedgerV2SchemaFixture
         string tableName,
         string fileName)
     {
-        var exists = conn.ExecuteScalar<int>(
-            "SELECT COUNT(1) FROM sys.tables WHERE name = @TableName",
-            new { TableName = tableName });
-        if (exists != 0)
-            return;
-
         var featurePath = Path.Combine(
             FindRepositoryRoot(),
             "src",

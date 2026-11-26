@@ -30,7 +30,9 @@ public record RadOrderDto(
     string UpdUser,
     DateTime UpdDate,
     string VodUser,
-    DateTime VodDate) : IRadOrderKey
+    DateTime VodDate,
+    string BillingTindakanId = "",
+    string BillingLastError = "") : IRadOrderKey
 {
     public RadOrderDto() : this(
         string.Empty, string.Empty, string.Empty, 0, string.Empty, 1, 0,
@@ -38,7 +40,8 @@ public record RadOrderDto(
         string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
         string.Empty, new DateTime(3000, 1, 1), string.Empty,
         string.Empty, new DateTime(3000, 1, 1), string.Empty, new DateTime(3000, 1, 1),
-        string.Empty, new DateTime(3000, 1, 1))
+        string.Empty, new DateTime(3000, 1, 1),
+        string.Empty, string.Empty)
     {
     }
 
@@ -69,7 +72,9 @@ public record RadOrderDto(
         model.AuditTrail.Modified.UserId,
         model.AuditTrail.Modified.Timestamp,
         model.AuditTrail.Voided.UserId,
-        model.AuditTrail.Voided.Timestamp);
+        model.AuditTrail.Voided.Timestamp,
+        model.BillingTindakanId,
+        model.BillingLastError);
 
     public RadOrderModel ToModel(IEnumerable<RadOrderItemModel>? items = null)
     {
@@ -126,6 +131,8 @@ public record RadOrderDto(
             CancelledDate,
             CancelledUserId,
             auditTrail,
-            items);
+            items,
+            BillingTindakanId,
+            BillingLastError);
     }
 }

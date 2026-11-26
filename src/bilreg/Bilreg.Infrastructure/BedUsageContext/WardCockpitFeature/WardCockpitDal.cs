@@ -177,7 +177,7 @@ public class WardCockpitDal : IWardCockpitDal
         ORDER BY ISNULL(wl.UrgencyLevel, 0) DESC, wl.CrtDate ASC;
         """;
 
-    private const string BED_DETAIL_QUERY = """
+    internal const string BED_DETAIL_QUERY = """
         -- 1. Bed Info & Current Occupancy
         SELECT 
             RTRIM(LTRIM(bd.fs_kd_bed)) AS BedId,
@@ -301,39 +301,38 @@ public class WardCockpitDal : IWardCockpitDal
 
         -- 3. Tab Tindakan & BHP
         SELECT 
-            ISNULL(t.FS_KD_TRS, '') AS TindakanId,
-            ISNULL(TRY_CONVERT(DATETIME, t.FD_TGL_TRS + ' ' + t.FS_JAM_TRS), '2000-01-01') AS TglJam,
-            ISNULL(tr.FS_NM_TARIF, '') AS ItemTindakan,
+            ISNULL(t.TindakanId, '') AS TindakanId,
+            ISNULL(t.TindakanDate, '2000-01-01') AS TglJam,
+            ISNULL(t.TarifName, '') AS ItemTindakan,
             ISNULL(
-                NULLIF((SELECT TOP 1 p.FS_NM_PEG FROM TA_TRS_TINDAKAN2 tk LEFT JOIN td_peg p ON tk.FS_KD_PETUGAS_MEDIS = p.FS_KD_PEG WHERE tk.FS_KD_TRS = t.FS_KD_TRS AND ISNULL(tk.FS_KD_PETUGAS_MEDIS, '') <> '' ORDER BY tk.FS_KD_DETIL_TARIF), ''),
-                ISNULL(peg.fs_nm_peg, t.CRTUSR)
+                NULLIF((SELECT TOP 1 tk.PpaName FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = t.TindakanId AND ISNULL(tk.PpaId, '') <> '' ORDER BY tk.NoUrut), ''),
+                ISNULL(peg.fs_nm_peg, t.CrtUser)
             ) AS Petugas,
-            ISNULL(t.FN_TOTAL, 0) AS Biaya,
+            ISNULL(t.Total, 0) AS Biaya,
             CASE WHEN EXISTS (
-                SELECT 1 FROM TA_TRS_TINDAKAN2 tk 
-                WHERE tk.FS_KD_TRS = t.FS_KD_TRS 
-                  AND ISNULL(tk.FS_KD_PETUGAS_MEDIS, '') <> ''
+                SELECT 1 FROM BILRG_TindakanKomponen tk 
+                WHERE tk.TindakanId = t.TindakanId 
+                  AND ISNULL(tk.PpaId, '') <> ''
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS HasJasaDokter,
-            ISNULL(t.FS_KD_REG, '') AS RegId,
+            ISNULL(t.RegId, '') AS RegId,
             CASE WHEN EXISTS (
                 SELECT 1 FROM ta_trs_bed tb_baby
                 WHERE tb_baby.fs_kd_bed = @BedId
-                  AND tb_baby.fs_kd_reg = t.FS_KD_REG
+                  AND tb_baby.fs_kd_reg = t.RegId
                   AND tb_baby.fn_tarif = 0
                   AND (tb_baby.fd_tgl_out = '' OR tb_baby.fd_tgl_out = '3000-01-01' OR tb_baby.fd_tgl_out IS NULL)
                   AND (tb_baby.fd_tgl_void = '' OR tb_baby.fd_tgl_void = '3000-01-01' OR tb_baby.fd_tgl_void IS NULL)
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsBayi
-        FROM TA_TRS_TINDAKAN t
-        LEFT JOIN td_peg peg ON t.CRTUSR = peg.fs_kd_peg
-        LEFT JOIN ta_tarif tr ON t.FS_KD_TARIF = tr.FS_KD_TARIF
-        WHERE t.FS_KD_REG IN (
+        FROM BILRG_Tindakan t
+        LEFT JOIN td_peg peg ON t.CrtUser = peg.fs_kd_peg
+        WHERE t.RegId IN (
             SELECT occ.fs_kd_reg
             FROM ta_trs_bed occ
             WHERE occ.fs_kd_bed = @BedId
               AND (occ.fd_tgl_out = '' OR occ.fd_tgl_out = '3000-01-01' OR occ.fd_tgl_out IS NULL)
               AND (occ.fd_tgl_void = '' OR occ.fd_tgl_void = '3000-01-01' OR occ.fd_tgl_void IS NULL)
         )
-        AND (t.FD_TGL_VOID = '3000-01-01' OR t.FD_TGL_VOID = '' OR t.FD_TGL_VOID IS NULL)
+        AND (t.VodDate = '3000-01-01' OR t.VodDate IS NULL)
 
         UNION ALL
 

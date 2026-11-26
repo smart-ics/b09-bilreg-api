@@ -123,7 +123,7 @@ public class TrsKasirItemDal : ITrsKasirItemDal
               AND NOT EXISTS (
                   SELECT 1 FROM BILRG_TrsKasirItem ki WITH (NOLOCK)
                   INNER JOIN BILRG_TrsKasir k WITH (NOLOCK) ON ki.TrsKasirId = k.TrsKasirId
-                  WHERE (ki.BillId = b.fs_kd_trs OR (ki.RegId = b.fs_kd_reg AND ki.BillId = b.fs_kd_reg))
+                  WHERE ki.BillId = b.fs_kd_trs
                     AND k.StatusTrs = 'BERHASIL'
               )
               AND (

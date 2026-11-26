@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.PatternHelper;
@@ -32,7 +33,14 @@ public record LabResultPdfView(
     int PreviousVersionNo,
     IEnumerable<LabResultPdfItemView> Items,
     string ExpertiseNote = "",
-    string CriticalNote = "");
+    string CriticalNote = "",
+    LaboratoryServiceType ServiceType = LaboratoryServiceType.ClinicalPathology,
+    string DokterPerujukName = "",
+    string LayananPerujukName = "",
+    string HospitalAddress = "",
+    string HospitalCity = "",
+    string HospitalPhone = "",
+    string HospitalEmail = "");
 
 public record LabResultPdfItemView(
     string TestName,
@@ -40,7 +48,14 @@ public record LabResultPdfItemView(
     string DisplayValue,
     string Unit,
     string ReferenceRangeText,
-    string FlagLabel);
+    string FlagLabel,
+    string DisciplineName = "",
+    string TestGroupName = "",
+    string ComponentCode = "",
+    LabResultTypeEnum ResultType = LabResultTypeEnum.Numeric,
+    string NarrativeValue = "",
+    string OptionValue = "",
+    string TextValue = "");
 
 public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultPdfFile>
 {
@@ -48,17 +63,20 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
     private readonly ILabResultPdfRenderer _pdfRenderer;
     private readonly LabResultPdfOptions _pdfOptions;
+    private readonly IGetHospitalProfileService _hospitalProfileService;
 
     public LabResultPdfHandler(
         ILabOrderRepo labOrderRepo,
         ILabResultDocumentRepo labResultDocumentRepo,
         ILabResultPdfRenderer pdfRenderer,
-        IOptions<LabResultPdfOptions> pdfOptions)
+        IOptions<LabResultPdfOptions> pdfOptions,
+        IGetHospitalProfileService hospitalProfileService)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
         _pdfRenderer = pdfRenderer;
         _pdfOptions = pdfOptions.Value;
+        _hospitalProfileService = hospitalProfileService;
     }
 
     public Task<LabResultPdfFile> Handle(LabResultPdfQuery request, CancellationToken cancellationToken)
@@ -94,8 +112,25 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
 
         var previousVersionNo = result.VersionNo > 1 ? result.VersionNo - 1 : 0;
 
+        var items = result.Items.Select(item =>
+        {
+            var orderItem = order.Items.FirstOrDefault(oi =>
+                (!string.IsNullOrWhiteSpace(item.TestId) && oi.TestDefinitionId == item.TestId) ||
+                oi.LabTestName.Equals(item.TestName, StringComparison.OrdinalIgnoreCase));
+
+            var disciplineName = orderItem?.DisciplineName ?? string.Empty;
+            var testGroupName = orderItem?.TestGroupName ?? string.Empty;
+
+            return MapItem(item, disciplineName, testGroupName);
+        }).ToList();
+
+        var profile = _hospitalProfileService.Execute();
+        var hospitalName = !string.IsNullOrWhiteSpace(profile?.NamaRs)
+            ? profile.NamaRs
+            : _pdfOptions.HospitalName;
+
         return new LabResultPdfView(
-            HospitalName: _pdfOptions.HospitalName,
+            HospitalName: hospitalName,
             OrderNo: order.OrderNo,
             OrderId: order.OrderId,
             RegId: order.Patient.RegId,
@@ -111,12 +146,22 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
             VerifiedUserId: result.VerifiedUserId,
             AmendmentReason: result.AmendmentReason,
             PreviousVersionNo: previousVersionNo,
-            Items: result.Items.Select(MapItem).ToList(),
+            Items: items,
             ExpertiseNote: result.ExpertiseNote,
-            CriticalNote: result.CriticalNote);
+            CriticalNote: result.CriticalNote,
+            ServiceType: order.ServiceType,
+            DokterPerujukName: order.DokterPerujukName,
+            LayananPerujukName: order.LayananPerujukName,
+            HospitalAddress: profile?.Alamat ?? string.Empty,
+            HospitalCity: profile?.Kota ?? string.Empty,
+            HospitalPhone: profile?.Telepon ?? string.Empty,
+            HospitalEmail: profile?.Email ?? string.Empty);
     }
 
-    private static LabResultPdfItemView MapItem(LabResultItemModel item)
+    private static LabResultPdfItemView MapItem(
+        LabResultItemModel item,
+        string disciplineName = "",
+        string testGroupName = "")
     {
         var display = item.ResultType switch
         {
@@ -137,12 +182,19 @@ public class LabResultPdfHandler : IRequestHandler<LabResultPdfQuery, LabResultP
         };
 
         return new LabResultPdfItemView(
-            item.TestName,
-            item.ComponentName,
-            display,
-            item.Unit,
-            item.ReferenceRangeText,
-            flag);
+            TestName: item.TestName,
+            ComponentName: item.ComponentName,
+            DisplayValue: display,
+            Unit: item.Unit,
+            ReferenceRangeText: item.ReferenceRangeText,
+            FlagLabel: flag,
+            DisciplineName: disciplineName,
+            TestGroupName: testGroupName,
+            ComponentCode: item.ComponentCode,
+            ResultType: item.ResultType,
+            NarrativeValue: item.NarrativeValue ?? string.Empty,
+            OptionValue: item.OptionValue ?? string.Empty,
+            TextValue: item.TextValue ?? string.Empty);
     }
 
     private sealed record OrderIdKey(string OrderId) : ILabOrderKey;

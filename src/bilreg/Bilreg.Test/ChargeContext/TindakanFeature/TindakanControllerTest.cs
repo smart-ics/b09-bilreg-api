@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using MediatR;
@@ -262,5 +263,27 @@ public class TindakanControllerTest
         jsend.code.Should().Be("422");
         jsend.status.Should().Be("FAIL");
         jsend.data.ToString().Should().Contain("Billing sudah lunas");
+    }
+
+    [Fact]
+    public async Task Batal_WhenBillingLockViolationException_CatchesAsInvalidOperationException_Returns422UnprocessableEntity()
+    {
+        // Arrange
+        var req = new TindakanVoidRequest("TDK001", "user1", "Salah input pasien");
+        _mediatorMock
+            .Setup(x => x.Send(It.IsAny<TindakanVoidCmd>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BillingLockViolationException("REG01", TataRekeningStatusEnum.Finalized));
+
+        // Act
+        var result = await _sut.Batal(req);
+
+        // Assert
+        var objResult = result.Should().BeOfType<ObjectResult>().Subject;
+        objResult.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+
+        var jsend = objResult.Value.Should().BeOfType<JSend>().Subject;
+        jsend.code.Should().Be("422");
+        jsend.status.Should().Be("FAIL");
+        jsend.data.ToString().Should().Contain("Finalized");
     }
 }

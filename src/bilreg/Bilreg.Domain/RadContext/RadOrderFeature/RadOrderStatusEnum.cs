@@ -4,5 +4,6 @@ public enum RadOrderStatusEnum
 {
     Requested = 1,
     Scheduled = 2,
-    Cancelled = 3
+    Cancelled = 3,
+    Charged = 4
 }

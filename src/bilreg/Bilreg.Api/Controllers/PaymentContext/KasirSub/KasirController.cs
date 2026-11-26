@@ -45,10 +45,11 @@ public class KasirController : Controller
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOrderInbox(
         [FromQuery] string? keyword = null,
-        [FromQuery] string? date = null)
+        [FromQuery] string? date = null,
+        CancellationToken cancellationToken = default)
     {
         var query = new GetAntreanOrderKasirQuery(keyword, date);
-        var result = await _mediator.Send(query);
+        var result = await _mediator.Send(query, cancellationToken);
         return Ok(new JSendOk(result));
     }
 
@@ -194,6 +195,21 @@ public class KasirController : Controller
 
         var query = new GetKasirShiftActiveQuery(currentKasirId);
         var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet("shift/{shiftId}/transaksi")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetTransaksiByShift(string shiftId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(shiftId))
+        {
+            return BadRequest(new JSend(StatusCodes.Status400BadRequest, "Bad Request", "ShiftId wajib diisi."));
+        }
+
+        var query = new GetTransaksiKasirByShiftQuery(shiftId);
+        var result = await _mediator.Send(query, cancellationToken);
         return Ok(new JSendOk(result));
     }
 

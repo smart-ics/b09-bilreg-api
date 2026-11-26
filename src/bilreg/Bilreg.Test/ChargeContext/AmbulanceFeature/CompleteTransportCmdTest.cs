@@ -28,6 +28,7 @@ public class CompleteTransportCmdTest
 {
     private readonly Mock<ITrsTransportRepo> _trsTransportRepoMock = new();
     private readonly Mock<IAmbulanceRepo> _ambulanceRepoMock = new();
+    private readonly Mock<ITujuanTransportRepo> _tujuanTransportRepoMock = new();
     private readonly Mock<IAddBillAppService> _addBillAppServiceMock = new();
     private readonly Mock<IRegRepo> _regRepoMock = new();
     private readonly Mock<IJaminanRepo> _jaminanRepoMock = new();
@@ -41,6 +42,7 @@ public class CompleteTransportCmdTest
         _sut = new CompleteTransportHandler(
             _trsTransportRepoMock.Object,
             _ambulanceRepoMock.Object,
+            _tujuanTransportRepoMock.Object,
             _addBillAppServiceMock.Object,
             _regRepoMock.Object,
             _jaminanRepoMock.Object,
@@ -232,5 +234,76 @@ public class CompleteTransportCmdTest
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Transisi hanya valid dari status Dispatched*");
+    }
+
+    [Fact]
+    public async Task GivenExistingEstimatedItem_WhenCompletedWithExplicitItems_ThenReplacesItemsWithoutDuplication()
+    {
+        // Arrange
+        var transport = CreateDispatchedTransport("TP014", regId: "");
+        transport.AddItem(new TrsTransportItemModel("TP014", "KOMP-EST", 150000m, 1m));
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP014")))
+            .Returns(MayBe.From(transport));
+
+        var cmd = new CompleteTransportCmd(
+            "TP014",
+            1050m,
+            Items: new[] { new TrsTransportItemInputDto("KOMP-ACT", 200000m, 1m) });
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.Total.Should().Be(200000m);
+        transport.ListItems.Should().HaveCount(1);
+        transport.ListItems.First().DetilTarifId.Should().Be("KOMP-ACT");
+    }
+
+    [Fact]
+    public async Task GivenNullItemsAndEmptyListItems_WhenCompleted_ThenCalculatesViaTransportTariffCalculator()
+    {
+        // Arrange
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP015",
+            DateTime.Now,
+            regId: "",
+            tujuanTransportId: "TUJ01",
+            konstanta: 2m,
+            ambulanceId: "AMB01");
+        transport.Dispatch("AMB01", "DRV-01", "B 1234 CD", 1000m, dispatchTime: DateTime.Now.AddHours(-1));
+
+        var ambulance = new AmbulanceModel("AMB01", "Ambulance 1");
+        ambulance.SetAbonement(20000m);
+        ambulance.Attach([
+            new AmbulanceKomponenModel("AMB01", "K-TETAP", 50000m, true),
+            new AmbulanceKomponenModel("AMB01", "K-VAR", 100000m, false)
+        ]);
+        var tujuan = new TujuanTransportModel("TUJ01", "RS Tujuan", 2m, false);
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP015")))
+            .Returns(MayBe.From(transport));
+        _ambulanceRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB01")))
+            .Returns(MayBe.From(ambulance));
+        _tujuanTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITujuanTransportKey>(k => k.TujuanTransportId == "TUJ01")))
+            .Returns(MayBe.From(tujuan));
+
+        var cmd = new CompleteTransportCmd("TP015", 1050m, Items: null);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        // K-TETAP = 50000 + 20000 (abonement), K-VAR = 100000 * 2 = 200000, Total = 270000
+        result.Total.Should().Be(270000m);
+        transport.ListItems.Should().HaveCount(2);
     }
 }

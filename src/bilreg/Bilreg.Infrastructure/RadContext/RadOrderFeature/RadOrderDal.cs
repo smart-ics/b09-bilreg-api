@@ -28,7 +28,8 @@ public class RadOrderDal : IRadOrderTableDal
         aa.DokterPengorderId, aa.DokterPengorderName, aa.LayananPengorderId, aa.LayananPengorderName,
         aa.ClinicalNote,
         aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
-        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+        aa.BillingTindakanId, aa.BillingLastError
         """;
 
     private readonly DatabaseOptions _opt;
@@ -176,14 +177,16 @@ public class RadOrderDal : IRadOrderTableDal
                 DokterPengorderId, DokterPengorderName, LayananPengorderId, LayananPengorderName,
                 ClinicalNote,
                 CancelledReason, CancelledDate, CancelledUserId,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
+                BillingTindakanId, BillingLastError
             ) VALUES (
                 @OrderId, @EmrOrderId, @OrderNo, @OrderSource, @Modality, @RadOrderStatus, @Urgency,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
                 @DokterPengorderId, @DokterPengorderName, @LayananPengorderId, @LayananPengorderName,
                 @ClinicalNote,
                 @CancelledReason, @CancelledDate, @CancelledUserId,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
+                @BillingTindakanId, @BillingLastError
             )
             """;
 
@@ -218,7 +221,9 @@ public class RadOrderDal : IRadOrderTableDal
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
-                VodDate = @VodDate
+                VodDate = @VodDate,
+                BillingTindakanId = @BillingTindakanId,
+                BillingLastError = @BillingLastError
             WHERE OrderId = @OrderId
             """;
 
@@ -256,6 +261,8 @@ public class RadOrderDal : IRadOrderTableDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@BillingTindakanId", dto.BillingTindakanId, SqlDbType.VarChar);
+        dp.AddParam("@BillingLastError", dto.BillingLastError, SqlDbType.VarChar);
         return dp;
     }
 }

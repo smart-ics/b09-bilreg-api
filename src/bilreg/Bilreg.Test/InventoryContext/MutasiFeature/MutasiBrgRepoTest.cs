@@ -1,3 +1,4 @@
+using System.Data;
 using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
@@ -431,5 +432,58 @@ public class MutasiBrgRepoTest
 
         // Assert
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LoadEntityForUpdate_WhenFound_ShouldCallGetDataForUpdateAndListDataWithConnAndTrans()
+    {
+        var connMock = new Mock<IDbConnection>();
+        var transMock = new Mock<IDbTransaction>();
+        var headerDto = CreateSampleDto("MT2600001A") with { State = MutasiBrgStateEnum.Dispatched };
+        var itemDtos = new List<MutasiBrgItemDto> { CreateSampleItemDto("MT2600001A", 1) };
+
+        _mutasiBrgDalMock
+            .Setup(x => x.GetDataForUpdate(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A"), connMock.Object, transMock.Object))
+            .Returns(headerDto);
+        _mutasiBrgItemDalMock
+            .Setup(x => x.ListData(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A"), connMock.Object, transMock.Object))
+            .Returns(itemDtos);
+
+        var sut = CreateSut();
+
+        var result = sut.LoadEntityForUpdate(MutasiBrgModel.Key("MT2600001A"), connMock.Object, transMock.Object);
+
+        result.HasValue.Should().BeTrue();
+        result.Value.State.Should().Be(MutasiBrgStateEnum.Dispatched);
+        result.Value.ListItem.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void SaveChanges_WithConnAndTrans_WhenExisting_ShouldUpdateWithinTransaction()
+    {
+        var connMock = new Mock<IDbConnection>();
+        var transMock = new Mock<IDbTransaction>();
+        var model = CreateSampleModel("MT2600001A", 1, MutasiBrgStateEnum.Received);
+
+        _mutasiBrgDalMock
+            .Setup(x => x.GetData(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A"), connMock.Object, transMock.Object))
+            .Returns(CreateSampleDto("MT2600001A"));
+
+        var sut = CreateSut();
+
+        sut.SaveChanges(model, connMock.Object, transMock.Object);
+
+        _mutasiBrgDalMock.Verify(x => x.Update(
+            It.Is<MutasiBrgDto>(d => d.MutasiBrgId == "MT2600001A" && d.State == MutasiBrgStateEnum.Received),
+            connMock.Object,
+            transMock.Object), Times.Once);
+        _mutasiBrgItemDalMock.Verify(x => x.Delete(
+            It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A"),
+            connMock.Object,
+            transMock.Object), Times.Once);
+        _mutasiBrgItemDalMock.Verify(x => x.Insert(
+            It.Is<IEnumerable<MutasiBrgItemDto>>(items => items.Count() == 1),
+            connMock.Object,
+            transMock.Object), Times.Once);
     }
 }
