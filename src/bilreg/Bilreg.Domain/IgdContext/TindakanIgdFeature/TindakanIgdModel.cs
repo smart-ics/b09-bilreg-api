@@ -9,6 +9,8 @@ namespace Bilreg.Domain.IgdContext.TindakanIgdFeature;
 public class TindakanIgdModel : ITindakanIgdKey
 {
     private const string ID_PREFIX = "TKI";
+    private readonly List<TindakanIgdPpaType> _listPpa;
+    private readonly List<TindakanIgdBarangType> _listBarang;
 
     #region CREATION
     public TindakanIgdModel(
@@ -24,7 +26,11 @@ public class TindakanIgdModel : ITindakanIgdKey
         string trsTdkId = "",
         string trsBillId = "",
         bool isPosted = false,
-        DateTime? postedDate = null)
+        DateTime? postedDate = null,
+        string layananId = "",
+        string pakaiBrgId = "",
+        IEnumerable<TindakanIgdPpaType>? listPpa = null,
+        IEnumerable<TindakanIgdBarangType>? listBarang = null)
     {
         TindakanIgdId = tindakanIgdId;
         IgdVisitId = igdVisitId;
@@ -39,6 +45,10 @@ public class TindakanIgdModel : ITindakanIgdKey
         TrsBillId = trsBillId ?? string.Empty;
         IsPosted = isPosted;
         PostedDate = postedDate;
+        LayananId = layananId ?? string.Empty;
+        PakaiBrgId = pakaiBrgId ?? string.Empty;
+        _listPpa = listPpa?.ToList() ?? [];
+        _listBarang = listBarang?.ToList() ?? [];
     }
 
     public static TindakanIgdModel Default => new(
@@ -66,7 +76,11 @@ public class TindakanIgdModel : ITindakanIgdKey
     public static TindakanIgdModel Create(
         IgdVisitModel visit,
         string reffId, string desciption, int qty, ActivityTindakanIgd aktifitas,
-        PpaType ppa, string userId, DateTime occurredAt = default)
+        PpaType ppa, string userId, DateTime occurredAt = default,
+        string layananId = "",
+        string pakaiBrgId = "",
+        IEnumerable<TindakanIgdPpaType>? listPpa = null,
+        IEnumerable<TindakanIgdBarangType>? listBarang = null)
     {
         Guard.Against.Null(visit);
         Guard.Against.NullOrWhiteSpace(reffId, nameof(reffId));
@@ -88,7 +102,11 @@ public class TindakanIgdModel : ITindakanIgdKey
             qty,
             aktifitas,
             ppa.ToReff(),
-            audit);
+            audit,
+            layananId: layananId,
+            pakaiBrgId: pakaiBrgId,
+            listPpa: listPpa,
+            listBarang: listBarang);
     }
     #endregion
 
@@ -96,16 +114,20 @@ public class TindakanIgdModel : ITindakanIgdKey
     public string TindakanIgdId { get; init; }
     public string IgdVisitId { get; init; }
     public string RegId { get; private set; }
-    public ActivityTindakanIgd Aktifitas { get; init;  }
+    public ActivityTindakanIgd Aktifitas { get; init; }
     public string ReffId { get; init; } // tarifId atau barangId
     public string Descriptions { get; init; }
     public int Qty { get; init; }
-    public PpaReff Ppa {  get; init; }
+    public PpaReff Ppa { get; init; }
     public AuditInfoType Audit { get; init; }
     public string TrsTdkId { get; private set; }
     public string TrsBillId { get; private set; }
     public bool IsPosted { get; private set; }
     public DateTime? PostedDate { get; private set; }
+    public string LayananId { get; init; }
+    public string PakaiBrgId { get; private set; }
+    public IReadOnlyList<TindakanIgdPpaType> ListPpa => _listPpa;
+    public IReadOnlyList<TindakanIgdBarangType> ListBarang => _listBarang;
     #endregion
 
     #region BEHAVIOUR
@@ -113,6 +135,25 @@ public class TindakanIgdModel : ITindakanIgdKey
     {
         Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
         RegId = regId;
+    }
+
+    public void SetPakaiBrg(string pakaiBrgId)
+    {
+        PakaiBrgId = pakaiBrgId ?? string.Empty;
+    }
+
+    public void SetListPpa(IEnumerable<TindakanIgdPpaType> listPpa)
+    {
+        _listPpa.Clear();
+        if (listPpa is not null)
+            _listPpa.AddRange(listPpa);
+    }
+
+    public void SetListBarang(IEnumerable<TindakanIgdBarangType> listBarang)
+    {
+        _listBarang.Clear();
+        if (listBarang is not null)
+            _listBarang.AddRange(listBarang);
     }
 
     public void MarkAsPosted(string trsTdkId, string trsBillId, DateTime postedAt)
@@ -131,9 +172,7 @@ public class TindakanIgdModel : ITindakanIgdKey
         Guard.Against.NullOrWhiteSpace(voidReason, nameof(voidReason));
     }
     #endregion
-
 }
-
 
 public enum ActivityTindakanIgd
 {

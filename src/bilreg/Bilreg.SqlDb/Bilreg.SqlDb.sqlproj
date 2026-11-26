@@ -402,6 +402,9 @@
     <Build Include="IgdContext\IgdVisitSmassTaskFeature\BILRG_IgdVisitSmassTask.sql" />
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
+    <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgdPpa.sql" />
+    <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgdBarang.sql" />
+    <None Include="IgdContext\BILRG_Igd_TindakanBhp_Alignment_Migration.sql" />
     <Build Include="SalesContext\ta_trs_kartu_periksa.sql" />
     <Build Include="SalesContext\ta_trs_kartu_periksa_resep.sql" />
     <Build Include="SalesContext\ta_trs_kartu_periksa3.sql" />

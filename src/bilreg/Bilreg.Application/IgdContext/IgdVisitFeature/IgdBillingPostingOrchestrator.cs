@@ -157,10 +157,56 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
                 nilaiTarif,
                 listKomp,
                 ppa,
+                tindakan.ListPpa,
                 tindakan.Qty,
                 tindakan.TindakanIgdId,
                 occurredAt,
                 userId);
+
+            if (tindakan.ListBarang.Count > 0)
+            {
+                var updatedBarang = new List<TindakanIgdBarangType>(tindakan.ListBarang.Count);
+                var hasBomBill = false;
+
+                foreach (var barang in tindakan.ListBarang)
+                {
+                    if (!barang.IsVoid && barang.IsChargeBarang)
+                    {
+                        var bomBillId = $"{tindakan.TindakanIgdId}-B{barang.NoUrut:D2}";
+                        var subtotal = _brgPricingService != null
+                            ? _brgPricingService.CalculateItemPrice(
+                                barang.BrgId,
+                                barang.QtyKecilRequested,
+                                reg.TipeJaminan.TipeJaminanId,
+                                reg.Layanan.LayananId).Nilai.Total
+                            : 0m;
+
+                        var brgName = _brgRepo.LoadEntity(new BrgKey(barang.BrgId))
+                            .Match(onSome: b => b.BrgName, onNone: () => barang.BrgId);
+
+                        SaveBarangBill(
+                            reg,
+                            jaminan,
+                            barang.BrgId,
+                            brgName,
+                            barang.QtyKecilRequested,
+                            subtotal,
+                            bomBillId,
+                            occurredAt,
+                            userId);
+
+                        updatedBarang.Add(barang with { TrsBillingId = bomBillId });
+                        hasBomBill = true;
+                    }
+                    else
+                    {
+                        updatedBarang.Add(barang);
+                    }
+                }
+
+                if (hasBomBill)
+                    tindakan.SetListBarang(updatedBarang);
+            }
 
             tindakan.MarkAsPosted(tindakan.TindakanIgdId, bill.TrsBillingId, occurredAt);
             _tindakanIgdRepo.SaveChanges(tindakan);
@@ -325,6 +371,7 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp,
         PpaType ppa,
+        IReadOnlyList<TindakanIgdPpaType> listPpa,
         decimal qty,
         string billId,
         DateTime occurredAt,
@@ -333,6 +380,13 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap
             : jaminan.Rekening.PpdpJasaRajal;
+
+        var ppaByKomponen = new Dictionary<string, TindakanIgdPpaType>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in listPpa)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.KomponenId) && !ppaByKomponen.ContainsKey(entry.KomponenId))
+                ppaByKomponen[entry.KomponenId] = entry;
+        }
 
         var listReffKompFetched = listReffKomp.ToList();
         var listBill2TransEvent = new List<TrsBill2TransEventType>();
@@ -360,13 +414,14 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
 
             var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
             var itemSubtotal = item.Nilai * qty;
+            var komponenPpa = ResolveKomponenPpa(item.Komponen.KomponenId, ppaByKomponen, ppa);
 
             var bill2Event = new TrsBill2TransEventType(
                 i++,
                 komponen,
                 TrsBillJenisBayarType.Pdp,
                 itemSubtotal,
-                ppa.ToReff(),
+                komponenPpa,
                 bill2Coa);
 
             listBill2TransEvent.Add(bill2Event);
@@ -413,6 +468,23 @@ public class IgdBillingPostingOrchestrator : IIgdBillingPostingOrchestrator
 
         _trsBillingRepo.SaveChanges(bill);
         return bill;
+    }
+
+    private PpaReff ResolveKomponenPpa(
+        string komponenId,
+        IReadOnlyDictionary<string, TindakanIgdPpaType> ppaByKomponen,
+        PpaType fallbackPpa)
+    {
+        if (!ppaByKomponen.TryGetValue(komponenId, out var ppaEntry) || string.IsNullOrWhiteSpace(ppaEntry.PpaId))
+            return fallbackPpa.ToReff();
+
+        if (!string.IsNullOrWhiteSpace(ppaEntry.PpaName))
+            return new PpaReff(ppaEntry.PpaId, ppaEntry.PpaName);
+
+        return _ppaRepo.LoadEntity(PpaType.Key(ppaEntry.PpaId))
+            .Match(
+                onSome: x => x.ToReff(),
+                onNone: () => new PpaReff(ppaEntry.PpaId, ppaEntry.PpaName));
     }
 
     public async Task<bool> SyncAllPendingForVisitAsync(

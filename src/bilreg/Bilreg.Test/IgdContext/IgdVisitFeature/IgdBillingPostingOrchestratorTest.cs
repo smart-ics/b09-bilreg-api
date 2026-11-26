@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BrgContext.BrgFeature;
+using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
@@ -15,6 +16,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.IgdContext.BhpIgdFeature;
@@ -25,6 +27,7 @@ using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -47,6 +50,7 @@ public class IgdBillingPostingOrchestratorTest
     private readonly Mock<IGroupRekRepo> _groupRekRepoMock = new();
     private readonly Mock<ITataRekeningRepo> _tataRekeningRepoMock = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepoMock = new();
+    private readonly Mock<IBrgPricingService> _brgPricingServiceMock = new();
     private readonly Mock<ILogger<IgdBillingPostingOrchestrator>> _loggerMock = new();
 
     private readonly IgdBillingPostingOrchestrator _sut;
@@ -65,7 +69,8 @@ public class IgdBillingPostingOrchestratorTest
             _groupRekRepoMock.Object,
             _tataRekeningRepoMock.Object,
             _trsBillingRepoMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _brgPricingServiceMock.Object);
     }
 
     private static IgdVisitModel CreateVisit(string visitId = "IGV001", string regId = "REG001")
@@ -91,7 +96,7 @@ public class IgdBillingPostingOrchestratorTest
             []);
     }
 
-    private static RegModel CreateReg(string regId = "REG001")
+    private static RegModel CreateReg(string regId = "REG001", KelasReff? kelas = null)
     {
         return new RegModel(
             regId,
@@ -104,7 +109,7 @@ public class IgdBillingPostingOrchestratorTest
             new PasienReff("RM001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
             new TipeJaminanReff("00101", "BPJS Non PBI"),
             PolisModel.Default.ToReff(),
-            new KelasReff("K3", "Kelas 3"),
+            kelas ?? new KelasReff("K3", "Kelas 3"),
             CaraMasukDkType.Default,
             new RujukanReff("-", "-"),
             new PpaReff("DOK01", "dr. Test"),
@@ -432,5 +437,168 @@ public class IgdBillingPostingOrchestratorTest
 
         // Assert
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PostTindakanAsync_WithMultiPpaPerKomponen_MapsMatchingKomponenAndFallbacksMissingToPrimaryPpa()
+    {
+        // Arrange
+        var visit = CreateVisit();
+        var reg = CreateReg();
+        var tindakan = new TindakanIgdModel(
+            "TKI002",
+            visit.IgdVisitId,
+            reg.RegId,
+            "TRF01",
+            "Jahit Luka",
+            2,
+            ActivityTindakanIgd.Tindakan,
+            new PpaReff("DOK01", "dr. Test"),
+            new AuditInfoType("U01", DateTime.Now),
+            listPpa: [new TindakanIgdPpaType("KOMP02", "PRW01", "Ns. Ani")]);
+
+        var nilaiTarif = new NilaiTarifType(
+            "NT01",
+            "TRF01",
+            "Jahit Luka",
+            new TipeTarifReff("BPJS", "Tarif BPJS"),
+            new KelasReff("K3", "Kelas 3"),
+            100000m,
+            [
+                new NilaiTarifKomponenType(1, new KomponenReff("KOMP01", "Jasa Medis"), 50000m),
+                new NilaiTarifKomponenType(2, new KomponenReff("KOMP02", "Jasa Perawat"), 30000m),
+                new NilaiTarifKomponenType(3, new KomponenReff("KOMP03", "Sarana"), 20000m),
+            ]);
+
+        _jaminanRepoMock.Setup(x => x.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(CreateJaminan()));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01", TarifName = "Jahit Luka" }));
+        _nilaiTarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe.From(nilaiTarif));
+        _komponenRepoMock.Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DOK01")))
+            .Returns(MayBe.From(PpaType.Default with { PpaId = "DOK01", PpaName = "dr. Test" }));
+
+        TrsBillType? savedBill = null;
+        _trsBillingRepoMock.Setup(x => x.SaveChanges(It.IsAny<TrsBillType>()))
+            .Callback<TrsBillType>(b => savedBill = b);
+
+        // Act
+        var result = await _sut.PostTindakanAsync(visit, reg, tindakan);
+
+        // Assert
+        result.Should().BeTrue();
+        savedBill.Should().NotBeNull();
+        savedBill!.Nilai.Total.Should().Be(200000m);
+        savedBill.ListTransaction.Should().HaveCount(3);
+        savedBill.ListTransaction.Single(e => e.Komponen.BillKompId == "KOMP01").PetugasMedis.PpaId.Should().Be("DOK01");
+        savedBill.ListTransaction.Single(e => e.Komponen.BillKompId == "KOMP02").PetugasMedis.PpaId.Should().Be("PRW01");
+        savedBill.ListTransaction.Single(e => e.Komponen.BillKompId == "KOMP02").PetugasMedis.PpaName.Should().Be("Ns. Ani");
+        savedBill.ListTransaction.Single(e => e.Komponen.BillKompId == "KOMP03").PetugasMedis.PpaId.Should().Be("DOK01");
+    }
+
+    [Fact]
+    public async Task PostTindakanAsync_WithBomIsChargeBarangTrue_PostsDeterministicBomBillAndUpdatesTrsBillingId()
+    {
+        // Arrange
+        var visit = CreateVisit();
+        var reg = CreateReg();
+        var listBarang = new List<TindakanIgdBarangType>
+        {
+            new(1, "BRG01", "PCS", 2, "PCS", 2, 2, 0, true, "PKB01", "", false),
+            new(2, "BRG02", "PCS", 1, "PCS", 1, 1, 0, false, "PKB01", "", false),
+            new(3, "BRG03", "PCS", 3, "PCS", 3, 3, 0, true, "PKB01", "", true),
+        };
+
+        var tindakan = new TindakanIgdModel(
+            "TKI003",
+            visit.IgdVisitId,
+            reg.RegId,
+            "TRF01",
+            "Jahit Luka",
+            1,
+            ActivityTindakanIgd.Tindakan,
+            new PpaReff("DOK01", "dr. Test"),
+            new AuditInfoType("U01", DateTime.Now),
+            listBarang: listBarang);
+
+        _jaminanRepoMock.Setup(x => x.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(CreateJaminan()));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01", TarifName = "Jahit Luka", IsChargeBarang = true }));
+        _nilaiTarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<INilaiTarifCompositKey>()))
+            .Returns(MayBe.From(CreateNilaiTarif()));
+        _komponenRepoMock.Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>()))
+            .Returns(MayBe.From(PpaType.Default with { PpaId = "DOK01", PpaName = "dr. Test" }));
+
+        var brgMock = new Mock<IBrg>();
+        brgMock.SetupGet(x => x.BrgId).Returns("BRG01");
+        brgMock.SetupGet(x => x.BrgName).Returns("Kassa Steril");
+        brgMock.SetupGet(x => x.GroupRek).Returns(new GroupRekReff("GR01", "BHP"));
+        _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01")))
+            .Returns(MayBe.From(brgMock.Object));
+
+        _brgPricingServiceMock.Setup(x => x.CalculateItemPrice("BRG01", 2m, reg.TipeJaminan.TipeJaminanId, reg.Layanan.LayananId))
+            .Returns(new BrgPriceCalcResult(
+                new TipeBrgReff("-", "-"),
+                new NilaiItemType(7500m, 0m, 0m, 15000m, 0m, 0m, 0m, 0m, 0m, 15000m)));
+
+        var savedBills = new List<TrsBillType>();
+        _trsBillingRepoMock.Setup(x => x.SaveChanges(It.IsAny<TrsBillType>()))
+            .Callback<TrsBillType>(b => savedBills.Add(b));
+
+        // Act
+        var result = await _sut.PostTindakanAsync(visit, reg, tindakan);
+
+        // Assert
+        result.Should().BeTrue();
+        savedBills.Should().HaveCount(2);
+        savedBills.Should().ContainSingle(b => b.TrsBillingId == "TKI003" && b.ModulGroup == BillModulGroup.Jasa);
+        var bomBill = savedBills.Should().ContainSingle(b => b.TrsBillingId == "TKI003-B01" && b.ModulGroup == BillModulGroup.Obat).Subject;
+        bomBill.Nilai.Total.Should().Be(15000m);
+        bomBill.Keterangan.Keterangan.Should().Be("Kassa Steril");
+        bomBill.Keterangan.Qty.Should().Be(2m);
+
+        tindakan.ListBarang[0].TrsBillingId.Should().Be("TKI003-B01");
+        tindakan.ListBarang[1].TrsBillingId.Should().BeEmpty();
+        tindakan.ListBarang[2].TrsBillingId.Should().BeEmpty();
+        _tindakanIgdRepoMock.Verify(x => x.SaveChanges(tindakan), Times.Once);
+    }
+
+    [Fact]
+    public async Task PostTindakanAsync_RecalculatesNilaiTarifUsingRegKelasAndJaminanTipeTarif()
+    {
+        // Arrange
+        var visit = CreateVisit();
+        var reg = CreateReg(kelas: new KelasReff("K2", "Kelas 2"));
+        var tindakan = CreateTindakanIgd();
+        var jaminan = CreateJaminan() with
+        {
+            TipeTarif = new JaminanTipeTarifType(new TipeTarifReff("VIP", "Tarif VIP"), new TipeTarifReff("VIP", "Tarif VIP"))
+        };
+
+        _jaminanRepoMock.Setup(x => x.LoadEntity(It.IsAny<IJaminanKey>()))
+            .Returns(MayBe.From(jaminan));
+        _tarifRepoMock.Setup(x => x.LoadEntity(It.IsAny<ITarifKey>()))
+            .Returns(MayBe.From(TarifType.Default with { TarifId = "TRF01", TarifName = "Jahit Luka" }));
+        _nilaiTarifRepoMock.Setup(x => x.LoadEntity(It.Is<INilaiTarifCompositKey>(k =>
+                k.TarifId == "TRF01" && k.TipeTarifId == "VIP" && k.KelasId == "K2")))
+            .Returns(MayBe.From(CreateNilaiTarif("TRF01", "VIP", "K2")));
+        _komponenRepoMock.Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns([]);
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>()))
+            .Returns(MayBe.From(PpaType.Default with { PpaId = "DOK01", PpaName = "dr. Test" }));
+
+        // Act
+        var result = await _sut.PostTindakanAsync(visit, reg, tindakan);
+
+        // Assert
+        result.Should().BeTrue();
+        _nilaiTarifRepoMock.Verify(x => x.LoadEntity(It.Is<INilaiTarifCompositKey>(k =>
+            k.TarifId == "TRF01" && k.TipeTarifId == "VIP" && k.KelasId == "K2")), Times.Once);
     }
 }

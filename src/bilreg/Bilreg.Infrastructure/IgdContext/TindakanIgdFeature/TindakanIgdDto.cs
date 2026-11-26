@@ -13,15 +13,16 @@ public record TindakanIgdDto(
     string Descriptions,
     int Qty,
     int Aktifitas,
-    string PpaId, 
+    string PpaId,
     string PpaName,
     string? TrsTdkId,
     string? TrsBillId,
     bool IsPosted,
     DateTime? PostedDate,
     string CrtUser,
-    DateTime CrtDate
-    )
+    DateTime CrtDate,
+    string LayananId = "",
+    string PakaiBrgId = "")
 {
     public TindakanIgdDto() : this("", "", "", "", "", 0, 0, "", "", null, null, false, null, "", default) { }
 
@@ -41,9 +42,13 @@ public record TindakanIgdDto(
             IsPosted: model.IsPosted,
             PostedDate: model.PostedDate,
             CrtUser: model.Audit.UserId,
-            CrtDate: model.Audit.Timestamp);
+            CrtDate: model.Audit.Timestamp,
+            LayananId: model.LayananId,
+            PakaiBrgId: model.PakaiBrgId);
 
-    public TindakanIgdModel ToModel()
+    public TindakanIgdModel ToModel(
+        IEnumerable<TindakanIgdPpaType>? listPpa = null,
+        IEnumerable<TindakanIgdBarangType>? listBarang = null)
     {
         var audit = new AuditInfoType(CrtUser, CrtDate);
         var petugasMedis = new PpaReff(PpaId, PpaName);
@@ -61,7 +66,11 @@ public record TindakanIgdDto(
             trsTdkId: TrsTdkId ?? string.Empty,
             trsBillId: TrsBillId ?? string.Empty,
             isPosted: IsPosted,
-            postedDate: PostedDate);
+            postedDate: PostedDate,
+            layananId: LayananId ?? string.Empty,
+            pakaiBrgId: PakaiBrgId ?? string.Empty,
+            listPpa: listPpa,
+            listBarang: listBarang);
         return result;
     }
 
@@ -80,5 +89,7 @@ public record TindakanIgdDto(
             TrsTdkId: TrsTdkId ?? string.Empty,
             TrsBillId: TrsBillId ?? string.Empty,
             IsPosted: IsPosted,
-            PostedDate: PostedDate);
+            PostedDate: PostedDate,
+            LayananId: LayananId ?? string.Empty,
+            PakaiBrgId: PakaiBrgId ?? string.Empty);
 }

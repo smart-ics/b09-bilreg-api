@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature.UseCases;
@@ -13,6 +14,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.Shared;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Xunit;
@@ -26,11 +28,28 @@ public class IgdTindakanAddHandlerTest
     private readonly Mock<IPpaRepo> _ppaRepo = new();
     private readonly Mock<IRegRepo> _regRepo = new();
     private readonly Mock<IIgdBillingPostingOrchestrator> _billingOrchestrator = new();
+    private readonly Mock<IIgdStockService> _igdStockService = new();
+    private readonly IOptions<IgdVisitOptions> _igdVisitOptions = Options.Create(new IgdVisitOptions { SmassLayananId = "IGD-DEFAULT" });
 
     private const string IgdVisitId = "IGV-2026-0001";
     private const string RegId = "REG-001";
     private const string PetugasMedisId = "DK1";
     private const string UserId = "USER-007";
+
+    public IgdTindakanAddHandlerTest()
+    {
+        _igdStockService
+            .Setup(s => s.ProcessTindakanBomAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IgdBomProcessResult(string.Empty, false, []));
+
+        _igdStockService
+            .Setup(s => s.DeductBhpAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("PKB-001");
+    }
 
     private IgdTindakanAddHandler CreateSut()
     {
@@ -40,7 +59,9 @@ public class IgdTindakanAddHandlerTest
             _ppaRepo.Object,
             TestTglJamProvider.Instance,
             _regRepo.Object,
-            _billingOrchestrator.Object);
+            _billingOrchestrator.Object,
+            _igdStockService.Object,
+            _igdVisitOptions);
     }
 
     private static PpaType TestDokter()
@@ -330,6 +351,110 @@ public class IgdTindakanAddHandlerTest
         _ppaRepo.Verify(r => r.LoadEntity(It.IsAny<IPpaKey>()), Times.Never);
         _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t =>
             t.Aktifitas == ActivityTindakanIgd.Barang &&
-            t.Ppa.PpaId == PpaType.Default.PpaId)), Times.Once);
+            t.Ppa.PpaId == PpaType.Default.PpaId &&
+            t.PakaiBrgId == "PKB-001")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_TindakanWithListPpa_SavesMultiPpa_AndFallsBackPrimaryPpaToFirstItem()
+    {
+        var visit = CreateTestVisit(withReg: false);
+        var ppa1 = TestDokter();
+        var ppa2 = new PpaType("PR1", "Ns. Budi", "Budi", SmfType.Default, GroupSpesialisType.Default, [], [], []);
+
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _ppaRepo.Setup(r => r.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "DK1"))).Returns(MayBe.From(ppa1));
+        _ppaRepo.Setup(r => r.LoadEntity(It.Is<IPpaKey>(k => k.PpaId == "PR1"))).Returns(MayBe.From(ppa2));
+
+        var cmd = new IgdTindakanAddCmd(
+            IgdVisitId,
+            "",
+            "TDK001",
+            "Jahit Luka",
+            1,
+            (int)ActivityTindakanIgd.Tindakan,
+            UserId,
+            LayananId: "LAY-REQ",
+            ListPpa: [new IgdTindakanPpaCmd("K01", "DK1"), new IgdTindakanPpaCmd("K02", "PR1")]);
+
+        var sut = CreateSut();
+        await sut.Handle(cmd, CancellationToken.None);
+
+        _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t =>
+            t.LayananId == "LAY-REQ" &&
+            t.Ppa.PpaId == "DK1" &&
+            t.ListPpa.Count == 2 &&
+            t.ListPpa[0].KomponenId == "K01" &&
+            t.ListPpa[1].PpaId == "PR1")), Times.Once);
+        _igdStockService.Verify(s => s.ProcessTindakanBomAsync(
+            It.IsAny<string>(), "TDK001", 1, "LAY-REQ", "", UserId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_PostRegWithoutRequestLayananId_UsesRegLayananId()
+    {
+        var visit = CreateTestVisit(withReg: true);
+        var reg = CreateTestReg();
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _regRepo.Setup(r => r.LoadEntity(It.IsAny<IRegKey>())).Returns(MayBe.From(reg));
+        _ppaRepo.Setup(r => r.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(TestDokter()));
+        _billingOrchestrator.Setup(o => o.PostTindakanAsync(visit, reg, It.IsAny<TindakanIgdModel>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var cmd = new IgdTindakanAddCmd(IgdVisitId, PetugasMedisId, "TDK001", "Tindakan", 2, 0, UserId);
+        var sut = CreateSut();
+        await sut.Handle(cmd, CancellationToken.None);
+
+        _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t => t.LayananId == "1GD01")), Times.Once);
+        _igdStockService.Verify(s => s.ProcessTindakanBomAsync(
+            It.IsAny<string>(), "TDK001", 2, "1GD01", RegId, UserId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_TindakanWithBom_SavesPakaiBrgIdAndListBarang()
+    {
+        var visit = CreateTestVisit(withReg: false);
+        var bomItems = new List<TindakanIgdBarangType>
+        {
+            new(1, "BRG01", "PCS", 2m, "PCS", 2m, 2m, 0m, true, "PKB-BOM-1", "TKI-B01", false)
+        };
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _ppaRepo.Setup(r => r.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(TestDokter()));
+        _igdStockService
+            .Setup(s => s.ProcessTindakanBomAsync(
+                It.IsAny<string>(), "TDK001", 1, "IGD-DEFAULT", "", UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IgdBomProcessResult("PKB-BOM-1", true, bomItems));
+
+        var cmd = new IgdTindakanAddCmd(IgdVisitId, PetugasMedisId, "TDK001", "Tindakan BOM", 1, 0, UserId);
+        var sut = CreateSut();
+        await sut.Handle(cmd, CancellationToken.None);
+
+        _tindakanRepo.Verify(r => r.SaveChanges(It.Is<TindakanIgdModel>(t =>
+            t.LayananId == "IGD-DEFAULT" &&
+            t.PakaiBrgId == "PKB-BOM-1" &&
+            t.ListBarang.Count == 1 &&
+            t.ListBarang[0].BrgId == "BRG01")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_Barang_WhenStockInsufficient_ThrowsAndDoesNotSaveTindakanOrVisit()
+    {
+        var visit = CreateTestVisit(withReg: false);
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _igdStockService
+            .Setup(s => s.DeductBhpAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Stok barang tidak mencukupi"));
+
+        var cmd = new IgdTindakanAddCmd(
+            IgdVisitId, "", "BRG001", "SPUIT 3CC", 5, (int)ActivityTindakanIgd.Barang, UserId);
+        var sut = CreateSut();
+
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Stok barang tidak mencukupi*");
+
+        _tindakanRepo.Verify(r => r.SaveChanges(It.IsAny<TindakanIgdModel>()), Times.Never);
+        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Never);
     }
 }

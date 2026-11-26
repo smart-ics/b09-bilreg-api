@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
@@ -12,6 +13,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.Shared;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Xunit;
@@ -24,12 +26,23 @@ public class IgdBhpAddHandlerTest
     private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
     private readonly Mock<IRegRepo> _regRepo = new();
     private readonly Mock<IIgdBillingPostingOrchestrator> _billingOrchestrator = new();
+    private readonly Mock<IIgdStockService> _igdStockService = new();
+    private readonly IOptions<IgdVisitOptions> _igdVisitOptions = Options.Create(new IgdVisitOptions { SmassLayananId = "IGD-DEFAULT" });
 
     private const string IgdVisitId = "IGV-2026-0001";
     private const string RegId = "REG-001";
     private const string BhpItemId = "BHP001";
     private const string BhpItemName = "Kassa Steril";
     private const string UserId = "USER-007";
+
+    public IgdBhpAddHandlerTest()
+    {
+        _igdStockService
+            .Setup(s => s.DeductBhpAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("PKB-BHP-001");
+    }
 
     private IgdBhpAddHandler CreateSut()
     {
@@ -38,7 +51,9 @@ public class IgdBhpAddHandlerTest
             _bhpRepo.Object,
             TestTglJamProvider.Instance,
             _regRepo.Object,
-            _billingOrchestrator.Object);
+            _billingOrchestrator.Object,
+            _igdStockService.Object,
+            _igdVisitOptions);
     }
 
     private static RegModel CreateTestReg(string regId = RegId)
@@ -263,5 +278,43 @@ public class IgdBhpAddHandlerTest
 
         var act = async () => await sut.Handle(cmd, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithExplicitLayananId_UsesRequestLayananId_AndSavesPakaiBrgId()
+    {
+        var visit = CreateTestVisit(withReg: false);
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+
+        var cmd = new IgdBhpAddCmd(IgdVisitId, BhpItemId, BhpItemName, 3, 5000m, UserId, LayananId: "LAY-REQ");
+        var sut = CreateSut();
+        await sut.Handle(cmd, CancellationToken.None);
+
+        _igdStockService.Verify(s => s.DeductBhpAsync(
+            "LAY-REQ", BhpItemId, 3m, UserId, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        _bhpRepo.Verify(r => r.SaveChanges(It.Is<BhpIgdModel>(b =>
+            b.LayananId == "LAY-REQ" &&
+            b.PakaiBrgId == "PKB-BHP-001")), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenStockInsufficient_ThrowsAndDoesNotSaveBhpOrVisit()
+    {
+        var visit = CreateTestVisit(withReg: false);
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _igdStockService
+            .Setup(s => s.DeductBhpAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Stok BHP tidak mencukupi"));
+
+        var cmd = new IgdBhpAddCmd(IgdVisitId, BhpItemId, BhpItemName, 2, 5000m, UserId);
+        var sut = CreateSut();
+
+        var act = async () => await sut.Handle(cmd, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Stok BHP tidak mencukupi*");
+
+        _bhpRepo.Verify(r => r.SaveChanges(It.IsAny<BhpIgdModel>()), Times.Never);
+        _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Never);
     }
 }

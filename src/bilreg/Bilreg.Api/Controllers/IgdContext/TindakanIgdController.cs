@@ -22,7 +22,16 @@ public class TindakanIgdController : Controller
     [HttpPost("{visitId}")]
     public async Task<IActionResult> AddTindakan(string visitId, [FromBody] AddTindakanBody body)
     {
-        var cmd = new IgdTindakanAddCmd(visitId, body.PetugasMedisId,body.ReffId, body.Descriptions, body.Qty, body.Aktifitas,  body.UserId);
+        var cmd = new IgdTindakanAddCmd(
+            visitId,
+            body.PetugasMedisId,
+            body.ReffId,
+            body.Descriptions,
+            body.Qty,
+            body.Aktifitas,
+            body.UserId,
+            body.LayananId,
+            body.ListPpa);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -48,5 +57,13 @@ public class TindakanIgdController : Controller
     }
 }
 
-public record AddTindakanBody(string ReffId, string Descriptions, int Qty, int Aktifitas, string PetugasMedisId, string UserId);
+public record AddTindakanBody(
+    string ReffId,
+    string Descriptions,
+    int Qty,
+    int Aktifitas,
+    string PetugasMedisId,
+    string UserId,
+    string? LayananId = null,
+    IEnumerable<IgdTindakanPpaCmd>? ListPpa = null);
 public record VoidTIndakanIgdReq(string UserId, string VoidReason);

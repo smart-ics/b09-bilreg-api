@@ -33,12 +33,12 @@ public class TindakanIgdDal : ITindakanIgdDal
         const string sql = """
             INSERT INTO BILRG_TindakanIgd (
                 TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
-                Qty, Aktifitas, PpaId, PpaName, 
+                Qty, Aktifitas, PpaId, PpaName, LayananId, PakaiBrgId,
                 TrsTdkId, TrsBillId, IsPosted, PostedDate,
                 CrtUser, CrtDate)
             VALUES (
                 @TindakanIgdId, @IgdVisitId, @RegId, @ReffId, @Descriptions,
-                @Qty, @Aktifitas, @PpaId, @PpaName, 
+                @Qty, @Aktifitas, @PpaId, @PpaName, @LayananId, @PakaiBrgId,
                 @TrsTdkId, @TrsBillId, @IsPosted, @PostedDate,
                 @CrtUser, @CrtDate)
             """;
@@ -59,6 +59,8 @@ public class TindakanIgdDal : ITindakanIgdDal
                 Aktifitas = @Aktifitas,
                 PpaId = @PpaId,
                 PpaName = @PpaName,
+                LayananId = @LayananId,
+                PakaiBrgId = @PakaiBrgId,
                 TrsTdkId = @TrsTdkId,
                 TrsBillId = @TrsBillId,
                 IsPosted = @IsPosted,
@@ -87,7 +89,7 @@ public class TindakanIgdDal : ITindakanIgdDal
             SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
                 Qty, Aktifitas, PpaId, PpaName,
                 TrsTdkId, TrsBillId, IsPosted, PostedDate,
-                CrtUser, CrtDate
+                CrtUser, CrtDate, LayananId, PakaiBrgId
             FROM BILRG_TindakanIgd
             WHERE TindakanIgdId = @TindakanIgdId
             """;
@@ -101,9 +103,9 @@ public class TindakanIgdDal : ITindakanIgdDal
     {
         const string sql = """
             SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
-                Qty, Aktifitas, PpaId, PpaName, 
+                Qty, Aktifitas, PpaId, PpaName,
                 TrsTdkId, TrsBillId, IsPosted, PostedDate,
-                CrtUser, CrtDate
+                CrtUser, CrtDate, LayananId, PakaiBrgId
             FROM BILRG_TindakanIgd
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY CrtDate
@@ -135,6 +137,8 @@ public class TindakanIgdDal : ITindakanIgdDal
         dp.AddParam("@Aktifitas", dto.Aktifitas, SqlDbType.Int);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@PpaName", dto.PpaName, SqlDbType.VarChar);
+        dp.AddParam("@LayananId", dto.LayananId ?? string.Empty, SqlDbType.VarChar);
+        dp.AddParam("@PakaiBrgId", dto.PakaiBrgId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@TrsTdkId", dto.TrsTdkId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@TrsBillId", dto.TrsBillId ?? string.Empty, SqlDbType.VarChar);
         dp.AddParam("@IsPosted", dto.IsPosted, SqlDbType.Bit);

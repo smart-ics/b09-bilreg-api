@@ -183,6 +183,13 @@ public class IgdVisitController : Controller
         var result = await _mediator.Send(new IgdVisitListAktifQuery());
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet("default-tariff-context")]
+    public async Task<IActionResult> GetDefaultTariffContext()
+    {
+        var result = await _mediator.Send(new IgdDefaultTariffContextQuery());
+        return Ok(new JSendOk(result));
+    }
 }
 
 public record IgdVisitAssignDokterBody(string DokterId, string UserId);
