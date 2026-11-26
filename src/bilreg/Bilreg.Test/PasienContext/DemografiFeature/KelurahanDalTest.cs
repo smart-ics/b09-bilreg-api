@@ -64,4 +64,18 @@ public class KelurahanDalTest
         actual.First().fs_nm_kelurahan.Should().Be("B");
         actual.First().fs_kd_kecamatan.Should().Be("C");
     }
+
+    [Fact]
+    public void UT6_ListDataByFilterTest()
+    {
+        var actual = _sut.ListData("batang").ToList();
+        actual.Should().NotBeEmpty();
+        actual.Should().AllSatisfy(x =>
+        {
+            x.fs_kd_kabupaten.Should().NotBeNullOrWhiteSpace().And.NotBe("-");
+            x.fs_nm_kabupaten.Should().NotBeNullOrWhiteSpace().And.NotBe("-");
+            x.fs_kd_propinsi.Should().NotBeNullOrWhiteSpace().And.NotBe("-");
+            x.fs_nm_propinsi.Should().NotBeNullOrWhiteSpace().And.NotBe("-");
+        });
+    }
 }
