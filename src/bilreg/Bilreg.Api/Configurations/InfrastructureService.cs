@@ -10,6 +10,7 @@ using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.RadContext.RadJadwalFeature;
 using Bilreg.Application.RadContext.RadOrderFeature;
 using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabExternalFeature;
@@ -72,6 +73,7 @@ using Bilreg.Infrastructure.LabContext.LabExternalFeature;
 using Bilreg.Infrastructure.LabContext.LabMasterFeature;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.RadContext.RadJadwalFeature;
 using Bilreg.Infrastructure.RadContext.RadOrderFeature;
 using Bilreg.Infrastructure.RadContext.Integration;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
@@ -135,6 +137,11 @@ public static class InfrastructureService
             .AddScoped<IRadTarifModalityDal, RadTarifModalityDal>()
             .AddScoped<IRadItemResolutionService, RadItemResolutionService>()
             .AddScoped<IRadBillingIntegration, RadBillingIntegration>()
+            .AddScoped<IRadJadwalRepo, RadJadwalRepo>()
+            .AddScoped<IRadJadwalDal, RadJadwalDal>()
+            .AddScoped<IRadJadwalRescheduleDal, RadJadwalRescheduleDal>()
+            .AddScoped<IRadEquipmentDal, RadEquipmentDal>()
+            .AddScoped<IRadTrackerIntegration, RadTrackerIntegration>()
             .AddScoped<IRegAktifRepo, RegAktifRepo>()
             .AddScoped<Bilreg.Application.AdmisiContext.LayananFeature.ILayananRepo, Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananRepo>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
