@@ -105,7 +105,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -138,7 +141,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -172,7 +178,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -206,7 +215,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -236,7 +248,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -270,7 +285,10 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
+               aa.Hari,
+               LEFT(CONVERT(VARCHAR(8), aa.JamMulai, 108), 5) AS JamMulai,
+               LEFT(CONVERT(VARCHAR(8), aa.JamSelesai, 108), 5) AS JamSelesai,
+               aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,

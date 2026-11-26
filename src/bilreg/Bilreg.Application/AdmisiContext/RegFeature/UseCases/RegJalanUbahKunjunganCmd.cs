@@ -168,9 +168,10 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             }
             VoidAntrian(queOldContext.Que, queOldContext.NoUrut);
 
-            reserved = _queueNumberAdapter.ReserveForRegistration(
-                schedule.LegacyJadwal, tglBerobat, reg).Value;
             antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+            var occupiedNumbers = antrian.ListEntry.Select(x => x.NoUrut).ToArray();
+            reserved = _queueNumberAdapter.ReserveForRegistration(
+                schedule.LegacyJadwal, tglBerobat, reg, occupiedNumbers).Value;
             var rawPrefix = schedule.LegacyJadwal.Ruang?.PrefixAntrian ?? schedule.Effective.Ruang?.PrefixAntrian;
             TryUpdateAntrianPrefix(antrian, rawPrefix);
             noAntrian = reserved.NoUrut;

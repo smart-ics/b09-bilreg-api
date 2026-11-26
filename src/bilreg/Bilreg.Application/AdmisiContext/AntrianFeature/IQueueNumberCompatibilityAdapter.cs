@@ -13,12 +13,14 @@ public interface IQueueNumberCompatibilityAdapter
         JadwalPraktekType jadwal,
         DateOnly tgl,
         BookingModel booking,
-        PasienModel pasien);
+        PasienModel pasien,
+        IReadOnlyCollection<int>? occupiedSessionNumbers = null);
 
     Result<ReservedQueueNumber> ReserveForRegistration(
         JadwalPraktekType jadwal,
         DateOnly tgl,
-        RegModel reg);
+        RegModel reg,
+        IReadOnlyCollection<int>? occupiedSessionNumbers = null);
 
     AntrianEntryModel ProjectIntoQueueSession(
         AntrianModel antrian,

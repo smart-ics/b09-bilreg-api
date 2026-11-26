@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
@@ -100,6 +101,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
     private readonly IAdmisiEventPublisher _publisher;
+    private readonly IBookingRepo _bookingRepo;
     private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
     private readonly IAdmissionQueueRefreshPublisher? _admissionQueueRefreshPublisher;
     private readonly IClinicQueueRefreshPublisher _clinicQueueRefreshPublisher;
@@ -144,6 +146,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITglJamProvider tglJamProvider,
         IAdmissionServicePointResolver admissionServicePointResolver,
         IAdmisiEventPublisher publisher,
+        IBookingRepo bookingRepo,
         IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null,
         IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null,
         IClinicQueueRefreshPublisher? clinicQueueRefreshPublisher = null)
@@ -187,6 +190,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _tglJamProvider = tglJamProvider;
         _admissionServicePointResolver = admissionServicePointResolver;
         _publisher = publisher;
+        _bookingRepo = bookingRepo;
         _registrationOutcomeRepo = registrationOutcomeRepo;
         _admissionQueueRefreshPublisher = admissionQueueRefreshPublisher;
         _clinicQueueRefreshPublisher = clinicQueueRefreshPublisher ?? new NullClinicQueueRefreshPublisher();
@@ -241,9 +245,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tglBerobat = DateOnly.FromDateTime(occurredAt);
         var schedule = BookingScheduleResolver.ResolveWalkIn(
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
+        EnsureNoConflictingActiveBooking(pasien, dokter, layanan, tglBerobat, schedule.LegacyJadwal.JamMulai);
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+        var occupiedNumbers = antrian.ListEntry.Select(x => x.NoUrut).ToArray();
         var reserved = _queueNumberAdapter.ReserveForRegistration(
-            schedule.LegacyJadwal, tglBerobat, reg).Value;
+            schedule.LegacyJadwal, tglBerobat, reg, occupiedNumbers).Value;
 
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -535,6 +541,26 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
+    }
+    private void EnsureNoConflictingActiveBooking(
+        PasienModel pasien,
+        PpaType dokter,
+        LayananType layanan,
+        DateOnly tglBerobat,
+        TimeOnly targetJam)
+    {
+        var existingBookings = _bookingRepo.ListDataTglBerobat(
+            new Periode(tglBerobat.ToDateTime(TimeOnly.MinValue))) ?? [];
+        var conflictingBooking = existingBookings.FirstOrDefault(b =>
+            string.Equals(b.Reg.PasienId?.Trim(), pasien.PasienId, StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(b.Reg.RegId) || b.Reg.RegId.Trim() == "-")
+            && string.Equals(b.Dokter.PpaId, dokter.PpaId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(b.Layanan.LayananId, layanan.LayananId, StringComparison.OrdinalIgnoreCase)
+            && b.JamPraktek == targetJam);
+
+        if (conflictingBooking is not null)
+            throw new ArgumentException(
+                $"Pasien sudah memiliki booking aktif ({conflictingBooking.BookingId}) pada layanan {layanan.LayananName}, dokter {dokter.PpaName}, jam {conflictingBooking.JamPraktek:HH:mm}. Silakan proses melalui registrasi booking.");
     }
     #endregion
 }

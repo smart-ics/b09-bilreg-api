@@ -11,6 +11,11 @@ namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
 public interface IAntrianMapWithRegResolver : INunaResolver<(AntrianMapModel, AntrianMapDetilModel), JadwalPraktekType, DateOnly, RegModel>
 {
+    Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(
+        JadwalPraktekType jadwal,
+        DateOnly tgl,
+        RegModel reg,
+        IReadOnlyCollection<int>? occupiedSessionNumbers);
 } 
 
 public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
@@ -29,7 +34,20 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
     }
 
     public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(JadwalPraktekType jadwal, DateOnly tgl, RegModel reg)
+        => Resolve(jadwal, tgl, reg, occupiedSessionNumbers: null);
+
+    public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(
+        JadwalPraktekType jadwal,
+        DateOnly tgl,
+        RegModel reg,
+        IReadOnlyCollection<int>? occupiedSessionNumbers)
     {
+        var occupied = occupiedSessionNumbers is { Count: > 0 }
+            ? new HashSet<int>(occupiedSessionNumbers)
+            : null;
+        bool IsAvailableSlot(AntrianMapDetilModel slot)
+            => slot.IsFreeSlot() && (occupied is null || !occupied.Contains(slot.NoUrut));
+
         var antrianMap = _antrianMapRepo.Find(jadwal, tgl)
             .Match(
                 onSome: x => x,
@@ -55,7 +73,7 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
 
         // 0. IDEMPOTENCY GUARD: Jika nomor registrasi sudah memiliki slot di map ini
         var existingSlot = antrianMap.ListMap.FirstOrDefault(x => x.ReffId == reg.RegId);
-        if (existingSlot is not null)
+        if (existingSlot is not null && (occupied is null || !occupied.Contains(existingSlot.NoUrut)))
         {
             existingSlot.SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
             return Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((antrianMap, existingSlot));
@@ -68,14 +86,14 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         // 1. FLAG spesifik Jaminan
         var emptyMap = antrianMap.ListMap
             .Where(x => x.Flag == flag)
-            .Where(x => x.IsFreeSlot())
+            .Where(IsAvailableSlot)
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
         
         // 2. STRICT TIME - regex HH:mm
         emptyMap ??= antrianMap.ListMap
             .Where(x => Regex.IsMatch(x.Flag, @"^\d{2}:\d{2}$")) // 08:00,09:00... 
-            .Where(x => x.IsFreeSlot()) 
+            .Where(IsAvailableSlot) 
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
 
@@ -83,14 +101,14 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         emptyMap = emptyMap ??
                    antrianMap.ListMap
                        .Where(x => x.Flag == "AUTO")
-                       .Where(x => x.IsFreeSlot())
+                       .Where(IsAvailableSlot)
                        .OrderBy(x => x.NoUrut)
                        .FirstOrDefault();
         
         AntrianMapDetilModel newDetil;
         if (emptyMap is null)
         {
-            newDetil = antrianMap.AddAuto(reg);
+            newDetil = antrianMap.AddAuto(reg, occupied);
         }
         else
         {

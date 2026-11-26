@@ -151,6 +151,58 @@ public class BookingCreateSoftDuplicateHandlerTest
             Times.Once);
     }
 
+    [Fact]
+    public async Task Handle_WhenSessionAlreadyHasEntryNo1_ForwardsOccupiedNumbersToReserveForBooking()
+    {
+        SetupCreatePath();
+        var tglBerobat = new DateOnly(2025, 10, 24);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "JP1",
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0),
+            Dokter = new PpaReff("DR1", "Dokter"),
+            Layanan = new LayananReff("LY1", "Layanan")
+        };
+        var seqTag = AntrianModel.GenSequenceTag(tglBerobat, jadwal);
+        var entry1 = AntrianEntryModel.Create(
+            1, new PersonType("HiDok", new DateOnly(1990, 1, 1)),
+            PasienTrackerModel.Default, "BK-HIDOK", "BOK", new DateTime(2025, 10, 24, 8, 0, 0));
+        var antrianWithSlot1 = new AntrianModel(
+            "AN1", tglBerobat, new TimeOnly(8, 0), new TimeOnly(12, 0),
+            seqTag, "desc", new ServicePointType("SP1", "desc"), [entry1], null!);
+        _antrianRepo.Setup(x => x.ListData(tglBerobat)).Returns([
+            new AntrianHeaderView("AN1", "desc", tglBerobat, new TimeOnly(8, 0), seqTag)
+        ]);
+        _antrianRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(antrianWithSlot1));
+
+        var mapDetil2 = new AntrianMapDetilModel(2, "", "", "", "AUTO", false);
+        var reserved2 = ReservedQueueNumber.FromMap(AntrianMapModel.Default, mapDetil2);
+        IReadOnlyCollection<int>? capturedOccupied = null;
+        _queueAdapter
+            .Setup(x => x.ReserveForBooking(
+                It.IsAny<JadwalPraktekType>(), tglBerobat, It.IsAny<BookingModel>(), It.IsAny<PasienModel>(), It.IsAny<IReadOnlyCollection<int>?>()))
+            .Callback<JadwalPraktekType, DateOnly, BookingModel, PasienModel, IReadOnlyCollection<int>?>((_, _, _, _, occ) => capturedOccupied = occ)
+            .Returns(Result<ReservedQueueNumber>.Success(reserved2));
+        _queueAdapter
+            .Setup(x => x.ProjectIntoQueueSession(
+                It.IsAny<AntrianModel>(),
+                reserved2,
+                It.IsAny<PasienTrackerModel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns<AntrianModel, ReservedQueueNumber, PasienTrackerModel, string, string, DateTime>(
+                (q, r, t, reffId, reffDesc, at) => q.AddEntry(r.NoUrut, t, reffId, reffDesc, at));
+
+        var result = await _sut.Handle(BaseCmd(isForce: true), CancellationToken.None);
+
+        result.NoAntrian.Should().Be(2);
+        capturedOccupied.Should().NotBeNull();
+        capturedOccupied.Should().Contain(1);
+    }
+
     private void SetupCreatePath()
     {
         var tglBerobat = new DateOnly(2025, 10, 24);
@@ -188,7 +240,8 @@ public class BookingCreateSoftDuplicateHandlerTest
                 It.IsAny<JadwalPraktekType>(),
                 tglBerobat,
                 It.IsAny<BookingModel>(),
-                It.IsAny<PasienModel>()))
+                It.IsAny<PasienModel>(),
+                It.IsAny<IReadOnlyCollection<int>?>()))
             .Returns(Result<ReservedQueueNumber>.Success(reserved));
         _queueAdapter
             .Setup(x => x.ProjectIntoQueueSession(
