@@ -12,12 +12,9 @@ BEGIN
         BrgName         VARCHAR(100)    NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_BrgName DEFAULT(''),
         BatchNo         VARCHAR(50)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_BatchNo DEFAULT(''),
         ExpiredDate     VARCHAR(10)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_ExpiredDate DEFAULT(''),
-        QtyKirim        DECIMAL(18, 4)  NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_QtyKirim DEFAULT(0),
-        QtyTerimaBaik   DECIMAL(18, 4)  NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_QtyTerimaBaik DEFAULT(0),
-        QtySelisih      DECIMAL(18, 4)  NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_QtySelisih DEFAULT(0),
+        QtyTerima       DECIMAL(18, 4)  NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_QtyTerima DEFAULT(0),
         SatuanId        VARCHAR(10)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_SatuanId DEFAULT(''),
         SatuanName      VARCHAR(50)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_SatuanName DEFAULT(''),
-        AlasanSelisih   VARCHAR(255)    NOT NULL CONSTRAINT DF_BILRG_TerimaMutasiItem_AlasanSelisih DEFAULT(''),
 
         CONSTRAINT PK_BILRG_TerimaMutasiItem PRIMARY KEY CLUSTERED (TerimaMutasiId, NoUrut)
     );

@@ -20,6 +20,9 @@ public class TerimaMutasiMovementServiceTest
     private readonly MutasiBrgMovementService _dispatchMovement = new();
     private readonly TerimaMutasiMovementService _sut = new();
 
+    private static string NextTestStokId()
+        => $"TS{Guid.NewGuid():N}"[..10].ToUpperInvariant();
+
     private static SqlConnection CreateConnection()
     {
         var connStr = ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value);
@@ -86,7 +89,7 @@ public class TerimaMutasiMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trsAsal = NunaId.NewLegacyCompact("ST");
+            var trsAsal = NextTestStokId();
             InsertStok(conn, trans, trsAsal, brgId, layananAsal, "BATCH-A", "2025-05-01", 10m, 150m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
@@ -119,8 +122,6 @@ public class TerimaMutasiMovementServiceTest
                         "BATCH-A",
                         "2025-05-01",
                         6m,
-                        6m,
-                        0m,
                         new SatuanType("TAB", "Tablet"))
                 ]);
 
@@ -155,105 +156,14 @@ public class TerimaMutasiMovementServiceTest
             bukuRows.Should().HaveCount(2);
             bukuRows.Should().ContainSingle(x =>
                 x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId
-                && x.jenis.Trim() == "MUTASI_OUT"
+                && x.jenis.Trim() == "MT_OUT"
                 && x.qtyOut == 6m
                 && x.qtyIn == 0m);
             bukuRows.Should().ContainSingle(x =>
                 x.layanan.Trim() == layananTujuan
-                && x.jenis.Trim() == "MUTASI_IN"
+                && x.jenis.Trim() == "MT_IN"
                 && x.qtyIn == 6m
                 && x.qtyOut == 0m);
-        }
-        finally
-        {
-            trans.Rollback();
-        }
-    }
-
-    [Fact]
-    public void SettleReceivedStock_WithDiscrepancy_ShouldAddOnlyGoodQtyToTujuanAndRecordSelisihOutFromTrans()
-    {
-        using var conn = CreateConnection();
-        using var trans = conn.BeginTransaction();
-        try
-        {
-            var brgId = "TST_" + Guid.NewGuid().ToString("N")[..8];
-            var layananAsal = "TS01";
-            var layananTujuan = "TS02";
-
-            var trsAsal = NunaId.NewLegacyCompact("ST");
-            InsertStok(conn, trans, trsAsal, brgId, layananAsal, "BATCH-D", "2025-07-01", 10m, 200m);
-
-            var mutasiId = NunaId.NewLegacy("MT", 'A');
-            var mutasi = MutasiBrgModel.Create(
-                mutasiId,
-                DateTime.Now,
-                new LayananReff(layananAsal, "Asal"),
-                new LayananReff(layananTujuan, "Tujuan"),
-                userId: "sender1");
-            mutasi.AddItem(MutasiBrgItemModel.Create(
-                1,
-                new BrgReff(brgId, "Barang Rusak"),
-                "BATCH-D",
-                "2025-07-01",
-                10m,
-                new SatuanType("TAB", "Tablet")));
-
-            _dispatchMovement.DeductStock(mutasi, conn, trans);
-
-            var terima = TerimaMutasiModel.CreateConfirmed(
-                mutasiId,
-                string.Empty,
-                new LayananReff(layananAsal, "Asal"),
-                new LayananReff(layananTujuan, "Tujuan"),
-                "receiver1",
-                [
-                    TerimaMutasiItemModel.CreateConfirmed(
-                        1,
-                        new BrgReff(brgId, "Barang Rusak"),
-                        "BATCH-D",
-                        "2025-07-01",
-                        10m,
-                        7m,
-                        3m,
-                        new SatuanType("TAB", "Tablet"),
-                        "3 tablet pecah")
-                ]);
-
-            _sut.SettleReceivedStock(terima, conn, trans);
-
-            var transitQty = conn.QuerySingle<decimal>(
-                "SELECT fn_qty FROM tb_stok WHERE fs_kd_layanan = @TransitId AND fs_kd_barang = @BrgId",
-                new { TransitId = InventoryLocationIds.LogisticsTransitLayananId, BrgId = brgId }, trans);
-            transitQty.Should().Be(0m);
-
-            var tujuanQty = conn.QuerySingle<decimal>(
-                "SELECT fn_qty FROM tb_stok WHERE fs_kd_layanan = @TujuanId AND fs_kd_barang = @BrgId",
-                new { TujuanId = layananTujuan, BrgId = brgId }, trans);
-            tujuanQty.Should().Be(7m);
-
-            var bukuRows = conn.Query<(string layanan, decimal qtyIn, decimal qtyOut, string jenis)>(
-                """
-                SELECT fs_kd_layanan AS layanan, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis
-                FROM tb_buku
-                WHERE fs_kd_mutasi = @TerimaMutasiId
-                """,
-                new { TerimaMutasiId = terima.TerimaMutasiId }, trans).ToList();
-
-            bukuRows.Should().HaveCount(3);
-            bukuRows.Should().ContainSingle(x =>
-                x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId
-                && x.jenis.Trim() == "MUTASI_OUT"
-                && x.qtyOut == 7m);
-            bukuRows.Should().ContainSingle(x =>
-                x.layanan.Trim() == layananTujuan
-                && x.jenis.Trim() == "MUTASI_IN"
-                && x.qtyIn == 7m);
-            bukuRows.Should().ContainSingle(x =>
-                x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId
-                && x.jenis.Trim() == "MUTASI_SELISIH"
-                && x.qtyOut == 3m
-                && x.qtyIn == 0m);
         }
         finally
         {
@@ -272,8 +182,8 @@ public class TerimaMutasiMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            InsertStok(conn, trans, NunaId.NewLegacyCompact("ST"), brgId, layananAsal, "BATCH-1", "2025-02-01", 5m, 100m);
-            InsertStok(conn, trans, NunaId.NewLegacyCompact("ST"), brgId, layananAsal, "BATCH-2", "2025-06-01", 10m, 120m);
+            InsertStok(conn, trans, NextTestStokId(), brgId, layananAsal, "BATCH-1", "2025-02-01", 5m, 100m);
+            InsertStok(conn, trans, NextTestStokId(), brgId, layananAsal, "BATCH-2", "2025-06-01", 10m, 120m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
             var mutasi = MutasiBrgModel.Create(
@@ -305,10 +215,7 @@ public class TerimaMutasiMovementServiceTest
                         string.Empty,
                         string.Empty,
                         8m,
-                        7m,
-                        1m,
-                        new SatuanType("TAB", "Tablet"),
-                        "1 rusak")
+                        new SatuanType("TAB", "Tablet"))
                 ]);
 
             _sut.SettleReceivedStock(terima, conn, trans);
@@ -333,97 +240,22 @@ public class TerimaMutasiMovementServiceTest
             tujuanBatches[0].hpp.Should().Be(100m);
 
             tujuanBatches[1].batch.Trim().Should().Be("BATCH-2");
-            tujuanBatches[1].qty.Should().Be(2m);
+            tujuanBatches[1].qty.Should().Be(3m);
             tujuanBatches[1].hpp.Should().Be(120m);
 
-            var selisihQty = conn.QuerySingle<decimal>(
+            var bukuRows = conn.Query<(string trsId, string layanan, string jenis, decimal qtyIn, decimal qtyOut)>(
                 """
-                SELECT fn_stok_out
+                SELECT fs_kd_trs AS trsId, fs_kd_layanan AS layanan, fs_kd_jenis_mutasi AS jenis, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut
                 FROM tb_buku
-                WHERE fs_kd_mutasi = @TerimaMutasiId AND fs_kd_jenis_mutasi = 'MUTASI_SELISIH'
+                WHERE fs_kd_mutasi = @TerimaMutasiId
                 """,
-                new { TerimaMutasiId = terima.TerimaMutasiId }, trans);
-            selisihQty.Should().Be(1m);
-        }
-        finally
-        {
-            trans.Rollback();
-        }
-    }
-
-    [Fact]
-    public void RestoreRejectedStock_TotalRejection_ShouldRestoreToAsalAndClearTrans()
-    {
-        using var conn = CreateConnection();
-        using var trans = conn.BeginTransaction();
-        try
-        {
-            var brgId = "TST_" + Guid.NewGuid().ToString("N")[..8];
-            var layananAsal = "TS01";
-            var layananTujuan = "TS02";
-
-            var trsAsal = NunaId.NewLegacyCompact("ST");
-            InsertStok(conn, trans, trsAsal, brgId, layananAsal, "BATCH-R", "2025-04-01", 10m, 175m);
-
-            var mutasiId = NunaId.NewLegacy("MT", 'A');
-            var mutasi = MutasiBrgModel.Create(
-                mutasiId,
-                DateTime.Now,
-                new LayananReff(layananAsal, "Asal"),
-                new LayananReff(layananTujuan, "Tujuan"),
-                userId: "sender1");
-            mutasi.AddItem(MutasiBrgItemModel.Create(
-                1,
-                new BrgReff(brgId, "Barang Reject"),
-                "BATCH-R",
-                "2025-04-01",
-                4m,
-                new SatuanType("TAB", "Tablet")));
-
-            _dispatchMovement.DeductStock(mutasi, conn, trans);
-
-            var terimaRejected = TerimaMutasiModel.CreateRejected(
-                mutasiId,
-                string.Empty,
-                new LayananReff(layananAsal, "Asal"),
-                new LayananReff(layananTujuan, "Tujuan"),
-                "receiver1",
-                "Kemasan segel rusak semua",
-                mutasi.ListItem);
-
-            _sut.RestoreRejectedStock(terimaRejected, conn, trans);
-
-            var asalQty = conn.QuerySingle<decimal>(
-                "SELECT fn_qty FROM tb_stok WHERE fs_kd_trs = @Id", new { Id = trsAsal }, trans);
-            asalQty.Should().Be(10m);
-
-            var transitQty = conn.QuerySingle<decimal>(
-                "SELECT fn_qty FROM tb_stok WHERE fs_kd_layanan = @TransitId AND fs_kd_barang = @BrgId",
-                new { TransitId = InventoryLocationIds.LogisticsTransitLayananId, BrgId = brgId }, trans);
-            transitQty.Should().Be(0m);
-
-            var tujuanCount = conn.QuerySingle<int>(
-                "SELECT COUNT(*) FROM tb_stok WHERE fs_kd_layanan = @TujuanId AND fs_kd_barang = @BrgId",
-                new { TujuanId = layananTujuan, BrgId = brgId }, trans);
-            tujuanCount.Should().Be(0);
-
-            var revRows = conn.Query<(string layanan, decimal qtyIn, decimal qtyOut, string jenis)>(
-                """
-                SELECT fs_kd_layanan AS layanan, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis
-                FROM tb_buku
-                WHERE fs_kd_mutasi = @TerimaMutasiId AND fs_kd_jenis_mutasi = 'MUTASI_REV'
-                """,
-                new { TerimaMutasiId = terimaRejected.TerimaMutasiId }, trans).ToList();
-
-            revRows.Should().HaveCount(2);
-            revRows.Should().ContainSingle(x =>
-                x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId
-                && x.qtyOut == 4m
-                && x.qtyIn == 0m);
-            revRows.Should().ContainSingle(x =>
-                x.layanan.Trim() == layananAsal
-                && x.qtyIn == 4m
-                && x.qtyOut == 0m);
+                new { TerimaMutasiId = terima.TerimaMutasiId }, trans).ToList();
+            bukuRows.Should().HaveCount(4);
+            bukuRows.Select(x => x.trsId.Trim()).Distinct().Should().HaveCount(4);
+            bukuRows.Where(x => x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId && x.jenis.Trim() == "MT_OUT")
+                .Sum(x => x.qtyOut).Should().Be(8m);
+            bukuRows.Where(x => x.layanan.Trim() == layananTujuan && x.jenis.Trim() == "MT_IN")
+                .Sum(x => x.qtyIn).Should().Be(8m);
         }
         finally
         {
@@ -435,9 +267,6 @@ public class TerimaMutasiMovementServiceTest
     public void GuardClauses_NullParameters_ShouldThrow()
     {
         FluentActions.Invoking(() => _sut.SettleReceivedStock(null!, null!, null!))
-            .Should().Throw<ArgumentNullException>();
-
-        FluentActions.Invoking(() => _sut.RestoreRejectedStock(null!, null!, null!))
             .Should().Throw<ArgumentNullException>();
     }
 }

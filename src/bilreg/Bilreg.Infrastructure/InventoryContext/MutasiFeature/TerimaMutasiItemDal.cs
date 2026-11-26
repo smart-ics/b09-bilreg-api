@@ -58,12 +58,9 @@ public class TerimaMutasiItemDal : ITerimaMutasiItemDal
             bcp.AddMap("BrgName", "BrgName");
             bcp.AddMap("BatchNo", "BatchNo");
             bcp.AddMap("ExpiredDate", "ExpiredDate");
-            bcp.AddMap("QtyKirim", "QtyKirim");
-            bcp.AddMap("QtyTerimaBaik", "QtyTerimaBaik");
-            bcp.AddMap("QtySelisih", "QtySelisih");
+            bcp.AddMap("QtyTerima", "QtyTerima");
             bcp.AddMap("SatuanId", "SatuanId");
             bcp.AddMap("SatuanName", "SatuanName");
-            bcp.AddMap("AlasanSelisih", "AlasanSelisih");
 
             bcp.BatchSize = list.Count;
             bcp.DestinationTableName = "BILRG_TerimaMutasiItem";
@@ -76,14 +73,14 @@ public class TerimaMutasiItemDal : ITerimaMutasiItemDal
                 TerimaMutasiId, NoUrut,
                 BrgId, BrgName,
                 BatchNo, ExpiredDate,
-                QtyKirim, QtyTerimaBaik, QtySelisih,
-                SatuanId, SatuanName, AlasanSelisih)
+                QtyTerima,
+                SatuanId, SatuanName)
             VALUES (
                 @TerimaMutasiId, @NoUrut,
                 @BrgId, @BrgName,
                 @BatchNo, @ExpiredDate,
-                @QtyKirim, @QtyTerimaBaik, @QtySelisih,
-                @SatuanId, @SatuanName, @AlasanSelisih)
+                @QtyTerima,
+                @SatuanId, @SatuanName)
             """;
         conn.Execute(sql, list, trans);
     }
@@ -119,8 +116,8 @@ public class TerimaMutasiItemDal : ITerimaMutasiItemDal
                 TerimaMutasiId, NoUrut,
                 BrgId, BrgName,
                 BatchNo, ExpiredDate,
-                QtyKirim, QtyTerimaBaik, QtySelisih,
-                SatuanId, SatuanName, AlasanSelisih
+                QtyTerima,
+                SatuanId, SatuanName
             FROM
                 BILRG_TerimaMutasiItem
             WHERE

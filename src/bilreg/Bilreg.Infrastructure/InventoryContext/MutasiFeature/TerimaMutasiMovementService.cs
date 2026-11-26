@@ -5,17 +5,12 @@ using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Domain.InventoryContext;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Dapper;
-using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.InventoryContext.MutasiFeature;
 
 public class TerimaMutasiMovementService : ITerimaMutasiMovementService
 {
-    private const string Base36Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static readonly object IdLock = new();
-    private static readonly Dictionary<string, string> LastIds = new(StringComparer.Ordinal);
-
     public void SettleReceivedStock(TerimaMutasiModel terimaMutasi, SqlConnection conn, SqlTransaction trans)
     {
         Guard.Against.Null(terimaMutasi, nameof(terimaMutasi));
@@ -47,148 +42,45 @@ public class TerimaMutasiMovementService : ITerimaMutasiMovementService
                 .ToList();
 
             var available = matchingLayers.Sum(x => x.RemainingQty);
-            if (available < item.QtyKirim)
+            if (available < item.QtyTerima)
             {
                 throw new InvalidOperationException(
-                    $"Stok transit pada tb_buku tidak mencukupi untuk barang '{brgId}' mutasi '{mutasiBrgId}'. Tersedia: {available}, Dibutuhkan: {item.QtyKirim}");
+                    $"Stok transit pada tb_buku tidak mencukupi untuk barang '{brgId}' mutasi '{mutasiBrgId}'. Tersedia: {available}, Dibutuhkan: {item.QtyTerima}");
             }
 
-            var remKirim = item.QtyKirim;
-            var remBaik = item.QtyTerimaBaik;
+            var remaining = item.QtyTerima;
 
             foreach (var layer in matchingLayers)
             {
-                if (remKirim <= 0)
+                if (remaining <= 0)
                     break;
 
-                var take = Math.Min(remKirim, layer.RemainingQty);
+                var take = Math.Min(remaining, layer.RemainingQty);
                 layer.RemainingQty -= take;
-                remKirim -= take;
+                remaining -= take;
 
                 DeductTransitStokExact(conn, trans, transitLayananId, layer, take);
-
-                var sliceBaik = Math.Min(remBaik, take);
-                var sliceSelisih = take - sliceBaik;
-                remBaik -= sliceBaik;
 
                 var satuanId = string.IsNullOrWhiteSpace(layer.SatuanId)
                     ? item.Satuan.SatuanId
                     : layer.SatuanId;
 
-                if (sliceBaik > 0)
-                {
-                    InsertBuku(conn, trans, NextLegacyId("BK"), layer.BrgId, transitLayananId,
-                        layer.PoNo, layer.DoNo, layer.ExpiredDate, layer.BatchNo,
-                        stokIn: 0m, stokOut: sliceBaik, layer.Hpp,
-                        terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                        "MUTASI_OUT", satuanId);
-
-                    UpsertStok(conn, trans, tujuanLayananId, layer.BrgId,
-                        layer.BatchNo, layer.ExpiredDate, sliceBaik, layer.Hpp,
-                        layer.PoNo, layer.DoNo, satuanId,
-                        terimaMutasiId, tglMutasi, jamMutasi);
-
-                    InsertBuku(conn, trans, NextLegacyId("BK"), layer.BrgId, tujuanLayananId,
-                        layer.PoNo, layer.DoNo, layer.ExpiredDate, layer.BatchNo,
-                        stokIn: sliceBaik, stokOut: 0m, layer.Hpp,
-                        terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                        "MUTASI_IN", satuanId);
-                }
-
-                if (sliceSelisih > 0)
-                {
-                    InsertBuku(conn, trans, NextLegacyId("BK"), layer.BrgId, transitLayananId,
-                        layer.PoNo, layer.DoNo, layer.ExpiredDate, layer.BatchNo,
-                        stokIn: 0m, stokOut: sliceSelisih, layer.Hpp,
-                        terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                        "MUTASI_SELISIH", satuanId);
-                }
-            }
-        }
-    }
-
-    public void RestoreRejectedStock(TerimaMutasiModel terimaMutasi, SqlConnection conn, SqlTransaction trans)
-    {
-        Guard.Against.Null(terimaMutasi, nameof(terimaMutasi));
-        Guard.Against.Null(conn, nameof(conn));
-        Guard.Against.Null(trans, nameof(trans));
-
-        if (terimaMutasi.ListItem.Count == 0)
-            return;
-
-        var transitLayananId = InventoryLocationIds.LogisticsTransitLayananId;
-        var layananAsalId = terimaMutasi.LayananAsal.LayananId;
-        var terimaMutasiId = terimaMutasi.TerimaMutasiId;
-        var mutasiBrgId = terimaMutasi.MutasiBrgId;
-        var tglMutasi = terimaMutasi.TerimaMutasiDate.ToString("yyyy-MM-dd");
-        var jamMutasi = terimaMutasi.TerimaMutasiDate.ToString("HH:mm:ss");
-        var tglJamMutasi = terimaMutasi.TerimaMutasiDate.ToString("yyyy-MM-dd HH:mm:ss");
-
-        var layers = QueryTransitBukuInLayers(conn, trans, mutasiBrgId, transitLayananId);
-
-        if (layers.Count > 0)
-        {
-            foreach (var layer in layers)
-            {
-                if (layer.RemainingQty <= 0)
-                    continue;
-
-                var qtyToRestore = layer.RemainingQty;
-                DeductTransitStokExact(conn, trans, transitLayananId, layer, qtyToRestore);
-
-                InsertBuku(conn, trans, NextLegacyId("BK"), layer.BrgId, transitLayananId,
+                InsertBuku(conn, trans, MutasiLegacyIdGenerator.NextId("BK"), layer.BrgId, transitLayananId,
                     layer.PoNo, layer.DoNo, layer.ExpiredDate, layer.BatchNo,
-                    stokIn: 0m, stokOut: qtyToRestore, layer.Hpp,
+                    stokIn: 0m, stokOut: take, layer.Hpp,
                     terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                    "MUTASI_REV", layer.SatuanId);
+                    "MT_OUT", satuanId);
 
-                UpsertStok(conn, trans, layananAsalId, layer.BrgId,
-                    layer.BatchNo, layer.ExpiredDate, qtyToRestore, layer.Hpp,
-                    layer.PoNo, layer.DoNo, layer.SatuanId,
+                UpsertStok(conn, trans, tujuanLayananId, layer.BrgId,
+                    layer.BatchNo, layer.ExpiredDate, take, layer.Hpp,
+                    layer.PoNo, layer.DoNo, satuanId,
                     terimaMutasiId, tglMutasi, jamMutasi);
 
-                InsertBuku(conn, trans, NextLegacyId("BK"), layer.BrgId, layananAsalId,
+                InsertBuku(conn, trans, MutasiLegacyIdGenerator.NextId("BK"), layer.BrgId, tujuanLayananId,
                     layer.PoNo, layer.DoNo, layer.ExpiredDate, layer.BatchNo,
-                    stokIn: qtyToRestore, stokOut: 0m, layer.Hpp,
+                    stokIn: take, stokOut: 0m, layer.Hpp,
                     terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                    "MUTASI_REV", layer.SatuanId);
-            }
-        }
-        else
-        {
-            foreach (var item in terimaMutasi.ListItem)
-            {
-                var qtyToRestore = item.QtyKirim;
-                if (qtyToRestore <= 0)
-                    continue;
-
-                var brgId = item.Brg.BrgId.Trim();
-                var batchNo = item.BatchNo?.Trim() ?? string.Empty;
-                var expiredDate = string.IsNullOrWhiteSpace(item.ExpiredDate) ? "3000-01-01" : item.ExpiredDate.Trim();
-                var satuanId = item.Satuan?.SatuanId ?? string.Empty;
-
-                var fallbackLayer = new TransitBukuLayer(
-                    brgId, string.Empty, string.Empty, expiredDate, batchNo,
-                    qtyToRestore, 0m, satuanId);
-
-                var deductedInfo = DeductTransitStokFallback(conn, trans, transitLayananId, fallbackLayer, qtyToRestore);
-
-                InsertBuku(conn, trans, NextLegacyId("BK"), brgId, transitLayananId,
-                    deductedInfo.PoNo, deductedInfo.DoNo, deductedInfo.ExpiredDate, deductedInfo.BatchNo,
-                    stokIn: 0m, stokOut: qtyToRestore, deductedInfo.Hpp,
-                    terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                    "MUTASI_REV", deductedInfo.SatuanId);
-
-                UpsertStok(conn, trans, layananAsalId, brgId,
-                    deductedInfo.BatchNo, deductedInfo.ExpiredDate, qtyToRestore, deductedInfo.Hpp,
-                    deductedInfo.PoNo, deductedInfo.DoNo, deductedInfo.SatuanId,
-                    terimaMutasiId, tglMutasi, jamMutasi);
-
-                InsertBuku(conn, trans, NextLegacyId("BK"), brgId, layananAsalId,
-                    deductedInfo.PoNo, deductedInfo.DoNo, deductedInfo.ExpiredDate, deductedInfo.BatchNo,
-                    stokIn: qtyToRestore, stokOut: 0m, deductedInfo.Hpp,
-                    terimaMutasiId, tglJamMutasi, tglMutasi, jamMutasi,
-                    "MUTASI_REV", deductedInfo.SatuanId);
+                    "MT_IN", satuanId);
             }
         }
     }
@@ -206,7 +98,7 @@ public class TerimaMutasiMovementService : ITerimaMutasiMovementService
             FROM tb_buku
             WHERE fs_kd_mutasi = @MutasiBrgId
               AND fs_kd_layanan = @TransitLayananId
-              AND fs_kd_jenis_mutasi = 'MUTASI_IN'
+              AND fs_kd_jenis_mutasi = 'MT_IN'
             ORDER BY fd_tgl_ed ASC, fs_kd_trs ASC
             """;
 
@@ -398,7 +290,7 @@ public class TerimaMutasiMovementService : ITerimaMutasiMovementService
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", SafeSubstring(NextLegacyId("ST"), 10), SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", MutasiLegacyIdGenerator.NextId("ST"), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_barang", SafeSubstring(brgId, 13), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", SafeSubstring(layananId, 5), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_po", SafeSubstring(poNo, 10), SqlDbType.VarChar);
@@ -472,43 +364,6 @@ public class TerimaMutasiMovementService : ITerimaMutasiMovementService
         dp.AddParam("@fs_kd_satuan", SafeSubstring(satuanId, 3), SqlDbType.VarChar);
 
         conn.Execute(insertBukuSql, dp, transaction: trans);
-    }
-
-    private static string NextLegacyId(string prefix)
-    {
-        lock (IdLock)
-        {
-            var candidate = NunaId.NewLegacyCompact(prefix);
-            if (LastIds.TryGetValue(prefix, out var last)
-                && string.Compare(candidate, last, StringComparison.Ordinal) <= 0)
-            {
-                candidate = IncrementBase36Suffix(last, prefix);
-            }
-
-            LastIds[prefix] = candidate;
-            return candidate;
-        }
-    }
-
-    private static string IncrementBase36Suffix(string id, string prefix)
-    {
-        var chars = id.ToCharArray();
-        for (var i = chars.Length - 1; i >= prefix.Length; i--)
-        {
-            var idx = Base36Alphabet.IndexOf(chars[i]);
-            if (idx < 0)
-                continue;
-
-            if (idx < Base36Alphabet.Length - 1)
-            {
-                chars[i] = Base36Alphabet[idx + 1];
-                return new string(chars);
-            }
-
-            chars[i] = Base36Alphabet[0];
-        }
-
-        return new string(chars);
     }
 
     private static string SafeSubstring(string? value, int maxLength)

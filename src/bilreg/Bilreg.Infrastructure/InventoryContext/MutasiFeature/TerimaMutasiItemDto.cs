@@ -10,12 +10,9 @@ public record TerimaMutasiItemDto(
     string BrgName,
     string BatchNo,
     string ExpiredDate,
-    decimal QtyKirim,
-    decimal QtyTerimaBaik,
-    decimal QtySelisih,
+    decimal QtyTerima,
     string SatuanId,
-    string SatuanName,
-    string AlasanSelisih)
+    string SatuanName)
 {
     public static TerimaMutasiItemDto FromModel(string terimaMutasiId, TerimaMutasiItemModel model)
     {
@@ -26,12 +23,9 @@ public record TerimaMutasiItemDto(
             model.Brg.BrgName,
             model.BatchNo,
             model.ExpiredDate,
-            model.QtyKirim,
-            model.QtyTerimaBaik,
-            model.QtySelisih,
+            model.QtyTerima,
             model.Satuan.SatuanId,
-            model.Satuan.SatuanName,
-            model.AlasanSelisih
+            model.Satuan.SatuanName
         );
     }
 
@@ -44,10 +38,7 @@ public record TerimaMutasiItemDto(
             brg,
             BatchNo,
             ExpiredDate,
-            QtyKirim,
-            QtyTerimaBaik,
-            QtySelisih,
-            satuan,
-            AlasanSelisih);
+            QtyTerima,
+            satuan);
     }
 }

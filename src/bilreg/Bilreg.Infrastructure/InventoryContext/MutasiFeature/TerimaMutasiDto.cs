@@ -17,7 +17,6 @@ public record TerimaMutasiDto(
     string LayananTujuanName,
     string ReceiverUserId,
     string Note,
-    string RejectionReason,
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -39,7 +38,6 @@ public record TerimaMutasiDto(
             model.LayananTujuan.LayananName,
             model.ReceiverUserId,
             model.Note,
-            model.RejectionReason,
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId,
@@ -66,7 +64,6 @@ public record TerimaMutasiDto(
             new LayananReff(LayananTujuanId, LayananTujuanName),
             ReceiverUserId,
             Note,
-            RejectionReason,
             auditTrail,
             listItem?.ToList() ?? []);
     }
@@ -82,7 +79,6 @@ public record TerimaMutasiDto(
             new LayananReff(LayananAsalId, LayananAsalName),
             new LayananReff(LayananTujuanId, LayananTujuanName),
             ReceiverUserId,
-            Note,
-            RejectionReason);
+            Note);
     }
 }

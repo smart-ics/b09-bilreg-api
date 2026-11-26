@@ -208,14 +208,14 @@ public class MutasiBrgModel : IMutasiBrgKey
         Cancel("Dibatalkan oleh pengguna", userId);
     }
 
-    public void MarkReceived(string receiverUserId, DateTime? receiveDate = null) =>
-        TransitionFromDispatched(MutasiBrgStateEnum.Received, receiverUserId, receiveDate);
+    public void MarkReceived(string receiverUserId, DateTime? receiveDate = null)
+    {
+        GuardDispatched();
+        Guard.Against.NullOrWhiteSpace(receiverUserId, nameof(receiverUserId));
 
-    public void MarkReceivedWithDiscrepancy(string receiverUserId, DateTime? receiveDate = null) =>
-        TransitionFromDispatched(MutasiBrgStateEnum.ReceivedWithDiscrepancy, receiverUserId, receiveDate);
-
-    public void MarkRejected(string receiverUserId, DateTime? rejectDate = null) =>
-        TransitionFromDispatched(MutasiBrgStateEnum.Rejected, receiverUserId, rejectDate);
+        State = MutasiBrgStateEnum.Received;
+        AuditTrail.Modif(receiverUserId.Trim(), receiveDate ?? DateTime.Now);
+    }
 
     public void UpdateDispatchNote(string note)
     {
@@ -227,15 +227,6 @@ public class MutasiBrgModel : IMutasiBrgKey
     {
         GuardDraft();
         OrderMutasiId = orderMutasiId?.Trim() ?? string.Empty;
-    }
-
-    private void TransitionFromDispatched(MutasiBrgStateEnum targetState, string userId, DateTime? transitionDate)
-    {
-        GuardDispatched();
-        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
-
-        State = targetState;
-        AuditTrail.Modif(userId.Trim(), transitionDate ?? DateTime.Now);
     }
 
     private void Reorder()

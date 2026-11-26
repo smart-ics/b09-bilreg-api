@@ -6,5 +6,4 @@ namespace Bilreg.Application.InventoryContext.MutasiFeature;
 public interface ITerimaMutasiMovementService
 {
     void SettleReceivedStock(TerimaMutasiModel terimaMutasi, SqlConnection conn, SqlTransaction trans);
-    void RestoreRejectedStock(TerimaMutasiModel terimaMutasi, SqlConnection conn, SqlTransaction trans);
 }

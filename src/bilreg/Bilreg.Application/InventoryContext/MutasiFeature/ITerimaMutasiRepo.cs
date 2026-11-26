@@ -25,5 +25,4 @@ public record TerimaMutasiHeaderView(
     LayananReff LayananAsal,
     LayananReff LayananTujuan,
     string ReceiverUserId,
-    string Note,
-    string RejectionReason) : ITerimaMutasiKey;
+    string Note) : ITerimaMutasiKey;

@@ -46,14 +46,14 @@ public class TerimaMutasiDal : ITerimaMutasiDal
                 MutasiBrgId, OrderMutasiId,
                 LayananAsalId, LayananAsalName,
                 LayananTujuanId, LayananTujuanName,
-                ReceiverUserId, Note, RejectionReason,
+                ReceiverUserId, Note,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @TerimaMutasiId, @TerimaMutasiDate, @State,
                 @MutasiBrgId, @OrderMutasiId,
                 @LayananAsalId, @LayananAsalName,
                 @LayananTujuanId, @LayananTujuanName,
-                @ReceiverUserId, @Note, @RejectionReason,
+                @ReceiverUserId, @Note,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
         var dp = CreateParameters(dto);
@@ -80,7 +80,6 @@ public class TerimaMutasiDal : ITerimaMutasiDal
                 LayananTujuanName = @LayananTujuanName,
                 ReceiverUserId = @ReceiverUserId,
                 Note = @Note,
-                RejectionReason = @RejectionReason,
                 CrtUser = @CrtUser,
                 CrtDate = @CrtDate,
                 UpdUser = @UpdUser,
@@ -125,7 +124,7 @@ public class TerimaMutasiDal : ITerimaMutasiDal
                 MutasiBrgId, OrderMutasiId,
                 LayananAsalId, LayananAsalName,
                 LayananTujuanId, LayananTujuanName,
-                ReceiverUserId, Note, RejectionReason,
+                ReceiverUserId, Note,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
                 ISNULL(VodDate, '3000-01-01') AS VodDate
@@ -148,7 +147,7 @@ public class TerimaMutasiDal : ITerimaMutasiDal
                 MutasiBrgId, OrderMutasiId,
                 LayananAsalId, LayananAsalName,
                 LayananTujuanId, LayananTujuanName,
-                ReceiverUserId, Note, RejectionReason,
+                ReceiverUserId, Note,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
                 ISNULL(VodDate, '3000-01-01') AS VodDate
@@ -172,7 +171,7 @@ public class TerimaMutasiDal : ITerimaMutasiDal
                 MutasiBrgId, OrderMutasiId,
                 LayananAsalId, LayananAsalName,
                 LayananTujuanId, LayananTujuanName,
-                ReceiverUserId, Note, RejectionReason,
+                ReceiverUserId, Note,
                 CrtUser, CrtDate, UpdUser, UpdDate,
                 ISNULL(VodUser, '') AS VodUser,
                 ISNULL(VodDate, '3000-01-01') AS VodDate
@@ -211,7 +210,6 @@ public class TerimaMutasiDal : ITerimaMutasiDal
         dp.AddParam("@LayananTujuanName", dto.LayananTujuanName, SqlDbType.VarChar);
         dp.AddParam("@ReceiverUserId", dto.ReceiverUserId, SqlDbType.VarChar);
         dp.AddParam("@Note", dto.Note, SqlDbType.VarChar);
-        dp.AddParam("@RejectionReason", dto.RejectionReason, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

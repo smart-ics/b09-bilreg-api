@@ -20,7 +20,6 @@ BEGIN
 
         ReceiverUserId      VARCHAR(50)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasi_ReceiverUserId DEFAULT(''),
         Note                VARCHAR(255)    NOT NULL CONSTRAINT DF_BILRG_TerimaMutasi_Note DEFAULT(''),
-        RejectionReason     VARCHAR(255)    NOT NULL CONSTRAINT DF_BILRG_TerimaMutasi_RejectionReason DEFAULT(''),
 
         CrtDate             DATETIME        NOT NULL CONSTRAINT DF_BILRG_TerimaMutasi_CrtDate DEFAULT('3000-01-01'),
         CrtUser             VARCHAR(50)     NOT NULL CONSTRAINT DF_BILRG_TerimaMutasi_CrtUser DEFAULT(''),

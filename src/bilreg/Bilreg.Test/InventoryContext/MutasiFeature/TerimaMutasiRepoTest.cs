@@ -22,8 +22,7 @@ public class TerimaMutasiRepoTest
 
     private static TerimaMutasiModel CreateSampleModel(
         string id = "TM2600001A",
-        TerimaMutasiStateEnum state = TerimaMutasiStateEnum.Received,
-        string rejectionReason = "")
+        string note = "Catatan Terima")
     {
         var items = new List<TerimaMutasiItemModel>
         {
@@ -33,10 +32,7 @@ public class TerimaMutasiRepoTest
                 "BATCH1",
                 "2027-12-31",
                 10m,
-                state == TerimaMutasiStateEnum.Received ? 10m : (state == TerimaMutasiStateEnum.ReceivedWithDiscrepancy ? 8m : 0m),
-                state == TerimaMutasiStateEnum.Received ? 0m : (state == TerimaMutasiStateEnum.ReceivedWithDiscrepancy ? 2m : 10m),
-                new SatuanType("S001", "Tablet"),
-                state == TerimaMutasiStateEnum.Received ? "" : "Kemasan rusak")
+                new SatuanType("S001", "Tablet"))
         };
 
         var crt = new AuditInfoType("USR01", new DateTime(2026, 11, 10, 9, 0, 0));
@@ -47,27 +43,25 @@ public class TerimaMutasiRepoTest
         return TerimaMutasiModel.Load(
             id,
             new DateTime(2026, 11, 10, 9, 0, 0),
-            state,
+            TerimaMutasiStateEnum.Received,
             "MT2600001A",
             "OM001",
             new LayananReff("L01", "Gudang Farmasi"),
             new LayananReff("L02", "Depo Rawat Inap"),
             "USR01",
-            "Catatan Terima",
-            rejectionReason,
+            note,
             audit,
             items);
     }
 
     private static TerimaMutasiDto CreateSampleDto(
         string id = "TM2600001A",
-        TerimaMutasiStateEnum state = TerimaMutasiStateEnum.Received,
-        string rejectionReason = "")
+        string note = "Catatan Terima")
     {
         return new TerimaMutasiDto(
             id,
             new DateTime(2026, 11, 10, 9, 0, 0),
-            state,
+            TerimaMutasiStateEnum.Received,
             "MT2600001A",
             "OM001",
             "L01",
@@ -75,8 +69,7 @@ public class TerimaMutasiRepoTest
             "L02",
             "Depo Rawat Inap",
             "USR01",
-            "Catatan Terima",
-            rejectionReason,
+            note,
             "USR01",
             new DateTime(2026, 11, 10, 9, 0, 0),
             "USR01",
@@ -88,10 +81,7 @@ public class TerimaMutasiRepoTest
     private static TerimaMutasiItemDto CreateSampleItemDto(
         string id = "TM2600001A",
         int noUrut = 1,
-        decimal qtyKirim = 10m,
-        decimal qtyTerimaBaik = 10m,
-        decimal qtySelisih = 0m,
-        string alasanSelisih = "")
+        decimal qtyTerima = 10m)
     {
         return new TerimaMutasiItemDto(
             id,
@@ -100,12 +90,9 @@ public class TerimaMutasiRepoTest
             $"Obat {noUrut}",
             $"BATCH{noUrut}",
             "2027-12-31",
-            qtyKirim,
-            qtyTerimaBaik,
-            qtySelisih,
+            qtyTerima,
             $"S00{noUrut}",
-            "Tablet",
-            alasanSelisih);
+            "Tablet");
     }
 
     [Fact]
@@ -132,13 +119,13 @@ public class TerimaMutasiRepoTest
         _terimaMutasiItemDalMock.Verify(x => x.Insert(It.Is<IEnumerable<TerimaMutasiItemDto>>(items =>
             items.Count() == 1 &&
             items.First().BrgId == "B001" &&
-            items.First().QtyTerimaBaik == 10m)), Times.Once);
+            items.First().QtyTerima == 10m)), Times.Once);
     }
 
     [Fact]
     public void SaveChanges_WhenEntityAlreadyExists_ShouldCallUpdateHeaderAndReplaceItems()
     {
-        var model = CreateSampleModel("TM2600001A", TerimaMutasiStateEnum.ReceivedWithDiscrepancy);
+        var model = CreateSampleModel("TM2600001A", "Catatan diperbarui");
         _terimaMutasiDalMock
             .Setup(x => x.GetData(It.Is<ITerimaMutasiKey>(k => k.TerimaMutasiId == "TM2600001A")))
             .Returns(CreateSampleDto("TM2600001A"));
@@ -149,14 +136,14 @@ public class TerimaMutasiRepoTest
 
         _terimaMutasiDalMock.Verify(x => x.Update(It.Is<TerimaMutasiDto>(d =>
             d.TerimaMutasiId == "TM2600001A" &&
-            d.State == TerimaMutasiStateEnum.ReceivedWithDiscrepancy)), Times.Once);
+            d.State == TerimaMutasiStateEnum.Received &&
+            d.Note == "Catatan diperbarui")), Times.Once);
 
         _terimaMutasiDalMock.Verify(x => x.Insert(It.IsAny<TerimaMutasiDto>()), Times.Never);
         _terimaMutasiItemDalMock.Verify(x => x.Delete(It.Is<ITerimaMutasiKey>(k => k.TerimaMutasiId == "TM2600001A")), Times.Once);
         _terimaMutasiItemDalMock.Verify(x => x.Insert(It.Is<IEnumerable<TerimaMutasiItemDto>>(items =>
             items.Count() == 1 &&
-            items.First().QtySelisih == 2m &&
-            items.First().AlasanSelisih == "Kemasan rusak")), Times.Once);
+            items.First().QtyTerima == 10m)), Times.Once);
     }
 
     [Fact]
@@ -194,7 +181,7 @@ public class TerimaMutasiRepoTest
     {
         var connMock = new Mock<IDbConnection>();
         var transMock = new Mock<IDbTransaction>();
-        var model = CreateSampleModel("TM2600001A", TerimaMutasiStateEnum.Rejected, "Barang kedaluwarsa semua");
+        var model = CreateSampleModel("TM2600001A", "Diterima penuh sesuai surat jalan");
 
         _terimaMutasiDalMock
             .Setup(x => x.GetData(It.Is<ITerimaMutasiKey>(k => k.TerimaMutasiId == "TM2600001A"), connMock.Object, transMock.Object))
@@ -207,8 +194,8 @@ public class TerimaMutasiRepoTest
         _terimaMutasiDalMock.Verify(x => x.Update(
             It.Is<TerimaMutasiDto>(d =>
                 d.TerimaMutasiId == "TM2600001A" &&
-                d.State == TerimaMutasiStateEnum.Rejected &&
-                d.RejectionReason == "Barang kedaluwarsa semua"),
+                d.State == TerimaMutasiStateEnum.Received &&
+                d.Note == "Diterima penuh sesuai surat jalan"),
             connMock.Object,
             transMock.Object), Times.Once);
         _terimaMutasiDalMock.Verify(x => x.Insert(It.IsAny<TerimaMutasiDto>(), It.IsAny<IDbConnection>(), It.IsAny<IDbTransaction?>()), Times.Never);
@@ -232,11 +219,11 @@ public class TerimaMutasiRepoTest
     [Fact]
     public void LoadEntity_WhenFoundWithItems_ShouldReturnModelWithMappedProperties()
     {
-        var headerDto = CreateSampleDto("TM2600001A", TerimaMutasiStateEnum.ReceivedWithDiscrepancy);
+        var headerDto = CreateSampleDto("TM2600001A");
         var itemDtos = new List<TerimaMutasiItemDto>
         {
-            CreateSampleItemDto("TM2600001A", 1, 10m, 8m, 2m, "Pecah saat kirim"),
-            CreateSampleItemDto("TM2600001A", 2, 5m, 5m, 0m, "")
+            CreateSampleItemDto("TM2600001A", 1, 10m),
+            CreateSampleItemDto("TM2600001A", 2, 5m)
         };
 
         _terimaMutasiDalMock
@@ -255,21 +242,18 @@ public class TerimaMutasiRepoTest
         model.TerimaMutasiId.Should().Be("TM2600001A");
         model.MutasiBrgId.Should().Be("MT2600001A");
         model.OrderMutasiId.Should().Be("OM001");
-        model.State.Should().Be(TerimaMutasiStateEnum.ReceivedWithDiscrepancy);
+        model.State.Should().Be(TerimaMutasiStateEnum.Received);
         model.LayananAsal.LayananId.Should().Be("L01");
         model.LayananTujuan.LayananId.Should().Be("L02");
         model.ReceiverUserId.Should().Be("USR01");
         model.Note.Should().Be("Catatan Terima");
         model.ListItem.Should().HaveCount(2);
 
-        model.ListItem[0].QtyKirim.Should().Be(10m);
-        model.ListItem[0].QtyTerimaBaik.Should().Be(8m);
-        model.ListItem[0].QtySelisih.Should().Be(2m);
-        model.ListItem[0].AlasanSelisih.Should().Be("Pecah saat kirim");
+        model.ListItem[0].Brg.BrgId.Should().Be("B001");
+        model.ListItem[0].QtyTerima.Should().Be(10m);
 
-        model.ListItem[1].QtyKirim.Should().Be(5m);
-        model.ListItem[1].QtyTerimaBaik.Should().Be(5m);
-        model.ListItem[1].QtySelisih.Should().Be(0m);
+        model.ListItem[1].Brg.BrgId.Should().Be("B002");
+        model.ListItem[1].QtyTerima.Should().Be(5m);
     }
 
     [Fact]
@@ -315,7 +299,7 @@ public class TerimaMutasiRepoTest
         var dtoList = new List<TerimaMutasiDto>
         {
             CreateSampleDto("TM2600001A"),
-            CreateSampleDto("TM2600002A", TerimaMutasiStateEnum.Rejected, "Salah kirim barang") with
+            CreateSampleDto("TM2600002A", "Catatan 2") with
             {
                 MutasiBrgId = "MT2600002A"
             }
@@ -336,8 +320,8 @@ public class TerimaMutasiRepoTest
         result[0].LayananTujuan.LayananId.Should().Be("L02");
 
         result[1].TerimaMutasiId.Should().Be("TM2600002A");
-        result[1].State.Should().Be(TerimaMutasiStateEnum.Rejected);
-        result[1].RejectionReason.Should().Be("Salah kirim barang");
+        result[1].State.Should().Be(TerimaMutasiStateEnum.Received);
+        result[1].Note.Should().Be("Catatan 2");
     }
 
     [Fact]
