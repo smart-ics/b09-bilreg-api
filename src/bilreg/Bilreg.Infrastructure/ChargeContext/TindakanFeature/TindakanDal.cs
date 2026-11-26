@@ -37,30 +37,16 @@ public class TindakanDal : ITindakanDal
     public void Insert(TindakanDto dto)
     {
         const string sql = """
-            INSERT INTO TA_TRS_TINDAKAN(
-                FS_KD_TRS, FS_KD_REG, FS_KD_TARIF, FS_KD_LAYANAN, FS_KD_LAYANAN_DK, FS_KD_KEGIATAN_DK,
-                FS_KD_KELAS, FS_KD_TARIF_TIPE, FD_TGL_TRS, FS_JAM_TRS, FS_KD_PETUGAS,
-                FD_TGL_VOID, FS_JAM_VOID, FS_KD_PETUGAS_VOID,
-                FN_SUB_TOTAL, FN_DISKON, FN_TOTAL, FN_KAS, FN_BANK, FN_KARTU_KREDIT,
-                FS_KD_REK_KAS, FS_KD_REK_BANK, FS_KD_REK_KARTU_KREDIT, FS_NO_KARTU_KREDIT,
-                FN_SISA, FS_KD_REK_SISA, FS_KD_JENIS_NON_INAP, FS_KD_PETUGAS_KASIR, FS_KD_DOKTER_PERUJUK,
-                FS_KD_TRS_DEPOSIT, fs_kd_trs_charge, fs_kd_jenis_bank, fs_kd_jenis_kartu_kredit,
-                fs_kd_trs_kwitansi, fs_no_bank, fn_genkeu, FS_KD_TIPE_JAMINAN, FN_NILAI_KLAIM,
-                CRTTGL, CRTJAM, CRTIPA, CRTVER, CRTUSR,
-                UPDTGL, UPDJAM, UPDIPA, UPDVER, UPDUSR,
-                FS_CATATAN)
+            INSERT INTO BILRG_Tindakan(
+                TindakanId, TindakanDate, OrderTdkId, RegId, PakaiBedId, PasienId, PasienName,
+                LayananId, LayananName, KelasId, KelasName, TipeTarifId, TipeTarifName,
+                TarifId, TarifName, Qty, Total, IsDiskonDokter, DiskonDokter,
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
-                @FS_KD_TRS, @FS_KD_REG, @FS_KD_TARIF, @FS_KD_LAYANAN, '', '',
-                @FS_KD_KELAS, @FS_KD_TARIF_TIPE, @FD_TGL_TRS, @FS_JAM_TRS, @FS_KD_PETUGAS,
-                @FD_TGL_VOID, @FS_JAM_VOID, @FS_KD_PETUGAS_VOID,
-                @FN_SUB_TOTAL, @FN_DISKON, @FN_TOTAL, 0, 0, 0,
-                '', '', '', '',
-                @FN_SISA, '', '', '', '',
-                '', '', '', '',
-                '', '', 0, '', 0,
-                @CRTTGL, @CRTJAM, '', '', @CRTUSR,
-                @UPDTGL, @UPDJAM, '', '', @UPDUSR,
-                @FS_CATATAN)
+                @TindakanId, @TindakanDate, @OrderTdkId, @RegId, @PakaiBedId, @PasienId, @PasienName,
+                @LayananId, @LayananName, @KelasId, @KelasName, @TipeTarifId, @TipeTarifName,
+                @TarifId, @TarifName, @Qty, @Total, @IsDiskonDokter, @DiskonDokter,
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
         var tglTrs = dto.TindakanDate == default ? DateTime.Now : dto.TindakanDate;
@@ -69,29 +55,31 @@ public class TindakanDal : ITindakanDal
         var vodDate = dto.VodDate == default ? new DateTime(3000, 1, 1) : dto.VodDate;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@FS_KD_TRS", SafeTruncate(dto.TindakanId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_REG", SafeTruncate(dto.RegId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_TARIF", SafeTruncate(dto.TarifId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_LAYANAN", SafeTruncate(dto.LayananId, 5), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_KELAS", SafeTruncate(dto.KelasId, 3), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_TARIF_TIPE", SafeTruncate(dto.TipeTarifId, 2), SqlDbType.VarChar);
-        dp.AddParam("@FD_TGL_TRS", tglTrs.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@FS_JAM_TRS", tglTrs.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_PETUGAS", SafeTruncate(dto.CrtUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FD_TGL_VOID", vodDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@FS_JAM_VOID", vodDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_PETUGAS_VOID", SafeTruncate(dto.VodUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FN_SUB_TOTAL", dto.Total + dto.DiskonDokter, SqlDbType.Decimal);
-        dp.AddParam("@FN_DISKON", dto.DiskonDokter, SqlDbType.Decimal);
-        dp.AddParam("@FN_TOTAL", dto.Total, SqlDbType.Decimal);
-        dp.AddParam("@FN_SISA", dto.Total, SqlDbType.Decimal);
-        dp.AddParam("@CRTTGL", crtDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@CRTJAM", crtDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@CRTUSR", SafeTruncate(dto.CrtUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@UPDTGL", updDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@UPDJAM", updDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@UPDUSR", SafeTruncate(dto.UpdUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_CATATAN", SafeTruncate(dto.OrderTdkId, 60), SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", SafeTruncate(dto.TindakanId, 26), SqlDbType.VarChar);
+        dp.AddParam("@TindakanDate", tglTrs, SqlDbType.DateTime);
+        dp.AddParam("@OrderTdkId", SafeTruncate(dto.OrderTdkId, 26), SqlDbType.VarChar);
+        dp.AddParam("@RegId", SafeTruncate(dto.RegId, 10), SqlDbType.VarChar);
+        dp.AddParam("@PakaiBedId", SafeTruncate(dto.PakaiBedId, 30), SqlDbType.VarChar);
+        dp.AddParam("@PasienId", SafeTruncate(dto.PasienId, 15), SqlDbType.VarChar);
+        dp.AddParam("@PasienName", SafeTruncate(dto.PasienName, 60), SqlDbType.VarChar);
+        dp.AddParam("@LayananId", SafeTruncate(dto.LayananId, 5), SqlDbType.VarChar);
+        dp.AddParam("@LayananName", SafeTruncate(dto.LayananName, 40), SqlDbType.VarChar);
+        dp.AddParam("@KelasId", SafeTruncate(dto.KelasId, 3), SqlDbType.VarChar);
+        dp.AddParam("@KelasName", SafeTruncate(dto.KelasName, 30), SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifId", SafeTruncate(dto.TipeTarifId, 2), SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifName", SafeTruncate(dto.TipeTarifName, 30), SqlDbType.VarChar);
+        dp.AddParam("@TarifId", SafeTruncate(dto.TarifId, 10), SqlDbType.VarChar);
+        dp.AddParam("@TarifName", SafeTruncate(dto.TarifName, 55), SqlDbType.VarChar);
+        dp.AddParam("@Qty", dto.Qty <= 0 ? 1 : dto.Qty, SqlDbType.Int);
+        dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@IsDiskonDokter", dto.IsDiskonDokter, SqlDbType.Bit);
+        dp.AddParam("@DiskonDokter", dto.DiskonDokter, SqlDbType.Decimal);
+        dp.AddParam("@CrtUser", SafeTruncate(dto.CrtUser, 50), SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", crtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", SafeTruncate(dto.UpdUser, 50), SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", updDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", SafeTruncate(dto.VodUser, 50), SqlDbType.VarChar);
+        dp.AddParam("@VodDate", vodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -101,28 +89,32 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             UPDATE 
-                TA_TRS_TINDAKAN
+                BILRG_Tindakan
             SET
-                FS_KD_REG = @FS_KD_REG,
-                FS_KD_TARIF = @FS_KD_TARIF,
-                FS_KD_LAYANAN = @FS_KD_LAYANAN,
-                FS_KD_KELAS = @FS_KD_KELAS,
-                FS_KD_TARIF_TIPE = @FS_KD_TARIF_TIPE,
-                FD_TGL_TRS = @FD_TGL_TRS,
-                FS_JAM_TRS = @FS_JAM_TRS,
-                FN_SUB_TOTAL = @FN_SUB_TOTAL,
-                FN_DISKON = @FN_DISKON,
-                FN_TOTAL = @FN_TOTAL,
-                FN_SISA = @FN_SISA,
-                UPDTGL = @UPDTGL,
-                UPDJAM = @UPDJAM,
-                UPDUSR = @UPDUSR,
-                FD_TGL_VOID = @FD_TGL_VOID,
-                FS_JAM_VOID = @FS_JAM_VOID,
-                FS_KD_PETUGAS_VOID = @FS_KD_PETUGAS_VOID,
-                FS_CATATAN = @FS_CATATAN
+                TindakanDate = @TindakanDate,
+                OrderTdkId = @OrderTdkId,
+                RegId = @RegId,
+                PakaiBedId = @PakaiBedId,
+                PasienId = @PasienId,
+                PasienName = @PasienName,
+                LayananId = @LayananId,
+                LayananName = @LayananName,
+                KelasId = @KelasId,
+                KelasName = @KelasName,
+                TipeTarifId = @TipeTarifId,
+                TipeTarifName = @TipeTarifName,
+                TarifId = @TarifId,
+                TarifName = @TarifName,
+                Qty = @Qty,
+                Total = @Total,
+                IsDiskonDokter = @IsDiskonDokter,
+                DiskonDokter = @DiskonDokter,
+                UpdUser = @UpdUser,
+                UpdDate = @UpdDate,
+                VodUser = @VodUser,
+                VodDate = @VodDate
             WHERE
-                FS_KD_TRS = @FS_KD_TRS
+                TindakanId = @TindakanId
             """;
 
         var tglTrs = dto.TindakanDate == default ? DateTime.Now : dto.TindakanDate;
@@ -130,47 +122,45 @@ public class TindakanDal : ITindakanDal
         var vodDate = dto.VodDate == default ? new DateTime(3000, 1, 1) : dto.VodDate;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@FS_KD_TRS", SafeTruncate(dto.TindakanId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_REG", SafeTruncate(dto.RegId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_TARIF", SafeTruncate(dto.TarifId, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_LAYANAN", SafeTruncate(dto.LayananId, 5), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_KELAS", SafeTruncate(dto.KelasId, 3), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_TARIF_TIPE", SafeTruncate(dto.TipeTarifId, 2), SqlDbType.VarChar);
-        dp.AddParam("@FD_TGL_TRS", tglTrs.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@FS_JAM_TRS", tglTrs.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@FN_SUB_TOTAL", dto.Total + dto.DiskonDokter, SqlDbType.Decimal);
-        dp.AddParam("@FN_DISKON", dto.DiskonDokter, SqlDbType.Decimal);
-        dp.AddParam("@FN_TOTAL", dto.Total, SqlDbType.Decimal);
-        dp.AddParam("@FN_SISA", dto.Total, SqlDbType.Decimal);
-        dp.AddParam("@UPDTGL", updDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@UPDJAM", updDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@UPDUSR", SafeTruncate(dto.UpdUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FD_TGL_VOID", vodDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@FS_JAM_VOID", vodDate.ToString("HH:mm:ss"), SqlDbType.VarChar);
-        dp.AddParam("@FS_KD_PETUGAS_VOID", SafeTruncate(dto.VodUser, 10), SqlDbType.VarChar);
-        dp.AddParam("@FS_CATATAN", SafeTruncate(dto.OrderTdkId, 60), SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", SafeTruncate(dto.TindakanId, 26), SqlDbType.VarChar);
+        dp.AddParam("@TindakanDate", tglTrs, SqlDbType.DateTime);
+        dp.AddParam("@OrderTdkId", SafeTruncate(dto.OrderTdkId, 26), SqlDbType.VarChar);
+        dp.AddParam("@RegId", SafeTruncate(dto.RegId, 10), SqlDbType.VarChar);
+        dp.AddParam("@PakaiBedId", SafeTruncate(dto.PakaiBedId, 30), SqlDbType.VarChar);
+        dp.AddParam("@PasienId", SafeTruncate(dto.PasienId, 15), SqlDbType.VarChar);
+        dp.AddParam("@PasienName", SafeTruncate(dto.PasienName, 60), SqlDbType.VarChar);
+        dp.AddParam("@LayananId", SafeTruncate(dto.LayananId, 5), SqlDbType.VarChar);
+        dp.AddParam("@LayananName", SafeTruncate(dto.LayananName, 40), SqlDbType.VarChar);
+        dp.AddParam("@KelasId", SafeTruncate(dto.KelasId, 3), SqlDbType.VarChar);
+        dp.AddParam("@KelasName", SafeTruncate(dto.KelasName, 30), SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifId", SafeTruncate(dto.TipeTarifId, 2), SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifName", SafeTruncate(dto.TipeTarifName, 30), SqlDbType.VarChar);
+        dp.AddParam("@TarifId", SafeTruncate(dto.TarifId, 10), SqlDbType.VarChar);
+        dp.AddParam("@TarifName", SafeTruncate(dto.TarifName, 55), SqlDbType.VarChar);
+        dp.AddParam("@Qty", dto.Qty <= 0 ? 1 : dto.Qty, SqlDbType.Int);
+        dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
+        dp.AddParam("@IsDiskonDokter", dto.IsDiskonDokter, SqlDbType.Bit);
+        dp.AddParam("@DiskonDokter", dto.DiskonDokter, SqlDbType.Decimal);
+        dp.AddParam("@UpdUser", SafeTruncate(dto.UpdUser, 50), SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", updDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", SafeTruncate(dto.VodUser, 50), SqlDbType.VarChar);
+        dp.AddParam("@VodDate", vodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
-
-        if (dto.VodDate != default && dto.VodDate != new DateTime(3000, 1, 1))
-        {
-            const string sqlVoidKomp = "UPDATE TA_TRS_TINDAKAN2 SET FB_VOID = 1 WHERE FS_KD_TRS = @FS_KD_TRS";
-            conn.Execute(sqlVoidKomp, new { FS_KD_TRS = SafeTruncate(dto.TindakanId, 10) });
-        }
     }
 
     public void Delete(ITindakanKey key)
     {
         const string sql = """
             DELETE FROM
-                TA_TRS_TINDAKAN
+                BILRG_Tindakan
             WHERE
-                FS_KD_TRS = @FS_KD_TRS
+                TindakanId = @TindakanId
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@FS_KD_TRS", key.TindakanId, SqlDbType.VarChar);
+        dp.AddParam("@TindakanId", key.TindakanId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -180,41 +170,35 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             SELECT
-                aa.FS_KD_TRS AS TindakanId,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_TRS + ' ' + aa.FS_JAM_TRS), '2000-01-01') AS TindakanDate,
-                aa.FS_CATATAN AS OrderTdkId,
-                aa.FS_KD_REG AS RegId,
-                '' AS PakaiBedId,
-                ISNULL(bb.FS_MR, '') AS PasienId,
-                ISNULL(cc.FS_NM_PASIEN, '') AS PasienName,
-                aa.FS_KD_LAYANAN AS LayananId,
-                ISNULL(dd.FS_NM_LAYANAN, '') AS LayananName,
-                aa.FS_KD_KELAS AS KelasId,
-                ISNULL(ee.FS_NM_KELAS, '') AS KelasName,
-                aa.FS_KD_TARIF_TIPE AS TipeTarifId,
-                ISNULL(ff.FS_NM_TARIF_TIPE, '') AS TipeTarifName,
-                aa.FS_KD_TARIF AS TarifId,
-                ISNULL(gg.FS_NM_TARIF, '') AS TarifName,
-                ISNULL((SELECT TOP 1 CAST(tk.FN_JML AS INT) FROM TA_TRS_TINDAKAN2 tk WHERE tk.FS_KD_TRS = aa.FS_KD_TRS), 1) AS Qty,
-                aa.FN_TOTAL AS Total,
-                CASE WHEN ISNULL(aa.FN_DISKON, 0) > 0 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsDiskonDokter,
-                ISNULL(aa.FN_DISKON, 0) AS DiskonDokter,
-                aa.CRTUSR AS CrtUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.CRTTGL + ' ' + aa.CRTJAM), '2000-01-01') AS CrtDate,
-                aa.UPDUSR AS UpdUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.UPDTGL + ' ' + aa.UPDJAM), '3000-01-01') AS UpdDate,
-                aa.FS_KD_PETUGAS_VOID AS VodUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_VOID + ' ' + aa.FS_JAM_VOID), '3000-01-01') AS VodDate
+                aa.TindakanId,
+                aa.TindakanDate,
+                aa.OrderTdkId,
+                aa.RegId,
+                aa.PakaiBedId,
+                aa.PasienId,
+                aa.PasienName,
+                aa.LayananId,
+                aa.LayananName,
+                aa.KelasId,
+                aa.KelasName,
+                aa.TipeTarifId,
+                aa.TipeTarifName,
+                aa.TarifId,
+                aa.TarifName,
+                aa.Qty,
+                aa.Total,
+                aa.IsDiskonDokter,
+                aa.DiskonDokter,
+                aa.CrtUser,
+                aa.CrtDate,
+                aa.UpdUser,
+                aa.UpdDate,
+                aa.VodUser,
+                aa.VodDate
             FROM
-                TA_TRS_TINDAKAN aa
-                LEFT JOIN ta_registrasi bb ON aa.FS_KD_REG = bb.FS_KD_REG
-                LEFT JOIN tc_mr cc ON bb.FS_MR = cc.FS_MR
-                LEFT JOIN ta_layanan dd ON aa.FS_KD_LAYANAN = dd.FS_KD_LAYANAN
-                LEFT JOIN ta_kelas ee ON aa.FS_KD_KELAS = ee.FS_KD_KELAS
-                LEFT JOIN ta_tarif_tipe ff ON aa.FS_KD_TARIF_TIPE = ff.FS_KD_TARIF_TIPE
-                LEFT JOIN ta_tarif gg ON aa.FS_KD_TARIF = gg.FS_KD_TARIF
+                BILRG_Tindakan aa
             WHERE
-                aa.FS_KD_TRS = @TindakanId
+                aa.TindakanId = @TindakanId
             """;
 
         var dp = new DynamicParameters();
@@ -228,47 +212,41 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             SELECT
-                aa.FS_KD_TRS AS TindakanId,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_TRS + ' ' + aa.FS_JAM_TRS), '2000-01-01') AS TindakanDate,
-                aa.FS_CATATAN AS OrderTdkId,
-                aa.FS_KD_REG AS RegId,
-                '' AS PakaiBedId,
-                ISNULL(bb.FS_MR, '') AS PasienId,
-                ISNULL(cc.FS_NM_PASIEN, '') AS PasienName,
-                aa.FS_KD_LAYANAN AS LayananId,
-                ISNULL(dd.FS_NM_LAYANAN, '') AS LayananName,
-                aa.FS_KD_KELAS AS KelasId,
-                ISNULL(ee.FS_NM_KELAS, '') AS KelasName,
-                aa.FS_KD_TARIF_TIPE AS TipeTarifId,
-                ISNULL(ff.FS_NM_TARIF_TIPE, '') AS TipeTarifName,
-                aa.FS_KD_TARIF AS TarifId,
-                ISNULL(gg.FS_NM_TARIF, '') AS TarifName,
-                ISNULL((SELECT TOP 1 CAST(tk.FN_JML AS INT) FROM TA_TRS_TINDAKAN2 tk WHERE tk.FS_KD_TRS = aa.FS_KD_TRS), 1) AS Qty,
-                aa.FN_TOTAL AS Total,
-                CASE WHEN ISNULL(aa.FN_DISKON, 0) > 0 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS IsDiskonDokter,
-                ISNULL(aa.FN_DISKON, 0) AS DiskonDokter,
-                aa.CRTUSR AS CrtUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.CRTTGL + ' ' + aa.CRTJAM), '2000-01-01') AS CrtDate,
-                aa.UPDUSR AS UpdUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.UPDTGL + ' ' + aa.UPDJAM), '3000-01-01') AS UpdDate,
-                aa.FS_KD_PETUGAS_VOID AS VodUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_VOID + ' ' + aa.FS_JAM_VOID), '3000-01-01') AS VodDate
+                aa.TindakanId,
+                aa.TindakanDate,
+                aa.OrderTdkId,
+                aa.RegId,
+                aa.PakaiBedId,
+                aa.PasienId,
+                aa.PasienName,
+                aa.LayananId,
+                aa.LayananName,
+                aa.KelasId,
+                aa.KelasName,
+                aa.TipeTarifId,
+                aa.TipeTarifName,
+                aa.TarifId,
+                aa.TarifName,
+                aa.Qty,
+                aa.Total,
+                aa.IsDiskonDokter,
+                aa.DiskonDokter,
+                aa.CrtUser,
+                aa.CrtDate,
+                aa.UpdUser,
+                aa.UpdDate,
+                aa.VodUser,
+                aa.VodDate
             FROM
-                TA_TRS_TINDAKAN aa
-                LEFT JOIN ta_registrasi bb ON aa.FS_KD_REG = bb.FS_KD_REG
-                LEFT JOIN tc_mr cc ON bb.FS_MR = cc.FS_MR
-                LEFT JOIN ta_layanan dd ON aa.FS_KD_LAYANAN = dd.FS_KD_LAYANAN
-                LEFT JOIN ta_kelas ee ON aa.FS_KD_KELAS = ee.FS_KD_KELAS
-                LEFT JOIN ta_tarif_tipe ff ON aa.FS_KD_TARIF_TIPE = ff.FS_KD_TARIF_TIPE
-                LEFT JOIN ta_tarif gg ON aa.FS_KD_TARIF = gg.FS_KD_TARIF
+                BILRG_Tindakan aa
             WHERE
-                aa.FS_KD_REG = @RegId
-                AND (aa.FD_TGL_VOID = @VodDate OR aa.FD_TGL_VOID = '' OR aa.FD_TGL_VOID IS NULL)
+                aa.RegId = @RegId
+                AND (aa.VodDate = @VodDate OR aa.VodDate >= '3000-01-01')
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", filter.RegId, SqlDbType.VarChar);
-        dp.AddParam("@VodDate", "3000-01-01", SqlDbType.VarChar);
+        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TindakanDto>(sql, dp);
@@ -278,39 +256,35 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             SELECT
-                aa.FS_KD_TRS AS TransaksiId,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_TRS + ' ' + aa.FS_JAM_TRS), '2000-01-01') AS TransaksiDate, 
-                aa.FS_CATATAN AS OrderTransaksiId,
-                aa.FS_KD_REG AS RegId,
-                ISNULL(rg.FS_MR, '') AS PasienId,
-                ISNULL(pmr.FS_NM_PASIEN, '') AS PasienName, 
-                aa.FS_KD_LAYANAN AS LayananId,
-                ISNULL(ly.FS_NM_LAYANAN, '') AS LayananName, 
-                aa.FS_KD_TARIF AS DiskripsiId,
-                ISNULL(tr.FS_NM_TARIF, '') AS DiskripsiName, 
-                ISNULL((SELECT TOP 1 CAST(tk.FN_JML AS INT) FROM TA_TRS_TINDAKAN2 tk WHERE tk.FS_KD_TRS = aa.FS_KD_TRS), 1) AS Qty,
-                aa.FN_TOTAL AS Total,
+                aa.TindakanId AS TransaksiId,
+                aa.TindakanDate AS TransaksiDate, 
+                aa.OrderTdkId AS OrderTransaksiId,
+                aa.RegId AS RegId,
+                aa.PasienId AS PasienId,
+                aa.PasienName AS PasienName, 
+                aa.LayananId AS LayananId,
+                aa.LayananName AS LayananName, 
+                aa.TarifId AS DiskripsiId,
+                aa.TarifName AS DiskripsiName, 
+                aa.Qty AS Qty,
+                aa.Total AS Total,
                 'TINDAKAN' AS Tipe,
                 ISNULL(
-                    NULLIF((SELECT TOP 1 p.FS_NM_PEG FROM TA_TRS_TINDAKAN2 tk LEFT JOIN td_peg p ON tk.FS_KD_PETUGAS_MEDIS = p.FS_KD_PEG WHERE tk.FS_KD_TRS = aa.FS_KD_TRS AND ISNULL(tk.FS_KD_PETUGAS_MEDIS, '') <> '' ORDER BY tk.FS_KD_DETIL_TARIF), ''),
-                    ISNULL(peg.fs_nm_peg, aa.CRTUSR)
+                    NULLIF((SELECT TOP 1 tk.PpaName FROM BILRG_TindakanKomponen tk WHERE tk.TindakanId = aa.TindakanId AND ISNULL(tk.PpaName, '') <> '' ORDER BY tk.NoUrut), ''),
+                    ISNULL(peg.fs_nm_peg, aa.CrtUser)
                 ) AS CrtUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.CRTTGL + ' ' + aa.CRTJAM), '2000-01-01') AS CrtDate,
-                aa.UPDUSR AS UpdUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.UPDTGL + ' ' + aa.UPDJAM), '3000-01-01') AS UpdDate,
-                aa.FS_KD_PETUGAS_VOID AS VodUser,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_VOID + ' ' + aa.FS_JAM_VOID), '3000-01-01') AS VodDate,
-                '' AS PakaiBedId
+                aa.CrtDate AS CrtDate,
+                aa.UpdUser AS UpdUser,
+                aa.UpdDate AS UpdDate,
+                aa.VodUser AS VodUser,
+                aa.VodDate AS VodDate,
+                aa.PakaiBedId
             FROM
-                TA_TRS_TINDAKAN aa
-                LEFT JOIN td_peg peg ON aa.CRTUSR = peg.fs_kd_peg
-                LEFT JOIN ta_registrasi rg ON aa.FS_KD_REG = rg.FS_KD_REG
-                LEFT JOIN tc_mr pmr ON rg.FS_MR = pmr.FS_MR
-                LEFT JOIN ta_layanan ly ON aa.FS_KD_LAYANAN = ly.FS_KD_LAYANAN
-                LEFT JOIN ta_tarif tr ON aa.FS_KD_TARIF = tr.FS_KD_TARIF
+                BILRG_Tindakan aa
+                LEFT JOIN td_peg peg ON aa.CrtUser = peg.fs_kd_peg
             WHERE
-                aa.FS_KD_REG = @RegId
-                AND (aa.FD_TGL_VOID = @VodDate OR aa.FD_TGL_VOID = '' OR aa.FD_TGL_VOID IS NULL)
+                aa.RegId = @RegId
+                AND (aa.VodDate = @VodDate OR aa.VodDate >= '3000-01-01')
 
             UNION ALL
 
@@ -383,13 +357,13 @@ public class TindakanDal : ITindakanDal
 
             SELECT
                 ISNULL(NULLIF(tb.TrsBillingId, ''), tb.TindakanBarangId) AS TransaksiId,
-                ISNULL(TRY_CONVERT(DATETIME, aa.FD_TGL_TRS + ' ' + aa.FS_JAM_TRS), '2000-01-01') AS TransaksiDate,
-                aa.FS_CATATAN AS OrderTransaksiId,
-                aa.FS_KD_REG AS RegId,
-                ISNULL(rg.FS_MR, '') AS PasienId,
-                ISNULL(pmr.FS_NM_PASIEN, '') AS PasienName,
-                aa.FS_KD_LAYANAN AS LayananId,
-                ISNULL(ly.FS_NM_LAYANAN, '') AS LayananName,
+                aa.TindakanDate AS TransaksiDate,
+                aa.OrderTdkId AS OrderTransaksiId,
+                aa.RegId AS RegId,
+                aa.PasienId AS PasienId,
+                aa.PasienName AS PasienName,
+                aa.LayananId AS LayananId,
+                aa.LayananName AS LayananName,
                 tb.BrgId AS DiskripsiId,
                 ISNULL(b.fs_nm_barang, '') AS DiskripsiName,
                 CAST(tb.QtyBom AS INT) AS Qty,
@@ -404,15 +378,12 @@ public class TindakanDal : ITindakanDal
                 '' AS PakaiBedId
             FROM
                 BILRG_TindakanBarang tb
-                INNER JOIN TA_TRS_TINDAKAN aa ON tb.TindakanId = aa.FS_KD_TRS
+                INNER JOIN BILRG_Tindakan aa ON tb.TindakanId = aa.TindakanId
                 LEFT JOIN tb_barang b ON tb.BrgId = b.fs_kd_barang
-                LEFT JOIN ta_registrasi rg ON aa.FS_KD_REG = rg.FS_KD_REG
-                LEFT JOIN tc_mr pmr ON rg.FS_MR = pmr.FS_MR
-                LEFT JOIN ta_layanan ly ON aa.FS_KD_LAYANAN = ly.FS_KD_LAYANAN
                 LEFT JOIN td_peg peg ON tb.CRTUSR = peg.fs_kd_peg
             WHERE
-                aa.FS_KD_REG = @RegId
-                AND (aa.FD_TGL_VOID = @VodDate OR aa.FD_TGL_VOID = '' OR aa.FD_TGL_VOID IS NULL)
+                aa.RegId = @RegId
+                AND (aa.VodDate = @VodDate OR aa.VodDate >= '3000-01-01')
                 AND tb.IsVoid = 0
                 AND tb.IsChargeBarang = 1
 
@@ -422,7 +393,7 @@ public class TindakanDal : ITindakanDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", regKey.RegId, SqlDbType.VarChar);
-        dp.AddParam("@VodDate", "3000-01-01", SqlDbType.VarChar);
+        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TindakanJualDto>(sql, dp) ?? [];

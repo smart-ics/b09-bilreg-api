@@ -29,7 +29,10 @@ public class TindakanKomponenDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
+        _sut.Insert([Faker()]);
         _sut.Delete(FakerKey());
+        var actual = _sut.ListData(FakerKey());
+        actual.Should().BeEmpty();
     }
     
     [Fact]
@@ -57,5 +60,30 @@ public class TindakanKomponenDalTest
         _sut.Insert([dto]);
         var actual = _sut.ListData(FakerKey());
         actual.Should().ContainEquivalentOf(dto);
+    }
+
+    [Fact]
+    public void UpdatePetugasTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var dto = new TindakanKomponenDto("TND0000001", 1, "101", "JASA DOKTER",
+            "OLD_PPA", "OLD DOCTOR", 1, 50000, 0, 50000);
+        _sut.Insert([dto]);
+
+        _sut.UpdatePetugas("TND0000001", "10002", "admin");
+
+        var actual = _sut.ListData(FakerKey()).ToList();
+        actual.Should().NotBeEmpty();
+        var item = actual.First(x => x.TindakanId == "TND0000001");
+        item.PpaId.Should().Be("10002");
+        item.PpaName.Should().Be("JOSEPH RACHMAT, DR.");
+    }
+
+    [Fact]
+    public void GetPetugasNameTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var actual = _sut.GetPetugasName("10002");
+        actual.Should().Be("JOSEPH RACHMAT, DR.");
     }
 }
