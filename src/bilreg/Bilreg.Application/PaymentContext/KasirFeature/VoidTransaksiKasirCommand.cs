@@ -1,5 +1,6 @@
 using System.Transactions;
 using Ardalis.GuardClauses;
+using Bilreg.Application.Shared.User;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Bilreg.Domain.Shared;
 using MediatR;
@@ -25,9 +26,13 @@ public record VoidTransaksiKasirResponse(
 
 public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirCommand, VoidTransaksiKasirResponse>
 {
+    private const string UsmanAppId = "Bilreg";
+    private static readonly string[] AuthorizedVoidRoles = ["celestial", "ksr-spv"];
+
     private readonly ITrsKasirRepo _trsKasirRepo;
     private readonly ITrsKasirLegacyDal _trsKasirLegacyDal;
     private readonly IKasirSupervisorAuthDal _supervisorAuthDal;
+    private readonly IUsmanGetUserService _usmanGetUserService;
     private readonly IKasirStatusSyncDal _statusSyncDal;
     private readonly ITglJamProvider _tglJamProvider;
 
@@ -35,12 +40,14 @@ public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirComma
         ITrsKasirRepo trsKasirRepo,
         ITrsKasirLegacyDal trsKasirLegacyDal,
         IKasirSupervisorAuthDal supervisorAuthDal,
+        IUsmanGetUserService usmanGetUserService,
         IKasirStatusSyncDal statusSyncDal,
         ITglJamProvider tglJamProvider)
     {
         _trsKasirRepo = trsKasirRepo;
         _trsKasirLegacyDal = trsKasirLegacyDal;
         _supervisorAuthDal = supervisorAuthDal;
+        _usmanGetUserService = usmanGetUserService;
         _statusSyncDal = statusSyncDal;
         _tglJamProvider = tglJamProvider;
     }
@@ -58,8 +65,8 @@ public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirComma
             throw new BusinessValidationException("Alasan void minimal 10 karakter.");
         }
 
-        // Rule 1: Validasi kredensial supervisor via IKasirSupervisorAuthDal
-        var isValidSupervisor = _supervisorAuthDal.ValidateSupervisor(request.SupervisorUserId, request.SupervisorPassword);
+        // Rule 1: Validasi kredensial supervisor via Usman (role celestial / ksr-spv) dengan fallback TZ_USER
+        var (isValidSupervisor, resolvedPegId) = ValidateSupervisorAuthorization(request.SupervisorUserId, request.SupervisorPassword);
         if (!isValidSupervisor)
         {
             throw new BusinessValidationException("Kredensial supervisor tidak valid atau user tidak memiliki hak otorisasi void kasir.");
@@ -74,9 +81,11 @@ public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirComma
             throw new BusinessValidationException($"Transaksi kasir {request.TrsKasirId} sudah berstatus VOID dan tidak dapat dibatalkan lagi.");
         }
 
-        var petugasVoid = !string.IsNullOrWhiteSpace(request.PetugasVoid)
-            ? request.PetugasVoid.Trim()
-            : request.SupervisorUserId.Trim();
+        var petugasVoid = !string.IsNullOrWhiteSpace(resolvedPegId)
+            ? resolvedPegId
+            : (!string.IsNullOrWhiteSpace(request.PetugasVoid)
+                ? request.PetugasVoid.Trim()
+                : request.SupervisorUserId.Trim());
 
         // Rule 3: Eksekusi void dalam satu transaksi atomik
         using var scope = TransHelper.NewScope();
@@ -97,5 +106,41 @@ public class VoidTransaksiKasirHandler : IRequestHandler<VoidTransaksiKasirComma
             AlasanVoid: model.AlasanVoid);
 
         return Task.FromResult(response);
+    }
+
+    private (bool IsValid, string? ResolvedPegId) ValidateSupervisorAuthorization(string supervisorUserId, string supervisorPassword)
+    {
+        try
+        {
+            var usmanRequest = new UsmanGetUserRequest(
+                supervisorUserId.Trim(),
+                supervisorPassword.Trim(),
+                UsmanAppId);
+            var usmanUser = _usmanGetUserService.Execute(usmanRequest);
+            if (usmanUser is not null)
+            {
+                var hasAuthorizedRole = usmanUser.listRole?
+                    .Any(r => !string.IsNullOrWhiteSpace(r?.Role) &&
+                              AuthorizedVoidRoles.Contains(r.Role.Trim(), StringComparer.OrdinalIgnoreCase)) == true;
+
+                if (!hasAuthorizedRole)
+                {
+                    return (false, null);
+                }
+
+                var pegId = !string.IsNullOrWhiteSpace(usmanUser.pegId)
+                    ? usmanUser.pegId.Trim()
+                    : null;
+
+                return (true, pegId);
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback ke TZ_USER saat kredensial tidak terdaftar di Usman atau layanan Usman gagal
+        }
+
+        var isLegacyValid = _supervisorAuthDal.ValidateSupervisor(supervisorUserId, supervisorPassword);
+        return (isLegacyValid, null);
     }
 }

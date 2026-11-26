@@ -9,6 +9,7 @@ namespace Bilreg.Test.PaymentContext.KasirFeature.UseCases;
 public class GetTransaksiKasirDetailQueryTest
 {
     private readonly Mock<ITrsKasirRepo> _trsKasirRepoMock;
+    private readonly Mock<ITrsKasirItemDal> _trsKasirItemDalMock;
     private readonly GetTransaksiKasirDetailHandler _sut;
     private readonly GetTransaksiKasirDetailValidator _validator;
 
@@ -17,7 +18,8 @@ public class GetTransaksiKasirDetailQueryTest
     public GetTransaksiKasirDetailQueryTest()
     {
         _trsKasirRepoMock = new Mock<ITrsKasirRepo>();
-        _sut = new GetTransaksiKasirDetailHandler(_trsKasirRepoMock.Object);
+        _trsKasirItemDalMock = new Mock<ITrsKasirItemDal>();
+        _sut = new GetTransaksiKasirDetailHandler(_trsKasirRepoMock.Object, _trsKasirItemDalMock.Object);
         _validator = new GetTransaksiKasirDetailValidator();
     }
 
@@ -39,9 +41,19 @@ public class GetTransaksiKasirDetailQueryTest
             payments: new[] { pTunai, pDebit },
             trsTime: FixedNow);
 
+        var expectedItems = new List<TrsKasirItemDto>
+        {
+            new("KI001", model.TrsKasirId, 1, "BL26000001", "RG26000001", "LAY01", "Konsultasi Dokter", 150_000m, 150_000m),
+            new("KI002", model.TrsKasirId, 2, "BL26000002", "RG26000001", "LAY02", "Pemeriksaan Lab", 150_000m, 150_000m)
+        };
+
         _trsKasirRepoMock
             .Setup(x => x.GetKey(model.TrsKasirId))
             .Returns(model);
+
+        _trsKasirItemDalMock
+            .Setup(x => x.ListDataByTrsKasir(model.TrsKasirId))
+            .Returns(expectedItems);
 
         var query = new GetTransaksiKasirDetailQuery(model.TrsKasirId);
 
@@ -76,6 +88,56 @@ public class GetTransaksiKasirDetailQueryTest
         pList[1].NomorKartu.Should().Be("12345678");
         pList[1].NomorReferensi.Should().Be("APPR001");
         pList[1].NamaBank.Should().Be("BCA");
+
+        result.Items.Should().HaveCount(2);
+        var itemList = result.Items.ToList();
+        itemList[0].BillId.Should().Be("BL26000001");
+        itemList[0].Keterangan.Should().Be("Konsultasi Dokter");
+        itemList[0].NilaiBill.Should().Be(150_000m);
+        itemList[0].NilaiBayar.Should().Be(150_000m);
+
+        itemList[1].BillId.Should().Be("BL26000002");
+        itemList[1].Keterangan.Should().Be("Pemeriksaan Lab");
+        itemList[1].NilaiBill.Should().Be(150_000m);
+        itemList[1].NilaiBayar.Should().Be(150_000m);
+
+        _trsKasirItemDalMock.Verify(x => x.ListDataByTrsKasir(model.TrsKasirId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenExistingTrsKasirIdWithNullItems_WhenHandle_ThenReturnsEmptyItems()
+    {
+        // Arrange
+        var pTunai = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 100_000m, 0m);
+        var model = TrsKasirModel.CreateTerimaKas(
+            shiftId: "SH26000001",
+            kasirId: "KASIR-01",
+            regId: "RG26000001",
+            pasienId: "RM0001",
+            pasienName: "Budi Santoso",
+            orderRef: "BL26000001",
+            keterangan: "Pembayaran rawat jalan",
+            totalNilai: 100_000m,
+            payments: new[] { pTunai },
+            trsTime: FixedNow);
+
+        _trsKasirRepoMock
+            .Setup(x => x.GetKey(model.TrsKasirId))
+            .Returns(model);
+
+        _trsKasirItemDalMock
+            .Setup(x => x.ListDataByTrsKasir(model.TrsKasirId))
+            .Returns((IEnumerable<TrsKasirItemDto>?)null!);
+
+        var query = new GetTransaksiKasirDetailQuery(model.TrsKasirId);
+
+        // Act
+        var result = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Items.Should().NotBeNull().And.BeEmpty();
+        _trsKasirItemDalMock.Verify(x => x.ListDataByTrsKasir(model.TrsKasirId), Times.Once);
     }
 
     [Fact]
@@ -93,6 +155,7 @@ public class GetTransaksiKasirDetailQueryTest
 
         // Assert
         result.Should().BeNull();
+        _trsKasirItemDalMock.Verify(x => x.ListDataByTrsKasir(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

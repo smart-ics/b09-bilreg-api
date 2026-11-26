@@ -9,6 +9,7 @@ public static class KasirFeatureInstaller
     public static IServiceCollection AddKasirFeature(this IServiceCollection services)
     {
         services.AddScoped<ITrsKasirDal, TrsKasirDal>();
+        services.AddScoped<IKasirShiftTotalsDal, TrsKasirDal>();
         services.AddScoped<IKasirShiftDal, KasirShiftDal>();
         services.AddScoped<ITrsKasirRepo, TrsKasirRepo>();
         services.AddScoped<IKasirShiftRepo, KasirShiftRepo>();

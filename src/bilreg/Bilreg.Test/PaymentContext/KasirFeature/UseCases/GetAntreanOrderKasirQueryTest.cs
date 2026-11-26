@@ -32,7 +32,7 @@ public class GetAntreanOrderKasirQueryTest
             new("DP260001", "PENERIMAAN", "Order Pembayaran Deposit", "RG002", "RM002", "Siti Rahma", 500_000m, "MENUNGGU_BAYAR", "2026-11-07"),
             new("BL260002", "PENGELUARAN", "Pengembalian Kelebihan Bayar / Refund", "RG003", "RM003", "Ahmad Fauzi", 50_000m, "MENUNGGU_PENGELUARAN", "2026-11-07")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery();
 
@@ -55,7 +55,7 @@ public class GetAntreanOrderKasirQueryTest
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-07"),
             new("DP260001", "PENERIMAAN", "Order Pembayaran Deposit", "RG002", "RM002", "Siti Rahma", 500_000m, "MENUNGGU_BAYAR", "2026-11-07")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery("DP26");
 
@@ -77,7 +77,7 @@ public class GetAntreanOrderKasirQueryTest
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-07"),
             new("DP260001", "PENERIMAAN", "Order Pembayaran Deposit", "RG002", "RM002", "Siti Rahma", 500_000m, "MENUNGGU_BAYAR", "2026-11-07")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery("Budi");
 
@@ -98,7 +98,7 @@ public class GetAntreanOrderKasirQueryTest
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-07", "POLIKLINIK PENYAKIT DALAM", "BPJS KESEHATAN"),
             new("DP260001", "PENERIMAAN", "Order Pembayaran Deposit", "RG002", "RM002", "Siti Rahma", 500_000m, "MENUNGGU_BAYAR", "2026-11-07", "IGD UMUM", "UMUM/MANDIRI")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery("Penyakit Dalam");
 
@@ -120,7 +120,7 @@ public class GetAntreanOrderKasirQueryTest
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-07", "POLIKLINIK PENYAKIT DALAM", "BPJS KESEHATAN"),
             new("DP260001", "PENERIMAAN", "Order Pembayaran Deposit", "RG002", "RM002", "Siti Rahma", 500_000m, "MENUNGGU_BAYAR", "2026-11-07", "IGD UMUM", "UMUM/MANDIRI")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery("BPJS");
 
@@ -141,7 +141,7 @@ public class GetAntreanOrderKasirQueryTest
         {
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-07")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox(It.IsAny<string>())).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery("NonExistent");
 
@@ -156,7 +156,7 @@ public class GetAntreanOrderKasirQueryTest
     public async Task GivenNoDate_WhenHandle_ThenUsesTglJamProviderDate()
     {
         // Arrange
-        _inboxDalMock.Setup(x => x.ListOrderInbox("2026-11-10")).Returns(new List<OrderKasirItemDto>());
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync("2026-11-10", It.IsAny<CancellationToken>())).ReturnsAsync(new List<OrderKasirItemDto>());
 
         var query = new GetAntreanOrderKasirQuery();
 
@@ -164,7 +164,7 @@ public class GetAntreanOrderKasirQueryTest
         await _sut.Handle(query, CancellationToken.None);
 
         // Assert
-        _inboxDalMock.Verify(x => x.ListOrderInbox("2026-11-10"), Times.Once);
+        _inboxDalMock.Verify(x => x.ListOrderInboxAsync("2026-11-10", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public class GetAntreanOrderKasirQueryTest
         {
             new("BL260001", "PENERIMAAN", "Order Pembayaran Tagihan", "RG001", "RM001", "Budi Santoso", 150_000m, "MENUNGGU_BAYAR", "2026-11-05")
         };
-        _inboxDalMock.Setup(x => x.ListOrderInbox("2026-11-05")).Returns(items);
+        _inboxDalMock.Setup(x => x.ListOrderInboxAsync("2026-11-05", It.IsAny<CancellationToken>())).ReturnsAsync(items);
 
         var query = new GetAntreanOrderKasirQuery(Date: "2026-11-05");
 
@@ -184,7 +184,74 @@ public class GetAntreanOrderKasirQueryTest
 
         // Assert
         result.Should().HaveCount(1);
-        _inboxDalMock.Verify(x => x.ListOrderInbox("2026-11-05"), Times.Once);
+        _inboxDalMock.Verify(x => x.ListOrderInboxAsync("2026-11-05", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenCancellationToken_WhenHandle_ThenForwardsCancellationTokenToDal()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var token = cts.Token;
+        _inboxDalMock
+            .Setup(x => x.ListOrderInboxAsync("2026-11-10", token))
+            .ReturnsAsync(new List<OrderKasirItemDto>());
+
+        var query = new GetAntreanOrderKasirQuery();
+
+        // Act
+        await _sut.Handle(query, token);
+
+        // Assert
+        _inboxDalMock.Verify(x => x.ListOrderInboxAsync("2026-11-10", token), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenCancelledToken_WhenDalThrowsOperationCanceled_ThenPropagatesException()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var token = cts.Token;
+
+        _inboxDalMock
+            .Setup(x => x.ListOrderInboxAsync("2026-11-10", token))
+            .ThrowsAsync(new OperationCanceledException(token));
+
+        var query = new GetAntreanOrderKasirQuery();
+
+        // Act
+        var act = () => _sut.Handle(query, token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task GivenDalReturnsNull_WhenHandle_ThenReturnsEmpty()
+    {
+        // Arrange
+        _inboxDalMock
+            .Setup(x => x.ListOrderInboxAsync("2026-11-10", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<OrderKasirItemDto>)null!);
+
+        var query = new GetAntreanOrderKasirQuery();
+
+        // Act
+        var result = (await _sut.Handle(query, CancellationToken.None)).ToList();
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GivenNullQuery_WhenHandle_ThenThrowsArgumentNullException()
+    {
+        // Act
+        var act = () => _sut.Handle(null!, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
