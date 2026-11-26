@@ -17,7 +17,7 @@ public class GetAntreanOrderKasirHandler : IRequestHandler<GetAntreanOrderKasirQ
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task<IEnumerable<OrderKasirItemDto>> Handle(GetAntreanOrderKasirQuery request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<OrderKasirItemDto>> Handle(GetAntreanOrderKasirQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.Null(request, nameof(request));
 
@@ -25,7 +25,7 @@ public class GetAntreanOrderKasirHandler : IRequestHandler<GetAntreanOrderKasirQ
             ? request.Date.Trim()
             : _tglJamProvider.Now.ToString("yyyy-MM-dd");
 
-        var items = _inboxDal.ListOrderInbox(targetDate) ?? Enumerable.Empty<OrderKasirItemDto>();
+        var items = await _inboxDal.ListOrderInboxAsync(targetDate, cancellationToken) ?? Enumerable.Empty<OrderKasirItemDto>();
 
         if (!string.IsNullOrWhiteSpace(request.Keyword))
         {
@@ -40,6 +40,6 @@ public class GetAntreanOrderKasirHandler : IRequestHandler<GetAntreanOrderKasirQ
                 (x.PenjaminName != null && x.PenjaminName.Contains(kw, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return Task.FromResult(items);
+        return items;
     }
 }

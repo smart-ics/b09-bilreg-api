@@ -32,6 +32,10 @@ public class KasirRegistrationTest
         trsKasirDal.Should().NotBeNull();
         trsKasirDal.Should().BeOfType<TrsKasirDal>();
 
+        var kasirShiftTotalsDal = sp.GetService<IKasirShiftTotalsDal>();
+        kasirShiftTotalsDal.Should().NotBeNull();
+        kasirShiftTotalsDal.Should().BeOfType<TrsKasirDal>();
+
         var kasirShiftDal = sp.GetService<IKasirShiftDal>();
         kasirShiftDal.Should().NotBeNull();
         kasirShiftDal.Should().BeOfType<KasirShiftDal>();

@@ -1,4 +1,5 @@
 using Bilreg.Application.PaymentContext.KasirFeature;
+using Bilreg.Application.Shared.User;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Bilreg.Domain.Shared;
 using FluentAssertions;
@@ -13,6 +14,7 @@ public class VoidTransaksiKasirCommandTest
     private readonly Mock<ITrsKasirRepo> _trsKasirRepoMock;
     private readonly Mock<ITrsKasirLegacyDal> _legacyDalMock;
     private readonly Mock<IKasirSupervisorAuthDal> _supervisorAuthDalMock;
+    private readonly Mock<IUsmanGetUserService> _usmanGetUserServiceMock;
     private readonly Mock<IKasirStatusSyncDal> _statusSyncDalMock;
     private readonly Mock<ITglJamProvider> _tglJamProviderMock;
     private readonly VoidTransaksiKasirHandler _sut;
@@ -25,6 +27,10 @@ public class VoidTransaksiKasirCommandTest
         _trsKasirRepoMock = new Mock<ITrsKasirRepo>();
         _legacyDalMock = new Mock<ITrsKasirLegacyDal>();
         _supervisorAuthDalMock = new Mock<IKasirSupervisorAuthDal>();
+        _usmanGetUserServiceMock = new Mock<IUsmanGetUserService>();
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(It.IsAny<UsmanGetUserRequest>()))
+            .Throws(new ArgumentException("User invalid"));
         _statusSyncDalMock = new Mock<IKasirStatusSyncDal>();
         _tglJamProviderMock = new Mock<ITglJamProvider>();
         _tglJamProviderMock.Setup(x => x.Now).Returns(FixedNow);
@@ -33,10 +39,36 @@ public class VoidTransaksiKasirCommandTest
             _trsKasirRepoMock.Object,
             _legacyDalMock.Object,
             _supervisorAuthDalMock.Object,
+            _usmanGetUserServiceMock.Object,
             _statusSyncDalMock.Object,
             _tglJamProviderMock.Object);
         _validator = new VoidTransaksiKasirValidator();
     }
+
+    private static TrsKasirModel CreateSampleBerhasilModel()
+    {
+        var pTunai = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 100_000m, 0m);
+        return TrsKasirModel.CreateTerimaKas(
+            shiftId: "SH26000001",
+            kasirId: "KASIR-01",
+            regId: "RG260001",
+            pasienId: "RM001",
+            pasienName: "Budi Santoso",
+            orderRef: "BL260001",
+            keterangan: "Pembayaran Billing",
+            totalNilai: 100_000m,
+            payments: new[] { pTunai },
+            trsTime: FixedNow.AddHours(-1));
+    }
+
+    private static UsmanGetUserResponse CreateUsmanUser(string email, params string[] roles)
+        => new(
+            pegId: "PG001",
+            userName: "Supervisor Kasir",
+            UserLogin: email,
+            email: email,
+            expiredDate: "2027-12-31",
+            listRole: roles.Select(r => new UsmanGetUserRoleResponse(r)));
 
     [Fact]
     public async Task GivenValidRequest_WhenSupervisorValidAndTransactionBerhasil_ThenVoidsSavesToRepoDualWritesLegacyReversalsAndReturnsResponse()
@@ -197,6 +229,185 @@ public class VoidTransaksiKasirCommandTest
         // Assert
         await act.Should().ThrowAsync<BusinessValidationException>()
             .WithMessage("*sudah berstatus VOID*");
+    }
+
+    [Theory]
+    [InlineData("celestial")]
+    [InlineData("ksr-spv")]
+    [InlineData("CELESTIAL")]
+    [InlineData(" Ksr-Spv ")]
+    public async Task GivenUsmanUserWithAuthorizedRole_WhenHandle_ThenSucceedsWithoutFallback(string role)
+    {
+        // Arrange
+        var model = CreateSampleBerhasilModel();
+        var usmanUser = CreateUsmanUser("kasir-spv@email.com", "ksr-user", role);
+
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(new UsmanGetUserRequest("kasir-spv@email.com", "kasirspv123", "Bilreg")))
+            .Returns(usmanUser);
+
+        _trsKasirRepoMock
+            .Setup(x => x.GetKey(model.TrsKasirId))
+            .Returns(model);
+
+        var cmd = new VoidTransaksiKasirCommand(
+            TrsKasirId: model.TrsKasirId,
+            SupervisorUserId: " kasir-spv@email.com ",
+            SupervisorPassword: " kasirspv123 ",
+            AlasanVoid: "Salah nominal bayar tagihan pasien");
+
+        // Act
+        var response = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.StatusTrs.Should().Be(KasirConst.StatusTrsVoid);
+        response.PetugasVoid.Should().Be("PG001");
+        model.PetugasVoid.Should().Be("PG001");
+        _usmanGetUserServiceMock.Verify(
+            x => x.Execute(new UsmanGetUserRequest("kasir-spv@email.com", "kasirspv123", "Bilreg")),
+            Times.Once);
+        _supervisorAuthDalMock.Verify(
+            x => x.ValidateSupervisor(It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never);
+        _trsKasirRepoMock.Verify(x => x.Save(model), Times.Once);
+        _legacyDalMock.Verify(x => x.Void(model.TrsKasirId, "2026-11-07", "12:00:00", "PG001"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUsmanUserWithLongEmailAndPegId_WhenHandle_ThenUsesResolvedPegIdForPetugasVoid()
+    {
+        // Arrange
+        var model = CreateSampleBerhasilModel();
+        var usmanUser = new UsmanGetUserResponse(
+            pegId: " KAS-UTAMA ",
+            userName: "Kasir Utama",
+            UserLogin: "kasirspv@email.com",
+            email: "kasirspv@email.com",
+            expiredDate: "2027-12-31",
+            listRole: new[] { new UsmanGetUserRoleResponse("ksr-spv") });
+
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(new UsmanGetUserRequest("kasirspv@email.com", "kasirspv123", "Bilreg")))
+            .Returns(usmanUser);
+
+        _trsKasirRepoMock
+            .Setup(x => x.GetKey(model.TrsKasirId))
+            .Returns(model);
+
+        var cmd = new VoidTransaksiKasirCommand(
+            TrsKasirId: model.TrsKasirId,
+            SupervisorUserId: "kasirspv@email.com",
+            SupervisorPassword: "kasirspv123",
+            AlasanVoid: "Salah nominal bayar tagihan pasien",
+            PetugasVoid: "kasirspv@email.com");
+
+        // Act
+        var response = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        model.PetugasVoid.Should().Be("KAS-UTAMA");
+        response.PetugasVoid.Should().Be("KAS-UTAMA");
+        _legacyDalMock.Verify(
+            x => x.Void(model.TrsKasirId, "2026-11-07", "12:00:00", "KAS-UTAMA"),
+            Times.Once);
+        _trsKasirRepoMock.Verify(x => x.Save(model), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUsmanUserWithOnlyKsrUserRole_WhenHandle_ThenThrowsWithoutFallback()
+    {
+        // Arrange
+        var usmanUser = CreateUsmanUser("kasir@email.com", "ksr-user");
+
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(new UsmanGetUserRequest("kasir@email.com", "kasir123", "Bilreg")))
+            .Returns(usmanUser);
+
+        var cmd = new VoidTransaksiKasirCommand(
+            TrsKasirId: "DX00000001",
+            SupervisorUserId: "kasir@email.com",
+            SupervisorPassword: "kasir123",
+            AlasanVoid: "Salah nominal bayar tagihan pasien");
+
+        // Act
+        Func<Task> act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessValidationException>()
+            .WithMessage("*Kredensial supervisor tidak valid atau user tidak memiliki hak otorisasi void kasir.*");
+
+        _usmanGetUserServiceMock.Verify(
+            x => x.Execute(new UsmanGetUserRequest("kasir@email.com", "kasir123", "Bilreg")),
+            Times.Once);
+        _supervisorAuthDalMock.Verify(
+            x => x.ValidateSupervisor(It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never);
+        _trsKasirRepoMock.Verify(x => x.Save(It.IsAny<TrsKasirModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUsmanThrowsException_WhenLegacySupervisorValid_ThenFallbackSucceeds()
+    {
+        // Arrange
+        var model = CreateSampleBerhasilModel();
+
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(new UsmanGetUserRequest("SPVLEGACY", "legacy123", "Bilreg")))
+            .Throws(new ArgumentException("User invalid"));
+
+        _supervisorAuthDalMock
+            .Setup(x => x.ValidateSupervisor("SPVLEGACY", "legacy123"))
+            .Returns(true);
+
+        _trsKasirRepoMock
+            .Setup(x => x.GetKey(model.TrsKasirId))
+            .Returns(model);
+
+        var cmd = new VoidTransaksiKasirCommand(
+            TrsKasirId: model.TrsKasirId,
+            SupervisorUserId: "SPVLEGACY",
+            SupervisorPassword: "legacy123",
+            AlasanVoid: "Salah nominal bayar tagihan pasien");
+
+        // Act
+        var response = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.StatusTrs.Should().Be(KasirConst.StatusTrsVoid);
+        _usmanGetUserServiceMock.Verify(
+            x => x.Execute(new UsmanGetUserRequest("SPVLEGACY", "legacy123", "Bilreg")),
+            Times.Once);
+        _supervisorAuthDalMock.Verify(x => x.ValidateSupervisor("SPVLEGACY", "legacy123"), Times.Once);
+        _trsKasirRepoMock.Verify(x => x.Save(model), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUsmanThrowsException_WhenLegacySupervisorInvalid_ThenThrowsBusinessValidationException()
+    {
+        // Arrange
+        _usmanGetUserServiceMock
+            .Setup(x => x.Execute(new UsmanGetUserRequest("SPVLEGACY", "wrongpass", "Bilreg")))
+            .Throws(new ArgumentException("User invalid"));
+
+        _supervisorAuthDalMock
+            .Setup(x => x.ValidateSupervisor("SPVLEGACY", "wrongpass"))
+            .Returns(false);
+
+        var cmd = new VoidTransaksiKasirCommand(
+            TrsKasirId: "DX00000001",
+            SupervisorUserId: "SPVLEGACY",
+            SupervisorPassword: "wrongpass",
+            AlasanVoid: "Salah nominal bayar tagihan pasien");
+
+        // Act
+        Func<Task> act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BusinessValidationException>()
+            .WithMessage("*Kredensial supervisor tidak valid atau user tidak memiliki hak otorisasi void kasir.*");
+
+        _supervisorAuthDalMock.Verify(x => x.ValidateSupervisor("SPVLEGACY", "wrongpass"), Times.Once);
+        _trsKasirRepoMock.Verify(x => x.Save(It.IsAny<TrsKasirModel>()), Times.Never);
     }
 
     [Fact]

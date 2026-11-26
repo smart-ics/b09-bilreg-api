@@ -216,6 +216,69 @@ public class TrsKasirItemDalTest
     }
 
     [Fact]
+    public void ListUnpaidBillingByReg_WhenTicketBillWithBillIdEqualsRegIdIsPaid_ReturnsRemainingUnpaidItems()
+    {
+        // Arrange
+        var trsKasirId = "TX" + Guid.NewGuid().ToString("N")[..8];
+        var regId = "RG" + Guid.NewGuid().ToString("N")[..8];
+        var otherBillId = "BL" + Guid.NewGuid().ToString("N")[..8];
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+
+        const string insertBillingSql = """
+            INSERT INTO ta_trs_billing (
+                fs_kd_trs, fn_modul, fd_tgl_trs, fs_jam_trs, fs_kd_reg, fs_kd_layanan,
+                fs_kd_kelas, fs_kd_petugas, fn_sub_total, fn_diskon, fn_biaya, fn_tax,
+                fn_total, fs_keterangan, fs_keterangan2, fs_kd_rekap_cetak, fs_kd_ref_biaya,
+                fn_qty, fs_kd_trs_main, fd_tgl_jam_trs
+            ) VALUES (
+                @BillId, 1, '2026-11-11', '09:00:00', @RegId, '',
+                '', '', @Nilai, 0, 0, 0,
+                @Nilai, @Keterangan, '', '', '',
+                1, '', '2026-11-11 09:00:00'
+            )
+            """;
+
+        const string insertKasirHdrSql = """
+            INSERT INTO BILRG_TrsKasir (
+                TrsKasirId, TglTrs, JamTrs, TglJamTrs, JenisTrs, ShiftId, KasirId,
+                RegId, PasienId, PasienName, OrderRef, Keterangan, TotalNilai,
+                StatusTrs, TglVoid, JamVoid, PetugasVoid, AlasanVoid,
+                crttgl, crtjam, crtusr, updtgl, updjam, updusr
+            ) VALUES (
+                @TrsKasirId, '2026-11-11', '10:00:00', '2026-11-11 10:00:00', 'TERIMA', 'SH01', 'KASIR01',
+                @RegId, 'P01', 'Test Pasien', '', 'Test Partial Karcis', 1000,
+                'BERHASIL', '3000-01-01', '00:00:00', '', '',
+                '2026-11-11', '10:00:00', 'TEST', '3000-01-01', '00:00:00', ''
+            )
+            """;
+
+        try
+        {
+            // Insert ticket item (fs_kd_trs == fs_kd_reg) and another unpaid item on the same registration
+            conn.Execute(insertBillingSql, new { BillId = regId, RegId = regId, Nilai = 1000m, Keterangan = "Biaya Karcis/Registrasi (Paid)" });
+            conn.Execute(insertBillingSql, new { BillId = otherBillId, RegId = regId, Nilai = 50000m, Keterangan = "Tindakan RJ (Unpaid)" });
+
+            // Pay only ticket item (BillId = RegId) with Status BERHASIL
+            conn.Execute(insertKasirHdrSql, new { TrsKasirId = trsKasirId, RegId = regId });
+            _sut.Insert(new TrsKasirItemDto($"{trsKasirId}-01", trsKasirId, 1, regId, regId, "", "Biaya Karcis", 1000m, 1000m));
+
+            // Act
+            var unpaidList = _sut.ListUnpaidBillingByReg(regId).ToList();
+
+            // Assert: Remaining unpaid item is still returned, while paid ticket (BillId = RegId) is excluded
+            unpaidList.Should().ContainSingle(x => x.BillId == otherBillId && x.Nilai == 50000m);
+            unpaidList.Should().NotContain(x => x.BillId == regId);
+        }
+        finally
+        {
+            _sut.DeleteByTrsKasir(trsKasirId);
+            conn.Execute("DELETE FROM BILRG_TrsKasir WHERE TrsKasirId = @TrsKasirId", new { TrsKasirId = trsKasirId });
+            conn.Execute("DELETE FROM ta_trs_billing WHERE fs_kd_trs IN (@Bill1, @Bill2)", new { Bill1 = regId, Bill2 = otherBillId });
+        }
+    }
+
+    [Fact]
     public void ListUnpaidBillingByReg_WhenTotalBayarGteTotalBill_ExcludesAllItems()
     {
         // Arrange

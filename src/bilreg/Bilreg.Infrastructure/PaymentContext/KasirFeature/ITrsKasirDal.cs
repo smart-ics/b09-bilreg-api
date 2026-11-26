@@ -1,3 +1,4 @@
+using Bilreg.Application.PaymentContext.KasirFeature;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Nuna.Lib.DataAccessHelper;
 
@@ -6,7 +7,8 @@ namespace Bilreg.Infrastructure.PaymentContext.KasirFeature;
 public interface ITrsKasirDal :
     IInsert<TrsKasirDto>,
     IUpdate<TrsKasirDto>,
-    IGetData<TrsKasirDto, ITrsKasirKey>
+    IGetData<TrsKasirDto, ITrsKasirKey>,
+    IKasirShiftTotalsDal
 {
     void InsertPayments(IEnumerable<TrsKasirPaymentDto> payments);
     void DeletePayments(ITrsKasirKey key);
