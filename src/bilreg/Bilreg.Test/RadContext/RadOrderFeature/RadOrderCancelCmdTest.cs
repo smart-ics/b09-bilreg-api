@@ -1,6 +1,8 @@
+using Bilreg.Application.RadContext.RadJadwalFeature;
 using Bilreg.Application.RadContext.RadOrderFeature;
 using Bilreg.Application.RadContext.RadOrderFeature.Integration;
 using Bilreg.Application.RadContext.RadOrderFeature.UseCases;
+using Bilreg.Domain.RadContext.RadJadwalFeature;
 using Bilreg.Domain.RadContext.RadOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.Shared;
@@ -323,5 +325,155 @@ public class RadOrderCancelCmdTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
         _repoMock.Verify(r => r.SaveChanges(It.IsAny<RadOrderModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ScheduledOrderWithActiveJadwal_CascadeCancelsJadwalAndPublishesMilestone()
+    {
+        // Arrange
+        var order = CreateTestOrder("RDO0000000010", RadOrderStatusEnum.Scheduled);
+        var activeJadwal = RadJadwalModel.Create(
+            orderId: "RDO0000000010",
+            orderNo: "RAD26110001",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            scheduleNo: "SCH26110010",
+            equipmentId: "EQ-CR01",
+            equipmentName: "CR Room 1",
+            roomId: "RM-CR01",
+            roomName: "Ruang CR 1",
+            scheduleDate: new DateOnly(2026, 11, 27),
+            startTime: new TimeOnly(10, 0),
+            durationMinutes: 15,
+            audit: new AuditInfoType("TECH1", new DateTime(2026, 11, 24, 9, 0, 0)),
+            jadwalRadId: "JAD0000000010");
+
+        var jadwalRepoMock = new Mock<IRadJadwalRepo>();
+        var trackerMock = new Mock<IRadTrackerIntegration>();
+        trackerMock.Setup(t => t.PublishMilestoneAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IRadOrderKey>(k => k.OrderId == "RDO0000000010")))
+            .Returns(MayBe.From(order));
+        jadwalRepoMock.Setup(j => j.LoadActiveByOrderId("RDO0000000010"))
+            .Returns(MayBe.From(activeJadwal));
+
+        var sut = new RadOrderCancelHandler(
+            _repoMock.Object,
+            _billingMock.Object,
+            new TestTglJamProvider(_now),
+            jadwalRepoMock.Object,
+            trackerMock.Object);
+
+        var cmd = new RadOrderCancelCmd(
+            OrderId: "RDO0000000010",
+            UserId: "DR_CANCEL",
+            Reason: "Order radiologi dibatalkan dokter");
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        activeJadwal.Status.Should().Be(RadJadwalStatusEnum.Cancelled);
+        activeJadwal.CancellationCategory.Should().Be(RadCancellationCategoryEnum.OrderDibatalkan);
+        activeJadwal.CancellationReason.Should().Be("Order radiologi dibatalkan dokter");
+        activeJadwal.AuditTrail.Modified.UserId.Should().Be("DR_CANCEL");
+        activeJadwal.AuditTrail.Modified.Timestamp.Should().Be(_now);
+
+        _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+        jadwalRepoMock.Verify(j => j.SaveChanges(activeJadwal), Times.Once);
+        trackerMock.Verify(t => t.PublishMilestoneAsync(
+            "REG001",
+            "JAD0000000010",
+            "Cancelled",
+            It.Is<string>(n => n.Contains("SCH26110010")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_OrderWithoutActiveJadwal_DoesNotSaveJadwalOrPublishMilestone()
+    {
+        // Arrange
+        var order = CreateTestOrder("RDO0000000011", RadOrderStatusEnum.Requested);
+        var jadwalRepoMock = new Mock<IRadJadwalRepo>();
+        var trackerMock = new Mock<IRadTrackerIntegration>();
+
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IRadOrderKey>(k => k.OrderId == "RDO0000000011")))
+            .Returns(MayBe.From(order));
+        jadwalRepoMock.Setup(j => j.LoadActiveByOrderId("RDO0000000011"))
+            .Returns(MayBe<RadJadwalModel>.None);
+
+        var sut = new RadOrderCancelHandler(
+            _repoMock.Object,
+            _billingMock.Object,
+            new TestTglJamProvider(_now),
+            jadwalRepoMock.Object,
+            trackerMock.Object);
+
+        var cmd = new RadOrderCancelCmd("RDO0000000011", "DR_CANCEL", "Order dibatalkan sebelum dijadwalkan");
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+        jadwalRepoMock.Verify(j => j.SaveChanges(It.IsAny<RadJadwalModel>()), Times.Never);
+        trackerMock.Verify(t => t.PublishMilestoneAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ScheduledOrderWithActiveJadwal_WhenTrackerThrows_StillCancelsOrderAndJadwal()
+    {
+        // Arrange
+        var order = CreateTestOrder("RDO0000000012", RadOrderStatusEnum.Scheduled);
+        var activeJadwal = RadJadwalModel.Create(
+            orderId: "RDO0000000012",
+            orderNo: "RAD26110012",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CR,
+            scheduleNo: "SCH26110012",
+            equipmentId: "EQ-CR01",
+            equipmentName: "CR Room 1",
+            roomId: "RM-CR01",
+            roomName: "Ruang CR 1",
+            scheduleDate: new DateOnly(2026, 11, 27),
+            startTime: new TimeOnly(11, 0),
+            durationMinutes: 15,
+            audit: new AuditInfoType("TECH1", new DateTime(2026, 11, 24, 9, 0, 0)),
+            jadwalRadId: "JAD0000000012");
+
+        var jadwalRepoMock = new Mock<IRadJadwalRepo>();
+        var trackerMock = new Mock<IRadTrackerIntegration>();
+        trackerMock.Setup(t => t.PublishMilestoneAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Tracker unreachable"));
+
+        _repoMock.Setup(r => r.LoadEntity(It.Is<IRadOrderKey>(k => k.OrderId == "RDO0000000012")))
+            .Returns(MayBe.From(order));
+        jadwalRepoMock.Setup(j => j.LoadActiveByOrderId("RDO0000000012"))
+            .Returns(MayBe.From(activeJadwal));
+
+        var sut = new RadOrderCancelHandler(
+            _repoMock.Object,
+            _billingMock.Object,
+            new TestTglJamProvider(_now),
+            jadwalRepoMock.Object,
+            trackerMock.Object);
+
+        var cmd = new RadOrderCancelCmd("RDO0000000012", "DR_CANCEL", "Order dibatalkan dengan tracker offline");
+
+        // Act
+        await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Cancelled);
+        activeJadwal.Status.Should().Be(RadJadwalStatusEnum.Cancelled);
+        activeJadwal.CancellationCategory.Should().Be(RadCancellationCategoryEnum.OrderDibatalkan);
+        _repoMock.Verify(r => r.SaveChanges(order), Times.Once);
+        jadwalRepoMock.Verify(j => j.SaveChanges(activeJadwal), Times.Once);
     }
 }
