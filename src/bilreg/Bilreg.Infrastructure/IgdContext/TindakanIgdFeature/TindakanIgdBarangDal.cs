@@ -86,7 +86,7 @@ public class TindakanIgdBarangDal : ITindakanIgdBarangDal
         var dp = new DynamicParameters();
         dp.AddParam("@TindakanIgdId", filter.TindakanIgdId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TindakanIgdBarangDto>(sql, dp);
+        return conn.Read<TindakanIgdBarangDto>(sql, dp) ?? [];
     }
 
     public void MarkVoid(ITindakanIgdKey key)

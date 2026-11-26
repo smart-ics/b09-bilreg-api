@@ -69,6 +69,6 @@ public class TindakanIgdPpaDal : ITindakanIgdPpaDal
         var dp = new DynamicParameters();
         dp.AddParam("@TindakanIgdId", filter.TindakanIgdId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TindakanIgdPpaDto>(sql, dp);
+        return conn.Read<TindakanIgdPpaDto>(sql, dp) ?? [];
     }
 }
