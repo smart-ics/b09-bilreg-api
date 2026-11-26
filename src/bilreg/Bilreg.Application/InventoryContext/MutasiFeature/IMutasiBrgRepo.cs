@@ -1,6 +1,8 @@
+using System.Data;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature;
@@ -12,6 +14,8 @@ public interface IMutasiBrgRepo :
     IListData<MutasiBrgHeaderView, Periode>
 {
     IEnumerable<MutasiBrgHeaderView> ListInTransit(string layananTujuanId);
+    MayBe<MutasiBrgModel> LoadEntityForUpdate(IMutasiBrgKey key, IDbConnection conn, IDbTransaction trans);
+    void SaveChanges(MutasiBrgModel model, IDbConnection conn, IDbTransaction trans);
 }
 
 public record MutasiBrgHeaderView(
