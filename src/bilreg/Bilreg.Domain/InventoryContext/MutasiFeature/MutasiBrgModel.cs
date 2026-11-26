@@ -208,6 +208,15 @@ public class MutasiBrgModel : IMutasiBrgKey
         Cancel("Dibatalkan oleh pengguna", userId);
     }
 
+    public void MarkReceived(string receiverUserId, DateTime? receiveDate = null) =>
+        TransitionFromDispatched(MutasiBrgStateEnum.Received, receiverUserId, receiveDate);
+
+    public void MarkReceivedWithDiscrepancy(string receiverUserId, DateTime? receiveDate = null) =>
+        TransitionFromDispatched(MutasiBrgStateEnum.ReceivedWithDiscrepancy, receiverUserId, receiveDate);
+
+    public void MarkRejected(string receiverUserId, DateTime? rejectDate = null) =>
+        TransitionFromDispatched(MutasiBrgStateEnum.Rejected, receiverUserId, rejectDate);
+
     public void UpdateDispatchNote(string note)
     {
         GuardDraft();
@@ -218,6 +227,15 @@ public class MutasiBrgModel : IMutasiBrgKey
     {
         GuardDraft();
         OrderMutasiId = orderMutasiId?.Trim() ?? string.Empty;
+    }
+
+    private void TransitionFromDispatched(MutasiBrgStateEnum targetState, string userId, DateTime? transitionDate)
+    {
+        GuardDispatched();
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        State = targetState;
+        AuditTrail.Modif(userId.Trim(), transitionDate ?? DateTime.Now);
     }
 
     private void Reorder()
@@ -233,6 +251,12 @@ public class MutasiBrgModel : IMutasiBrgKey
     {
         if (State != MutasiBrgStateEnum.Draft)
             throw new InvalidOperationException($"Operasi hanya diizinkan pada status Draft. Status saat ini: {State}");
+    }
+
+    private void GuardDispatched()
+    {
+        if (State != MutasiBrgStateEnum.Dispatched)
+            throw new InvalidOperationException($"Operasi hanya diizinkan pada status Dispatched. Status saat ini: {State}");
     }
     #endregion
 }

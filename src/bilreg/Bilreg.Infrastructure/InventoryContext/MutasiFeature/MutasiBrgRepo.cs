@@ -1,3 +1,4 @@
+using System.Data;
 using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
@@ -49,6 +50,18 @@ public class MutasiBrgRepo : IMutasiBrgRepo
         return MayBe.From(model);
     }
 
+    public MayBe<MutasiBrgModel> LoadEntityForUpdate(IMutasiBrgKey key, IDbConnection conn, IDbTransaction trans)
+    {
+        var headerDto = _mutasiBrgDal.GetDataForUpdate(key, conn, trans);
+        if (headerDto is null)
+            return MayBe<MutasiBrgModel>.None;
+
+        var listItemDto = _mutasiBrgItemDal.ListData(key, conn, trans)?.ToList() ?? [];
+        var listItem = listItemDto.Select(x => x.ToModel());
+        var model = headerDto.ToModel(listItem);
+        return MayBe.From(model);
+    }
+
     public void SaveChanges(MutasiBrgModel model)
     {
         var dto = MutasiBrgDto.FromModel(model);
@@ -64,6 +77,23 @@ public class MutasiBrgRepo : IMutasiBrgRepo
 
         _mutasiBrgItemDal.Delete(model);
         _mutasiBrgItemDal.Insert(listItemDto);
+    }
+
+    public void SaveChanges(MutasiBrgModel model, IDbConnection conn, IDbTransaction trans)
+    {
+        var dto = MutasiBrgDto.FromModel(model);
+        var existing = _mutasiBrgDal.GetData(model, conn, trans);
+        if (existing is not null)
+            _mutasiBrgDal.Update(dto, conn, trans);
+        else
+            _mutasiBrgDal.Insert(dto, conn, trans);
+
+        var listItemDto = model.ListItem
+            .Select(x => MutasiBrgItemDto.FromModel(model.MutasiBrgId, x))
+            .ToList();
+
+        _mutasiBrgItemDal.Delete(model, conn, trans);
+        _mutasiBrgItemDal.Insert(listItemDto, conn, trans);
     }
 
     private static MutasiBrgHeaderView MapToHeaderView(MutasiBrgDto dto)

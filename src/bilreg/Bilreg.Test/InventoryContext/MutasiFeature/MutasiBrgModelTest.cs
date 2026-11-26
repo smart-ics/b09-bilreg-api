@@ -646,4 +646,152 @@ public class MutasiBrgModelTest
     }
 
     #endregion
+
+    #region POST-DISPATCH TRANSITION TESTS
+
+    [Fact]
+    public void MutasiBrgStateEnum_ShouldHaveExpectedNumericValues()
+    {
+        ((int)MutasiBrgStateEnum.Draft).Should().Be(0);
+        ((int)MutasiBrgStateEnum.Dispatched).Should().Be(1);
+        ((int)MutasiBrgStateEnum.Cancelled).Should().Be(2);
+        ((int)MutasiBrgStateEnum.Received).Should().Be(3);
+        ((int)MutasiBrgStateEnum.ReceivedWithDiscrepancy).Should().Be(4);
+        ((int)MutasiBrgStateEnum.Rejected).Should().Be(5);
+    }
+
+    [Fact]
+    public void MarkReceived_WhenDispatched_ShouldTransitionToReceivedAndUpdateAuditTrail()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+        var receiveDate = new DateTime(2026, 11, 11, 9, 30, 0);
+
+        // Act
+        sut.MarkReceived(" USR_PENERIMA ", receiveDate);
+
+        // Assert
+        sut.State.Should().Be(MutasiBrgStateEnum.Received);
+        sut.AuditTrail.Modified.UserId.Should().Be("USR_PENERIMA");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(receiveDate);
+    }
+
+    [Fact]
+    public void MarkReceivedWithDiscrepancy_WhenDispatched_ShouldTransitionToReceivedWithDiscrepancyAndUpdateAuditTrail()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+        var receiveDate = new DateTime(2026, 11, 11, 10, 15, 0);
+
+        // Act
+        sut.MarkReceivedWithDiscrepancy("USR_PENERIMA", receiveDate);
+
+        // Assert
+        sut.State.Should().Be(MutasiBrgStateEnum.ReceivedWithDiscrepancy);
+        sut.AuditTrail.Modified.UserId.Should().Be("USR_PENERIMA");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(receiveDate);
+    }
+
+    [Fact]
+    public void MarkRejected_WhenDispatched_ShouldTransitionToRejectedAndUpdateAuditTrail()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+        var rejectDate = new DateTime(2026, 11, 11, 11, 0, 0);
+
+        // Act
+        sut.MarkRejected("USR_PENERIMA", rejectDate);
+
+        // Assert
+        sut.State.Should().Be(MutasiBrgStateEnum.Rejected);
+        sut.AuditTrail.Modified.UserId.Should().Be("USR_PENERIMA");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(rejectDate);
+    }
+
+    [Theory]
+    [InlineData(MutasiBrgStateEnum.Draft)]
+    [InlineData(MutasiBrgStateEnum.Cancelled)]
+    [InlineData(MutasiBrgStateEnum.Received)]
+    [InlineData(MutasiBrgStateEnum.ReceivedWithDiscrepancy)]
+    [InlineData(MutasiBrgStateEnum.Rejected)]
+    public void PostDispatchTransitions_WhenNotDispatched_ShouldThrowInvalidOperationException(MutasiBrgStateEnum nonDispatchedState)
+    {
+        // Arrange
+        var sut = MutasiBrgModel.Load(
+            "MT2600001A",
+            _baseDate,
+            nonDispatchedState,
+            _gudangUtama,
+            _depoRawatJalan,
+            "ORD001",
+            "Catatan",
+            "USR_LOGISTIK",
+            AuditTrailType.Create("USR01", _baseDate),
+            [CreateSampleItem()]);
+
+        // Act & Assert
+        var actReceived = () => sut.MarkReceived("USR_PENERIMA", _baseDate);
+        var actDiscrepancy = () => sut.MarkReceivedWithDiscrepancy("USR_PENERIMA", _baseDate);
+        var actRejected = () => sut.MarkRejected("USR_PENERIMA", _baseDate);
+
+        actReceived.Should().Throw<InvalidOperationException>().WithMessage("*Dispatched*");
+        actDiscrepancy.Should().Throw<InvalidOperationException>().WithMessage("*Dispatched*");
+        actRejected.Should().Throw<InvalidOperationException>().WithMessage("*Dispatched*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PostDispatchTransitions_EmptyUserId_ShouldThrowArgumentException(string? invalidUserId)
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+
+        // Act & Assert
+        var actReceived = () => sut.MarkReceived(invalidUserId!, _baseDate);
+        var actDiscrepancy = () => sut.MarkReceivedWithDiscrepancy(invalidUserId!, _baseDate);
+        var actRejected = () => sut.MarkRejected(invalidUserId!, _baseDate);
+
+        actReceived.Should().Throw<ArgumentException>();
+        actDiscrepancy.Should().Throw<ArgumentException>();
+        actRejected.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(MutasiBrgStateEnum.Received)]
+    [InlineData(MutasiBrgStateEnum.ReceivedWithDiscrepancy)]
+    [InlineData(MutasiBrgStateEnum.Rejected)]
+    public void Cancel_WhenAlreadyInPostReceiveState_ShouldThrowInvalidOperationException(MutasiBrgStateEnum finalState)
+    {
+        // Arrange
+        var sut = MutasiBrgModel.Load(
+            "MT2600001A",
+            _baseDate,
+            finalState,
+            _gudangUtama,
+            _depoRawatJalan,
+            "ORD001",
+            "Catatan",
+            "USR_LOGISTIK",
+            AuditTrailType.Create("USR01", _baseDate),
+            [CreateSampleItem()]);
+
+        // Act
+        var act = () => sut.Cancel("Salah kirim barang ke poli lain", "USR_SUPERVISOR");
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Pembatalan hanya diizinkan jika status Dispatched*");
+    }
+
+    #endregion
 }
