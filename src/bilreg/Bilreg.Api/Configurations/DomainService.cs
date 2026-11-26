@@ -36,6 +36,7 @@ public static class DomainService
             .AddScoped<IPasienFactory, PasienFactory>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<IGetKodeRsService, GetKodeRsService>()
+            .AddScoped<IGetHospitalProfileService, GetHospitalProfileService>()
             .AddScoped<IGetProjectIdService, GetProjectIdService>()
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()

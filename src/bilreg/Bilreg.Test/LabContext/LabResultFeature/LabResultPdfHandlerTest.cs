@@ -4,6 +4,7 @@ using Bilreg.Application.LabContext.LabResultFeature.UseCases;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Domain.Shared.Param;
 using Bilreg.Test.LabContext.LabOrderFeature;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -18,16 +19,21 @@ public class LabResultPdfHandlerTest
     private readonly Mock<ILabOrderRepo> _labOrderRepoMock = new();
     private readonly Mock<ILabResultDocumentRepo> _labResultDocumentRepoMock = new();
     private readonly Mock<ILabResultPdfRenderer> _pdfRendererMock = new();
+    private readonly Mock<IGetHospitalProfileService> _hospitalProfileServiceMock = new();
     private readonly LabResultPdfHandler _sut;
 
     public LabResultPdfHandlerTest()
     {
         var options = Options.Create(new LabResultPdfOptions { HospitalName = "RS Uji Coba" });
+        _hospitalProfileServiceMock.Setup(s => s.Execute())
+            .Returns(new HospitalProfileModel("1000", "RS Uji Coba", "Jl. Sehat No. 1", "Surabaya", "031-111", "info@rs.com"));
+
         _sut = new LabResultPdfHandler(
             _labOrderRepoMock.Object,
             _labResultDocumentRepoMock.Object,
             _pdfRendererMock.Object,
-            options);
+            options,
+            _hospitalProfileServiceMock.Object);
     }
 
     [Fact]
@@ -270,5 +276,40 @@ public class LabResultPdfHandlerTest
         items[1].ResultType.Should().Be(LabResultTypeEnum.Option);
         items[1].OptionValue.Should().Be("Adekuat");
         items[1].DisplayValue.Should().Be("Adekuat");
+    }
+
+    [Fact]
+    public async Task Handle_WhenProfileNamaRsEmpty_FallsBackToConfigHospitalName()
+    {
+        _hospitalProfileServiceMock.Setup(s => s.Execute())
+            .Returns(new HospitalProfileModel("", "", "", "", "", ""));
+
+        var snapshot = new PatientSnapshotType(
+            "REG123", "MR123", "Pasien Uji", new DateTime(1990, 5, 10), "L", 35);
+        var order = LabOrderTestSupport.CreateEmrOrder(
+            "LAB12345",
+            lines: [LabOrderTestSupport.ResolvedLine()],
+            snapshot: snapshot,
+            audit: new AuditInfoType("U1", DateTime.Now));
+
+        var audit = new AuditInfoType("USR01", new DateTime(2026, 11, 7, 10, 0, 0));
+        var document = LabResultDocumentModel.CreateInitial(order.OrderId, audit);
+
+        _labOrderRepoMock.Setup(r => r.LoadEntity(It.IsAny<ILabOrderKey>()))
+            .Returns(MayBe.From(order));
+        _labResultDocumentRepoMock.Setup(r => r.LoadByOrderId(order.OrderId))
+            .Returns(MayBe.From(document));
+
+        LabResultPdfView? capturedView = null;
+        _pdfRendererMock.Setup(r => r.Render(It.IsAny<LabResultPdfView>()))
+            .Callback<LabResultPdfView>(v => capturedView = v)
+            .Returns(new byte[] { 1, 2, 3 });
+
+        await _sut.Handle(new LabResultPdfQuery(order.OrderId), CancellationToken.None);
+
+        capturedView.Should().NotBeNull();
+        capturedView!.HospitalName.Should().Be("RS Uji Coba");
+        capturedView.HospitalAddress.Should().BeEmpty();
+        capturedView.HospitalCity.Should().BeEmpty();
     }
 }

@@ -13,6 +13,7 @@ public class X1EncryptionHelperTest
         var actual = X1EncryptionHelper.Coding(str);
         actual.Should().Be("ÌäÚÒÏèã");
     }
+
     [Fact]
     public void DecodingTest()
     {
@@ -20,6 +21,7 @@ public class X1EncryptionHelperTest
         var actual = X1EncryptionHelper.Decoding(str);
         actual.Should().Be("3375022");
     }
+
     [Fact]
     public void CodeingNeoTest()
     {
@@ -27,11 +29,24 @@ public class X1EncryptionHelperTest
         var actual = X1EncryptionHelper.CodingNeo(str);
         actual.Should().Be("ÌÐÐÒÙÞÏ");
     }
+
     [Fact]
     public void DecodingNeoTest()
     {
         const string str = "ÌÐÐÒÙÞÏ";
         var actual = X1EncryptionHelper.DecodingNeo(str);
         actual.Should().Be("3375022");
+    }
+
+    [Theory]
+    [InlineData("RSU Budi Rahayu")]
+    [InlineData("Jl. Barito No. 5")]
+    [InlineData("Pekalongan")]
+    [InlineData("3375022")]
+    public void NeoRoundTripTest(string plainText)
+    {
+        var encoded = X1EncryptionHelper.CodingNeo(plainText);
+        var decoded = X1EncryptionHelper.DecodingNeo(encoded);
+        decoded.Should().Be(plainText);
     }
 }
