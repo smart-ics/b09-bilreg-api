@@ -234,7 +234,7 @@ public sealed partial class JourneyDal
                ISNULL(mr.fs_kota_pasien,'') AS Kota
         FROM BILRG_AdmInpatientOrder ord
         LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
-        WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId IN @OpnIds
+        WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2, 5) AND ord.InpatientOrderId IN @OpnIds
         """;
 
     private static string BuildReservationSelectSql() =>
@@ -261,7 +261,7 @@ public sealed partial class JourneyDal
         """
         SELECT a.RegId, a.AdmissionStatus, a.PasienId,
                CASE 
-                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2, 5) THEN a.InpatientOrderId
                    ELSE '-'
                END AS OpnameRequestId,
                CASE 

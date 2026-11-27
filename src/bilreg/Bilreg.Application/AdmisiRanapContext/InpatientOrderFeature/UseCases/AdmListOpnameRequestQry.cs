@@ -4,7 +4,9 @@ using MediatR;
 
 namespace Bilreg.Application.AdmisiRanapContext.InpatientOrderFeature.UseCases;
 
-public record AdmListOpnameRequestQry(OpnameRequestStatusEnum? Status = null)
+public record AdmListOpnameRequestQry(
+    OpnameRequestStatusEnum? Status = null,
+    string? ExternalReferenceId = null)
     : IRequest<AdmListOpnameRequestResponse>;
 
 public record AdmListOpnameRequestResponse(IReadOnlyList<AdmOpnameRequestListItem> Items);
@@ -38,8 +40,10 @@ public class AdmListOpnameRequestHandler : IRequestHandler<AdmListOpnameRequestQ
         };
 
         var items = _orderRepo
-            .ListData(new InpatientOrderListFilter(Status: statusFilter))
-            .Where(x => x.OrderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd)
+            .ListData(new InpatientOrderListFilter(
+                Status: statusFilter,
+                ExternalReferenceId: request.ExternalReferenceId))
+            .Where(x => x.OrderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd or OrderSourceEnum.MhwIgd)
             .Select(Map)
             .ToList();
 

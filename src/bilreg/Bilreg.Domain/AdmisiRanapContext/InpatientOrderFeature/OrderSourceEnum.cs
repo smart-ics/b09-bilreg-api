@@ -5,5 +5,6 @@ public enum OrderSourceEnum
     EmrRawatJalan = 1,
     EmrIgd = 2,
     AdmisiBooking = 3,
-    ExternalChannel = 4
+    ExternalChannel = 4,
+    MhwIgd = 5
 }
