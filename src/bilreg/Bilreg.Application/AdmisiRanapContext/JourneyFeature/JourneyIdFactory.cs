@@ -35,7 +35,7 @@ public static class JourneyIdFactory
         EnsureId(inpatientOrderId, nameof(inpatientOrderId));
         return orderSource switch
         {
-            OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd => OpnamePrefix + inpatientOrderId.Trim(),
+            OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd or OrderSourceEnum.MhwIgd => OpnamePrefix + inpatientOrderId.Trim(),
             OrderSourceEnum.AdmisiBooking or OrderSourceEnum.ExternalChannel => ReservationPrefix + inpatientOrderId.Trim(),
             _ => throw new ArgumentOutOfRangeException(nameof(orderSource), orderSource, "Unsupported order source.")
         };

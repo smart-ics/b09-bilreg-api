@@ -11,6 +11,7 @@ public class JourneyIdFactoryTest
     [Theory]
     [InlineData(OrderSourceEnum.EmrRawatJalan, "opn:OPN001")]
     [InlineData(OrderSourceEnum.EmrIgd, "opn:OPN001")]
+    [InlineData(OrderSourceEnum.MhwIgd, "opn:OPN001")]
     [InlineData(OrderSourceEnum.AdmisiBooking, "rsv:OPN001")]
     [InlineData(OrderSourceEnum.ExternalChannel, "rsv:OPN001")]
     public void UT01_FromInpatientOrder_ReturnsDeterministicPrefixBasedOnSource(
@@ -24,6 +25,7 @@ public class JourneyIdFactoryTest
     [Theory]
     [InlineData(1, "opn:OPN002")]
     [InlineData(2, "opn:OPN002")]
+    [InlineData(5, "opn:OPN002")]
     [InlineData(3, "rsv:OPN002")]
     [InlineData(4, "rsv:OPN002")]
     public void UT02_FromOrderSource_WithInt_ReturnsDeterministicPrefix(

@@ -68,13 +68,21 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
         var plannedDate = request.PlannedDate.ToDate("yyyy-MM-dd");
         var occurredAt = _tglJamProvider.Now;
 
-        var orderSource = request.OrderSource == OrderSourceEnum.EmrIgd
-            ? OrderSourceEnum.EmrIgd
-            : OrderSourceEnum.EmrRawatJalan;
+        var orderSource = request.OrderSource switch
+        {
+            OrderSourceEnum.EmrIgd => OrderSourceEnum.EmrIgd,
+            OrderSourceEnum.MhwIgd => OrderSourceEnum.MhwIgd,
+            _ => OrderSourceEnum.EmrRawatJalan
+        };
 
         var extSource = !string.IsNullOrWhiteSpace(request.ExternalSystemSource)
             ? request.ExternalSystemSource
-            : (orderSource == OrderSourceEnum.EmrIgd ? "EMR_IGD" : "EMR_RJ");
+            : orderSource switch
+            {
+                OrderSourceEnum.EmrIgd => "EMR_IGD",
+                OrderSourceEnum.MhwIgd => "MHW_IGD",
+                _ => "EMR_RJ"
+            };
 
         var order = InpatientOrderModel.CreateEmr(
             orderSource,

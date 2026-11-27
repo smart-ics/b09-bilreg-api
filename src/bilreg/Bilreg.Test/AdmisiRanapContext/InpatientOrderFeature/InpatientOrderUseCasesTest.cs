@@ -194,7 +194,7 @@ public class InpatientOrderUseCasesTest
     }
 
     [Fact]
-    public async Task ListOpnameRequestQry_FiltersByEmrSource()
+    public async Task ListOpnameRequestQry_FiltersByEmrAndMhwIgdSource()
     {
         var emrOrder = InpatientOrderModel.CreateEmr(
             OrderSourceEnum.EmrRawatJalan,
@@ -202,6 +202,13 @@ public class InpatientOrderUseCasesTest
             new PpaReff("D01", "Dr. Dokter"),
             new DateTime(2026, 11, 10),
             "Catatan", "user1");
+
+        var mhwIgdOrder = InpatientOrderModel.CreateEmr(
+            OrderSourceEnum.MhwIgd,
+            new PasienReff("P03", "Pasien C", new DateOnly(1992, 4, 15), "L"),
+            new PpaReff("D01", "Dr. Dokter"),
+            new DateTime(2026, 11, 10),
+            "Catatan IGD", "user1", "IGV001", "MHW_IGD");
 
         var bookingOrder = InpatientOrderModel.CreateBooking(
             new PasienReff("P02", "Pasien B", new DateOnly(1990, 1, 1), "P"),
@@ -211,13 +218,13 @@ public class InpatientOrderUseCasesTest
             "user1");
 
         _orderRepo.Setup(x => x.ListData(It.IsAny<InpatientOrderListFilter>()))
-            .Returns([emrOrder, bookingOrder]);
+            .Returns([emrOrder, mhwIgdOrder, bookingOrder]);
 
         var handler = new AdmListOpnameRequestHandler(_orderRepo.Object);
         var result = await handler.Handle(new AdmListOpnameRequestQry(), CancellationToken.None);
 
-        result.Items.Should().HaveCount(1);
-        result.Items[0].OpnameRequestId.Should().Be(emrOrder.InpatientOrderId);
+        result.Items.Should().HaveCount(2);
+        result.Items.Select(x => x.OpnameRequestId).Should().Contain([emrOrder.InpatientOrderId, mhwIgdOrder.InpatientOrderId]);
     }
 
     [Fact]
@@ -271,6 +278,72 @@ public class InpatientOrderUseCasesTest
             c.ExternalReferenceId == "EXT-123" &&
             c.ExternalSystemSource == "SATUSEHAT" &&
             c.OrderSource == OrderSourceEnum.EmrIgd), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task OpnameRequestController_Create_WithMhwIgd_DefaultsExternalSystemSourceToMhwIgd()
+    {
+        var mediatorMock = new Mock<IMediator>();
+        mediatorMock.Setup(m => m.Send(It.IsAny<AdmCreateOpnameRequestCmd>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmCreateOpnameRequestResponse("OPN000000002", "IGV001"));
+
+        var controller = new OpnameRequestController(mediatorMock.Object);
+        var postModel = new AdmCreateOpnameRequestPostModel(
+            "P01", "D01", "2026-11-10", "Notes", "user1",
+            ExternalReferenceId: "IGV001", ExternalSystemSource: null, OrderSource: OrderSourceEnum.MhwIgd);
+
+        var actionResult = await controller.Create(postModel);
+        var okResult = actionResult as OkObjectResult;
+        okResult.Should().NotBeNull();
+
+        mediatorMock.Verify(m => m.Send(It.Is<AdmCreateOpnameRequestCmd>(c =>
+            c.PasienId == "P01" &&
+            c.DokterId == "D01" &&
+            c.ExternalReferenceId == "IGV001" &&
+            c.ExternalSystemSource == "MHW_IGD" &&
+            c.OrderSource == OrderSourceEnum.MhwIgd), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdmListOpnameRequestHandler_WithExternalReferenceId_PassesFilterAndIncludesMhwIgd()
+    {
+        var mhwIgdOrder = InpatientOrderModel.CreateEmr(
+            OrderSourceEnum.MhwIgd,
+            new PasienReff("P01", "Suharto", new DateOnly(1990, 1, 1), "L"),
+            new PpaReff("D01", "Dr. Anastasia"),
+            new DateTime(2026, 11, 27),
+            "Observasi",
+            "user1",
+            "IGV-999",
+            "MHW_IGD");
+
+        _orderRepo.Setup(r => r.ListData(It.Is<InpatientOrderListFilter>(f =>
+                f.ExternalReferenceId == "IGV-999" && f.Status == null)))
+            .Returns([mhwIgdOrder]);
+
+        var handler = new AdmListOpnameRequestHandler(_orderRepo.Object);
+        var result = await handler.Handle(
+            new AdmListOpnameRequestQry(Status: null, ExternalReferenceId: "IGV-999"),
+            CancellationToken.None);
+
+        result.Items.Should().HaveCount(1);
+        result.Items[0].OpnameRequestId.Should().Be(mhwIgdOrder.InpatientOrderId);
+        result.Items[0].DokterName.Should().Be("Dr. Anastasia");
+    }
+
+    [Fact]
+    public async Task OpnameRequestController_List_DelegatesExternalReferenceIdToMediator()
+    {
+        var mediatorMock = new Mock<IMediator>();
+        mediatorMock.Setup(m => m.Send(It.IsAny<AdmListOpnameRequestQry>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmListOpnameRequestResponse([]));
+
+        var controller = new OpnameRequestController(mediatorMock.Object);
+        var actionResult = await controller.List(status: null, externalReferenceId: "IGV-999");
+
+        (actionResult as OkObjectResult).Should().NotBeNull();
+        mediatorMock.Verify(m => m.Send(It.Is<AdmListOpnameRequestQry>(q =>
+            q.Status == null && q.ExternalReferenceId == "IGV-999"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

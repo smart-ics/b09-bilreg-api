@@ -389,7 +389,7 @@ public sealed partial class JourneyDal : IJourneyDal
                        ISNULL(mr.fs_kota_pasien,'') AS Kota
                 FROM BILRG_AdmInpatientOrder ord
                 LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
-                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId = @Id
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2, 5) AND ord.InpatientOrderId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = opnameRequestId },
                 commandTimeout: CommandTimeoutSeconds,
@@ -775,7 +775,7 @@ public sealed partial class JourneyDal : IJourneyDal
                        ISNULL(mr.fs_kota_pasien,'') AS Kota
                 FROM BILRG_AdmInpatientOrder ord
                 LEFT JOIN tc_mr mr ON ord.PasienId = mr.fs_mr
-                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2) AND ord.InpatientOrderId = @Id
+                WHERE ord.VodDate = @VodDate AND ord.OrderSource IN (1, 2, 5) AND ord.InpatientOrderId = @Id
                 """,
                 new { VodDate = VoidSentinel, Id = id },
                 commandTimeout: CommandTimeoutSeconds,
@@ -1080,17 +1080,17 @@ public sealed partial class JourneyDal : IJourneyDal
             SELECT
                 CAST(
                     CASE 
-                        WHEN o.OrderSource IN (1, 2) THEN 'opn:' + o.InpatientOrderId
+                        WHEN o.OrderSource IN (1, 2, 5) THEN 'opn:' + o.InpatientOrderId
                         ELSE 'rsv:' + o.InpatientOrderId
                     END AS VARCHAR(64)
                 ) AS JourneyId,
                 CASE 
-                    WHEN o.OrderSource IN (1, 2) THEN 0
+                    WHEN o.OrderSource IN (1, 2, 5) THEN 0
                     ELSE 1
                 END AS OriginKind,
                 CAST(NULL AS VARCHAR(10)) AS RegId,
                 CASE 
-                    WHEN o.OrderSource IN (1, 2) THEN o.InpatientOrderId
+                    WHEN o.OrderSource IN (1, 2, 5) THEN o.InpatientOrderId
                     ELSE CAST(NULL AS VARCHAR(12))
                 END AS SourceOpnameRequestId,
                 CASE 
@@ -1109,7 +1109,7 @@ public sealed partial class JourneyDal : IJourneyDal
                 o.TipeJaminanName,
                 CAST(NULL AS INT) AS Priority,
                 CASE 
-                    WHEN o.OrderSource IN (1, 2) THEN 
+                    WHEN o.OrderSource IN (1, 2, 5) THEN 
                         CASE WHEN o.UpdDate = @VodDate THEN o.CrtDate ELSE o.UpdDate END
                     ELSE 
                         CASE WHEN o.UpdDate = @VodDate THEN o.PlannedDate ELSE o.UpdDate END
@@ -1124,12 +1124,12 @@ public sealed partial class JourneyDal : IJourneyDal
                 CAST(NULL AS INT) AS ActiveWaitingListStatus,
                 0 AS HasClosedHandover,
                 0 AS HasActiveAdmission,
-                CASE WHEN o.OrderSource IN (1, 2) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
+                CASE WHEN o.OrderSource IN (1, 2, 5) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveOpnameRequested,
                 CASE WHEN o.OrderSource IN (3, 4) AND o.OrderStatus IN (0, 1) THEN 1 ELSE 0 END AS ProspectiveReservationReady
             FROM BILRG_AdmInpatientOrder o
             LEFT JOIN tc_mr mr ON o.PasienId = mr.fs_mr
             WHERE o.VodDate = @VodDate
-              AND o.OrderSource IN (1, 2, 3, 4)
+              AND o.OrderSource IN (1, 2, 3, 4, 5)
               AND NOT EXISTS (
                     SELECT 1 FROM BILRG_AdmAdmission a
                     WHERE a.VodDate = @VodDate 
@@ -1244,7 +1244,7 @@ public sealed partial class JourneyDal : IJourneyDal
                     DokterId,
                     DokterName
                 FROM BILRG_AdmInpatientOrder
-                WHERE VodDate = @VodDate AND OrderSource IN (1, 2)
+                WHERE VodDate = @VodDate AND OrderSource IN (1, 2, 5)
             ) o ON a.InpatientOrderId <> '-' AND a.InpatientOrderId = o.OpnameRequestId
             LEFT JOIN (
                 SELECT 
@@ -1576,7 +1576,7 @@ public sealed partial class JourneyDal : IJourneyDal
         """
         SELECT a.RegId, a.AdmissionStatus, a.PasienId, 
                CASE 
-                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId
+                   WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2, 5) THEN a.InpatientOrderId
                    ELSE '-'
                END AS OpnameRequestId,
                CASE 
