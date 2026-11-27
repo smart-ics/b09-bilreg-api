@@ -24,7 +24,7 @@ public class PolisRepo : IPolisRepo
                 onNone: () => _polisDal.Insert(PolisDto.FromModel(model))
             );
 
-        var listCover = model.ListCover.Select(x => PolisCoverDto.FromModel(x)).ToList();
+        var listCover = model.ListCover.Select(x => PolisCoverDto.FromModel(x, model.ExpiredDate)).ToList();
         
         _polisCoverDal.Delete(model);
         _polisCoverDal.Insert(listCover);
