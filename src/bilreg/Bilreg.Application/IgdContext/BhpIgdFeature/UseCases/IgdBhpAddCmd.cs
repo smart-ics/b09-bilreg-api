@@ -6,6 +6,7 @@ using Bilreg.Domain.IgdContext.BhpIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -17,7 +18,8 @@ public record IgdBhpAddCmd(
     string BhpItemName,
     int Qty,
     decimal Price,
-    string UserId)
+    string UserId,
+    string? LayananId = null)
     : IRequest<IgdBhpAddResponse>, IIgdVisitKey;
 
 public record IgdBhpAddResponse(string BhpIgdId, string IgdVisitId, decimal Subtotal);
@@ -29,19 +31,25 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IRegRepo _regRepo;
     private readonly IIgdBillingPostingOrchestrator _billingOrchestrator;
+    private readonly IIgdStockService _igdStockService;
+    private readonly IgdVisitOptions _igdVisitOptions;
 
     public IgdBhpAddHandler(
-        IIgdVisitRepo igdVisitRepo, 
+        IIgdVisitRepo igdVisitRepo,
         IBhpIgdRepo bhpRepo,
         ITglJamProvider tglJamProvider,
         IRegRepo regRepo,
-        IIgdBillingPostingOrchestrator billingOrchestrator)
+        IIgdBillingPostingOrchestrator billingOrchestrator,
+        IIgdStockService igdStockService,
+        IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
         _bhpRepo = bhpRepo;
         _tglJamProvider = tglJamProvider;
         _regRepo = regRepo;
         _billingOrchestrator = billingOrchestrator;
+        _igdStockService = igdStockService;
+        _igdVisitOptions = igdVisitOptions.Value;
     }
 
     public async Task<IgdBhpAddResponse> Handle(IgdBhpAddCmd request, CancellationToken cancellationToken)
@@ -53,23 +61,42 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
         Guard.Against.Negative(request.Price, nameof(request.Price));
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
+        var reg = visit.HasReg
+            ? _regRepo.LoadEntity(visit.Reg).GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found")
+            : null;
+        var effectiveLayananId = ResolveEffectiveLayananId(request.LayananId, reg);
 
         var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
-        var bhp = BhpIgdModel.Create(visit, request.BhpItemId, request.BhpItemName, request.Qty, request.Price, audit);
+        var bhp = BhpIgdModel.Create(
+            visit,
+            request.BhpItemId,
+            request.BhpItemName,
+            request.Qty,
+            request.Price,
+            audit,
+            layananId: effectiveLayananId);
         visit.RecordBhpEvent(bhp.BhpIgdId, audit);
 
         IgdBhpAddResponse response;
         using (var trans = TransHelper.NewScope())
         {
+            var pakaiBrgId = await _igdStockService.DeductBhpAsync(
+                effectiveLayananId,
+                request.BhpItemId,
+                request.Qty,
+                request.UserId,
+                $"BHP-IGD:{bhp.BhpIgdId} {request.BhpItemName}",
+                cancellationToken);
+            bhp.SetPakaiBrg(pakaiBrgId);
+
             _bhpRepo.SaveChanges(bhp);
             _igdVisitRepo.SaveChanges(visit);
             trans.Complete();
             response = new IgdBhpAddResponse(bhp.BhpIgdId, visit.IgdVisitId, bhp.Subtotal);
         }
 
-        if (visit.HasReg)
+        if (visit.HasReg && reg is not null)
         {
-            var reg = _regRepo.LoadEntity(visit.Reg).GetValueOrThrow($"Reg '{visit.Reg.RegId}' not found");
             try
             {
                 var posted = await _billingOrchestrator.PostBhpAsync(visit, reg, bhp, cancellationToken);
@@ -87,5 +114,14 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
         }
 
         return response;
+    }
+
+    private string ResolveEffectiveLayananId(string? requestLayananId, RegModel? reg)
+    {
+        if (!string.IsNullOrWhiteSpace(requestLayananId))
+            return requestLayananId.Trim();
+        if (reg is not null && !string.IsNullOrWhiteSpace(reg.Layanan.LayananId))
+            return reg.Layanan.LayananId.Trim();
+        return (_igdVisitOptions.SmassLayananId ?? string.Empty).Trim();
     }
 }

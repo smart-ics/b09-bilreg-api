@@ -168,4 +168,57 @@ public class TindakanIgdModelTest
         var act = () => tdk.MarkAsVoided(TestAudit(), invalidReason!);
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Create_WithStockTrackingAndMultiPpaAndBom_SetsAllNewFields()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var listPpa = new[]
+        {
+            new TindakanIgdPpaType("K01", "DK1", "Dr. Tes"),
+            new TindakanIgdPpaType("K02", "PR1", "Ns. Budi")
+        };
+        var listBarang = new[]
+        {
+            new TindakanIgdBarangType(1, "BRG01", "PCS", 2m, "PCS", 2m, 2m, 0m, true, "PK001", "", false)
+        };
+
+        var tdk = TindakanIgdModel.Create(
+            visit,
+            reffId: "TDK001",
+            desciption: "Jahit Luka",
+            qty: 1,
+            aktifitas: ActivityTindakanIgd.Tindakan,
+            ppa: TestDokter(),
+            userId: "U1",
+            layananId: "IGD01",
+            pakaiBrgId: "PK001",
+            listPpa: listPpa,
+            listBarang: listBarang);
+
+        tdk.LayananId.Should().Be("IGD01");
+        tdk.PakaiBrgId.Should().Be("PK001");
+        tdk.ListPpa.Should().BeEquivalentTo(listPpa);
+        tdk.ListBarang.Should().BeEquivalentTo(listBarang);
+    }
+
+    [Fact]
+    public void HistoricalConstructor_WithoutNewFields_DefaultsToEmptyAndMaintainsCompatibility()
+    {
+        var tdk = new TindakanIgdModel(
+            tindakanIgdId: "TKI001",
+            igdVisitId: "IGV001",
+            regId: "REG001",
+            reffId: "TDK001",
+            descriptions: "Tindakan Lama",
+            qty: 1,
+            aktifitas: ActivityTindakanIgd.Tindakan,
+            ppa: TestDokter().ToReff(),
+            audit: TestAudit());
+
+        tdk.LayananId.Should().BeEmpty();
+        tdk.PakaiBrgId.Should().BeEmpty();
+        tdk.ListPpa.Should().BeEmpty();
+        tdk.ListBarang.Should().BeEmpty();
+    }
 }

@@ -16,7 +16,9 @@ public record BhpIgdDto(
     bool IsPosted,
     DateTime? PostedDate,
     string CrtUser,
-    DateTime CrtDate)
+    DateTime CrtDate,
+    string LayananId = "",
+    string PakaiBrgId = "")
 {
     public BhpIgdDto() : this("", "", "", "", "", 0, 0, null, false, null, "", default) { }
 
@@ -33,7 +35,9 @@ public record BhpIgdDto(
             IsPosted: model.IsPosted,
             PostedDate: model.PostedDate,
             CrtUser: model.Audit.UserId,
-            CrtDate: model.Audit.Timestamp);
+            CrtDate: model.Audit.Timestamp,
+            LayananId: model.LayananId,
+            PakaiBrgId: model.PakaiBrgId);
 
     public BhpIgdModel ToModel()
         => new(
@@ -47,7 +51,9 @@ public record BhpIgdDto(
             audit: new AuditInfoType(CrtUser, CrtDate),
             trsBillId: TrsBillId ?? string.Empty,
             isPosted: IsPosted,
-            postedDate: PostedDate);
+            postedDate: PostedDate,
+            layananId: LayananId ?? string.Empty,
+            pakaiBrgId: PakaiBrgId ?? string.Empty);
 
     public BhpIgdView ToView()
         => new(
@@ -62,5 +68,7 @@ public record BhpIgdDto(
             CreatedDateTime: CrtDate,
             TrsBillId: TrsBillId ?? string.Empty,
             IsPosted: IsPosted,
-            PostedDate: PostedDate);
+            PostedDate: PostedDate,
+            LayananId: LayananId ?? string.Empty,
+            PakaiBrgId: PakaiBrgId ?? string.Empty);
 }

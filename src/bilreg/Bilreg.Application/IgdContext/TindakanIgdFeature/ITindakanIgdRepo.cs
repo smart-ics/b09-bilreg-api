@@ -12,6 +12,7 @@ public interface ITindakanIgdRepo :
     IListData<TindakanIgdView, IIgdVisitKey>
 {
     bool AnyForVisit(IIgdVisitKey visit);
+    void MarkBarangVoid(ITindakanIgdKey key) { }
 }
 
 public record TindakanIgdView(
@@ -28,4 +29,6 @@ public record TindakanIgdView(
     string TrsTdkId = "",
     string TrsBillId = "",
     bool IsPosted = false,
-    DateTime? PostedDate = null);
+    DateTime? PostedDate = null,
+    string LayananId = "",
+    string PakaiBrgId = "");

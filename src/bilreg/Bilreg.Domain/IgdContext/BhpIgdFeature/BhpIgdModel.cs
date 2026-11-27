@@ -21,7 +21,9 @@ public class BhpIgdModel : IBhpIgdKey
         AuditInfoType audit,
         string trsBillId = "",
         bool isPosted = false,
-        DateTime? postedDate = null)
+        DateTime? postedDate = null,
+        string layananId = "",
+        string pakaiBrgId = "")
     {
         BhpIgdId = bhpIgdId;
         IgdVisitId = igdVisitId;
@@ -34,6 +36,8 @@ public class BhpIgdModel : IBhpIgdKey
         TrsBillId = trsBillId ?? string.Empty;
         IsPosted = isPosted;
         PostedDate = postedDate;
+        LayananId = layananId ?? string.Empty;
+        PakaiBrgId = pakaiBrgId ?? string.Empty;
     }
 
     public static BhpIgdModel Default => new(
@@ -59,7 +63,9 @@ public class BhpIgdModel : IBhpIgdKey
     public static BhpIgdModel Create(
         IgdVisitModel visit,
         string bhpItemId, string bhpItemName, int qty, decimal price,
-        AuditInfoType audit)
+        AuditInfoType audit,
+        string layananId = "",
+        string pakaiBrgId = "")
     {
         Guard.Against.Null(visit);
         Guard.Against.NullOrWhiteSpace(bhpItemId, nameof(bhpItemId));
@@ -81,7 +87,9 @@ public class BhpIgdModel : IBhpIgdKey
             bhpItemName: string.IsNullOrWhiteSpace(bhpItemName) ? "-" : bhpItemName,
             qty: qty,
             price: price,
-            audit: audit);
+            audit: audit,
+            layananId: layananId,
+            pakaiBrgId: pakaiBrgId);
     }
     #endregion
 
@@ -97,6 +105,8 @@ public class BhpIgdModel : IBhpIgdKey
     public string TrsBillId { get; private set; }
     public bool IsPosted { get; private set; }
     public DateTime? PostedDate { get; private set; }
+    public string LayananId { get; init; }
+    public string PakaiBrgId { get; private set; }
     public decimal Subtotal => Qty * Price;
     #endregion
 
@@ -105,6 +115,11 @@ public class BhpIgdModel : IBhpIgdKey
     {
         Guard.Against.NullOrWhiteSpace(regId, nameof(regId));
         RegId = regId;
+    }
+
+    public void SetPakaiBrg(string pakaiBrgId)
+    {
+        PakaiBrgId = pakaiBrgId ?? string.Empty;
     }
 
     public void MarkAsPosted(string trsBillId, DateTime postedAt)
