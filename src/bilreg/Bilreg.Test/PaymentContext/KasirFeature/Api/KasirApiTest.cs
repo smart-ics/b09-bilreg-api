@@ -304,7 +304,8 @@ public class KasirApiTest
             trsId, "2026-11-07", "10:00:00", "2026-11-07 10:00:00", "TERIMA",
             "SH01", "KAS01", "REG01", "PAS01", "Pasien A", "ORD01", "Ket", 100000m,
             "BERHASIL", false, "3000-01-01", "00:00:00", "", "",
-            new List<PaymentItemResponse>());
+            new List<PaymentItemResponse>(),
+            new List<TrsKasirItemDto>());
 
         _mediatorMock
             .Setup(x => x.Send(It.Is<GetTransaksiKasirDetailQuery>(q => q.TrsKasirId == trsId), It.IsAny<CancellationToken>()))
@@ -628,5 +629,47 @@ public class KasirApiTest
         jsend.code.Should().Be(StatusCodes.Status400BadRequest.ToString());
         jsend.status.Should().Be("Bad Request");
         _mediatorMock.Verify(x => x.Send(It.IsAny<GetBillingUnpaidByRegQuery>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetTransaksiByShift_GivenValidShiftId_SendsGetTransaksiKasirByShiftQueryAndReturnsOk()
+    {
+        // ARRANGE
+        const string shiftId = "SH01";
+        var expectedItems = new List<TransaksiKasirSummaryDto>
+        {
+            new("DX01", "2026-11-25", "10:00:00", "2026-11-25 10:00:00", "TERIMA", "REG01", "PAS01", "Pasien A", "ORD01", "Pembayaran", 100000m, "BERHASIL", false)
+        };
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<GetTransaksiKasirByShiftQuery>(q => q.ShiftId == shiftId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedItems);
+
+        // ACT
+        var result = await _sut.GetTransaksiByShift(shiftId);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.status.Should().Be("success");
+        jsend.data.Should().Be(expectedItems);
+        _mediatorMock.Verify(x => x.Send(It.Is<GetTransaksiKasirByShiftQuery>(q => q.ShiftId == shiftId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task GetTransaksiByShift_GivenEmptyOrWhitespaceShiftId_ReturnsBadRequest(string? invalidShiftId)
+    {
+        // ACT
+        var result = await _sut.GetTransaksiByShift(invalidShiftId!);
+
+        // ASSERT
+        var badResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        badResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        var jsend = badResult.Value.Should().BeOfType<JSend>().Subject;
+        jsend.code.Should().Be(StatusCodes.Status400BadRequest.ToString());
+        jsend.status.Should().Be("Bad Request");
+        _mediatorMock.Verify(x => x.Send(It.IsAny<GetTransaksiKasirByShiftQuery>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

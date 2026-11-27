@@ -35,24 +35,16 @@ public class TindakanBomProcessorTest
     private readonly Mock<ITarifRepo> _tarifRepoMock = new();
     private readonly Mock<ITarifBarangRepo> _tarifBarangRepoMock = new();
     private readonly Mock<IBrgRepo> _brgRepoMock = new();
-    private readonly Mock<IStockBatchRepo> _stockBatchRepoMock = new();
     private readonly Mock<IPakaiBrgInternalService> _pakaiBrgInternalServiceMock = new();
     private readonly Mock<ITindakanBarangRepo> _tindakanBarangRepoMock = new();
     private readonly Mock<ITindakanStokPendingRepo> _tindakanStokPendingRepoMock = new();
     private readonly Mock<IBrgPricingService> _brgPricingServiceMock = new();
-    private readonly Mock<IMediator> _mediatorMock = new();
     private readonly Mock<ILegacyStockReadPort> _legacyStockReadPortMock = new();
 
     private readonly TindakanBomProcessor _sut;
 
     public TindakanBomProcessorTest()
     {
-        // Default freshness gate success
-        _mediatorMock
-            .Setup(x => x.Send(It.IsAny<EnsureFreshnessForScopesCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EnsureFreshnessForScopesResult(
-                EnsureFreshnessOutcomeEnum.Success, string.Empty, string.Empty, string.Empty));
-
         // Default pakai internal service success
         _pakaiBrgInternalServiceMock
             .Setup(x => x.CreateFromTindakan(It.IsAny<PakaiBrgCreateFromTindakanCommand>(), It.IsAny<CancellationToken>()))
@@ -63,12 +55,10 @@ public class TindakanBomProcessorTest
             _tarifRepoMock.Object,
             _tarifBarangRepoMock.Object,
             _brgRepoMock.Object,
-            _stockBatchRepoMock.Object,
             _pakaiBrgInternalServiceMock.Object,
             _tindakanBarangRepoMock.Object,
             _tindakanStokPendingRepoMock.Object,
             _brgPricingServiceMock.Object,
-            _mediatorMock.Object,
             _legacyStockReadPortMock.Object);
     }
 
@@ -141,21 +131,22 @@ public class TindakanBomProcessorTest
         return brgMock;
     }
 
-    private static LocationStockBalanceModel CreateStockLokasi(
+    private static LegacyStockBalanceReadModel CreateStockLokasi(
         string brgId,
         string layananId,
         decimal qtySisa,
         string reffId = "DO01")
     {
-        return LocationStockBalanceModel.Create(
-            stokBatchId: "BATCH01",
-            brgId: brgId,
-            brgMasukReffId: reffId,
-            layananId: layananId,
-            tglEd: new DateTime(2027, 1, 1),
-            tglMasuk: new DateTime(2026, 1, 1),
-            qtySisa: qtySisa,
-            noBatch: "B123");
+        return new LegacyStockBalanceReadModel(
+            LegacyStokId: "STK01",
+            BrgId: brgId,
+            BrgMasukReffId: reffId,
+            LayananId: layananId,
+            TglEd: new DateTime(2027, 1, 1),
+            NoBatch: "B123",
+            QtySisa: qtySisa,
+            Hpp: 5000m,
+            TglMasuk: new DateTime(2026, 1, 1));
     }
 
     [Fact]
@@ -237,8 +228,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit 3cc", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]);
 
         var result = await _sut.Process(tindakan, reg, "USER1");
@@ -269,8 +260,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Kassa Steril", "PCS", ("BOX", 10));
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 50m)]);
 
         var result = await _sut.Process(tindakan, reg, "USER1");
@@ -331,7 +322,7 @@ public class TindakanBomProcessorTest
     }
 
     [Fact]
-    public async Task Process_WhenFreshnessGateAbortedInconsistent_ThrowsInvalidOperationException()
+    public async Task Process_WhenLegacyStockReadThrows_RoutesToPendingWithoutThrowing()
     {
         var tindakan = CreateSampleTindakan();
         var reg = CreateSampleReg();
@@ -342,24 +333,25 @@ public class TindakanBomProcessorTest
 
         _tarifBarangRepoMock
             .Setup(x => x.ListData(It.IsAny<ITarifKey>()))
-            .Returns([new TarifBarangType("TRF01", 1, "BRG01", "Spuit", "PCS", "Pcs", 1m)]);
+            .Returns([new TarifBarangType("TRF01", 1, "BRG01", "Spuit", "PCS", "Pcs", 2m)]);
 
         var brgMock = CreateMockBrg("BRG01", "Spuit", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
-            .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]);
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
+            .Throws(new InvalidOperationException("Legacy tb_stok anomaly"));
 
-        _mediatorMock
-            .Setup(x => x.Send(It.IsAny<EnsureFreshnessForScopesCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new EnsureFreshnessForScopesResult(
-                EnsureFreshnessOutcomeEnum.AbortedInconsistent, "Scope corrupted", "BRG01", "DO01"));
+        var result = await _sut.Process(tindakan, reg, "USER1");
 
-        var act = () => _sut.Process(tindakan, reg, "USER1");
+        result.PakaiBrgId.Should().BeEmpty();
+        result.Items.Should().HaveCount(1);
+        result.Items[0].QtyImmediateCut.Should().Be(0m);
+        result.Items[0].QtyPending.Should().Be(2m);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Freshness gate gagal untuk barang 'BRG01': Scope corrupted*");
+        _tindakanStokPendingRepoMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<TindakanStokPendingType>>(l => l.Single().QtyPending == 2m), "USER1"),
+            Times.Once);
     }
 
     [Fact]
@@ -379,8 +371,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit 3cc", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 5m)]);
 
         _pakaiBrgInternalServiceMock
@@ -431,8 +423,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit 3cc", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 2m)]); // Only 2 available
 
         _pakaiBrgInternalServiceMock
@@ -482,8 +474,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit 3cc", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([]); // Saldo 0
 
         var result = await _sut.Process(tindakan, reg, "USER1");
@@ -527,8 +519,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Salep", "TUBE");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]); // 10 available, but floor(0.5) == 0
 
         var result = await _sut.Process(tindakan, reg, "USER1");
@@ -571,8 +563,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Salep", "TUBE");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]);
 
         _pakaiBrgInternalServiceMock
@@ -613,8 +605,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 5m)]);
 
         var result = await _sut.Process(tindakan, reg, "USER1");
@@ -649,8 +641,8 @@ public class TindakanBomProcessorTest
         var brgMock = CreateMockBrg("BRG01", "Spuit", "PCS");
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG01"))).Returns(MayBe.From(brgMock.Object));
 
-        _stockBatchRepoMock
-            .Setup(x => x.ListAllocationCandidates("BRG01", "LYN01"))
+        _legacyStockReadPortMock
+            .Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01"))
             .Returns([CreateStockLokasi("BRG01", "LYN01", 10m)]);
 
         // 2 per tindakan * qty 2 = 4 requested
@@ -704,11 +696,11 @@ public class TindakanBomProcessorTest
         _brgRepoMock.Setup(x => x.LoadEntity(It.Is<IBrgKey>(k => k.BrgId == "BRG03"))).Returns(MayBe.From(brg3.Object));
 
         // BRG01: req 2, avail 5 -> cut 2, pending 0
-        _stockBatchRepoMock.Setup(x => x.ListAllocationCandidates("BRG01", "LYN01")).Returns([CreateStockLokasi("BRG01", "LYN01", 5m)]);
+        _legacyStockReadPortMock.Setup(x => x.ListBalancesAtLocation("BRG01", "LYN01")).Returns([CreateStockLokasi("BRG01", "LYN01", 5m)]);
         // BRG02: req 5 (1 * 5), avail 3 -> cut 3, pending 2
-        _stockBatchRepoMock.Setup(x => x.ListAllocationCandidates("BRG02", "LYN01")).Returns([CreateStockLokasi("BRG02", "LYN01", 3m)]);
+        _legacyStockReadPortMock.Setup(x => x.ListBalancesAtLocation("BRG02", "LYN01")).Returns([CreateStockLokasi("BRG02", "LYN01", 3m)]);
         // BRG03: req 1, avail 0 -> cut 0, pending 1
-        _stockBatchRepoMock.Setup(x => x.ListAllocationCandidates("BRG03", "LYN01")).Returns([]);
+        _legacyStockReadPortMock.Setup(x => x.ListBalancesAtLocation("BRG03", "LYN01")).Returns([]);
 
         _pakaiBrgInternalServiceMock
             .Setup(x => x.CreateFromTindakan(It.IsAny<PakaiBrgCreateFromTindakanCommand>(), It.IsAny<CancellationToken>()))

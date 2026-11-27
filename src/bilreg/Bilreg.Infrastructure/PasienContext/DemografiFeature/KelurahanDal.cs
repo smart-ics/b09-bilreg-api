@@ -129,29 +129,45 @@ public class KelurahanDal : IKelurahanDal
     }
     public IEnumerable<KelurahanDto> ListData(string filter)
     {
-        var clearFilter = EscapeForContains(filter);
-        var containerKel = $"CONTAINS(fs_nm_kelurahan, '{clearFilter}')";
-        var containerKec = $"CONTAINS(fs_nm_kecamatan, '{clearFilter}')";
+        if (string.IsNullOrWhiteSpace(filter))
+            return [];
+
+        var clearFilter = EscapeForContains(filter.Trim());
         
-        var sql = $"""
-            SELECT 
+        const string sql = """
+            SELECT
                 aa.fs_kd_kelurahan, aa.fs_nm_kelurahan, aa.fs_kd_kecamatan,
-                ISNULL(bb.fs_nm_kecamatan, '-') fs_nm_kecamatan,
-                ISNULL(bb.fs_kd_kabupaten, '-') fs_kd_kabupaten,
-                ISNULL(cc.fs_nm_kabupaten, '-') fs_nm_kabupaten,
-                ISNULL(cc.fs_kd_propinsi, '-') fs_kd_propinsi,
-                ISNULL(dd.fs_nm_propinsi, '-') fs_nm_propinsi
-            FROM 
-                ta_kelurahan aa
-                LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
-            WHERE 
-                {containerKel}
-                OR {containerKec}
+                ISNULL(bb.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
+                ISNULL(bb.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
+                ISNULL(cc.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+                ISNULL(cc.fs_kd_propinsi, '-')  AS fs_kd_propinsi,
+                ISNULL(dd.fs_nm_propinsi, '-')   AS fs_nm_propinsi
+            FROM ta_kelurahan aa
+            LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+            LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+            LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE CONTAINS(aa.fs_nm_kelurahan, @clearFilter)
+
+            UNION
+
+            SELECT
+                aa.fs_kd_kelurahan, aa.fs_nm_kelurahan, aa.fs_kd_kecamatan,
+                bb.fs_nm_kecamatan,
+                bb.fs_kd_kabupaten,
+                ISNULL(cc.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+                ISNULL(cc.fs_kd_propinsi, '-')  AS fs_kd_propinsi,
+                ISNULL(dd.fs_nm_propinsi, '-')   AS fs_nm_propinsi
+            FROM ta_kecamatan bb
+            JOIN ta_kelurahan aa ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+            LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+            LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE CONTAINS(bb.fs_nm_kecamatan, @clearFilter)
             """;
 
+        var dp = new DynamicParameters();
+        dp.AddParam("@clearFilter", clearFilter, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<KelurahanDto>(sql) ?? [];
+        return conn.Read<KelurahanDto>(sql, dp) ?? [];
     }
 }

@@ -49,6 +49,14 @@ public sealed record AdmisiRajalPatientContextGetQuery(
     string BusinessDate)
     : IRequest<AdmisiRajalPatientContextResult>;
 
+public sealed record AdmisiRajalPatientContextBookingSummary(
+    string BookingId,
+    string VisitDate,
+    string VisitTime,
+    string ServiceName,
+    string DoctorName,
+    int NoAntrian);
+
 public sealed record AdmisiRajalPatientContextResult(
     PatientContextKind Kind,
     string Id,
@@ -69,7 +77,8 @@ public sealed record AdmisiRajalPatientContextResult(
     string MatchType,
     bool IsExactMatch,
     int Rank,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<AdmisiRajalPatientContextBookingSummary>? ActiveBookings = null);
 
 public sealed record AdmisiRajalPatientContextGroup(
     IReadOnlyList<AdmisiRajalPatientContextResult> Items,
@@ -188,7 +197,7 @@ public sealed class AdmisiRajalPatientContextHandler :
         {
             PatientContextKind.Booking => GetBooking(id, businessDate),
             PatientContextKind.Registration => GetRegistration(id, businessDate),
-            PatientContextKind.Patient => GetPatient(id),
+            PatientContextKind.Patient => GetPatient(id, businessDate),
             _ => null
         };
         return Task.FromResult(result
@@ -225,7 +234,6 @@ public sealed class AdmisiRajalPatientContextHandler :
             string keyword,
             DateOnly businessDate)
     {
-        var bookingViews = SearchBookingViews(keyword, businessDate);
         var directPatients = SearchPatients(request, keyword);
         var directPatientIds = directPatients
             .Select(x => Real(x.PatientId))
@@ -233,6 +241,8 @@ public sealed class AdmisiRajalPatientContextHandler :
             .Cast<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var directPatientIdSet = directPatientIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var bookingViews = SearchBookingViews(keyword, businessDate, directPatientIdSet);
         var bookingRegistrationIds = bookingViews
             .Select(x => Real(x.Reg.RegId))
             .Where(x => x is not null)
@@ -296,7 +306,8 @@ public sealed class AdmisiRajalPatientContextHandler :
                 string.Equals(
                     x.BookingId,
                     request.SuggestedBookingId,
-                    StringComparison.OrdinalIgnoreCase)))
+                    StringComparison.OrdinalIgnoreCase),
+                directPatientIdSet))
             .OrderBy(x => x.Rank)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -309,12 +320,16 @@ public sealed class AdmisiRajalPatientContextHandler :
         return (bookings, registrations, patients);
     }
 
-    private List<BookingView> SearchBookingViews(string keyword, DateOnly businessDate)
+    private List<BookingView> SearchBookingViews(
+        string keyword,
+        DateOnly businessDate,
+        IReadOnlySet<string> directPatientIdSet)
     {
         var period = new Periode(businessDate.ToDateTime(TimeOnly.MinValue));
         return _bookingRepo.ListDataTglBerobat(period)
             .Where(x => IsInternalPatientId(x.Reg.PasienId))
-            .Where(x => BookingMatches(x, keyword))
+            .Where(x => BookingMatches(x, keyword)
+                || (Real(x.Reg.PasienId) is { } pid && directPatientIdSet.Contains(pid)))
             .DistinctBy(x => x.BookingId, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -407,17 +422,37 @@ public sealed class AdmisiRajalPatientContextHandler :
             : ToRegistrationResult(registration, id, false, false);
     }
 
-    private AdmisiRajalPatientContextResult? GetPatient(string id)
+    private AdmisiRajalPatientContextResult? GetPatient(string id, DateOnly businessDate)
     {
         if (!IsInternalPatientId(id)) return null;
         var maybe = _pasienRepo.LoadEntity(PasienModel.Key(id));
         if (!maybe.HasValue || !IsInternalPatientId(maybe.Value.PasienId)) return null;
         var pasien = maybe.Value;
+        var normalizedPatientId = NormalizeKeyword(pasien.PasienId);
+        var period = new Periode(businessDate.ToDateTime(TimeOnly.MinValue));
+        var activeBookings = (_bookingRepo.ListDataTglBerobat(period) ?? [])
+            .Where(x => EqualsNormalized(x.Reg.PasienId, normalizedPatientId))
+            .Where(x => Real(x.Reg.RegId) is null)
+            .OrderBy(x => x.JamPraktek)
+            .ThenBy(x => x.BookingId, StringComparer.OrdinalIgnoreCase)
+            .Select(x => new AdmisiRajalPatientContextBookingSummary(
+                x.BookingId,
+                x.TglBerobat.ToString("yyyy-MM-dd"),
+                x.JamPraktek.ToString("HH:mm"),
+                x.Layanan.LayananName,
+                x.Dokter.PpaName,
+                x.NoAntrian))
+            .ToList();
+        var warnings = activeBookings.Count > 0
+            ? new[] { $"Patient has {activeBookings.Count} active booking(s) on {businessDate:yyyy-MM-dd}." }
+            : Array.Empty<string>();
         return ToPatientResult(
             new PasienPersonView(pasien.PasienId, pasien.IsAktif, pasien.Person),
             id,
             false,
-            pasien.Ktp.Nik);
+            pasien.Ktp.Nik,
+            activeBookings: activeBookings,
+            warnings: warnings);
     }
 
     private static bool BookingMatches(BookingView booking, string keyword) =>
@@ -431,10 +466,16 @@ public sealed class AdmisiRajalPatientContextHandler :
         BookingView booking,
         DateOnly businessDate,
         string keyword,
-        bool suggested)
+        bool suggested,
+        IReadOnlySet<string>? directPatientIdSet = null)
     {
+        var matchedByResolvedPatientId = Real(booking.Reg.PasienId) is { } pid
+            && directPatientIdSet is not null
+            && directPatientIdSet.Contains(pid)
+            && IsExactIdentifier(keyword);
         var exact = EqualsNormalized(booking.BookingId, keyword)
-            || EqualsNormalized(booking.Reg.PasienId, keyword);
+            || EqualsNormalized(booking.Reg.PasienId, keyword)
+            || matchedByResolvedPatientId;
         var hasRegistration = Real(booking.Reg.RegId) is not null;
         var today = booking.TglBerobat == businessDate;
         var rank = Rank(exact, suggested, hasRegistration, today, booking.Person.PersonName, keyword, false);
@@ -503,7 +544,9 @@ public sealed class AdmisiRajalPatientContextHandler :
         string keyword,
         bool suggested,
         string? nik = null,
-        bool matchedByPhone = false)
+        bool matchedByPhone = false,
+        IReadOnlyList<AdmisiRajalPatientContextBookingSummary>? activeBookings = null,
+        IReadOnlyList<string>? warnings = null)
     {
         var exactIdentifier = EqualsNormalized(patient.PasienId, keyword)
             || EqualsNormalized(nik, keyword);
@@ -528,7 +571,8 @@ public sealed class AdmisiRajalPatientContextHandler :
             exactIdentifier ? "ExactIdentifier" : matchedByPhone ? "ExactPhone" : "PatientName",
             exact,
             Rank(exact, suggested, false, false, patient.Person.PersonName, keyword, !patient.IsActive),
-            []);
+            warnings ?? [],
+            activeBookings);
     }
 
     private static int Rank(

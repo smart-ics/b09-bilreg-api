@@ -138,4 +138,39 @@ public class BhpIgdModelTest
         var act = () => bhp.MarkAsPosted(trsBillId!, DateTime.Now);
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Create_WithLayananIdAndPakaiBrgId_SetsStockTrackingFields()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        var bhp = BhpIgdModel.Create(
+            visit,
+            bhpItemId: "BHP001",
+            bhpItemName: "Kassa Steril",
+            qty: 2,
+            price: 5000m,
+            audit: TestAudit(),
+            layananId: "IGD01",
+            pakaiBrgId: "PK001");
+
+        bhp.LayananId.Should().Be("IGD01");
+        bhp.PakaiBrgId.Should().Be("PK001");
+    }
+
+    [Fact]
+    public void HistoricalConstructor_WithoutNewFields_DefaultsToEmpty()
+    {
+        var bhp = new BhpIgdModel(
+            bhpIgdId: "BHI001",
+            igdVisitId: "IGV001",
+            regId: "-",
+            bhpItemId: "BHP001",
+            bhpItemName: "Kassa",
+            qty: 1,
+            price: 5000m,
+            audit: TestAudit());
+
+        bhp.LayananId.Should().BeEmpty();
+        bhp.PakaiBrgId.Should().BeEmpty();
+    }
 }

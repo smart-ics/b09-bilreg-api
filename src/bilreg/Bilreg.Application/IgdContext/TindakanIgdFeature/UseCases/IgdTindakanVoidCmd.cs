@@ -25,6 +25,25 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IBillingLockValidationService _billingLockValidator;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IIgdStockService _igdStockService;
+
+    public IgdTindakanVoidHandler(
+        ITindakanIgdRepo tindakanIgdRepo,
+        IAuditRepo auditRepo,
+        IIgdVisitRepo igdVisitRepo,
+        ITglJamProvider tglJamProvider,
+        IBillingLockValidationService billingLockValidator,
+        ITrsBillingRepo trsBillingRepo,
+        IIgdStockService igdStockService)
+    {
+        _tindakanIgdRepo = tindakanIgdRepo;
+        _auditRepo = auditRepo;
+        _igdVisitRepo = igdVisitRepo;
+        _tglJamProvider = tglJamProvider;
+        _billingLockValidator = billingLockValidator;
+        _trsBillingRepo = trsBillingRepo;
+        _igdStockService = igdStockService;
+    }
 
     public IgdTindakanVoidHandler(
         ITindakanIgdRepo tindakanIgdRepo,
@@ -33,13 +52,8 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
         ITglJamProvider tglJamProvider,
         IBillingLockValidationService billingLockValidator,
         ITrsBillingRepo trsBillingRepo)
+        : this(tindakanIgdRepo, auditRepo, igdVisitRepo, tglJamProvider, billingLockValidator, trsBillingRepo, new NullIgdStockService())
     {
-        _tindakanIgdRepo = tindakanIgdRepo;
-        _auditRepo = auditRepo;
-        _igdVisitRepo = igdVisitRepo;
-        _tglJamProvider = tglJamProvider;
-        _billingLockValidator = billingLockValidator;
-        _trsBillingRepo = trsBillingRepo;
     }
 
     public IgdTindakanVoidHandler(
@@ -47,8 +61,18 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
         IAuditRepo auditRepo,
         IIgdVisitRepo igdVisitRepo,
         ITglJamProvider tglJamProvider)
-        : this(tindakanIgdRepo, auditRepo, igdVisitRepo, tglJamProvider, new NullBillingLockValidationService(), new NullTrsBillingRepo())
+        : this(tindakanIgdRepo, auditRepo, igdVisitRepo, tglJamProvider, new NullBillingLockValidationService(), new NullTrsBillingRepo(), new NullIgdStockService())
     {
+    }
+
+    private class NullIgdStockService : IIgdStockService
+    {
+        public Task<string> DeductBhpAsync(string layananId, string brgId, decimal qty, string userId, string keterangan, CancellationToken cancellationToken = default)
+            => Task.FromResult(string.Empty);
+        public Task<IgdBomProcessResult> ProcessTindakanBomAsync(string tindakanIgdId, string tarifId, int tindakanQty, string layananId, string regId, string userId, CancellationToken cancellationToken = default)
+            => Task.FromResult(new IgdBomProcessResult(string.Empty, false, []));
+        public Task VoidTindakanStockAsync(string tindakanIgdId, string headerPakaiBrgId, IEnumerable<string>? itemPakaiBrgIds, string userId, string voidReason, DateTime voidDate, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     private class NullTrsBillingRepo : ITrsBillingRepo
@@ -86,19 +110,43 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
         // WRITE
         using (var trans = TransHelper.NewScope())
         {
+            var itemPakaiBrgIds = tdk.ListBarang
+                .Where(x => !string.IsNullOrWhiteSpace(x.PakaiBrgId))
+                .Select(x => x.PakaiBrgId);
+
+            await _igdStockService.VoidTindakanStockAsync(
+                tdk.TindakanIgdId,
+                tdk.PakaiBrgId,
+                itemPakaiBrgIds,
+                request.UserId,
+                request.VoidReason,
+                auditVoid.Timestamp,
+                cancellationToken);
+
             if (tdk.IsPosted)
             {
+                var billIdsToDelete = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 if (!string.IsNullOrWhiteSpace(tdk.TrsBillId))
+                    billIdsToDelete.Add(tdk.TrsBillId);
+                if (!string.IsNullOrWhiteSpace(tdk.TrsTdkId))
+                    billIdsToDelete.Add(tdk.TrsTdkId);
+
+                foreach (var barang in tdk.ListBarang)
                 {
-                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TrsBillId));
+                    if (!string.IsNullOrWhiteSpace(barang.TrsBillingId))
+                        billIdsToDelete.Add(barang.TrsBillingId);
+                    if (barang.IsChargeBarang)
+                        billIdsToDelete.Add($"{tdk.TindakanIgdId}-B{barang.NoUrut:D2}");
                 }
-                if (!string.IsNullOrWhiteSpace(tdk.TrsTdkId) && !string.Equals(tdk.TrsTdkId, tdk.TrsBillId, StringComparison.OrdinalIgnoreCase))
+
+                foreach (var billId in billIdsToDelete)
                 {
-                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdk.TrsTdkId));
+                    _trsBillingRepo.DeleteEntity(TrsBillType.Key(billId));
                 }
             }
 
-            // void tdk
+            // mark barang void & void tdk
+            _tindakanIgdRepo.MarkBarangVoid(tdk);
             _tindakanIgdRepo.DeleteEntity(tdk);
             // auditLog
             var audit = CreateAudit(tdk, snapshotJson, request);

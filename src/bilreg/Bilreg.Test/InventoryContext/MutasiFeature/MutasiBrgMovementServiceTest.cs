@@ -20,6 +20,9 @@ public class MutasiBrgMovementServiceTest
 {
     private readonly MutasiBrgMovementService _sut = new();
 
+    private static string NextTestStokId()
+        => $"TS{Guid.NewGuid():N}"[..10].ToUpperInvariant();
+
     private static SqlConnection CreateConnection()
     {
         var connStr = ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value);
@@ -86,8 +89,8 @@ public class MutasiBrgMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trs1 = NunaId.NewLegacyCompact("ST");
-            var trs2 = NunaId.NewLegacyCompact("ST");
+            var trs1 = NextTestStokId();
+            var trs2 = NextTestStokId();
             InsertStok(conn, trans, trs1, brgId, layananAsal, "BATCH-A", "2025-02-01", 5m, 100m);
             InsertStok(conn, trans, trs2, brgId, layananAsal, "BATCH-B", "2025-06-01", 10m, 120m);
 
@@ -124,7 +127,7 @@ public class MutasiBrgMovementServiceTest
                 """
                 SELECT fs_no_batch AS batch, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis, fs_kd_mutasi AS kdMutasi
                 FROM tb_buku
-                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_OUT'
+                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MT_OUT'
                 ORDER BY fs_no_batch
                 """,
                 new { MutasiId = mutasiId }, trans).ToList();
@@ -166,7 +169,7 @@ public class MutasiBrgMovementServiceTest
                 """
                 SELECT fs_no_batch AS batch, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis, fs_kd_mutasi AS kdMutasi, fs_kd_layanan AS layanan
                 FROM tb_buku
-                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_IN'
+                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MT_IN'
                 ORDER BY fs_no_batch
                 """,
                 new { MutasiId = mutasiId }, trans).ToList();
@@ -202,11 +205,11 @@ public class MutasiBrgMovementServiceTest
             var layananTujuan = "TS02";
             var transitId = InventoryLocationIds.LogisticsTransitLayananId;
 
-            var trsSource = NunaId.NewLegacyCompact("ST");
+            var trsSource = NextTestStokId();
             InsertStok(conn, trans, trsSource, brgId, layananAsal, "BATCH-EX", "2025-08-01", 10m, 150m);
 
             // Pre-seed an existing stock row at TRANS with identical batch/ED/HPP/DO/PO
-            var trsTransit = NunaId.NewLegacyCompact("ST");
+            var trsTransit = NextTestStokId();
             InsertStok(conn, trans, trsTransit, brgId, transitId, "BATCH-EX", "2025-08-01", 2m, 150m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
@@ -244,12 +247,12 @@ public class MutasiBrgMovementServiceTest
 
             // Buku entries recorded for both legs
             var outBuku = conn.QuerySingle<decimal>(
-                "SELECT fn_stok_out FROM tb_buku WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_OUT'",
+                "SELECT fn_stok_out FROM tb_buku WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MT_OUT'",
                 new { MutasiId = mutasiId }, trans);
             outBuku.Should().Be(4m);
 
             var inBuku = conn.QuerySingle<decimal>(
-                "SELECT fn_stok_in FROM tb_buku WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_IN'",
+                "SELECT fn_stok_in FROM tb_buku WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MT_IN'",
                 new { MutasiId = mutasiId }, trans);
             inBuku.Should().Be(4m);
         }
@@ -270,8 +273,8 @@ public class MutasiBrgMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trs1 = NunaId.NewLegacyCompact("ST");
-            var trs2 = NunaId.NewLegacyCompact("ST");
+            var trs1 = NextTestStokId();
+            var trs2 = NextTestStokId();
             InsertStok(conn, trans, trs1, brgId, layananAsal, "BATCH-A", "2025-01-01", 10m);
             InsertStok(conn, trans, trs2, brgId, layananAsal, "BATCH-B", "2025-06-01", 10m);
 
@@ -319,7 +322,7 @@ public class MutasiBrgMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trs1 = NunaId.NewLegacyCompact("ST");
+            var trs1 = NextTestStokId();
             InsertStok(conn, trans, trs1, brgId, layananAsal, "BATCH-A", "2025-01-01", 5m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
@@ -361,7 +364,7 @@ public class MutasiBrgMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trs1 = NunaId.NewLegacyCompact("ST");
+            var trs1 = NextTestStokId();
             InsertStok(conn, trans, trs1, brgId, layananAsal, "BATCH-A", "2025-01-01", 10m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
@@ -413,7 +416,7 @@ public class MutasiBrgMovementServiceTest
                 """
                 SELECT fs_kd_layanan AS layanan, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis, fs_kd_mutasi AS kdMutasi
                 FROM tb_buku
-                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_REV'
+                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi IN ('MT_IN_V', 'MT_OUT_V')
                 ORDER BY fs_kd_layanan
                 """,
                 new { MutasiId = mutasiId }, trans).ToList();
@@ -423,13 +426,13 @@ public class MutasiBrgMovementServiceTest
             var transRev = revRows.Single(x => x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId);
             transRev.qtyIn.Should().Be(0m);
             transRev.qtyOut.Should().Be(4m);
-            transRev.jenis.Trim().Should().Be("MUTASI_REV");
+            transRev.jenis.Trim().Should().Be("MT_IN_V");
             transRev.kdMutasi.Trim().Should().Be(mutasiId);
 
             var sourceRev = revRows.Single(x => x.layanan.Trim() == layananAsal);
             sourceRev.qtyIn.Should().Be(4m);
             sourceRev.qtyOut.Should().Be(0m);
-            sourceRev.jenis.Trim().Should().Be("MUTASI_REV");
+            sourceRev.jenis.Trim().Should().Be("MT_OUT_V");
             sourceRev.kdMutasi.Trim().Should().Be(mutasiId);
         }
         finally
@@ -449,7 +452,7 @@ public class MutasiBrgMovementServiceTest
             var layananAsal = "TS01";
             var layananTujuan = "TS02";
 
-            var trs1 = NunaId.NewLegacyCompact("ST");
+            var trs1 = NextTestStokId();
             InsertStok(conn, trans, trs1, brgId, layananAsal, "BATCH-Z", "2025-01-01", 5m);
 
             var mutasiId = NunaId.NewLegacy("MT", 'A');
@@ -479,7 +482,7 @@ public class MutasiBrgMovementServiceTest
                 """
                 SELECT fs_kd_layanan AS layanan, fn_stok_in AS qtyIn, fn_stok_out AS qtyOut, fs_kd_jenis_mutasi AS jenis, fs_kd_mutasi AS kdMutasi
                 FROM tb_buku
-                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi = 'MUTASI_REV'
+                WHERE fs_kd_mutasi = @MutasiId AND fs_kd_jenis_mutasi IN ('MT_IN_V', 'MT_OUT_V')
                 ORDER BY fs_kd_layanan
                 """,
                 new { MutasiId = mutasiId }, trans).ToList();
@@ -489,13 +492,13 @@ public class MutasiBrgMovementServiceTest
             var transRev = revRows.Single(x => x.layanan.Trim() == InventoryLocationIds.LogisticsTransitLayananId);
             transRev.qtyIn.Should().Be(0m);
             transRev.qtyOut.Should().Be(3m);
-            transRev.jenis.Trim().Should().Be("MUTASI_REV");
+            transRev.jenis.Trim().Should().Be("MT_IN_V");
             transRev.kdMutasi.Trim().Should().Be(mutasiId);
 
             var sourceRev = revRows.Single(x => x.layanan.Trim() == layananAsal);
             sourceRev.qtyIn.Should().Be(3m);
             sourceRev.qtyOut.Should().Be(0m);
-            sourceRev.jenis.Trim().Should().Be("MUTASI_REV");
+            sourceRev.jenis.Trim().Should().Be("MT_OUT_V");
             sourceRev.kdMutasi.Trim().Should().Be(mutasiId);
         }
         finally

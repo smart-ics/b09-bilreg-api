@@ -1,6 +1,7 @@
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
@@ -40,6 +41,7 @@ using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.RegFeature;
@@ -78,6 +80,7 @@ public class RegJalanCreateHandlerTest
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IAdmissionServicePointResolver> _admissionServicePointResolver = new();
     private readonly Mock<IAdmisiEventPublisher> _publisher = new();
+    private readonly Mock<IBookingRepo> _bookingRepo = new();
     private readonly Mock<IClinicQueueRefreshPublisher> _clinicQueueRefreshPublisher = new();
 
     private readonly RegJalanCreateHandler _sut;
@@ -119,6 +122,7 @@ public class RegJalanCreateHandlerTest
             TestTglJamProvider.Instance,
             _admissionServicePointResolver.Object,
             _publisher.Object,
+            _bookingRepo.Object,
             clinicQueueRefreshPublisher: _clinicQueueRefreshPublisher.Object);
     }
 
@@ -195,7 +199,7 @@ public class RegJalanCreateHandlerTest
             _tarifRepo.Object, _trsBillingRepo.Object, _addBillAppService.Object, _mapJaminanJkRepo.Object,
             _jurnalRepo.Object, _remoteCetakRepo.Object, _getAppSettingSvc.Object, emrEnqueue,
             _queueNumberAdapter.Object, _featureResolver.Object, TestTglJamProvider.Instance,
-            _admissionServicePointResolver.Object, realPublisher);
+            _admissionServicePointResolver.Object, realPublisher, _bookingRepo.Object);
 
         // Act
         var result = await sutWithResilientPublisher.Handle(cmd, CancellationToken.None);
@@ -247,6 +251,55 @@ public class RegJalanCreateHandlerTest
         payload.PrefixAntrian.Should().Be("OB");
     }
 
+    [Fact]
+    public async Task Handle_WhenSessionAlreadyHasEntryNo1_ForwardsOccupiedNumbersToReserveForRegistration()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulWalkIn(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Dokter = new PpaReff("D01", "Dr"),
+            Layanan = new LayananReff("L01", "Poli"),
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0)
+        };
+        _jadwalPraktekRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        var dokter = PpaType.Default with { PpaId = cmd.DokterId };
+        var seqTag = AntrianModel.GenSequenceTag(tglBerobat, jadwal.JamMulai, dokter);
+        var existingEntry = AntrianEntryModel.Create(
+            1, new PersonType("HiDok Px", new DateOnly(1990, 1, 1)),
+            PasienTrackerModel.Default, "BK-HIDOK", "BOK", TestTglJamProvider.Instance.Now);
+        var antrianWithSlot1 = new AntrianModel(
+            "AN01", tglBerobat, new TimeOnly(8, 0), new TimeOnly(12, 0),
+            seqTag, "desc", new ServicePointType("SP1", "desc"), [existingEntry], null!);
+        _antrianRepo.Setup(x => x.ListData(tglBerobat)).Returns([
+            new AntrianHeaderView("AN01", "desc", tglBerobat, new TimeOnly(8, 0), seqTag)
+        ]);
+        _antrianRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(antrianWithSlot1));
+
+        var mapDetil2 = AntrianMapDetilModel.Default with { NoUrut = 2 };
+        var reserved2 = ReservedQueueNumber.FromMap(AntrianMapModel.Default, mapDetil2);
+        IReadOnlyCollection<int>? capturedOccupied = null;
+        _queueNumberAdapter
+            .Setup(x => x.ReserveForRegistration(
+                It.IsAny<JadwalPraktekType>(), tglBerobat, It.IsAny<RegModel>(), It.IsAny<IReadOnlyCollection<int>?>()))
+            .Callback<JadwalPraktekType, DateOnly, RegModel, IReadOnlyCollection<int>?>((_, _, _, occ) => capturedOccupied = occ)
+            .Returns(Result<ReservedQueueNumber>.Success(reserved2));
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        capturedOccupied.Should().NotBeNull();
+        capturedOccupied.Should().Contain(1);
+    }
+
     [Theory]
     [InlineData(" A ", "A")]
     [InlineData("POLIKLINIK", "PO")]
@@ -280,6 +333,100 @@ public class RegJalanCreateHandlerTest
         savedQueue.Should().NotBeNull();
         var payload = EmrAntrianOutboundPayloadBuilder.DeserializeReg(savedQueue!.PayloadJson);
         payload.PrefixAntrian.Should().Be(expectedPrefix);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPatientHasActiveBookingOnSameSession_ThrowsArgumentException()
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulWalkIn(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Dokter = new PpaReff(cmd.DokterId, "dr. Budi"),
+            Layanan = new LayananReff(cmd.LayananId, "Poli Umum"),
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0)
+        };
+        _jadwalPraktekRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        var activeBooking = new BookingView(
+            "BK-20261125-001",
+            TestTglJamProvider.Instance.Now,
+            new PersonInfoType("BUDI", new DateOnly(1990, 1, 1), "L", AlamatType.Default, ContactType.Default, IdentitasType.Default),
+            new RegReff("-", cmd.PasienId, "BUDI"),
+            tglBerobat,
+            new TimeOnly(8, 0),
+            new LayananReff(cmd.LayananId, "Poli Umum"),
+            new PpaReff(cmd.DokterId, "dr. Budi"),
+            3);
+        _bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>())).Returns([activeBooking]);
+
+        // Act
+        var act = async () => await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ArgumentException>();
+        ex.Which.Message.Should().Contain("BK-20261125-001");
+        ex.Which.Message.Should().Contain("Poli Umum");
+        ex.Which.Message.Should().Contain("dr. Budi");
+        ex.Which.Message.Should().Contain("08:00");
+        _queueNumberAdapter.Verify(
+            x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>(), It.IsAny<IReadOnlyCollection<int>?>()),
+            Times.Never);
+        _regRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("-", "DR01", "LAY01", 10, 0)] // different jam praktek
+    [InlineData("-", "DR01", "LAY02", 8, 0)]  // different poli/layanan
+    [InlineData("-", "DR02", "LAY01", 8, 0)]  // different dokter
+    [InlineData("RG99999999", "DR01", "LAY01", 8, 0)] // already registered booking
+    public async Task Handle_WhenExistingBookingDiffersInSessionOrAlreadyRegistered_AllowsWalkIn(
+        string bookingRegId,
+        string bookingDokterId,
+        string bookingLayananId,
+        int bookingHour,
+        int bookingMinute)
+    {
+        // Arrange
+        var cmd = CreateCommand();
+        SetupSuccessfulWalkIn(cmd, "RG00000001");
+
+        var tglBerobat = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var jadwal = JadwalPraktekType.Default with
+        {
+            JadwalPraktekId = "J01",
+            Dokter = new PpaReff(cmd.DokterId, "dr. Budi"),
+            Layanan = new LayananReff(cmd.LayananId, "Poli Umum"),
+            Hari = tglBerobat.DayOfWeek,
+            JamMulai = new TimeOnly(8, 0),
+            JamSelesai = new TimeOnly(12, 0)
+        };
+        _jadwalPraktekRepo.Setup(x => x.ListData(It.IsAny<IPpaKey>())).Returns([jadwal]);
+
+        var booking = new BookingView(
+            "BK-20261125-002",
+            TestTglJamProvider.Instance.Now,
+            new PersonInfoType("BUDI", new DateOnly(1990, 1, 1), "L", AlamatType.Default, ContactType.Default, IdentitasType.Default),
+            new RegReff(bookingRegId, cmd.PasienId, "BUDI"),
+            tglBerobat,
+            new TimeOnly(bookingHour, bookingMinute),
+            new LayananReff(bookingLayananId, "Poli Lain"),
+            new PpaReff(bookingDokterId, "dr. Lain"),
+            1);
+        _bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>())).Returns([booking]);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        result.RegId.Should().Be("RG00000001");
+        _regRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Once);
     }
 
     private static RegJalanWalkInCommand CreateCommand() =>
@@ -351,7 +498,7 @@ public class RegJalanCreateHandlerTest
         var map = AntrianMapModel.Default;
         var mapDetil = AntrianMapDetilModel.Default with { NoUrut = 1 };
         var reserved = ReservedQueueNumber.FromMap(map, mapDetil);
-        _queueNumberAdapter.Setup(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>()))
+        _queueNumberAdapter.Setup(x => x.ReserveForRegistration(It.IsAny<JadwalPraktekType>(), It.IsAny<DateOnly>(), It.IsAny<RegModel>(), It.IsAny<IReadOnlyCollection<int>?>()))
             .Returns(Result<ReservedQueueNumber>.Success(reserved));
 
         var tracker = PasienTrackerModel.Create(reg, TestTglJamProvider.Instance.Now);
@@ -369,5 +516,6 @@ public class RegJalanCreateHandlerTest
 
         _publisher.Setup(x => x.PublishRajalCreatedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>())).Returns([]);
     }
 }

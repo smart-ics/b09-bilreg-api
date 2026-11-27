@@ -646,4 +646,100 @@ public class MutasiBrgModelTest
     }
 
     #endregion
+
+    #region POST-DISPATCH TRANSITION TESTS
+
+    [Fact]
+    public void MutasiBrgStateEnum_ShouldHaveExpectedNumericValues()
+    {
+        ((int)MutasiBrgStateEnum.Draft).Should().Be(0);
+        ((int)MutasiBrgStateEnum.Dispatched).Should().Be(1);
+        ((int)MutasiBrgStateEnum.Cancelled).Should().Be(2);
+        ((int)MutasiBrgStateEnum.Received).Should().Be(3);
+        Enum.GetValues<MutasiBrgStateEnum>().Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void MarkReceived_WhenDispatched_ShouldTransitionToReceivedAndUpdateAuditTrail()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+        var receiveDate = new DateTime(2026, 11, 11, 9, 30, 0);
+
+        // Act
+        sut.MarkReceived(" USR_PENERIMA ", receiveDate);
+
+        // Assert
+        sut.State.Should().Be(MutasiBrgStateEnum.Received);
+        sut.AuditTrail.Modified.UserId.Should().Be("USR_PENERIMA");
+        sut.AuditTrail.Modified.Timestamp.Should().Be(receiveDate);
+    }
+
+    [Theory]
+    [InlineData(MutasiBrgStateEnum.Draft)]
+    [InlineData(MutasiBrgStateEnum.Cancelled)]
+    [InlineData(MutasiBrgStateEnum.Received)]
+    public void MarkReceived_WhenNotDispatched_ShouldThrowInvalidOperationException(MutasiBrgStateEnum nonDispatchedState)
+    {
+        // Arrange
+        var sut = MutasiBrgModel.Load(
+            "MT2600001A",
+            _baseDate,
+            nonDispatchedState,
+            _gudangUtama,
+            _depoRawatJalan,
+            "ORD001",
+            "Catatan",
+            "USR_LOGISTIK",
+            AuditTrailType.Create("USR01", _baseDate),
+            [CreateSampleItem()]);
+
+        // Act & Assert
+        var actReceived = () => sut.MarkReceived("USR_PENERIMA", _baseDate);
+        actReceived.Should().Throw<InvalidOperationException>().WithMessage("*Dispatched*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void MarkReceived_EmptyUserId_ShouldThrowArgumentException(string? invalidUserId)
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.AddItem(CreateSampleItem());
+        sut.Dispatch("USR_LOGISTIK", _baseDate);
+
+        // Act & Assert
+        var actReceived = () => sut.MarkReceived(invalidUserId!, _baseDate);
+        actReceived.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Cancel_WhenAlreadyReceived_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var sut = MutasiBrgModel.Load(
+            "MT2600001A",
+            _baseDate,
+            MutasiBrgStateEnum.Received,
+            _gudangUtama,
+            _depoRawatJalan,
+            "ORD001",
+            "Catatan",
+            "USR_LOGISTIK",
+            AuditTrailType.Create("USR01", _baseDate),
+            [CreateSampleItem()]);
+
+        // Act
+        var act = () => sut.Cancel("Salah kirim barang ke poli lain", "USR_SUPERVISOR");
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Pembatalan hanya diizinkan jika status Dispatched*");
+    }
+
+    #endregion
 }

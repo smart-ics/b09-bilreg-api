@@ -1,3 +1,4 @@
+using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature.UseCases;
@@ -25,6 +26,7 @@ public class IgdTindakanVoidHandlerTest
     private readonly Mock<IIgdVisitRepo> _visitRepo = new();
     private readonly Mock<IBillingLockValidationService> _billingLockValidator = new();
     private readonly Mock<ITrsBillingRepo> _trsBillingRepo = new();
+    private readonly Mock<IIgdStockService> _igdStockService = new();
     private readonly IgdTindakanVoidHandler _sut;
 
     public IgdTindakanVoidHandlerTest()
@@ -35,7 +37,8 @@ public class IgdTindakanVoidHandlerTest
             _visitRepo.Object,
             new TestTglJamProvider(new DateTime(2026, 1, 1, 10, 0, 0)),
             _billingLockValidator.Object,
-            _trsBillingRepo.Object);
+            _trsBillingRepo.Object,
+            _igdStockService.Object);
     }
 
     private static IgdVisitModel BuildVisit(string visitId = "IGV0001", string regId = "REG001")
@@ -219,5 +222,57 @@ public class IgdTindakanVoidHandlerTest
         _trsBillingRepo.Verify(b => b.DeleteEntity(It.IsAny<ITrsBillingKey>()), Times.Never);
         _tindakanRepo.Verify(r => r.DeleteEntity(It.IsAny<ITindakanIgdKey>()), Times.Never);
         _auditRepo.Verify(r => r.SaveChanges(It.IsAny<AuditLog>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_PostedTindakanWithBom_RestoresStock_MarksBarangVoid_AndDeletesJasaAndBomBills()
+    {
+        var audit = new AuditInfoType("U1", new DateTime(2026, 1, 1, 8, 30, 0));
+        var listBarang = new List<TindakanIgdBarangType>
+        {
+            new(1, "BRG01", "PCS", 1m, "PCS", 1m, 1m, 0m, true, "PKB-1", "TKI001-B01", false),
+            new(2, "BRG02", "PCS", 2m, "PCS", 2m, 1m, 1m, true, "PKB-2", "", false)
+        };
+        var tdk = new TindakanIgdModel(
+            tindakanIgdId: "TKI001",
+            igdVisitId: "IGV0001",
+            regId: "REG001",
+            reffId: "TRF001",
+            descriptions: "Tindakan BOM",
+            qty: 1,
+            aktifitas: ActivityTindakanIgd.Tindakan,
+            ppa: PpaType.Default.ToReff(),
+            audit: audit,
+            trsTdkId: "TTDK001",
+            trsBillId: "TBILL001",
+            isPosted: true,
+            postedDate: new DateTime(2026, 1, 1, 9, 0, 0),
+            layananId: "IGD01",
+            pakaiBrgId: "PKB-HDR",
+            listBarang: listBarang);
+        var visit = BuildVisit();
+
+        _tindakanRepo.Setup(r => r.LoadEntity(It.IsAny<ITindakanIgdKey>())).Returns(MayBe.From(tdk));
+        _visitRepo.Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>())).Returns(MayBe.From(visit));
+        _billingLockValidator.Setup(b => b.EnsureCanModifyBillingAsync("REG001", It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var cmd = new IgdTindakanVoidCmd(tdk.TindakanIgdId, "U1", "Void BOM", "127.0.0.1", "TestAgent");
+        await _sut.Handle(cmd, CancellationToken.None);
+
+        _igdStockService.Verify(s => s.VoidTindakanStockAsync(
+            "TKI001",
+            "PKB-HDR",
+            It.Is<IEnumerable<string>>(ids => ids.SequenceEqual(new[] { "PKB-1", "PKB-2" })),
+            "U1",
+            "Void BOM",
+            new DateTime(2026, 1, 1, 10, 0, 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _tindakanRepo.Verify(r => r.MarkBarangVoid(tdk), Times.Once);
+        _tindakanRepo.Verify(r => r.DeleteEntity(tdk), Times.Once);
+        _trsBillingRepo.Verify(b => b.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == "TBILL001")), Times.Once);
+        _trsBillingRepo.Verify(b => b.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == "TTDK001")), Times.Once);
+        _trsBillingRepo.Verify(b => b.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == "TKI001-B01")), Times.Once);
+        _trsBillingRepo.Verify(b => b.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == "TKI001-B02")), Times.Once);
     }
 }

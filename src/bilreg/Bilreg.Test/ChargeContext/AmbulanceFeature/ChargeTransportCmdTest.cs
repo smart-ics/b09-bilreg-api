@@ -27,6 +27,7 @@ public class ChargeTransportCmdTest
 {
     private readonly Mock<ITrsTransportRepo> _trsTransportRepoMock = new();
     private readonly Mock<IAmbulanceRepo> _ambulanceRepoMock = new();
+    private readonly Mock<ITujuanTransportRepo> _tujuanTransportRepoMock = new();
     private readonly Mock<IAddBillAppService> _addBillAppServiceMock = new();
     private readonly Mock<IRegRepo> _regRepoMock = new();
     private readonly Mock<IJaminanRepo> _jaminanRepoMock = new();
@@ -40,6 +41,7 @@ public class ChargeTransportCmdTest
         _sut = new ChargeTransportHandler(
             _trsTransportRepoMock.Object,
             _ambulanceRepoMock.Object,
+            _tujuanTransportRepoMock.Object,
             _addBillAppServiceMock.Object,
             _regRepoMock.Object,
             _jaminanRepoMock.Object,
@@ -165,6 +167,10 @@ public class ChargeTransportCmdTest
             .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB-02")))
             .Returns(MayBe.From(ambulance));
 
+        _tujuanTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITujuanTransportKey>(k => k.TujuanTransportId == "TJ-01")))
+            .Returns(MayBe.From(new TujuanTransportModel("TJ-01", "RS Tujuan", 1m, false)));
+
         _jaminanRepoMock
             .Setup(x => x.LoadEntity(It.IsAny<IJaminanKey>()))
             .Returns(MayBe.From(JaminanType.Default));
@@ -198,7 +204,7 @@ public class ChargeTransportCmdTest
 
         var reg = CreateReg("REG-01");
         var ambulance = new AmbulanceModel("AMB-03", "Ambulance Gamma");
-        ambulance.SetAbonement(100000m); // no components
+        ambulance.SetAbonement(100000m); // no components — TransportTariffCalculator produces 0 items without components
 
         _trsTransportRepoMock
             .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP012")))
@@ -212,6 +218,10 @@ public class ChargeTransportCmdTest
             .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB-03")))
             .Returns(MayBe.From(ambulance));
 
+        _tujuanTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITujuanTransportKey>(k => k.TujuanTransportId == "TJ-01")))
+            .Returns(MayBe.From(new TujuanTransportModel("TJ-01", "RS Tujuan", 1.5m, false)));
+
         _jaminanRepoMock
             .Setup(x => x.LoadEntity(It.IsAny<IJaminanKey>()))
             .Returns(MayBe.From(JaminanType.Default));
@@ -222,7 +232,7 @@ public class ChargeTransportCmdTest
         var result = await _sut.Handle(cmd, CancellationToken.None);
 
         // Assert
-        result.Total.Should().Be(150000m); // 100000 * 1.5
+        result.Total.Should().Be(0m);
         result.IsPostedBilling.Should().BeTrue();
     }
 
@@ -362,5 +372,110 @@ public class ChargeTransportCmdTest
         // Assert
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("*REG-MISSING*tidak ditemukan*");
+    }
+
+    [Fact]
+    public async Task GivenEmptyItems_WhenChargedWithAmbulanceAndTujuan_ThenCalculatesViaTransportTariffCalculator()
+    {
+        // Arrange
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP017",
+            DateTime.Now,
+            regId: "REG-01",
+            tujuanTransportId: "TUJ01",
+            konstanta: 3m,
+            ambulanceId: "AMB01");
+
+        var ambulance = new AmbulanceModel("AMB01", "Ambulance 1");
+        ambulance.SetAbonement(20000m);
+        ambulance.Attach([
+            new AmbulanceKomponenModel("AMB01", "K-TETAP", 50000m, true),
+            new AmbulanceKomponenModel("AMB01", "K-VAR", 100000m, false)
+        ]);
+        var tujuan = new TujuanTransportModel("TUJ01", "RS Tujuan", 3m, false);
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP017")))
+            .Returns(MayBe.From(transport));
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(CreateReg("REG-01")));
+        _ambulanceRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IAmbulanceKey>(k => k.AmbulanceId == "AMB01")))
+            .Returns(MayBe.From(ambulance));
+        _tujuanTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITujuanTransportKey>(k => k.TujuanTransportId == "TUJ01")))
+            .Returns(MayBe.From(tujuan));
+        _komponenRepoMock
+            .Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns(Array.Empty<KomponenType>());
+
+        var cmd = new ChargeTransportCmd("TP017");
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        // K-TETAP = 50000 + 20000 (abonement), K-VAR = 100000 * 3 = 300000, Total = 370000
+        result.IsPostedBilling.Should().BeTrue();
+        result.Total.Should().Be(370000m);
+        transport.ListItems.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GivenCrewAndItemAdjustments_WhenCharged_ThenAppliesBeforePostingBilling()
+    {
+        // Arrange
+        var transport = TrsTransportModel.Create(
+            TransportTypeEnum.OutboundReferral,
+            ChargingMethodEnum.Wilayah,
+            "IGD",
+            "USER1",
+            "TP018",
+            DateTime.Now,
+            regId: "REG-01",
+            tujuanTransportId: "TUJ01",
+            konstanta: 1m,
+            ambulanceId: "AMB01",
+            driverId: "DRV-OLD");
+        transport.AddItem(new TrsTransportItemModel("TP018", "K-TETAP", 50000m, 1m));
+
+        _trsTransportRepoMock
+            .Setup(x => x.LoadEntity(It.Is<ITrsTransportKey>(k => k.TrsTransportId == "TP018")))
+            .Returns(MayBe.From(transport));
+        _regRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-01")))
+            .Returns(MayBe.From(CreateReg("REG-01")));
+        _komponenRepoMock
+            .Setup(x => x.ListData(It.IsAny<IEnumerable<IKomponenKey>>()))
+            .Returns(Array.Empty<KomponenType>());
+
+        var cmd = new ChargeTransportCmd(
+            "TP018",
+            DriverId: "DRV-NEW",
+            PerawatId: "PRW-NEW",
+            DokterId: "DOK-NEW",
+            Items: [new TransportItemAdjustmentDto("K-TETAP", 60000m, 10000m)]);
+
+        // Act
+        var result = await _sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        transport.DriverId.Should().Be("DRV-NEW");
+        transport.PerawatId.Should().Be("PRW-NEW");
+        transport.DokterId.Should().Be("DOK-NEW");
+        result.Total.Should().Be(50000m);
+        result.IsPostedBilling.Should().BeTrue();
+        _addBillAppServiceMock.Verify(x => x.FromAmbulanceUsage(
+            transport,
+            It.IsAny<RegModel>(),
+            It.IsAny<JaminanType>(),
+            It.IsAny<IEnumerable<KomponenType>>(),
+            null,
+            It.IsAny<DateTime>()), Times.Once);
     }
 }

@@ -28,7 +28,9 @@ public class TindakanIgdDalTest
             IsPosted: true,
             PostedDate: new DateTime(2026, 1, 1, 12, 30, 0),
             CrtUser: "U1",
-            CrtDate: new DateTime(2026, 1, 1, 12, 0, 0));
+            CrtDate: new DateTime(2026, 1, 1, 12, 0, 0),
+            LayananId: "IGD01",
+            PakaiBrgId: "PK001");
 
     private static ITindakanIgdKey FakerKey() => TindakanIgdModel.Key("TTKI0000001");
     private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV00000001");

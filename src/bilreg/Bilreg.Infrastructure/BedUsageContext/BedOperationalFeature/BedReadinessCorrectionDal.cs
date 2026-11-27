@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.BedUsageContext.BedOperationalFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -17,9 +18,15 @@ public interface IBedReadinessCorrectionDal :
 public class BedReadinessCorrectionDal : IBedReadinessCorrectionDal
 {
     private readonly DatabaseOptions _opt;
+    private readonly ISqlConnectionScope _connectionScope;
 
-    public BedReadinessCorrectionDal(IOptions<DatabaseOptions> opt) =>
+    public BedReadinessCorrectionDal(IOptions<DatabaseOptions> opt, ISqlConnectionScope? connectionScope = null)
+    {
         _opt = opt.Value;
+        _connectionScope = connectionScope ?? new SqlConnectionScope(opt);
+    }
+
+    private SqlConnection GetConnection() => _connectionScope.GetConnection();
 
     public void Insert(IEnumerable<BedReadinessCorrectionDto> listModel)
     {
@@ -27,14 +34,21 @@ public class BedReadinessCorrectionDal : IBedReadinessCorrectionDal
         if (rows.Count == 0)
             return;
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        using var bcp = new SqlBulkCopy(conn);
-        conn.Open();
-        foreach (var name in Columns)
-            bcp.AddMap(name, name);
-        bcp.BatchSize = rows.Count;
-        bcp.DestinationTableName = "BILRG_RnaBedReadinessCorrection";
-        bcp.WriteToServer(rows.AsDataTable());
+        const string sql = """
+            INSERT INTO BILRG_RnaBedReadinessCorrection (
+                CorrectionId, BedId, OriginalTransactionId,
+                ReplacementTransactionId, ActorId, Reason,
+                OccurredAt, RecordedAt, RequestId,
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
+            ) VALUES (
+                @CorrectionId, @BedId, @OriginalTransactionId,
+                @ReplacementTransactionId, @ActorId, @Reason,
+                @OccurredAt, @RecordedAt, @RequestId,
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate
+            );
+            """;
+        var conn = GetConnection();
+        conn.Execute(sql, rows);
     }
 
     public IEnumerable<BedReadinessCorrectionDto> ListData(
@@ -52,7 +66,7 @@ public class BedReadinessCorrectionDal : IBedReadinessCorrectionDal
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@BedId", filter.BedId, SqlDbType.VarChar);
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var conn = GetConnection();
         return conn.Read<BedReadinessCorrectionDto>(sql, dp);
     }
 

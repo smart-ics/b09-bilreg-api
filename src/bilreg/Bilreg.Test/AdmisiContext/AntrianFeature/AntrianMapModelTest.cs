@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;
 
@@ -434,6 +435,59 @@ public class AntrianMapModelTest
 
 			var slot = model.ListMap.Single(x => x.NoUrut == noUrut);
 			slot.Flag.Should().Be("AUTO", $"slot {noUrut} must always be AUTO when tipe is not FLAG");
+		}
+	}
+
+	public class AddAutoOccupiedTests
+	{
+		[Fact]
+		public void AddAuto_RegModel_ShouldSkipOccupiedNumbers()
+		{
+			var detils = new List<AntrianMapDetilModel>
+			{
+				CreateDetil(1, isTerpakai: true, flag: "AUTO"),
+				CreateDetil(2, isTerpakai: true, flag: "AUTO")
+			};
+			var model = new AntrianMapModel(
+				"M1", "J1", new PpaReff("D1", "Dr"), new LayananReff("L1", "Poli"),
+				new DateOnly(2026, 1, 1), new TimeOnly(8, 0), new TimeOnly(8, 0),
+				AntrianPatternType.Default, 2, detils);
+			var reg = RegModel.Default;
+			var occupied = new HashSet<int> { 3, 4 };
+
+			var added = model.AddAuto(reg, occupied);
+
+			added.NoUrut.Should().Be(5);
+			added.ReffId.Should().Be(reg.RegId);
+			model.ListMap.Should().Contain(x => x.NoUrut == 5 && x.IsTerpakai);
+		}
+
+		[Fact]
+		public void AddAuto_BookingModel_ShouldSkipOccupiedNumbers()
+		{
+			var detils = new List<AntrianMapDetilModel>
+			{
+				CreateDetil(1, isTerpakai: true, flag: "AUTO")
+			};
+			var model = new AntrianMapModel(
+				"M1", "J1", new PpaReff("D1", "Dr"), new LayananReff("L1", "Poli"),
+				new DateOnly(2026, 1, 1), new TimeOnly(8, 0), new TimeOnly(8, 0),
+				AntrianPatternType.Default, 1, detils);
+			var jadwal = JadwalPraktekType.Default with
+			{
+				Hari = DayOfWeek.Thursday,
+				JamMulai = new TimeOnly(8, 0),
+				JamSelesai = new TimeOnly(12, 0)
+			};
+			var booking = BookingModel.CreateLocal(
+				PersonInfoType.Default, new DateOnly(2026, 1, 1), jadwal, "U1", new DateTime(2026, 1, 1, 8, 0, 0));
+			var occupied = new HashSet<int> { 2, 3 };
+
+			var added = model.AddAuto(booking, occupied);
+
+			added.NoUrut.Should().Be(4);
+			added.ReffId.Should().Be(booking.BookingId);
+			model.ListMap.Should().Contain(x => x.NoUrut == 4 && x.IsTerpakai);
 		}
 	}
 }

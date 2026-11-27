@@ -22,33 +22,27 @@ public record KasirShiftActiveResponse(
 public class GetKasirShiftActiveHandler : IRequestHandler<GetKasirShiftActiveQuery, KasirShiftActiveResponse?>
 {
     private readonly IKasirShiftRepo _kasirShiftRepo;
-    private readonly ITrsKasirRepo _trsKasirRepo;
+    private readonly IKasirShiftTotalsDal _trsKasirDal;
 
     public GetKasirShiftActiveHandler(
         IKasirShiftRepo kasirShiftRepo,
-        ITrsKasirRepo trsKasirRepo)
+        IKasirShiftTotalsDal trsKasirDal)
     {
         _kasirShiftRepo = kasirShiftRepo;
-        _trsKasirRepo = trsKasirRepo;
+        _trsKasirDal = trsKasirDal;
     }
 
-    public Task<KasirShiftActiveResponse?> Handle(GetKasirShiftActiveQuery request, CancellationToken cancellationToken)
+    public async Task<KasirShiftActiveResponse?> Handle(GetKasirShiftActiveQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.Null(request, nameof(request));
         Guard.Against.NullOrWhiteSpace(request.KasirId, nameof(request.KasirId));
 
         var shift = _kasirShiftRepo.GetActiveShift(request.KasirId);
         if (shift is null)
-            return Task.FromResult<KasirShiftActiveResponse?>(null);
+            return null;
 
-        var trsList = _trsKasirRepo.ListByShift(shift.ShiftId) ?? Enumerable.Empty<TrsKasirModel>();
-        var totalTerima = trsList
-            .Where(t => t.JenisTrs == KasirConst.JenisTrsTerima && t.StatusTrs == KasirConst.StatusTrsBerhasil)
-            .Sum(t => t.TotalNilai);
-        var totalKeluar = trsList
-            .Where(t => t.JenisTrs == KasirConst.JenisTrsKeluar && t.StatusTrs == KasirConst.StatusTrsBerhasil)
-            .Sum(t => t.TotalNilai);
-        var saldoKasBerjalan = shift.SaldoAwal + totalTerima - totalKeluar;
+        var totals = await _trsKasirDal.GetShiftTotalsAsync(shift.ShiftId, cancellationToken);
+        var saldoKasBerjalan = shift.SaldoAwal + totals.TotalTerima - totals.TotalKeluar;
 
         var response = new KasirShiftActiveResponse(
             ShiftId: shift.ShiftId,
@@ -58,11 +52,11 @@ public class GetKasirShiftActiveHandler : IRequestHandler<GetKasirShiftActiveQue
             Loket: shift.Loket,
             TglJamBuka: shift.TglJamBuka,
             SaldoAwal: shift.SaldoAwal,
-            TotalTerimaBerjalan: totalTerima,
-            TotalKeluarBerjalan: totalKeluar,
+            TotalTerimaBerjalan: totals.TotalTerima,
+            TotalKeluarBerjalan: totals.TotalKeluar,
             SaldoKasBerjalan: saldoKasBerjalan,
             StatusShift: shift.StatusShift);
 
-        return Task.FromResult<KasirShiftActiveResponse?>(response);
+        return response;
     }
 }

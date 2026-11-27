@@ -12,7 +12,9 @@ public record IgdTindakanListQuery(string IgdVisitId) : IRequest<IEnumerable<Igd
 public record IgdTindakanListResponse(
     string TindakanIgdId, string IgdVisitId, string RegId,
     ActivityTindakanIgd Aktifitas, string AktifitasString,
-    string ReffId, string Descriptions, int Qty, PpaReff ppa);
+    string ReffId, string Descriptions, int Qty, PpaReff ppa,
+    string PakaiBrgId = "",
+    IReadOnlyList<TindakanIgdPpaType>? ListPpa = null);
 public class IgdTindakanListHandler : IRequestHandler<IgdTindakanListQuery, IEnumerable<IgdTindakanListResponse>>
 {
     private readonly ITindakanIgdRepo _tindakanIgdRepo;
@@ -30,9 +32,16 @@ public class IgdTindakanListHandler : IRequestHandler<IgdTindakanListQuery, IEnu
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit {request.IgdVisitId} not found");
         var listTindakan = _tindakanIgdRepo.ListData(request)?.ToList() ?? [];
-        var result = listTindakan.Select(x => new IgdTindakanListResponse(
-            x.TindakanIgdId, x.IgdVisitId, x.RegId, x.Aktifitas, x.Aktifitas.ToString(),
-            x.ReffId, x.Descriptions, x.Qty, x.Ppa));
+        var result = listTindakan.Select(x =>
+        {
+            var listPpa = _tindakanIgdRepo.LoadEntity(TindakanIgdModel.Key(x.TindakanIgdId))
+                .Match(m => m.ListPpa, () => (IReadOnlyList<TindakanIgdPpaType>)[]);
+
+            return new IgdTindakanListResponse(
+                x.TindakanIgdId, x.IgdVisitId, x.RegId, x.Aktifitas, x.Aktifitas.ToString(),
+                x.ReffId, x.Descriptions, x.Qty, x.Ppa,
+                x.PakaiBrgId, listPpa);
+        });
 
         return Task.FromResult(result);
     }

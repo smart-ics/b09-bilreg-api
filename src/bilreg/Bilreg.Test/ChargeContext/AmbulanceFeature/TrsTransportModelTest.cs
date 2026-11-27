@@ -653,4 +653,97 @@ public class TrsTransportModelTest
         act.Should().Throw<ArgumentException>()
             .WithMessage("*Total jarak tidak boleh bernilai negatif.*");
     }
+
+    [Fact]
+    public void UpdateCrew_WhenNotPostedAndNotTerminal_UpdatesNonNullFieldsAndClearsEmptyString()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.UpdateCrew("DRV1", "PRW1", "DR1");
+
+        // Act
+        model.UpdateCrew(null, "", "DR2");
+
+        // Assert
+        model.DriverId.Should().Be("DRV1");
+        model.PerawatId.Should().Be(string.Empty);
+        model.DokterId.Should().Be("DR2");
+    }
+
+    [Fact]
+    public void UpdateCrew_WhenPostedBilling_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.SetPostedBilling();
+
+        // Act
+        var act = () => model.UpdateCrew("DRV1", null, null);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void AdjustItems_ValidAdjustments_UpdatesTarifDiskonAndRecalculatesTotals()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.AddItem(new TrsTransportItemModel(model.TrsTransportId, "DT01", 100000m, 1m));
+        model.AddItem(new TrsTransportItemModel(model.TrsTransportId, "DT02", 200000m, 2m));
+
+        // Act
+        model.AdjustItems([
+            ("DT01", 120000m, 20000m),
+            ("DT02", 150000m, 50000m)
+        ]);
+
+        // Assert
+        model.SubTotal.Should().Be(420000m); // 120000*1 + 150000*2
+        model.Diskon.Should().Be(70000m);
+        model.Total.Should().Be(350000m);
+    }
+
+    [Fact]
+    public void AdjustItems_UnknownDetilTarifId_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.AddItem(new TrsTransportItemModel(model.TrsTransportId, "DT01", 100000m, 1m));
+
+        // Act
+        var act = () => model.AdjustItems([("UNKNOWN", 100000m, 0m)]);
+
+        // Assert
+        act.Should().Throw<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public void AdjustItems_DiskonExceedsSubtotal_ThrowsArgumentException()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.AddItem(new TrsTransportItemModel(model.TrsTransportId, "DT01", 100000m, 1m));
+
+        // Act
+        var act = () => model.AdjustItems([("DT01", 100000m, 150000m)]);
+
+        // Assert
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AdjustItems_WhenPostedBilling_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var model = CreateDefaultWilayah();
+        model.AddItem(new TrsTransportItemModel(model.TrsTransportId, "DT01", 100000m, 1m));
+        model.SetPostedBilling();
+
+        // Act
+        var act = () => model.AdjustItems([("DT01", 120000m, 0m)]);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

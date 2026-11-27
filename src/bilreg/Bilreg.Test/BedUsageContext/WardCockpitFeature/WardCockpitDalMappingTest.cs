@@ -957,4 +957,96 @@ public class WardCockpitDalMappingTest
         result.BedInfo.KelasId.Should().Be("VIP");
         result.Occupancy.Should().BeNull();
     }
+
+    [Fact]
+    public void BedDetailQuery_ShouldUseBilrgTindakanAndKomponen_AndNotLegacyTables()
+    {
+        var sql = WardCockpitDal.BED_DETAIL_QUERY;
+
+        // Section 3: Must read from BILRG_Tindakan & BILRG_TindakanKomponen
+        sql.Should().Contain("FROM BILRG_Tindakan t");
+        sql.Should().Contain("BILRG_TindakanKomponen tk");
+        sql.Should().Contain("ISNULL(t.TindakanId, '') AS TindakanId");
+        sql.Should().Contain("ISNULL(t.TindakanDate, '2000-01-01') AS TglJam");
+        sql.Should().Contain("ISNULL(t.TarifName, '') AS ItemTindakan");
+        sql.Should().Contain("ISNULL(t.Total, 0) AS Biaya");
+        sql.Should().Contain("(t.VodDate = '3000-01-01' OR t.VodDate IS NULL)");
+
+        // Legacy tables must NOT be present
+        sql.Should().NotContain("TA_TRS_TINDAKAN");
+        sql.Should().NotContain("TA_TRS_TINDAKAN2");
+
+        // BHP UNION ALL must remain intact
+        sql.Should().Contain("FROM BILRG_BhpRanap b");
+    }
+
+    [Fact]
+    public void BuildBedDetail_WithTindakanAndDoctorServiceFlag_MapsExpectedProperties()
+    {
+        var bedRow = new RawBedDetailRow(
+            BedId: "BED-301-A",
+            BedCode: "301-A",
+            RoomName: "Kamar Mawar 1",
+            KelasKamar: "Kelas I",
+            PakaiBedId: "PKB-999",
+            RegId: "REG-999",
+            MrNo: "MR-999",
+            NamaPasien: "Dewi Lestari",
+            Gender: "P",
+            TglLahir: "1990-01-15",
+            TglIn: "2026-10-20",
+            JamIn: "09:00:00",
+            TarifPerHari: 350000m,
+            TipeJaminanId: "UMUM",
+            PenjaminName: "Umum / Pribadi",
+            DokterId: "DOK-02",
+            DpjpName: "dr. Andi, Sp.B",
+            BillingKelasName: "Kelas I"
+        );
+
+        var tindakanRows = new List<RawTindakanRow>
+        {
+            new(
+                TglJam: new DateTime(2026, 10, 22, 14, 30, 0),
+                ItemTindakan: "Visite Dokter Spesialis",
+                Petugas: "dr. Andi, Sp.B",
+                Biaya: 150000m,
+                TindakanId: "TDK-20261022-001",
+                HasJasaDokter: true,
+                RegId: "REG-999",
+                IsBayi: false
+            ),
+            new(
+                TglJam: new DateTime(2026, 10, 22, 15, 0, 0),
+                ItemTindakan: "Infus Set & Spuit 5cc",
+                Petugas: "Ns. Maya",
+                Biaya: 45000m,
+                TindakanId: "BHP-20261022-001",
+                HasJasaDokter: false,
+                RegId: "REG-999",
+                IsBayi: false
+            )
+        };
+
+        var result = WardCockpitDal.BuildBedDetail(bedRow, null, tindakanRows, [], _now);
+
+        result.Should().NotBeNull();
+        result.TabTindakan.Should().HaveCount(2);
+
+        var visite = result.TabTindakan.First();
+        visite.TindakanId.Should().Be("TDK-20261022-001");
+        visite.ItemTindakan.Should().Be("Visite Dokter Spesialis");
+        visite.Petugas.Should().Be("dr. Andi, Sp.B");
+        visite.Biaya.Should().Be(150000m);
+        visite.HasJasaDokter.Should().BeTrue();
+        visite.IsBayi.Should().BeFalse();
+
+        var bhp = result.TabTindakan.Last();
+        bhp.TindakanId.Should().Be("BHP-20261022-001");
+        bhp.ItemTindakan.Should().Be("Infus Set & Spuit 5cc");
+        bhp.Petugas.Should().Be("Ns. Maya");
+        bhp.Biaya.Should().Be(45000m);
+        bhp.HasJasaDokter.Should().BeFalse();
+        bhp.IsBayi.Should().BeFalse();
+    }
 }

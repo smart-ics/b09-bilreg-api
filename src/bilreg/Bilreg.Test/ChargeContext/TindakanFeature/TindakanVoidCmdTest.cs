@@ -1,6 +1,7 @@
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
@@ -212,7 +213,8 @@ public class TindakanVoidCmdTest
     [Fact]
     public async Task Handle_WhenBillingIdTruncatedByLegacyTable_ShouldMatchPrefixAndVoidSuccessfully()
     {
-        // Arrange: Legacy TA_TRS_TINDAKAN truncated ID to 10 chars, while ta_trs_billing has full 12 chars
+        // Backward-compatibility: Legacy TA_TRS_TINDAKAN truncated ID to 10 chars, while ta_trs_billing has full 12 chars.
+        // For modern BILRG_Tindakan, IDs are unconstrained up to 26 chars, but prefix matching ensures historical records can still be voided.
         const string legacyTdkId = "TDK09KZ0XH";
         const string fullBillingId = "TDK09KZ0XHX7";
         const string regId = "RG01377882";
@@ -239,6 +241,73 @@ public class TindakanVoidCmdTest
         _tataRekeningRepoMock.Verify(x => x.SaveChanges(It.Is<TataRekeningModel>(tr => !tr.ListTrsBill.Any(b => b.TrsBillingId == fullBillingId))), Times.Once);
         _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == fullBillingId)), Times.Once);
         _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == fullBillingId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTindakanHasBomItems_ShouldCascadeVoidPakaiBrgAndTrsBillingAndMarkVoid()
+    {
+        // Arrange
+        const string tdkId = "TDK-001";
+        const string regId = "REG01";
+        var tdk = CreateTestTindakan(tdkId, regId);
+        var bill = TataRekeningTestDataBuilder.CreateBill(tdkId, regId, 100000m);
+        var tataRekening = TataRekeningTestDataBuilder.Hydrate(regId, TataRekeningStatusEnum.Opened, bill);
+
+        var tdkBarangRepoMock = new Mock<ITindakanBarangRepo>();
+        var tdkStokPendingRepoMock = new Mock<ITindakanStokPendingRepo>();
+        var pakaiBrgInternalServiceMock = new Mock<IPakaiBrgInternalService>();
+
+        var bomItem = new TindakanBarangType(
+            TindakanBarangId: "TB-01",
+            TindakanId: tdkId,
+            NoUrut: 1,
+            BrgId: "BRG-01",
+            SatuanBomId: "PCS",
+            QtyBom: 2m,
+            SatuanKecilId: "PCS",
+            QtyKecilRequested: 2m,
+            QtyKecilDeducted: 2m,
+            QtyKecilPending: 0m,
+            IsChargeBarang: true,
+            HargaJualTotal: 50000m,
+            PakaiBrgId: "PKB-01",
+            TrsBillingId: "TBILL-BRG-01"
+        );
+
+        tdkBarangRepoMock.Setup(x => x.ListByTindakanId(tdkId))
+            .Returns([bomItem]);
+
+        _tdkRepoMock.Setup(x => x.LoadEntity(It.Is<ITindakanKey>(k => k.TindakanId == tdkId)))
+            .Returns(MayBe.From(tdk));
+        _tataRekeningRepoMock.Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == regId)))
+            .Returns(MayBe.From(tataRekening));
+
+        var sutWithBom = new TindakanVoidHandler(
+            _tdkRepoMock.Object,
+            _tataRekeningRepoMock.Object,
+            _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
+            _trsBillingRepoMock.Object,
+            _jurnalRepoMock.Object,
+            _billingLockValidatorMock.Object,
+            tdkBarangRepoMock.Object,
+            tdkStokPendingRepoMock.Object,
+            pakaiBrgInternalServiceMock.Object);
+
+        var cmd = new TindakanVoidCmd(tdkId, "SUPERVISOR", "Salah input tindakan dengan BOM", "127.0.0.1", "Mozilla/5.0");
+
+        // Act
+        await sutWithBom.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        tdk.AuditTrail.IsVoided.Should().BeTrue();
+        tdkBarangRepoMock.Verify(x => x.MarkVoid(tdkId, "SUPERVISOR"), Times.Once);
+        tdkStokPendingRepoMock.Verify(x => x.MarkVoidByTindakanId(tdkId, _testNow, "SUPERVISOR"), Times.Once);
+        pakaiBrgInternalServiceMock.Verify(x => x.VoidFromTindakan(
+            It.Is<PakaiBrgVoidFromTindakanCommand>(c => c.PakaiBrgId == "PKB-01" && c.UserId == "SUPERVISOR"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _trsBillingRepoMock.Verify(x => x.DeleteEntity(It.Is<ITrsBillingKey>(k => k.TrsBillingId == "TBILL-BRG-01")), Times.Once);
+        _jurnalRepoMock.Verify(x => x.DeleteEntity(It.Is<IJurnalKey>(k => k.JurnalId == "TBILL-BRG-01")), Times.Once);
     }
 
     [Fact]

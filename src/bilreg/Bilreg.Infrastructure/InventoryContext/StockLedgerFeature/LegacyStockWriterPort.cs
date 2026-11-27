@@ -28,6 +28,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         Guard.Against.NullOrWhiteSpace(request.LayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
         Guard.Against.NullOrWhiteSpace(request.MovementKindString);
+        var brgMasukReffId = ValidateLegacyRef(request.BrgMasukReffId, nameof(request.BrgMasukReffId));
+        var trsReffId = ValidateLegacyRef(request.TrsReffId, nameof(request.TrsReffId));
         if (request.Qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.Qty), "Inbound qty must be positive.");
 
@@ -83,13 +85,13 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         bukuDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
         bukuDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
         bukuDp.AddParam("@fs_kd_po", po, SqlDbType.VarChar);
-        bukuDp.AddParam("@fs_kd_do", request.BrgMasukReffId, SqlDbType.VarChar);
+        bukuDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
         bukuDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
         bukuDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
         bukuDp.AddParam("@fn_stok_in", request.Qty, SqlDbType.Decimal);
         bukuDp.AddParam("@fn_stok_out", 0m, SqlDbType.Decimal);
         bukuDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
-        bukuDp.AddParam("@fs_kd_mutasi", request.TrsReffId, SqlDbType.VarChar);
+        bukuDp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
         bukuDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
         bukuDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         bukuDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
@@ -102,7 +104,7 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_po", po, SqlDbType.VarChar);
-        stokDp.AddParam("@fs_kd_do", request.BrgMasukReffId, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
         stokDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
         stokDp.AddParam("@fn_qty", request.Qty, SqlDbType.Decimal);
@@ -110,8 +112,7 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
         stokDp.AddParam("@fd_tgl_do", tglDo, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_do", jamDo, SqlDbType.VarChar);
-        var safeStokMutasi = request.TrsReffId.Length > 10 ? request.TrsReffId[..10] : request.TrsReffId;
-        stokDp.AddParam("@fs_kd_mutasi", safeStokMutasi, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_satuan", satuan, SqlDbType.VarChar);
@@ -128,6 +129,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         Guard.Against.NullOrWhiteSpace(request.LayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
         Guard.Against.NullOrWhiteSpace(request.MovementKindString);
+        var brgMasukReffId = ValidateLegacyRef(request.BrgMasukReffId, nameof(request.BrgMasukReffId));
+        var trsReffId = ValidateLegacyRef(request.TrsReffId, nameof(request.TrsReffId));
         if (request.QtyOut <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.QtyOut), "Outbound qty must be positive.");
 
@@ -137,13 +140,13 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
             request.BrgId,
             request.LayananId,
             request.PoReffId ?? string.Empty,
-            request.BrgMasukReffId,
+            brgMasukReffId,
             request.TglEd,
             request.NoBatch ?? string.Empty,
             qtyIn: 0,
             qtyOut: request.QtyOut,
             request.Hpp,
-            request.TrsReffId,
+            trsReffId,
             request.TglMutasi,
             request.MovementKindString,
             request.SatuanId ?? string.Empty);
@@ -158,46 +161,23 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         if (request.QtyOut <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.QtyOut), "Deplete qty must be positive.");
 
-        const string selectSql = """
-            SELECT fn_qty
-            FROM tb_stok
+        const string updateSql = """
+            UPDATE tb_stok
+            SET fn_qty = fn_qty - @fn_qty_out
             WHERE fs_kd_trs = @fs_kd_trs
+              AND fn_qty >= @fn_qty_out
             """;
-        var selectDp = new DynamicParameters();
-        selectDp.AddParam("@fs_kd_trs", request.LegacyStokId, SqlDbType.VarChar);
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_trs", request.LegacyStokId, SqlDbType.VarChar);
+        dp.AddParam("@fn_qty_out", request.QtyOut, SqlDbType.Decimal);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Open();
-        var current = conn.ExecuteScalar<decimal?>(selectSql, selectDp);
-        if (current is null)
-            throw new InvalidOperationException($"Legacy stok '{request.LegacyStokId}' not found.");
-
-        var remaining = current.Value - request.QtyOut;
-        if (remaining < 0)
+        var rowsAffected = conn.Execute(updateSql, dp);
+        if (rowsAffected != 1)
             throw new InvalidOperationException(
-                $"Legacy stok '{request.LegacyStokId}' insufficient " +
-                $"(have {current.Value}, deplete {request.QtyOut}).");
-
-        if (remaining == 0)
-        {
-            // Legacy RemoveStok deletes depleted stok rows; never deletes buku.
-            const string deleteSql = """
-                DELETE FROM tb_stok
-                WHERE fs_kd_trs = @fs_kd_trs
-                """;
-            conn.Execute(deleteSql, selectDp);
-            return;
-        }
-
-        const string updateSql = """
-            UPDATE tb_stok
-            SET fn_qty = @fn_qty
-            WHERE fs_kd_trs = @fs_kd_trs
-            """;
-        var updateDp = new DynamicParameters();
-        updateDp.AddParam("@fs_kd_trs", request.LegacyStokId, SqlDbType.VarChar);
-        updateDp.AddParam("@fn_qty", remaining, SqlDbType.Decimal);
-        conn.Execute(updateSql, updateDp);
+                $"Legacy stok '{request.LegacyStokId}' not found or insufficient for deplete ({request.QtyOut}).");
     }
 
     public LegacyReverseWriteResult InsertReverseBuku(LegacyReverseBukuWriteRequest request)
@@ -208,6 +188,8 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         Guard.Against.NullOrWhiteSpace(request.LayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
         Guard.Against.NullOrWhiteSpace(request.MovementKindString);
+        var brgMasukReffId = ValidateLegacyRef(request.BrgMasukReffId, nameof(request.BrgMasukReffId));
+        var trsReffId = ValidateLegacyRef(request.TrsReffId, nameof(request.TrsReffId));
         if (request.QtyIn <= 0 && request.QtyOut <= 0)
             throw new ArgumentOutOfRangeException(nameof(request), "Reverse qty must have one positive side.");
         if (request.QtyIn > 0 && request.QtyOut > 0)
@@ -219,13 +201,13 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
             request.BrgId,
             request.LayananId,
             request.PoReffId ?? string.Empty,
-            request.BrgMasukReffId,
+            brgMasukReffId,
             request.TglEd,
             request.NoBatch ?? string.Empty,
             request.QtyIn,
             request.QtyOut,
             request.Hpp,
-            request.TrsReffId,
+            trsReffId,
             request.TglMutasi,
             request.MovementKindString,
             request.SatuanId ?? string.Empty);
@@ -236,40 +218,71 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
     public LegacyStokRestoreResult RestoreStok(LegacyStokRestoreRequest request)
     {
         Guard.Against.Null(request);
-        Guard.Against.NullOrWhiteSpace(request.PreferredLegacyStokId);
         Guard.Against.NullOrWhiteSpace(request.BrgId);
         Guard.Against.NullOrWhiteSpace(request.BrgMasukReffId);
         Guard.Against.NullOrWhiteSpace(request.LayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
+        var brgMasukReffId = ValidateLegacyRef(request.BrgMasukReffId, nameof(request.BrgMasukReffId));
+        var trsReffId = ValidateLegacyRef(request.TrsReffId, nameof(request.TrsReffId));
         if (request.QtyIn <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.QtyIn), "Restore qty must be positive.");
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Open();
-
-        // Atomic increment: avoids SELECT-then-UPDATE race where deplete deletes the row between check and update.
-        const string updateSql = """
-            UPDATE tb_stok
-            SET fn_qty = fn_qty + @fn_qty_in
-            WHERE fs_kd_trs = @fs_kd_trs
-            """;
-        var updateDp = new DynamicParameters();
-        updateDp.AddParam("@fs_kd_trs", request.PreferredLegacyStokId, SqlDbType.VarChar);
-        updateDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
-        var rowsAffected = conn.Execute(updateSql, updateDp);
-
-        if (rowsAffected == 1)
-            return new LegacyStokRestoreResult(request.PreferredLegacyStokId, WasRecreated: false);
-
-        // rowsAffected == 0: preferred row gone (deplete-to-zero or concurrent delete) → recreate.
-        // Prefer Binding-chosen id (IfRecreate), else Preferred — never mint anonymous when Binding already chose.
-        var stokId = ResolveLegacyId(
-            request.LegacyStokIdIfRecreate ?? request.PreferredLegacyStokId,
-            "ST");
         var po = request.PoReffId ?? string.Empty;
         var noBatch = request.NoBatch ?? string.Empty;
         var satuan = string.IsNullOrWhiteSpace(request.SatuanId) ? string.Empty : request.SatuanId;
         var tglEd = LegacyStockDateHelper.ToLegacyEdString(request.TglEd);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Open();
+
+        // 1. Atomic increment by PreferredLegacyStokId when provided.
+        if (!string.IsNullOrWhiteSpace(request.PreferredLegacyStokId))
+        {
+            var preferredStokId = request.PreferredLegacyStokId.Trim();
+            const string updateSql = """
+                UPDATE tb_stok
+                SET fn_qty = fn_qty + @fn_qty_in
+                WHERE fs_kd_trs = @fs_kd_trs
+                """;
+            var updateDp = new DynamicParameters();
+            updateDp.AddParam("@fs_kd_trs", preferredStokId, SqlDbType.VarChar);
+            updateDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+            var rowsAffected = conn.Execute(updateSql, updateDp);
+
+            if (rowsAffected == 1)
+                return new LegacyStokRestoreResult(preferredStokId, WasRecreated: false);
+        }
+
+        // 2. Fallback: match existing row by scope (fs_kd_barang, fs_kd_layanan, fs_kd_do, fd_tgl_ed, fs_no_batch).
+        if (string.IsNullOrWhiteSpace(request.PreferredLegacyStokId) ||
+            string.IsNullOrWhiteSpace(request.LegacyStokIdIfRecreate))
+        {
+            const string scopeUpdateSql = """
+                UPDATE TOP (1) tb_stok
+                SET fn_qty = fn_qty + @fn_qty_in
+                OUTPUT INSERTED.fs_kd_trs
+                WHERE fs_kd_barang = @fs_kd_barang
+                  AND fs_kd_layanan = @fs_kd_layanan
+                  AND fs_kd_do = @fs_kd_do
+                  AND fd_tgl_ed = @fd_tgl_ed
+                  AND fs_no_batch = @fs_no_batch
+                """;
+            var scopeDp = new DynamicParameters();
+            scopeDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+            scopeDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
+            scopeDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
+            scopeDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
+            var matchedStokId = conn.ExecuteScalar<string?>(scopeUpdateSql, scopeDp);
+            if (!string.IsNullOrWhiteSpace(matchedStokId))
+                return new LegacyStokRestoreResult(matchedStokId, WasRecreated: false);
+        }
+
+        // 3. Row gone (historically deleted when reaching zero) → recreate from provenance.
+        var stokId = ResolveLegacyId(
+            request.LegacyStokIdIfRecreate ?? request.PreferredLegacyStokId,
+            "ST");
         var tglMutasi = LegacyStockDateHelper.FormatDate(request.TglMutasi);
         var jamMutasi = LegacyStockDateHelper.FormatTime(request.TglMutasi);
         var tglDo = LegacyStockDateHelper.FormatDate(request.TglMasuk);
@@ -297,7 +310,7 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_po", po, SqlDbType.VarChar);
-        stokDp.AddParam("@fs_kd_do", request.BrgMasukReffId, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_do", brgMasukReffId, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
         stokDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
         stokDp.AddParam("@fn_qty", request.QtyIn, SqlDbType.Decimal);
@@ -305,8 +318,7 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         stokDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
         stokDp.AddParam("@fd_tgl_do", tglDo, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_do", jamDo, SqlDbType.VarChar);
-        var safeStokMutasi = request.TrsReffId.Length > 10 ? request.TrsReffId[..10] : request.TrsReffId;
-        stokDp.AddParam("@fs_kd_mutasi", safeStokMutasi, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
         stokDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
         stokDp.AddParam("@fs_kd_satuan", satuan, SqlDbType.VarChar);
@@ -357,8 +369,7 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         dp.AddParam("@fn_stok_in", qtyIn, SqlDbType.Decimal);
         dp.AddParam("@fn_stok_out", qtyOut, SqlDbType.Decimal);
         dp.AddParam("@fn_hpp", hpp, SqlDbType.Decimal);
-        var safeBukuMutasi = trsReffId.Length > 10 ? trsReffId[..10] : trsReffId;
-        dp.AddParam("@fs_kd_mutasi", safeBukuMutasi, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_mutasi", trsReffId, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_mutasi", LegacyStockDateHelper.FormatDateTime(tglMutasi), SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_mutasi", LegacyStockDateHelper.FormatDate(tglMutasi), SqlDbType.VarChar);
         dp.AddParam("@fs_jam_mutasi", LegacyStockDateHelper.FormatTime(tglMutasi), SqlDbType.VarChar);
@@ -367,6 +378,16 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(insertBuku, dp);
+    }
+
+    private static string ValidateLegacyRef(string value, string paramName)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0 || trimmed.Length > 10)
+            throw new ArgumentException(
+                $"Legacy reference '{paramName}' must be 1..10 characters (got {trimmed.Length}: '{trimmed}').",
+                paramName);
+        return trimmed;
     }
 
     private static string ResolveLegacyId(string? preassigned, string prefix)

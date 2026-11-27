@@ -1,9 +1,9 @@
-using Bilreg.Application.InventoryContext.PakaiBrgFeature;
-using Microsoft.Extensions.Logging;
 using Ardalis.GuardClauses;
+using Bilreg.Application.InventoryContext.PakaiBrgFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
@@ -52,32 +52,17 @@ public record PostStockTransferConsequenceResult(
 public class PostStockTransferConsequenceHandler
     : IRequestHandler<PostStockTransferConsequenceCommand, PostStockTransferConsequenceResult>
 {
-    private readonly LegacyFreshnessGate _freshnessGate;
-    private readonly IStockBatchRepo _batchRepo;
-    private readonly IStockMutasiRepo _mutasiRepo;
-    private readonly IStockLegacyBindingRepo _bindingRepo;
-    private readonly IStockLegacyScopeRepo _scopeRepo;
     private readonly ILegacyStockReadPort _legacyRead;
     private readonly IStockConsequenceUnitOfWork _uow;
     private readonly ISender? _sender;
     private readonly ILogger<PostStockTransferConsequenceHandler>? _logger;
 
     public PostStockTransferConsequenceHandler(
-        LegacyFreshnessGate freshnessGate,
-        IStockBatchRepo batchRepo,
-        IStockMutasiRepo mutasiRepo,
-        IStockLegacyBindingRepo bindingRepo,
-        IStockLegacyScopeRepo scopeRepo,
         ILegacyStockReadPort legacyRead,
         IStockConsequenceUnitOfWork uow,
         ISender? sender = null,
         ILogger<PostStockTransferConsequenceHandler>? logger = null)
     {
-        _freshnessGate = freshnessGate;
-        _batchRepo = batchRepo;
-        _mutasiRepo = mutasiRepo;
-        _bindingRepo = bindingRepo;
-        _scopeRepo = scopeRepo;
         _legacyRead = legacyRead;
         _uow = uow;
         _sender = sender;
@@ -93,80 +78,66 @@ public class PostStockTransferConsequenceHandler
         Guard.Against.NullOrWhiteSpace(request.DestLayananId);
         Guard.Against.NullOrWhiteSpace(request.TrsReffId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
+        if (request.TrsReffId.Trim().Length > 10)
+            throw new ArgumentException("TrsReffId must not exceed 10 characters.", nameof(request.TrsReffId));
         if (request.Qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.Qty), "Qty must be positive.");
         if (string.Equals(request.SourceLayananId, request.DestLayananId, StringComparison.Ordinal))
             throw new ArgumentException("Source and destination LayananId must differ.");
 
-        var priorMutasi = _mutasiRepo.ListByTrsReffId(request.TrsReffId).ToList();
-        var priorOuts = priorMutasi
-            .Where(x => x.MovementKind == MovementKindEnum.TransferOut)
-            .ToList();
-        var priorIns = priorMutasi
-            .Where(x => x.MovementKind == MovementKindEnum.TransferIn)
-            .ToList();
+        var priorOuts = _legacyRead.ListJournalsBySource(
+            request.TrsReffId, request.BrgId, request.SourceLayananId, "MT_OUT");
+        var priorIns = _legacyRead.ListJournalsBySource(
+            request.TrsReffId, request.BrgId, request.DestLayananId, "MT_IN");
 
         if (priorOuts.Count > 0 || priorIns.Count > 0)
         {
-            if (!TryPairTransferLegs(request, priorOuts, priorIns, out var pairedLegs))
+            if (priorOuts.Sum(x => x.QtyOut) != request.Qty
+                || priorIns.Sum(x => x.QtyIn) != request.Qty
+                || priorOuts.Count != priorIns.Count)
             {
                 throw new InvalidOperationException(
-                    $"Partial transfer idempotency for TrsReffId={request.TrsReffId}: " +
-                    "some TransferOut/TransferIn legs exist but not all (unexpected after atomic UoW).");
+                    $"Partial or conflicting transfer idempotency for TrsReffId={request.TrsReffId}.");
             }
 
-            return BuildIdempotentResult(pairedLegs);
-        }
-
-        var candidates = _batchRepo.ListAllocationCandidates(request.BrgId, request.SourceLayananId)
-            .Select(StockAllocationCandidateType.FromLokasi)
-            .ToList();
-
-        if (request.BrgMasukReffIds is { Count: > 0 })
-        {
-            var allowed = request.BrgMasukReffIds.ToHashSet(StringComparer.Ordinal);
-            candidates = candidates.Where(c => allowed.Contains(c.BrgMasukReffId)).ToList();
-        }
-
-        var scopeKeys = candidates
-            .Select(c => new ScopeKeyDto(request.BrgId, c.BrgMasukReffId))
-            .Distinct()
-            .ToList();
-
-        var freshness = await _freshnessGate.EnsureFreshAsync(
-            scopeKeys,
-            request.UserId,
-            cancellationToken);
-
-        if (freshness.Outcome == EnsureFreshnessOutcomeEnum.AbortedInconsistent)
-        {
+            var idempotentLines = PairIdempotentLines(priorOuts, priorIns);
             return new PostStockTransferConsequenceResult(
-                PostStockTransferOutcomeEnum.AbortedInconsistent,
-                [],
-                ShortfallQty: 0,
-                freshness.InconsistencyReason,
-                freshness.FailedBrgId,
-                freshness.FailedBrgMasukReffId);
+                PostStockTransferOutcomeEnum.Idempotent,
+                idempotentLines,
+                0m,
+                string.Empty,
+                string.Empty,
+                string.Empty);
         }
 
-        // Reload candidates after gate (hydrate/catch-up may have changed balances).
-        candidates = _batchRepo.ListAllocationCandidates(request.BrgId, request.SourceLayananId)
-            .Select(StockAllocationCandidateType.FromLokasi)
-            .ToList();
+        var sourceBalances = _legacyRead.ListBalancesAtLocation(request.BrgId, request.SourceLayananId);
         if (request.BrgMasukReffIds is { Count: > 0 })
         {
             var allowed = request.BrgMasukReffIds.ToHashSet(StringComparer.Ordinal);
-            candidates = candidates.Where(c => allowed.Contains(c.BrgMasukReffId)).ToList();
+            sourceBalances = sourceBalances.Where(x => allowed.Contains(x.BrgMasukReffId)).ToList();
         }
+
+        var candidates = sourceBalances
+            .Where(b => b.QtySisa > 0)
+            .Select(b => new StockAllocationCandidateType(
+                b.BrgId,
+                b.LayananId,
+                b.LegacyStokId,
+                b.LegacyStokId,
+                b.BrgMasukReffId,
+                b.TglEd,
+                b.TglMasuk,
+                b.QtySisa))
+            .ToList();
 
         var allocation = StockOutboundAllocator.Allocate(
             request.BrgId,
             request.SourceLayananId,
             request.Qty,
             candidates,
-            explicitTglEd: request.TglEd);
+            request.TglEd);
 
-        if (!allocation.IsSuccess)
+        if (allocation.ShortfallQty > 0)
         {
             return new PostStockTransferConsequenceResult(
                 PostStockTransferOutcomeEnum.InsufficientStock,
@@ -177,240 +148,69 @@ public class PostStockTransferConsequenceHandler
                 string.Empty);
         }
 
-        var batchesByDo = new Dictionary<string, StockBatchModel>(StringComparer.Ordinal);
-        var scopesByDo = new Dictionary<string, StockLegacyScopeModel>(StringComparer.Ordinal);
-        var mutasiInserts = new List<StockMovementModel>();
-        var bindingInserts = new List<StockLegacyBindingModel>();
+        var balanceByStokId = sourceBalances.ToDictionary(x => x.LegacyStokId, StringComparer.Ordinal);
         var legacyOps = new List<LegacyStockWriteOperation>();
         var lineResults = new List<PostStockTransferLineResult>();
-        var usedBukuIds = new HashSet<string>(StringComparer.Ordinal);
-        var usedMutasiIds = new HashSet<string>(StringComparer.Ordinal);
-        var usedBindingIds = new HashSet<string>(StringComparer.Ordinal);
-        var syncedAt = DateTime.Now;
 
         foreach (var line in allocation.Lines)
         {
-            if (!batchesByDo.TryGetValue(line.BrgMasukReffId, out var batch))
-            {
-                var batchMaybe = _batchRepo.LoadByNaturalKey(request.BrgId, line.BrgMasukReffId);
-                if (!batchMaybe.HasValue)
-                {
-                    throw new InvalidOperationException(
-                        $"Stock Batch not found for BrgId={request.BrgId}, BrgMasukReffId={line.BrgMasukReffId}.");
-                }
-
-                batch = batchMaybe.Value;
-                batchesByDo[line.BrgMasukReffId] = batch;
-            }
-
-            var sourceLokasi = batch.ListLokasi.FirstOrDefault(x =>
-                x.StokLokasiId == line.StokLokasiId)
-                ?? throw new InvalidOperationException(
-                    $"Source Location Stock Balance {line.StokLokasiId} not found on batch {batch.StokBatchId}.");
-
-            var noBatch = sourceLokasi.NoBatch;
-            var hpp = batch.Hpp;
-            var hospitalBefore = batch.QtySisa;
-
-            var sourceAfter = batch.DecreaseLokasi(
-                request.SourceLayananId,
-                line.TglEd,
-                line.QtyAllocated);
-            var destLokasi = batch.IncreaseLokasi(
-                request.DestLayananId,
-                line.TglEd,
-                line.QtyAllocated,
-                noBatch);
-
-            if (batch.QtySisa != hospitalBefore)
-            {
-                throw new InvalidOperationException(
-                    "Stock Transfer must not change hospital-wide Remaining Quantity (BR-STL-009).");
-            }
-
-            if (!scopesByDo.TryGetValue(line.BrgMasukReffId, out var scopeForWatermark))
-            {
-                var scopeKey = StockLegacyScopeModel.Key(request.BrgId, line.BrgMasukReffId);
-                var scopeMaybe = _scopeRepo.LoadEntity(scopeKey);
-                if (scopeMaybe.HasValue)
-                    scopeForWatermark = scopeMaybe.Value;
-            }
-
-            var watermarkToBeat = (scopeForWatermark != null && scopeForWatermark.TglMutasiLast == request.TglMutasi)
-                ? scopeForWatermark.LastLegacyBukuId
-                : null;
-
-            string legacyBukuOutId;
-            do
-            {
-                legacyBukuOutId = NunaId.NewLegacyCompact("BK");
-                if (usedBukuIds.Contains(legacyBukuOutId) ||
-                    (watermarkToBeat != null && string.Compare(legacyBukuOutId, watermarkToBeat, StringComparison.Ordinal) <= 0))
-                {
-                    Thread.Sleep(5);
-                }
-            } while (!usedBukuIds.Add(legacyBukuOutId) ||
-                     (watermarkToBeat != null && string.Compare(legacyBukuOutId, watermarkToBeat, StringComparison.Ordinal) <= 0));
-
-            watermarkToBeat = legacyBukuOutId;
-
-            string legacyBukuInId;
-            do
-            {
-                legacyBukuInId = NunaId.NewLegacyCompact("BK");
-                if (usedBukuIds.Contains(legacyBukuInId) ||
-                    (watermarkToBeat != null && string.Compare(legacyBukuInId, watermarkToBeat, StringComparison.Ordinal) <= 0))
-                {
-                    Thread.Sleep(5);
-                }
-            } while (!usedBukuIds.Add(legacyBukuInId) ||
-                     (watermarkToBeat != null && string.Compare(legacyBukuInId, watermarkToBeat, StringComparison.Ordinal) <= 0));
-
-            watermarkToBeat = legacyBukuInId;
-
+            var src = balanceByStokId[line.StokLokasiId];
+            var legacyBukuOutId = NunaId.NewLegacyCompact("BK");
+            var legacyBukuInId = NunaId.NewLegacyCompact("BK");
             var legacyStokInId = NunaId.NewLegacyCompact("ST");
-            var legacyStokOutId = ResolveSourceLegacyStokId(
-                request.BrgId,
-                line.BrgMasukReffId,
-                request.SourceLayananId,
-                line.TglEd,
-                line.QtyAllocated);
 
-            StockMovementModel mutasiOut;
-            do
-            {
-                mutasiOut = StockMovementModel.CreateOutbound(
-                    sourceAfter.StokLokasiId,
-                    batch.StokBatchId,
-                    request.BrgId,
-                    line.BrgMasukReffId,
-                    request.SourceLayananId,
-                    line.TglEd,
-                    request.TrsReffId,
-                    MovementKindEnum.TransferOut,
-                    qtyOut: line.QtyAllocated,
-                    hpp: hpp,
-                    tglMutasi: request.TglMutasi,
-                    poReffId: batch.PoReffId);
-                if (usedMutasiIds.Contains(mutasiOut.StokMutasiId))
-                    Thread.Sleep(5);
-            } while (!usedMutasiIds.Add(mutasiOut.StokMutasiId));
-
-            StockMovementModel mutasiIn;
-            do
-            {
-                Thread.Sleep(5);
-                mutasiIn = StockMovementModel.CreateInbound(
-                    destLokasi.StokLokasiId,
-                    batch.StokBatchId,
-                    request.BrgId,
-                    line.BrgMasukReffId,
-                    request.DestLayananId,
-                    line.TglEd,
-                    request.TrsReffId,
-                    MovementKindEnum.TransferIn,
-                    qtyIn: line.QtyAllocated,
-                    hpp: hpp,
-                    tglMutasi: request.TglMutasi,
-                    poReffId: batch.PoReffId);
-                if (usedMutasiIds.Contains(mutasiIn.StokMutasiId))
-                    Thread.Sleep(5);
-            } while (!usedMutasiIds.Add(mutasiIn.StokMutasiId));
-
-            mutasiInserts.Add(mutasiOut);
-            mutasiInserts.Add(mutasiIn);
-
-            StockLegacyBindingModel bindingOut;
-            do
-            {
-                bindingOut = StockLegacyBindingModel.CreateMutasiBuku(
-                    mutasiOut.StokMutasiId,
-                    legacyBukuOutId,
-                    request.TrsReffId,
-                    sourceAfter.StokLokasiId,
-                    legacyStokOutId);
-                if (usedBindingIds.Contains(bindingOut.BindingId))
-                    Thread.Sleep(5);
-            } while (!usedBindingIds.Add(bindingOut.BindingId));
-
-            StockLegacyBindingModel bindingIn;
-            do
-            {
-                Thread.Sleep(5);
-                bindingIn = StockLegacyBindingModel.CreateMutasiBuku(
-                    mutasiIn.StokMutasiId,
-                    legacyBukuInId,
-                    request.TrsReffId,
-                    destLokasi.StokLokasiId,
-                    legacyStokInId);
-                if (usedBindingIds.Contains(bindingIn.BindingId))
-                    Thread.Sleep(5);
-            } while (!usedBindingIds.Add(bindingIn.BindingId));
-
-            bindingInserts.Add(bindingOut);
-            bindingInserts.Add(bindingIn);
+            legacyOps.Add(new LegacyStokDepleteWriteOperation(
+                new LegacyStokDepleteRequest(src.LegacyStokId, line.QtyAllocated)));
 
             legacyOps.Add(new LegacyOutboundBukuWriteOperation(new LegacyOutboundBukuWriteRequest(
                 request.BrgId,
-                line.BrgMasukReffId,
+                src.BrgMasukReffId,
                 request.SourceLayananId,
                 QtyOut: line.QtyAllocated,
-                Hpp: hpp,
-                TglEd: line.TglEd,
+                Hpp: src.Hpp,
+                TglEd: src.TglEd,
                 TglMutasi: request.TglMutasi,
                 TrsReffId: request.TrsReffId,
                 MovementKindString: "MT_OUT",
-                PoReffId: batch.PoReffId,
-                NoBatch: noBatch,
+                PoReffId: src.PoReffId,
+                NoBatch: src.NoBatch,
+                SatuanId: src.SatuanId,
                 LegacyBukuId: legacyBukuOutId)));
-            legacyOps.Add(new LegacyStokDepleteWriteOperation(
-                new LegacyStokDepleteRequest(legacyStokOutId, line.QtyAllocated)));
+
             legacyOps.Add(new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
                 request.BrgId,
-                line.BrgMasukReffId,
+                src.BrgMasukReffId,
                 request.DestLayananId,
                 Qty: line.QtyAllocated,
-                Hpp: hpp,
-                TglEd: line.TglEd,
-                TglMasuk: batch.TglMasuk,
+                Hpp: src.Hpp,
+                TglEd: src.TglEd,
+                TglMasuk: src.TglMasuk,
                 TglMutasi: request.TglMutasi,
                 TrsReffId: request.TrsReffId,
                 MovementKindString: "MT_IN",
-                PoReffId: batch.PoReffId,
-                NoBatch: noBatch,
+                PoReffId: src.PoReffId,
+                NoBatch: src.NoBatch,
+                SatuanId: src.SatuanId,
                 LegacyBukuId: legacyBukuInId,
                 LegacyStokId: legacyStokInId)));
 
-            var watermarkBukuId = LegacyWatermarkHelper.IsAfterWatermark(
-                    request.TglMutasi, legacyBukuInId, request.TglMutasi, legacyBukuOutId)
-                ? legacyBukuInId
-                : legacyBukuOutId;
-
-            AdvanceScopeWatermark(
-                scopesByDo,
-                request.BrgId,
-                line.BrgMasukReffId,
-                request.TglMutasi,
-                watermarkBukuId,
-                syncedAt);
-
             lineResults.Add(new PostStockTransferLineResult(
-                mutasiOut.StokMutasiId,
-                mutasiIn.StokMutasiId,
-                sourceAfter.StokLokasiId,
-                destLokasi.StokLokasiId,
-                batch.StokBatchId,
-                line.BrgMasukReffId,
+                string.Empty,
+                string.Empty,
+                src.LegacyStokId,
+                string.Empty,
+                string.Empty,
+                src.BrgMasukReffId,
                 legacyBukuOutId,
                 legacyBukuInId,
                 legacyStokInId));
         }
 
         var draft = new StockConsequenceDraft(
-            BatchUpserts: batchesByDo.Values.ToList(),
-            MutasiInserts: mutasiInserts,
-            BindingInserts: bindingInserts,
-            ScopeUpdates: scopesByDo.Values.ToList(),
+            BatchUpserts: [],
+            MutasiInserts: [],
+            BindingInserts: [],
+            ScopeUpdates: [],
             LegacyOperations: legacyOps,
             UserId: request.UserId);
 
@@ -421,137 +221,41 @@ public class PostStockTransferConsequenceHandler
         return new PostStockTransferConsequenceResult(
             PostStockTransferOutcomeEnum.Success,
             lineResults,
-            ShortfallQty: 0,
+            0m,
             string.Empty,
             string.Empty,
             string.Empty);
     }
 
-    private static bool TryPairTransferLegs(
-        PostStockTransferConsequenceCommand request,
-        IReadOnlyList<StockMovementModel> priorOuts,
-        IReadOnlyList<StockMovementModel> priorIns,
-        out IReadOnlyList<(StockMovementModel Out, StockMovementModel In)> pairedLegs)
+    private static IReadOnlyList<PostStockTransferLineResult> PairIdempotentLines(
+        IReadOnlyList<LegacyStockJournalReadModel> outs,
+        IReadOnlyList<LegacyStockJournalReadModel> ins)
     {
-        pairedLegs = [];
-        if (priorOuts.Count == 0 || priorOuts.Count != priorIns.Count)
-            return false;
-
-        var remainingIns = priorIns.ToList();
-        var pairs = new List<(StockMovementModel Out, StockMovementModel In)>();
-
-        foreach (var outMutasi in priorOuts)
+        var remainingIns = ins.ToList();
+        var results = new List<PostStockTransferLineResult>(outs.Count);
+        foreach (var outLeg in outs)
         {
-            if (!string.Equals(outMutasi.LayananId, request.SourceLayananId, StringComparison.Ordinal))
-                return false;
-
-            var matchIndex = remainingIns.FindIndex(inMutasi =>
-                string.Equals(inMutasi.LayananId, request.DestLayananId, StringComparison.Ordinal)
-                && string.Equals(inMutasi.BrgMasukReffId, outMutasi.BrgMasukReffId, StringComparison.Ordinal)
-                && inMutasi.QtyIn == outMutasi.QtyOut
-                && inMutasi.TglEd == outMutasi.TglEd);
-
-            if (matchIndex < 0)
-                return false;
-
-            pairs.Add((outMutasi, remainingIns[matchIndex]));
-            remainingIns.RemoveAt(matchIndex);
-        }
-
-        if (remainingIns.Count != 0)
-            return false;
-
-        pairedLegs = pairs;
-        return true;
-    }
-
-    private PostStockTransferConsequenceResult BuildIdempotentResult(
-        IReadOnlyList<(StockMovementModel Out, StockMovementModel In)> pairedLegs)
-    {
-        var results = new List<PostStockTransferLineResult>();
-
-        foreach (var (outMutasi, inMutasi) in pairedLegs)
-        {
-            var outBinding = _bindingRepo.FindByStokMutasiId(outMutasi.StokMutasiId);
-            var inBinding = _bindingRepo.FindByStokMutasiId(inMutasi.StokMutasiId);
+            var matchIdx = remainingIns.FindIndex(i =>
+                i.BrgMasukReffId == outLeg.BrgMasukReffId
+                && i.TglEd == outLeg.TglEd
+                && i.QtyIn == outLeg.QtyOut);
+            if (matchIdx < 0)
+                matchIdx = 0;
+            var inLeg = remainingIns[matchIdx];
+            remainingIns.RemoveAt(matchIdx);
 
             results.Add(new PostStockTransferLineResult(
-                outMutasi.StokMutasiId,
-                inMutasi.StokMutasiId,
-                outMutasi.StokLokasiId,
-                inMutasi.StokLokasiId,
-                outMutasi.StokBatchId,
-                outMutasi.BrgMasukReffId,
-                outBinding.HasValue ? outBinding.Value.LegacyBukuId : string.Empty,
-                inBinding.HasValue ? inBinding.Value.LegacyBukuId : string.Empty,
-                inBinding.HasValue ? inBinding.Value.LegacyStokId : string.Empty));
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                outLeg.BrgMasukReffId,
+                outLeg.LegacyBukuId,
+                inLeg.LegacyBukuId,
+                string.Empty));
         }
 
-        return new PostStockTransferConsequenceResult(
-            PostStockTransferOutcomeEnum.Idempotent,
-            results,
-            ShortfallQty: 0,
-            string.Empty,
-            string.Empty,
-            string.Empty);
-    }
-
-    private string ResolveSourceLegacyStokId(
-        string brgId,
-        string brgMasukReffId,
-        string layananId,
-        DateTime tglEd,
-        decimal qtyNeeded)
-    {
-        var matches = _legacyRead.ListBalances(brgId, brgMasukReffId)
-            .Where(b =>
-                b.LayananId == layananId
-                && b.TglEd == tglEd
-                && b.QtySisa >= qtyNeeded)
-            .ToList();
-
-        if (matches.Count != 1)
-        {
-            throw new InvalidOperationException(
-                $"Expected exactly one legacy stok for deplete " +
-                $"(Brg={brgId}, DO={brgMasukReffId}, Layanan={layananId}, " +
-                $"TglEd={tglEd:yyyy-MM-dd}, Qty>={qtyNeeded}); found {matches.Count}.");
-        }
-
-        return matches[0].LegacyStokId;
-    }
-
-    private void AdvanceScopeWatermark(
-        Dictionary<string, StockLegacyScopeModel> scopesByDo,
-        string brgId,
-        string brgMasukReffId,
-        DateTime tglMutasi,
-        string legacyBukuId,
-        DateTime syncedAt)
-    {
-        if (!scopesByDo.TryGetValue(brgMasukReffId, out var scope))
-        {
-            var scopeKey = StockLegacyScopeModel.Key(brgId, brgMasukReffId);
-            var scopeMaybe = _scopeRepo.LoadEntity(scopeKey);
-            scope = scopeMaybe.HasValue
-                ? scopeMaybe.Value
-                : StockLegacyScopeModel.CreateNotAligned(brgId, brgMasukReffId);
-            scopesByDo[brgMasukReffId] = scope;
-        }
-
-        var candidateAfter = LegacyWatermarkHelper.IsAfterWatermark(
-            tglMutasi, legacyBukuId, scope.TglMutasiLast, scope.LastLegacyBukuId);
-
-        if (scope.AlignmentStatus is AlignmentStatusEnum.Aligned or AlignmentStatusEnum.Stale)
-        {
-            if (candidateAfter)
-                scope.AdvanceWatermark(tglMutasi, legacyBukuId, syncedAt);
-            else
-                scope.AdvanceWatermark(scope.TglMutasiLast, scope.LastLegacyBukuId, syncedAt);
-        }
-        else
-        {
-            scope.MarkAligned(tglMutasi, legacyBukuId, syncedAt);
-        }
+        return results;
     }
 }

@@ -21,10 +21,10 @@ public class BhpIgdController : Controller
     [HttpPost("{visitId}")]
     public async Task<IActionResult> AddBhp(string visitId, [FromBody] AddBhpBody body)
     {
-        var cmd = new IgdBhpAddCmd(visitId, body.BhpItemId, body.BhpItemName, body.Qty, body.Price, body.UserId);
+        var cmd = new IgdBhpAddCmd(visitId, body.BhpItemId, body.BhpItemName, body.Qty, body.Price, body.UserId, body.LayananId);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
 }
 
-public record AddBhpBody(string BhpItemId, string BhpItemName, int Qty, decimal Price, string UserId);
+public record AddBhpBody(string BhpItemId, string BhpItemName, int Qty, decimal Price, string UserId, string? LayananId = null);

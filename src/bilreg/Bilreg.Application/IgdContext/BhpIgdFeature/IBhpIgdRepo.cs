@@ -24,4 +24,6 @@ public record BhpIgdView(
     DateTime CreatedDateTime,
     string TrsBillId = "",
     bool IsPosted = false,
-    DateTime? PostedDate = null);
+    DateTime? PostedDate = null,
+    string LayananId = "",
+    string PakaiBrgId = "");

@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using MediatR;
 
 namespace Bilreg.Application.ChargeContext.AmbulanceFeature.UseCases;
@@ -40,7 +42,8 @@ public record TransportGetResponse(
     string AlasanBatal,
     decimal BiayaBatal,
     string Keterangan,
-    IEnumerable<TransportItemResponse> ListItems);
+    IEnumerable<TransportItemResponse> ListItems,
+    bool IsVoid = false);
 
 public record TransportItemResponse(
     string DetilTarifId,
@@ -50,11 +53,14 @@ public record TransportItemResponse(
     decimal Diskon,
     decimal SubTotal,
     bool IsVoid,
-    string Keterangan);
+    string Keterangan,
+    string DetilTarifName = "");
 
 public static class TransportResponseMapper
 {
-    public static TransportGetResponse ToResponse(TrsTransportModel t)
+    public static TransportGetResponse ToResponse(
+        TrsTransportModel t,
+        IReadOnlyDictionary<string, string>? komponenNames = null)
     {
         var items = t.ListItems.Select(i => new TransportItemResponse(
             i.DetilTarifId,
@@ -64,7 +70,8 @@ public static class TransportResponseMapper
             i.Diskon,
             i.SubTotal,
             i.IsVoid,
-            i.Keterangan)).ToList();
+            i.Keterangan,
+            komponenNames != null ? komponenNames.GetValueOrDefault(i.DetilTarifId, string.Empty) : string.Empty)).ToList();
 
         return new TransportGetResponse(
             t.TrsTransportId,
@@ -100,17 +107,22 @@ public static class TransportResponseMapper
             t.AlasanBatal,
             t.BiayaBatal,
             t.Keterangan,
-            items);
+            items,
+            t.IsVoid);
     }
 }
 
 public class GetTransportHandler : IRequestHandler<GetTransportQuery, TransportGetResponse>
 {
     private readonly ITrsTransportRepo _trsTransportRepo;
+    private readonly IKomponenRepo _komponenRepo;
 
-    public GetTransportHandler(ITrsTransportRepo trsTransportRepo)
+    public GetTransportHandler(
+        ITrsTransportRepo trsTransportRepo,
+        IKomponenRepo komponenRepo)
     {
         _trsTransportRepo = trsTransportRepo;
+        _komponenRepo = komponenRepo;
     }
 
     public Task<TransportGetResponse> Handle(GetTransportQuery request, CancellationToken cancellationToken)
@@ -121,6 +133,17 @@ public class GetTransportHandler : IRequestHandler<GetTransportQuery, TransportG
             onSome: t => t,
             onNone: () => throw new KeyNotFoundException($"Transaksi transport dengan id '{request.TrsTransportId}' tidak ditemukan."));
 
-        return Task.FromResult(TransportResponseMapper.ToResponse(transport));
+        var kompKeys = transport.ListItems
+            .Select(i => i.DetilTarifId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .Select(id => (IKomponenKey)KomponenType.Key(id))
+            .ToList();
+
+        var komponenNames = kompKeys.Count > 0
+            ? (_komponenRepo.ListData(kompKeys) ?? []).ToDictionary(k => k.KomponenId, k => k.KomponenName)
+            : new Dictionary<string, string>();
+
+        return Task.FromResult(TransportResponseMapper.ToResponse(transport, komponenNames));
     }
 }

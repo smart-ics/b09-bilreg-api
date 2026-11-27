@@ -37,6 +37,7 @@ public class CompleteTransportHandler : IRequestHandler<CompleteTransportCmd, Co
 {
     private readonly ITrsTransportRepo _trsTransportRepo;
     private readonly IAmbulanceRepo _ambulanceRepo;
+    private readonly ITujuanTransportRepo _tujuanTransportRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly IRegRepo _regRepo;
     private readonly IJaminanRepo _jaminanRepo;
@@ -46,6 +47,7 @@ public class CompleteTransportHandler : IRequestHandler<CompleteTransportCmd, Co
     public CompleteTransportHandler(
         ITrsTransportRepo trsTransportRepo,
         IAmbulanceRepo ambulanceRepo,
+        ITujuanTransportRepo tujuanTransportRepo,
         IAddBillAppService addBillAppService,
         IRegRepo regRepo,
         IJaminanRepo jaminanRepo,
@@ -54,6 +56,7 @@ public class CompleteTransportHandler : IRequestHandler<CompleteTransportCmd, Co
     {
         _trsTransportRepo = trsTransportRepo;
         _ambulanceRepo = ambulanceRepo;
+        _tujuanTransportRepo = tujuanTransportRepo;
         _addBillAppService = addBillAppService;
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;
@@ -71,36 +74,46 @@ public class CompleteTransportHandler : IRequestHandler<CompleteTransportCmd, Co
 
         var returnTime = request.ReturnTime ?? _tglJamProvider.Now;
 
-        // Populate items if passed before marking completed (since AddItem checks terminal state)
+        // Populate items if passed before marking completed (since ReplaceItems checks terminal state)
         if (request.Items != null)
         {
-            foreach (var item in request.Items)
-            {
-                transport.AddItem(new TrsTransportItemModel(
+            var items = request.Items
+                .Select(item => new TrsTransportItemModel(
                     transport.TrsTransportId,
                     item.DetilTarifId,
                     item.Tarif,
                     item.Qty,
                     item.PetugasMedisId,
                     item.Diskon,
-                    item.Keterangan));
+                    item.Keterangan))
+                .ToList();
+
+            if (items.Count > 0)
+            {
+                transport.ReplaceItems(items);
             }
         }
-        else if (transport.ListItems.Count == 0 && !string.IsNullOrWhiteSpace(transport.AmbulanceId))
+        else if (transport.ListItems.Count == 0
+            && !string.IsNullOrWhiteSpace(transport.AmbulanceId)
+            && !string.IsNullOrWhiteSpace(transport.TujuanTransportId))
         {
-            // Default components from ambulance master if no items recorded
+            // Default components via TransportTariffCalculator if no items recorded
             var ambulance = _ambulanceRepo.LoadEntity(new AmbulanceKey(transport.AmbulanceId)).Match(
                 onSome: a => a,
                 onNone: () => null);
+            var tujuan = _tujuanTransportRepo.LoadEntity(new TujuanTransportKey(transport.TujuanTransportId)).Match(
+                onSome: t => t,
+                onNone: () => null);
 
-            if (ambulance != null && ambulance.ListKomponen.Count > 0)
+            if (ambulance != null && tujuan != null)
             {
-                foreach (var komp in ambulance.ListKomponen)
+                var calc = TransportTariffCalculator.Calculate(ambulance, tujuan);
+                foreach (var item in calc.Items)
                 {
                     transport.AddItem(new TrsTransportItemModel(
                         transport.TrsTransportId,
-                        komp.KomponenId,
-                        komp.NilaiTarif,
+                        item.DetilTarifId,
+                        item.TarifFinal,
                         1m));
                 }
             }
