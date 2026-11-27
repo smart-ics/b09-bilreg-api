@@ -572,6 +572,152 @@ public class AdmisiRajalPatientContextQueryTest
             Times.AtLeastOnce);
     }
 
+    [Fact]
+    public async Task SixDigitPatientIdSearch_ReturnsActiveBookingRankedTopAndPatient()
+    {
+        const string fullPatientId = "000000001234";
+        const string keyword = "001234";
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien(keyword))
+            .Returns([PatientView(id: fullPatientId)]);
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([
+                Booking("BO-OTHER", "BUDI", "0899") with
+                {
+                    Reg = new RegReff("-", "000000009999", "BUDI")
+                },
+                Booking("BO-MATCH", "ANI", "0812") with
+                {
+                    Reg = new RegReff("-", fullPatientId, "ANI")
+                }
+            ]);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery(keyword, "2026-07-25"),
+            default);
+
+        result.Bookings.Items.Should().ContainSingle(x =>
+            x.Id == "BO-MATCH"
+            && x.Rank == 10
+            && x.IsExactMatch
+            && x.MatchType == "ExactIdentifier");
+        result.Patients.Items.Should().ContainSingle(x => x.Id == fullPatientId);
+        result.BestMatch!.Kind.Should().Be(PatientContextKind.Booking);
+        result.BestMatch.Id.Should().Be("BO-MATCH");
+    }
+
+    [Fact]
+    public async Task PatientConfirmation_WithZeroActiveBookings_ReturnsEmptyActiveBookingsAndIgnoresRegistered()
+    {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe.From(PatientModel()));
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([
+                Booking("BO-REG", "ANI", "0812") with
+                {
+                    Reg = new RegReff("RG00000001", "001234", "ANI")
+                }
+            ]);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextGetQuery(
+                PatientContextKind.Patient,
+                "001234",
+                "2026-07-25"),
+            default);
+
+        result.Kind.Should().Be(PatientContextKind.Patient);
+        result.ActiveBookings.Should().NotBeNull();
+        result.ActiveBookings.Should().BeEmpty();
+        result.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PatientConfirmation_WithSingleActiveBooking_ReturnsOneActiveBookingSummary()
+    {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe.From(PatientModel()));
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([
+                Booking("BO1", "ANI", "0812") with
+                {
+                    JamPraktek = new TimeOnly(9, 30),
+                    NoAntrian = 5
+                }
+            ]);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextGetQuery(
+                PatientContextKind.Patient,
+                "001234",
+                "2026-07-25"),
+            default);
+
+        result.ActiveBookings.Should().ContainSingle();
+        var summary = result.ActiveBookings!.Single();
+        summary.BookingId.Should().Be("BO1");
+        summary.VisitDate.Should().Be("2026-07-25");
+        summary.VisitTime.Should().Be("09:30");
+        summary.ServiceName.Should().Be("Poli");
+        summary.DoctorName.Should().Be("Dokter");
+        summary.NoAntrian.Should().Be(5);
+        result.Warnings.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task PatientConfirmation_WithMultipleActiveBookings_OrdersByJamPraktekThenBookingIdAndIgnoresRegistered()
+    {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe.From(PatientModel()));
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([
+                Booking("BO-LATE", "ANI", "0812") with
+                {
+                    JamPraktek = new TimeOnly(11, 0),
+                    NoAntrian = 3
+                },
+                Booking("BO-REG", "ANI", "0812") with
+                {
+                    Reg = new RegReff("RG00000001", "001234", "ANI"),
+                    JamPraktek = new TimeOnly(7, 0),
+                    NoAntrian = 1
+                },
+                Booking("BO-B", "ANI", "0812") with
+                {
+                    JamPraktek = new TimeOnly(8, 0),
+                    NoAntrian = 2
+                },
+                Booking("BO-A", "ANI", "0812") with
+                {
+                    JamPraktek = new TimeOnly(8, 0),
+                    NoAntrian = 1
+                }
+            ]);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextGetQuery(
+                PatientContextKind.Patient,
+                "001234",
+                "2026-07-25"),
+            default);
+
+        result.ActiveBookings.Should().HaveCount(3);
+        result.ActiveBookings!.Select(x => x.BookingId)
+            .Should().ContainInOrder("BO-A", "BO-B", "BO-LATE");
+        result.Warnings.Should().NotBeEmpty();
+    }
+
     private static AdmisiRajalPatientContextHandler Handler(
         Mock<IBookingRepo>? bookingRepo = null,
         Mock<IRegistrationHistoryReader>? regRepo = null,

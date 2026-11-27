@@ -21,6 +21,7 @@ public interface IMutasiBrgDal :
     void Update(MutasiBrgDto dto, IDbConnection conn, IDbTransaction? trans = null);
     void Delete(IMutasiBrgKey key, IDbConnection conn, IDbTransaction? trans = null);
     MutasiBrgDto GetData(IMutasiBrgKey key, IDbConnection conn, IDbTransaction? trans = null);
+    MutasiBrgDto GetDataForUpdate(IMutasiBrgKey key, IDbConnection conn, IDbTransaction trans);
 }
 
 public class MutasiBrgDal : IMutasiBrgDal
@@ -172,7 +173,30 @@ public class MutasiBrgDal : IMutasiBrgDal
         var dp = new DynamicParameters();
         dp.AddParam("@MutasiBrgId", key.MutasiBrgId, SqlDbType.VarChar);
 
-        return conn.ReadSingle<MutasiBrgDto>(sql, dp);
+        return conn.QueryFirstOrDefault<MutasiBrgDto>(sql, dp, trans)!;
+    }
+
+    public MutasiBrgDto GetDataForUpdate(IMutasiBrgKey key, IDbConnection conn, IDbTransaction trans)
+    {
+        const string sql = """
+            SELECT 
+                MutasiBrgId, MutasiBrgDate, State,
+                LayananAsalId, LayananAsalName,
+                LayananTujuanId, LayananTujuanName,
+                OrderMutasiId, DispatchNote, IssuerUserId,
+                CrtUser, CrtDate, UpdUser, UpdDate,
+                ISNULL(VodUser, '') AS VodUser,
+                ISNULL(VodDate, '3000-01-01') AS VodDate,
+                ISNULL(CancelReason, '') AS CancelReason
+            FROM 
+                BILRG_MutasiBrg WITH (UPDLOCK, HOLDLOCK)
+            WHERE 
+                MutasiBrgId = @MutasiBrgId
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@MutasiBrgId", key.MutasiBrgId, SqlDbType.VarChar);
+
+        return conn.QueryFirstOrDefault<MutasiBrgDto>(sql, dp, trans)!;
     }
 
     public IEnumerable<MutasiBrgDto> ListData(Periode filter)

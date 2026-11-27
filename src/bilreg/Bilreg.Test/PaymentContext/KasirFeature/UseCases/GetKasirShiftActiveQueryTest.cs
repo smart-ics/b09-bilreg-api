@@ -9,7 +9,7 @@ namespace Bilreg.Test.PaymentContext.KasirFeature.UseCases;
 public class GetKasirShiftActiveQueryTest
 {
     private readonly Mock<IKasirShiftRepo> _kasirShiftRepoMock;
-    private readonly Mock<ITrsKasirRepo> _trsKasirRepoMock;
+    private readonly Mock<IKasirShiftTotalsDal> _trsKasirDalMock;
     private readonly GetKasirShiftActiveHandler _sut;
     private readonly GetKasirShiftActiveValidator _validator;
 
@@ -18,11 +18,11 @@ public class GetKasirShiftActiveQueryTest
     public GetKasirShiftActiveQueryTest()
     {
         _kasirShiftRepoMock = new Mock<IKasirShiftRepo>();
-        _trsKasirRepoMock = new Mock<ITrsKasirRepo>();
+        _trsKasirDalMock = new Mock<IKasirShiftTotalsDal>();
 
         _sut = new GetKasirShiftActiveHandler(
             _kasirShiftRepoMock.Object,
-            _trsKasirRepoMock.Object);
+            _trsKasirDalMock.Object);
         _validator = new GetKasirShiftActiveValidator();
     }
 
@@ -41,28 +41,9 @@ public class GetKasirShiftActiveQueryTest
             .Setup(x => x.GetActiveShift("KASIR-01"))
             .Returns(shift);
 
-        // Transactions:
-        // Terima BERHASIL: 300k
-        // Terima VOID: 50k (ignored)
-        // Keluar BERHASIL: 50k
-        // Keluar VOID: 20k (ignored)
-        var pTunai300 = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 300_000m, 0m);
-        var trsTerima = TrsKasirModel.CreateTerimaKas(shift.ShiftId, "KASIR-01", "REG01", "P01", "Pasien A", "ORD01", "Ket", 300_000m, new[] { pTunai300 }, OpenTime.AddHours(1));
-
-        var pTunai50 = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 50_000m, 0m);
-        var trsTerimaVoid = TrsKasirModel.CreateTerimaKas(shift.ShiftId, "KASIR-01", "REG02", "P02", "Pasien B", "ORD02", "Ket", 50_000m, new[] { pTunai50 }, OpenTime.AddHours(2));
-        trsTerimaVoid.Void("KASIR-01", "Batal", OpenTime.AddHours(2));
-
-        var pTunaiKeluar50 = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 50_000m, 0m);
-        var trsKeluar = TrsKasirModel.CreateKeluarKas(shift.ShiftId, "KASIR-01", "REG01", "P01", "Pasien A", "ORD01", "Refund", 50_000m, new[] { pTunaiKeluar50 }, OpenTime.AddHours(3));
-
-        var pTunaiKeluar20 = TrsKasirPaymentType.Create(KasirConst.MetodeBayarTunai, 20_000m, 0m);
-        var trsKeluarVoid = TrsKasirModel.CreateKeluarKas(shift.ShiftId, "KASIR-01", "REG02", "P02", "Pasien B", "ORD02", "Refund", 20_000m, new[] { pTunaiKeluar20 }, OpenTime.AddHours(4));
-        trsKeluarVoid.Void("KASIR-01", "Batal", OpenTime.AddHours(4));
-
-        _trsKasirRepoMock
-            .Setup(x => x.ListByShift(shift.ShiftId))
-            .Returns(new[] { trsTerima, trsTerimaVoid, trsKeluar, trsKeluarVoid });
+        _trsKasirDalMock
+            .Setup(x => x.GetShiftTotalsAsync(shift.ShiftId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KasirShiftTotalsDto(300_000m, 50_000m));
 
         var query = new GetKasirShiftActiveQuery("KASIR-01");
 
@@ -84,6 +65,118 @@ public class GetKasirShiftActiveQueryTest
         response.StatusShift.Should().Be(KasirConst.StatusShiftBuka);
     }
 
+    [Theory]
+    [InlineData(200_000, 0, 0, 200_000)]
+    [InlineData(0, 500_000, 125_000, 375_000)]
+    [InlineData(100_000, 150_000, 300_000, -50_000)]
+    public async Task GivenVariousShiftTotals_WhenHandle_ThenCalculatesSaldoKasBerjalanCorrectly(
+        decimal saldoAwal,
+        decimal totalTerima,
+        decimal totalKeluar,
+        decimal expectedSaldoBerjalan)
+    {
+        // Arrange
+        var shift = KasirShiftModel.OpenShift(
+            kodeShift: "1",
+            kasirId: "KASIR-01",
+            loket: "Loket 01",
+            saldoAwal: saldoAwal,
+            openTime: OpenTime);
+
+        _kasirShiftRepoMock
+            .Setup(x => x.GetActiveShift("KASIR-01"))
+            .Returns(shift);
+
+        _trsKasirDalMock
+            .Setup(x => x.GetShiftTotalsAsync(shift.ShiftId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KasirShiftTotalsDto(totalTerima, totalKeluar));
+
+        var query = new GetKasirShiftActiveQuery("KASIR-01");
+
+        // Act
+        var response = await _sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        response!.SaldoAwal.Should().Be(saldoAwal);
+        response.TotalTerimaBerjalan.Should().Be(totalTerima);
+        response.TotalKeluarBerjalan.Should().Be(totalKeluar);
+        response.SaldoKasBerjalan.Should().Be(expectedSaldoBerjalan);
+    }
+
+    [Fact]
+    public async Task GivenCancellationToken_WhenHandle_ThenForwardsCancellationTokenToTotalsDal()
+    {
+        // Arrange
+        var shift = KasirShiftModel.OpenShift(
+            kodeShift: "1",
+            kasirId: "KASIR-01",
+            loket: "Loket 01",
+            saldoAwal: 100_000m,
+            openTime: OpenTime);
+
+        using var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        _kasirShiftRepoMock
+            .Setup(x => x.GetActiveShift("KASIR-01"))
+            .Returns(shift);
+
+        _trsKasirDalMock
+            .Setup(x => x.GetShiftTotalsAsync(shift.ShiftId, token))
+            .ReturnsAsync(new KasirShiftTotalsDto(50_000m, 10_000m));
+
+        var query = new GetKasirShiftActiveQuery("KASIR-01");
+
+        // Act
+        await _sut.Handle(query, token);
+
+        // Assert
+        _trsKasirDalMock.Verify(x => x.GetShiftTotalsAsync(shift.ShiftId, token), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenCancelledToken_WhenTotalsDalThrowsOperationCanceled_ThenPropagatesException()
+    {
+        // Arrange
+        var shift = KasirShiftModel.OpenShift(
+            kodeShift: "1",
+            kasirId: "KASIR-01",
+            loket: "Loket 01",
+            saldoAwal: 100_000m,
+            openTime: OpenTime);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var token = cts.Token;
+
+        _kasirShiftRepoMock
+            .Setup(x => x.GetActiveShift("KASIR-01"))
+            .Returns(shift);
+
+        _trsKasirDalMock
+            .Setup(x => x.GetShiftTotalsAsync(shift.ShiftId, token))
+            .ThrowsAsync(new OperationCanceledException(token));
+
+        var query = new GetKasirShiftActiveQuery("KASIR-01");
+
+        // Act
+        var act = () => _sut.Handle(query, token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task GivenNullQuery_WhenHandle_ThenThrowsArgumentNullException()
+    {
+        // Act
+        var act = () => _sut.Handle(null!, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
     [Fact]
     public async Task GivenKasirWithoutActiveShift_WhenHandle_ThenReturnsNull()
     {
@@ -99,7 +192,7 @@ public class GetKasirShiftActiveQueryTest
 
         // Assert
         response.Should().BeNull();
-        _trsKasirRepoMock.Verify(x => x.ListByShift(It.IsAny<string>()), Times.Never);
+        _trsKasirDalMock.Verify(x => x.GetShiftTotalsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

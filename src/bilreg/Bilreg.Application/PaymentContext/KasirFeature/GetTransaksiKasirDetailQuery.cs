@@ -26,15 +26,20 @@ public record TransaksiKasirDetailResponse(
     string JamVoid,
     string PetugasVoid,
     string AlasanVoid,
-    IEnumerable<PaymentItemResponse> Payments);
+    IEnumerable<PaymentItemResponse> Payments,
+    IEnumerable<TrsKasirItemDto> Items);
 
 public class GetTransaksiKasirDetailHandler : IRequestHandler<GetTransaksiKasirDetailQuery, TransaksiKasirDetailResponse?>
 {
     private readonly ITrsKasirRepo _trsKasirRepo;
+    private readonly ITrsKasirItemDal _trsKasirItemDal;
 
-    public GetTransaksiKasirDetailHandler(ITrsKasirRepo trsKasirRepo)
+    public GetTransaksiKasirDetailHandler(
+        ITrsKasirRepo trsKasirRepo,
+        ITrsKasirItemDal trsKasirItemDal)
     {
         _trsKasirRepo = trsKasirRepo;
+        _trsKasirItemDal = trsKasirItemDal;
     }
 
     public Task<TransaksiKasirDetailResponse?> Handle(GetTransaksiKasirDetailQuery request, CancellationToken cancellationToken)
@@ -57,6 +62,8 @@ public class GetTransaksiKasirDetailHandler : IRequestHandler<GetTransaksiKasirD
             NomorReferensi: p.NomorReferensi,
             NamaBank: p.NamaBank));
 
+        var items = _trsKasirItemDal.ListDataByTrsKasir(request.TrsKasirId) ?? Enumerable.Empty<TrsKasirItemDto>();
+
         var response = new TransaksiKasirDetailResponse(
             TrsKasirId: model.TrsKasirId,
             TglTrs: model.TglTrs,
@@ -77,7 +84,8 @@ public class GetTransaksiKasirDetailHandler : IRequestHandler<GetTransaksiKasirD
             JamVoid: model.JamVoid,
             PetugasVoid: model.PetugasVoid,
             AlasanVoid: model.AlasanVoid,
-            Payments: paymentResponses);
+            Payments: paymentResponses,
+            Items: items);
 
         return Task.FromResult<TransaksiKasirDetailResponse?>(response);
     }

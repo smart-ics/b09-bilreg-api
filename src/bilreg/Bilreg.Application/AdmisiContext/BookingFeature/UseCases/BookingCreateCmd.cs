@@ -134,8 +134,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         var tracker = ResolveTracker(booking, selectedTrackerId, hasSelectedTracker, occurredAt);
 
+        var occupiedNumbers = antrian.ListEntry.Select(x => x.NoUrut).ToArray();
         var reserved = _queueNumberAdapter.ReserveForBooking(
-            schedule.LegacyJadwal, tglBerobat, booking, px).Value;
+            schedule.LegacyJadwal, tglBerobat, booking, px, occupiedNumbers).Value;
 
         //  persisting
         BookingCreateResponse response;

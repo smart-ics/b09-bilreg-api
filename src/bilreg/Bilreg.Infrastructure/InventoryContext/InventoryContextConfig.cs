@@ -17,6 +17,10 @@ public static class InventoryContextConfig
         services.AddScoped<IMutasiBrgItemDal, MutasiBrgItemDal>();
         services.AddScoped<IMutasiBrgRepo, MutasiBrgRepo>();
         services.AddScoped<IMutasiBrgMovementService, MutasiBrgMovementService>();
+        services.AddScoped<ITerimaMutasiDal, TerimaMutasiDal>();
+        services.AddScoped<ITerimaMutasiItemDal, TerimaMutasiItemDal>();
+        services.AddScoped<ITerimaMutasiRepo, TerimaMutasiRepo>();
+        services.AddScoped<ITerimaMutasiMovementService, TerimaMutasiMovementService>();
         services.AddScoped<ISqlDatabase, SqlDatabase>();
 
         // OpnameFeature

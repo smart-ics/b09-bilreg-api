@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.PaymentContext.KasirFeature;
 using Bilreg.Domain.PaymentContext.KasirFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -268,5 +269,24 @@ public class TrsKasirDal : ITrsKasirDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TrsKasirDto>(sql, dp);
+    }
+
+    public async Task<KasirShiftTotalsDto> GetShiftTotalsAsync(string shiftId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                ISNULL(SUM(CASE WHEN JenisTrs = 'TERIMA' THEN TotalNilai ELSE 0 END), 0) AS TotalTerima,
+                ISNULL(SUM(CASE WHEN JenisTrs = 'KELUAR' THEN TotalNilai ELSE 0 END), 0) AS TotalKeluar
+            FROM BILRG_TrsKasir WITH (NOLOCK)
+            WHERE ShiftId = @ShiftId AND StatusTrs = 'BERHASIL';
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@ShiftId", shiftId, SqlDbType.VarChar);
+
+        await using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        await conn.OpenAsync(cancellationToken);
+        var cmd = new CommandDefinition(sql, dp, cancellationToken: cancellationToken);
+        return await conn.QuerySingleAsync<KasirShiftTotalsDto>(cmd);
     }
 }

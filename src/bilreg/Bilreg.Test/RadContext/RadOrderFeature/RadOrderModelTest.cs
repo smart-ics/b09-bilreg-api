@@ -578,4 +578,139 @@ public class RadOrderModelTest
         order.AuditTrail.Modified.UserId.Should().Be("DOKTER1");
         order.AuditTrail.Modified.Timestamp.Should().Be(cancelDate);
     }
+
+    [Fact]
+    public void Unschedule_FromScheduledStatus_RevertsToRequestedAndUpdatesAudit()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-022",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110023",
+            audit: TestAudit());
+
+        var scheduledAt = new DateTime(2026, 11, 25, 9, 0, 0);
+        order.Schedule("RAD_ADMIN", scheduledAt);
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Scheduled);
+
+        var unscheduledAt = new DateTime(2026, 11, 25, 10, 30, 0);
+        order.Unschedule("RAD_ADMIN_2", unscheduledAt);
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Requested);
+        order.IsActive.Should().BeTrue();
+        order.IsCancelled.Should().BeFalse();
+        order.AuditTrail.Modified.UserId.Should().Be("RAD_ADMIN_2");
+        order.AuditTrail.Modified.Timestamp.Should().Be(unscheduledAt);
+    }
+
+    [Fact]
+    public void Unschedule_WithDefaultTimestamp_SetsModifiedTimestampAndRevertsToRequested()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-023",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110024",
+            audit: TestAudit());
+
+        order.Schedule("RAD_ADMIN");
+        var beforeUnschedule = DateTime.Now.AddSeconds(-1);
+
+        order.Unschedule("RAD_ADMIN_2");
+
+        order.RadOrderStatus.Should().Be(RadOrderStatusEnum.Requested);
+        order.AuditTrail.Modified.UserId.Should().Be("RAD_ADMIN_2");
+        order.AuditTrail.Modified.Timestamp.Should().BeOnOrAfter(beforeUnschedule);
+    }
+
+    [Fact]
+    public void Unschedule_WhenStatusRequested_ThrowsInvalidOperationException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-024",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110025",
+            audit: TestAudit());
+
+        var act = () => order.Unschedule("RAD_ADMIN");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*hanya diizinkan untuk status Scheduled*");
+    }
+
+    [Fact]
+    public void Unschedule_WhenStatusChargedOrCancelled_ThrowsInvalidOperationException()
+    {
+        var chargedOrder = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-025",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110026",
+            audit: TestAudit());
+        chargedOrder.MarkCharged("TIN-002", "USER1");
+
+        var cancelledOrder = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-026",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110027",
+            audit: TestAudit());
+        cancelledOrder.Schedule("RAD_ADMIN");
+        cancelledOrder.Cancel("Batal pemeriksaan", "USER1");
+
+        var actCharged = () => chargedOrder.Unschedule("RAD_ADMIN");
+        var actCancelled = () => cancelledOrder.Unschedule("RAD_ADMIN");
+
+        actCharged.Should().Throw<InvalidOperationException>()
+            .WithMessage("*hanya diizinkan untuk status Scheduled*");
+        actCancelled.Should().Throw<InvalidOperationException>()
+            .WithMessage("*hanya diizinkan untuk status Scheduled*");
+    }
+
+    [Fact]
+    public void Unschedule_WhenVoided_ThrowsInvalidOperationException()
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-027",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110028",
+            audit: TestAudit());
+
+        order.Schedule("RAD_ADMIN");
+        order.AuditTrail.Batal("ADMIN", new DateTime(2026, 11, 25, 11, 0, 0));
+
+        var act = () => order.Unschedule("RAD_ADMIN");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*sudah void*");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Unschedule_WhenUserIdNullOrWhiteSpace_ThrowsArgumentException(string? invalidUserId)
+    {
+        var order = RadOrderModel.CreateFromEmr(
+            emrOrderId: "EMR-RAD-028",
+            patient: EmrSnapshot(),
+            modality: RadModalityEnum.CT,
+            items: [CreateItem("TRF01", "CT Brain", RadModalityEnum.CT)],
+            orderNo: "RAD26110029",
+            audit: TestAudit());
+
+        order.Schedule("RAD_ADMIN");
+
+        var act = () => order.Unschedule(invalidUserId!);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

@@ -2,5 +2,5 @@ namespace Bilreg.Application.PaymentContext.KasirFeature;
 
 public interface IKasirOrderInboxDal
 {
-    IEnumerable<OrderKasirItemDto> ListOrderInbox(string? targetDate = null);
+    Task<IEnumerable<OrderKasirItemDto>> ListOrderInboxAsync(string? targetDate = null, CancellationToken cancellationToken = default);
 }

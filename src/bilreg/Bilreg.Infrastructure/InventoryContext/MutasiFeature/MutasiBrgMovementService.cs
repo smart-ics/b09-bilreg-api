@@ -5,7 +5,6 @@ using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Domain.InventoryContext;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Dapper;
-using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.InventoryContext.MutasiFeature;
@@ -78,7 +77,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 var take = Math.Min(remaining, row.fn_qty);
                 var newQty = row.fn_qty - take;
 
-                // --- Leg 1 (Source Unit): Deduct tb_stok & insert MUTASI_OUT into tb_buku ---
+                // --- Leg 1 (Source Unit): Deduct tb_stok & insert MT_OUT into tb_buku ---
                 const string updateStokSql = """
                     UPDATE tb_stok
                     SET fn_qty = @NewQty
@@ -107,9 +106,9 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 var poNo = SafeSubstring(row.fs_kd_po, 10);
                 var doNo = SafeSubstring(row.fs_kd_do, 10);
 
-                var bukuId = NunaId.NewLegacyCompact("BK");
+                var bukuId = MutasiLegacyIdGenerator.NextId("BK");
                 var bukuDp = new DynamicParameters();
-                bukuDp.AddParam("@fs_kd_trs", SafeSubstring(bukuId, 10), SqlDbType.VarChar);
+                bukuDp.AddParam("@fs_kd_trs", bukuId, SqlDbType.VarChar);
                 bukuDp.AddParam("@fs_kd_barang", SafeSubstring(row.fs_kd_barang, 13), SqlDbType.VarChar);
                 bukuDp.AddParam("@fs_kd_layanan", SafeSubstring(row.fs_kd_layanan, 5), SqlDbType.VarChar);
                 bukuDp.AddParam("@fs_kd_po", poNo, SqlDbType.VarChar);
@@ -123,12 +122,12 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 bukuDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
                 bukuDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
                 bukuDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
-                bukuDp.AddParam("@fs_kd_jenis_mutasi", "MUTASI_OUT", SqlDbType.VarChar);
+                bukuDp.AddParam("@fs_kd_jenis_mutasi", "MT_OUT", SqlDbType.VarChar);
                 bukuDp.AddParam("@fs_kd_satuan", satuanId, SqlDbType.VarChar);
 
                 conn.Execute(insertBukuSql, bukuDp, transaction: trans);
 
-                // --- Leg 2 (Transit Unit TRANS): Upsert tb_stok & insert MUTASI_IN into tb_buku ---
+                // --- Leg 2 (Transit Unit TRANS): Upsert tb_stok & insert MT_IN into tb_buku ---
                 const string findTransitStokSql = """
                     SELECT TOP 1 fs_kd_trs, fs_kd_barang, fs_kd_layanan,
                            fs_kd_po, fs_kd_do, fd_tgl_ed, fs_no_batch,
@@ -173,7 +172,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 }
                 else
                 {
-                    var newTransitStokId = NunaId.NewLegacyCompact("ST");
+                    var newTransitStokId = MutasiLegacyIdGenerator.NextId("ST");
                     const string insertTransitStokSql = """
                         INSERT INTO tb_stok(
                             fs_kd_trs, fs_kd_barang, fs_kd_layanan,
@@ -212,9 +211,9 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                     conn.Execute(insertTransitStokSql, transitStokDp, transaction: trans);
                 }
 
-                var transitBukuId = NunaId.NewLegacyCompact("BK");
+                var transitBukuId = MutasiLegacyIdGenerator.NextId("BK");
                 var transitBukuDp = new DynamicParameters();
-                transitBukuDp.AddParam("@fs_kd_trs", SafeSubstring(transitBukuId, 10), SqlDbType.VarChar);
+                transitBukuDp.AddParam("@fs_kd_trs", transitBukuId, SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fs_kd_barang", SafeSubstring(row.fs_kd_barang, 13), SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fs_kd_layanan", SafeSubstring(transitLayananId, 5), SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fs_kd_po", poNo, SqlDbType.VarChar);
@@ -228,7 +227,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 transitBukuDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
-                transitBukuDp.AddParam("@fs_kd_jenis_mutasi", "MUTASI_IN", SqlDbType.VarChar);
+                transitBukuDp.AddParam("@fs_kd_jenis_mutasi", "MT_IN", SqlDbType.VarChar);
                 transitBukuDp.AddParam("@fs_kd_satuan", satuanId, SqlDbType.VarChar);
 
                 conn.Execute(insertBukuSql, transitBukuDp, transaction: trans);
@@ -261,7 +260,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                    fn_stok_out, fn_hpp, fs_kd_satuan
             FROM tb_buku
             WHERE fs_kd_mutasi = @MutasiId
-              AND fs_kd_jenis_mutasi = 'MUTASI_OUT'
+              AND fs_kd_jenis_mutasi = 'MT_OUT'
               AND fs_kd_layanan = @LayananId
             """;
 
@@ -278,13 +277,13 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 var qtyToRestore = ledger.fn_stok_out;
                 if (qtyToRestore <= 0) continue;
 
-                // Leg 1 (Transit Unit TRANS): Deduct tb_stok & record MUTASI_REV in tb_buku
+                // Leg 1 (Transit Unit TRANS): Deduct tb_stok & record MT_IN_V in tb_buku
                 DeductTransitStock(conn, trans, transitLayananId, ledger.fs_kd_barang,
                     ledger.fs_no_batch, ledger.fd_tgl_ed, qtyToRestore, ledger.fn_hpp,
                     ledger.fs_kd_po, ledger.fs_kd_do, ledger.fs_kd_satuan,
                     mutasiId, tglMutasi, jamMutasi, tglJamMutasi);
 
-                // Leg 2 (Source Unit): Restore tb_stok & record MUTASI_REV in tb_buku
+                // Leg 2 (Source Unit): Restore tb_stok & record MT_OUT_V in tb_buku
                 RestoreSourceStock(conn, trans, ledger.fs_kd_barang, layananId,
                     ledger.fs_no_batch, ledger.fd_tgl_ed, qtyToRestore, ledger.fn_hpp,
                     ledger.fs_kd_po, ledger.fs_kd_do, ledger.fs_kd_satuan,
@@ -302,13 +301,13 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
                 var batchNo = item.BatchNo?.Trim() ?? string.Empty;
                 var expiredDate = string.IsNullOrWhiteSpace(item.ExpiredDate) ? "3000-01-01" : item.ExpiredDate.Trim();
 
-                // Leg 1 (Transit Unit TRANS): Deduct tb_stok & record MUTASI_REV in tb_buku
+                // Leg 1 (Transit Unit TRANS): Deduct tb_stok & record MT_IN_V in tb_buku
                 DeductTransitStock(conn, trans, transitLayananId, brgId,
                     batchNo, expiredDate, qtyToRestore, 0m,
                     string.Empty, string.Empty, item.Satuan?.SatuanId ?? string.Empty,
                     mutasiId, tglMutasi, jamMutasi, tglJamMutasi);
 
-                // Leg 2 (Source Unit): Restore tb_stok & record MUTASI_REV in tb_buku
+                // Leg 2 (Source Unit): Restore tb_stok & record MT_OUT_V in tb_buku
                 RestoreSourceStock(conn, trans, brgId, layananId,
                     batchNo, expiredDate, qtyToRestore, 0m,
                     string.Empty, string.Empty, item.Satuan?.SatuanId ?? string.Empty,
@@ -371,7 +370,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
             if (string.IsNullOrWhiteSpace(satuanId)) satuanId = existingTransitStok.fs_kd_satuan;
         }
 
-        var bukuRevId = NunaId.NewLegacyCompact("BK");
+        var bukuRevId = MutasiLegacyIdGenerator.NextId("BK");
         const string insertBukuRevSql = """
             INSERT INTO tb_buku(
                 fs_kd_trs, fs_kd_barang, fs_kd_layanan,
@@ -388,7 +387,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
             """;
 
         var revDp = new DynamicParameters();
-        revDp.AddParam("@fs_kd_trs", SafeSubstring(bukuRevId, 10), SqlDbType.VarChar);
+        revDp.AddParam("@fs_kd_trs", bukuRevId, SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_barang", SafeSubstring(brgId, 13), SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_layanan", SafeSubstring(transitLayananId, 5), SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_po", SafeSubstring(po, 10), SqlDbType.VarChar);
@@ -402,7 +401,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
         revDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
         revDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         revDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
-        revDp.AddParam("@fs_kd_jenis_mutasi", "MUTASI_REV", SqlDbType.VarChar);
+        revDp.AddParam("@fs_kd_jenis_mutasi", "MT_IN_V", SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_satuan", SafeSubstring(satuanId, 3), SqlDbType.VarChar);
 
         conn.Execute(insertBukuRevSql, revDp, transaction: trans);
@@ -463,7 +462,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
         }
         else
         {
-            var newStokId = NunaId.NewLegacyCompact("ST");
+            var newStokId = MutasiLegacyIdGenerator.NextId("ST");
             const string insertStokSql = """
                 INSERT INTO tb_stok(
                     fs_kd_trs, fs_kd_barang, fs_kd_layanan,
@@ -502,7 +501,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
             conn.Execute(insertStokSql, stokDp, transaction: trans);
         }
 
-        var bukuRevId = NunaId.NewLegacyCompact("BK");
+        var bukuRevId = MutasiLegacyIdGenerator.NextId("BK");
         const string insertBukuRevSql = """
             INSERT INTO tb_buku(
                 fs_kd_trs, fs_kd_barang, fs_kd_layanan,
@@ -519,7 +518,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
             """;
 
         var revDp = new DynamicParameters();
-        revDp.AddParam("@fs_kd_trs", SafeSubstring(bukuRevId, 10), SqlDbType.VarChar);
+        revDp.AddParam("@fs_kd_trs", bukuRevId, SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_barang", SafeSubstring(brgId, 13), SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_layanan", SafeSubstring(layananId, 5), SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_po", SafeSubstring(po, 10), SqlDbType.VarChar);
@@ -533,7 +532,7 @@ public class MutasiBrgMovementService : IMutasiBrgMovementService
         revDp.AddParam("@fd_tgl_jam_mutasi", tglJamMutasi, SqlDbType.VarChar);
         revDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
         revDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
-        revDp.AddParam("@fs_kd_jenis_mutasi", "MUTASI_REV", SqlDbType.VarChar);
+        revDp.AddParam("@fs_kd_jenis_mutasi", "MT_OUT_V", SqlDbType.VarChar);
         revDp.AddParam("@fs_kd_satuan", SafeSubstring(satuanId, 3), SqlDbType.VarChar);
 
         conn.Execute(insertBukuRevSql, revDp, transaction: trans);

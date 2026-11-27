@@ -4,5 +4,6 @@ public enum MutasiBrgStateEnum
 {
     Draft = 0,
     Dispatched = 1,
-    Cancelled = 2
+    Cancelled = 2,
+    Received = 3
 }

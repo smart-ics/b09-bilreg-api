@@ -208,6 +208,15 @@ public class MutasiBrgModel : IMutasiBrgKey
         Cancel("Dibatalkan oleh pengguna", userId);
     }
 
+    public void MarkReceived(string receiverUserId, DateTime? receiveDate = null)
+    {
+        GuardDispatched();
+        Guard.Against.NullOrWhiteSpace(receiverUserId, nameof(receiverUserId));
+
+        State = MutasiBrgStateEnum.Received;
+        AuditTrail.Modif(receiverUserId.Trim(), receiveDate ?? DateTime.Now);
+    }
+
     public void UpdateDispatchNote(string note)
     {
         GuardDraft();
@@ -233,6 +242,12 @@ public class MutasiBrgModel : IMutasiBrgKey
     {
         if (State != MutasiBrgStateEnum.Draft)
             throw new InvalidOperationException($"Operasi hanya diizinkan pada status Draft. Status saat ini: {State}");
+    }
+
+    private void GuardDispatched()
+    {
+        if (State != MutasiBrgStateEnum.Dispatched)
+            throw new InvalidOperationException($"Operasi hanya diizinkan pada status Dispatched. Status saat ini: {State}");
     }
     #endregion
 }

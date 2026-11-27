@@ -472,6 +472,8 @@
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasiItem.sql" />
     <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrg.sql" />
     <Build Include="InventoryContext\MutasiFeature\BILRG_MutasiBrgItem.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_TerimaMutasi.sql" />
+    <Build Include="InventoryContext\MutasiFeature\BILRG_TerimaMutasiItem.sql" />
     <None Include="InventoryContext\MutasiFeature\ta_layanan_Seed_TRANS.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.dataseed.sql" />
     <None Include="InventoryContext\StokFeature\FARIN_JenisLokasi.sql" />
