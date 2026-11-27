@@ -78,7 +78,7 @@ public static class Release1JourneySqlStageExpression
         var hasActiveAdmission = admission is not null && IsActiveAdmission(admission.Status);
         var prospectiveOpnameRequested =
             admission is null
-            && (facts.InpatientOrder is { Status: InpatientOrderStatusEnum.Requested, OrderSource: OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd }
+            && (facts.InpatientOrder is { Status: InpatientOrderStatusEnum.Requested, OrderSource: OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd or OrderSourceEnum.MhwIgd }
                 || facts.OpnameRequest is { Status: OpnameRequestStatusEnum.Requested });
         var prospectiveReservationReady =
             admission is null

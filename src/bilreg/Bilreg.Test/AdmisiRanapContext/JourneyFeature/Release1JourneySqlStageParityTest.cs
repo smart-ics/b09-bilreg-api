@@ -169,10 +169,12 @@ public class Release1JourneySqlStageParityTest
     [Theory]
     [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
     [InlineData(OrderSourceEnum.EmrIgd, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
+    [InlineData(OrderSourceEnum.MhwIgd, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
     [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Requested, JourneyOperationalStage.RegistrationRequired)]
     [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
     [InlineData(OrderSourceEnum.ExternalChannel, InpatientOrderStatusEnum.Maintained, JourneyOperationalStage.RegistrationRequired)]
     [InlineData(OrderSourceEnum.EmrRawatJalan, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
+    [InlineData(OrderSourceEnum.MhwIgd, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
     [InlineData(OrderSourceEnum.AdmisiBooking, InpatientOrderStatusEnum.Cancelled, JourneyOperationalStage.Cancelled)]
     public void FromNormalizedFacts_WithInpatientOrder_DerivesExpectedSqlStage(
         OrderSourceEnum orderSource,
@@ -180,7 +182,7 @@ public class Release1JourneySqlStageParityTest
         JourneyOperationalStage expectedStage)
     {
         var facts = new JourneyNormalizedFacts(
-            OriginKind: orderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd ? JourneyOriginKind.OpnameRequest : JourneyOriginKind.Reservation,
+            OriginKind: orderSource is OrderSourceEnum.EmrRawatJalan or OrderSourceEnum.EmrIgd or OrderSourceEnum.MhwIgd ? JourneyOriginKind.OpnameRequest : JourneyOriginKind.Reservation,
             Patient: new JourneyPatientSummary("P001", "RM001", "Pasien Uji"),
             OpnameRequest: null,
             Reservation: null,

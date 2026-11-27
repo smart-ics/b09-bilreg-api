@@ -20,7 +20,8 @@ public record InpatientOrderListFilter(
     InpatientOrderStatusEnum? Status = null,
     OrderSourceEnum? OrderSource = null,
     DateTime? PlannedFrom = null,
-    DateTime? PlannedTo = null);
+    DateTime? PlannedTo = null,
+    string? ExternalReferenceId = null);
 
 public record InpatientOrderAuditRecord(
     string AuditId,

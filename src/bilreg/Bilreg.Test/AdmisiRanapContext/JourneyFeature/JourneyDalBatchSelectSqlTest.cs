@@ -17,7 +17,7 @@ public class JourneyDalBatchSelectSqlTest
         // Assert - Criteria 2: Mutually exclusive projections using io.OrderSource, eliminating dual COALESCE
         sql.Should().NotContain("COALESCE(NULLIF(a.InpatientOrderId,'-'), a.OpnameRequestId)");
         sql.Should().NotContain("COALESCE(NULLIF(a.InpatientOrderId,'-'), a.ReservationId)");
-        sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId");
+        sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2, 5) THEN a.InpatientOrderId");
         sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (3, 4) THEN a.InpatientOrderId");
 
         // Assert - Criteria 3: WHERE clause filters on InpatientOrderId, legacy columns eliminated

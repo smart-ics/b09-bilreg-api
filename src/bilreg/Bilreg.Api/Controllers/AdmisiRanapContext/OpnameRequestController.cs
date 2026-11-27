@@ -29,7 +29,12 @@ public class OpnameRequestController : ControllerBase
         var orderSource = body.OrderSource ?? OrderSourceEnum.EmrRawatJalan;
         var extSource = !string.IsNullOrWhiteSpace(body.ExternalSystemSource)
             ? body.ExternalSystemSource
-            : (orderSource == OrderSourceEnum.EmrIgd ? "EMR_IGD" : "EMR_RJ");
+            : orderSource switch
+            {
+                OrderSourceEnum.EmrIgd => "EMR_IGD",
+                OrderSourceEnum.MhwIgd => "MHW_IGD",
+                _ => "EMR_RJ"
+            };
 
         var cmd = new AdmCreateOpnameRequestCmd(
             body.PasienId,
@@ -60,9 +65,11 @@ public class OpnameRequestController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] OpnameRequestStatusEnum? status)
+    public async Task<IActionResult> List(
+        [FromQuery] OpnameRequestStatusEnum? status,
+        [FromQuery] string? externalReferenceId = null)
     {
-        var result = await _mediator.Send(new AdmListOpnameRequestQry(status));
+        var result = await _mediator.Send(new AdmListOpnameRequestQry(status, externalReferenceId));
         return Ok(new JSendOk(result));
     }
 

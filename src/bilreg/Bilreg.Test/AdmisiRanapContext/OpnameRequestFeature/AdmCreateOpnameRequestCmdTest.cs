@@ -118,6 +118,44 @@ public class AdmCreateOpnameRequestCmdTest
     }
 
     [Fact]
+    public async Task Handle_GivenMhwIgdRequest_EstablishesMhwIgdSourceWithDefaultExternalSystemSource()
+    {
+        // Arrange
+        InpatientOrderModel? savedOrder = null;
+        _orderRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<InpatientOrderModel>()))
+            .Callback<InpatientOrderModel>(r => savedOrder = r);
+
+        var handler = new AdmCreateOpnameRequestHandler(
+            _orderRepoMock.Object,
+            _patientGatewayMock.Object,
+            _doctorGatewayMock.Object,
+            _auditRepoMock.Object,
+            TestTglJamProvider.Instance,
+            _trackerCoordinatorMock.Object);
+
+        var cmd = new AdmCreateOpnameRequestCmd(
+            "P001",
+            "D001",
+            "2026-09-01",
+            "Pasien IGD MHW",
+            "IGV001",
+            "user1",
+            "",
+            OrderSourceEnum.MhwIgd);
+
+        // Act
+        var response = await handler.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.Should().NotBeNull();
+        savedOrder.Should().NotBeNull();
+        savedOrder!.OrderSource.Should().Be(OrderSourceEnum.MhwIgd);
+        savedOrder.ExternalReferenceId.Should().Be("IGV001");
+        savedOrder.ExternalSystemSource.Should().Be("MHW_IGD");
+    }
+
+    [Fact]
     public async Task Handle_GivenValidRequest_WithRealCoordinator_CreatesPasienTrackerWithEventOpnameRequestAndOpnameRequestId()
     {
         // Arrange
