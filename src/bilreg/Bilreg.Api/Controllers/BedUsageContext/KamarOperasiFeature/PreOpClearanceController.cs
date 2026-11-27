@@ -25,21 +25,14 @@ public class PreOpClearanceController : ControllerBase
         OkPreOpClearanceSaveCommand cmd,
         CancellationToken cancellationToken = default)
     {
-        try
+        var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                cmd = cmd with { UserId = userId };
-            }
+            cmd = cmd with { UserId = userId };
+        }
 
-            var response = await _mediator.Send(cmd, cancellationToken);
-            return Ok(new JSendOk(response));
-        }
-        catch (PreOpChecklistIncompleteException ex)
-        {
-            return UnprocessableEntity(new JSendFail(ex.Message));
-        }
+        var response = await _mediator.Send(cmd, cancellationToken);
+        return Ok(new JSendOk(response));
     }
 
     [HttpGet("Get")]

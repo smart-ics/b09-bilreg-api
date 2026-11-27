@@ -33,75 +33,38 @@ public class ScheduleOpController : ControllerBase
     [Route("SetSchedule")]
     public async Task<IActionResult> SetSchedule(OkScheduleOpSetCommand cmd)
     {
-        try
+        var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                cmd = cmd with { UserId = userId };
-            }
-            var response = await _mediator.Send(cmd);
-            return Ok(new JSendOk(response));
+            cmd = cmd with { UserId = userId };
         }
-        catch (ScheduleCollisionException ex)
-        {
-            return Conflict(new JSendFail(ex.Message));
-        }
-        catch (ScheduleWarningException ex)
-        {
-            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
-        }
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
     }
 
     [HttpPost("SaveWorkbench")]
     public async Task<IActionResult> SaveWorkbench(OkScheduleOpSaveWorkbenchCommand cmd)
     {
-        try
+        var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                cmd = cmd with { UserId = userId };
-            }
-            var response = await _mediator.Send(cmd);
-            return Ok(new JSendOk(response));
+            cmd = cmd with { UserId = userId };
         }
-        catch (ScheduleCollisionException ex)
-        {
-            return Conflict(new JSendFail(ex.Message));
-        }
-        catch (ScheduleWarningException ex)
-        {
-            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new JSendFail(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new JSendFail(ex.Message));
-        }
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
     }
 
     [HttpPatch]
     [Route("AddPpa")]
     public async Task<IActionResult> AddPpa(OkScheduleOpAddPpaCommand cmd)
     {
-        try
+        var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                cmd = cmd with { UserId = userId };
-            }
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
+            cmd = cmd with { UserId = userId };
         }
-        catch (ScheduleWarningException ex)
-        {
-            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
-        }
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 
     [HttpPatch]
@@ -121,20 +84,13 @@ public class ScheduleOpController : ControllerBase
     [Route("AssignLeader")]
     public async Task<IActionResult> AssignLeader(OkScheduleOpAssignLeaderCommand cmd)
     {
-        try
+        var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                cmd = cmd with { UserId = userId };
-            }
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
+            cmd = cmd with { UserId = userId };
         }
-        catch (ScheduleWarningException ex)
-        {
-            return UnprocessableEntity(new JSendFail(new { Warnings = ex.Warnings, RequireOverride = true }));
-        }
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 
     [HttpPatch]
@@ -154,21 +110,14 @@ public class ScheduleOpController : ControllerBase
     [Route("ConfirmSchedule")]
     public async Task<IActionResult> ConfirmSchedule(ConfirmScheduleRequest req)
     {
-        try
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            var userId = GetUserId();
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                userId = req.UserId;
-            }
-            var cmd = new OkScheduleOpConfirmCommand(req.OrderOpId, userId);
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
+            userId = req.UserId;
         }
-        catch (ScheduleCollisionException ex)
-        {
-            return Conflict(new JSendFail(ex.Message));
-        }
+        var cmd = new OkScheduleOpConfirmCommand(req.OrderOpId, userId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 
     [HttpPost]
@@ -232,5 +181,3 @@ public record DiscardDraftRequest(string OrderOpId, string UserId = "")
     public static implicit operator DiscardDraftRequest(OkScheduleOpDiscardDraftCommand cmd) =>
         new(cmd.OrderOpId, cmd.UserId);
 }
-
-public record JSendFail(object Data, string Status = "fail");

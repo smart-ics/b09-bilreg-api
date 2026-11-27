@@ -169,7 +169,7 @@ public class PreOpClearanceControllerTest
     }
 
     [Fact]
-    public async Task Save_WhenPreOpChecklistIncompleteExceptionThrown_Returns422UnprocessableEntityWithJSendFail()
+    public async Task Save_WhenPreOpChecklistIncompleteExceptionThrown_ThrowsPreOpChecklistIncompleteException()
     {
         // ARRANGE
         const string errorMessage = "Checklist Pre-Operative belum lengkap atau terdapat item FAILED.";
@@ -186,14 +186,11 @@ public class PreOpClearanceControllerTest
             .ThrowsAsync(new PreOpChecklistIncompleteException(errorMessage));
 
         // ACT
-        var result = await _sut.Save(cmd, CancellationToken.None);
+        var act = () => _sut.Save(cmd, CancellationToken.None);
 
         // ASSERT
-        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
-        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
-        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(errorMessage);
+        await act.Should().ThrowAsync<PreOpChecklistIncompleteException>()
+            .WithMessage(errorMessage);
     }
 
     [Fact]

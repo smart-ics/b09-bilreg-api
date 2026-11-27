@@ -114,7 +114,7 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
-    public async Task SetSchedule_WhenRoomCollisionOccurs_Returns409ConflictWithJSendFail()
+    public async Task SetSchedule_WhenRoomCollisionOccurs_ThrowsScheduleCollisionException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSetCommand(
@@ -131,18 +131,15 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleCollisionException(collisionMessage));
 
         // ACT
-        var result = await _sut.SetSchedule(cmd);
+        var act = () => _sut.SetSchedule(cmd);
 
         // ASSERT
-        var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
-        conflict.StatusCode.Should().Be(StatusCodes.Status409Conflict);
-        var jsend = conflict.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(collisionMessage);
+        await act.Should().ThrowAsync<ScheduleCollisionException>()
+            .WithMessage(collisionMessage);
     }
 
     [Fact]
-    public async Task SetSchedule_WhenSoftWarningOccurs_Returns422UnprocessableEntityWithJSendFail()
+    public async Task SetSchedule_WhenSoftWarningOccurs_ThrowsScheduleWarningException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSetCommand(
@@ -164,23 +161,11 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleWarningException(warnings));
 
         // ACT
-        var result = await _sut.SetSchedule(cmd);
+        var act = () => _sut.SetSchedule(cmd);
 
         // ASSERT
-        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
-        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
-        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().NotBeNull();
-
-        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
-        dataProp.Should().NotBeNull();
-        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
-        actualWarnings.Should().BeEquivalentTo(warnings);
-
-        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
-        reqOverrideProp.Should().NotBeNull();
-        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
@@ -479,7 +464,7 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
-    public async Task AddPpa_WhenScheduleWarningExceptionThrown_Returns422UnprocessableEntityWithJSendFail()
+    public async Task AddPpa_WhenScheduleWarningExceptionThrown_ThrowsScheduleWarningException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpAddPpaCommand("ORD-001", "PPA-01", "user-01");
@@ -490,23 +475,11 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleWarningException(warnings));
 
         // ACT
-        var result = await _sut.AddPpa(cmd);
+        var act = () => _sut.AddPpa(cmd);
 
         // ASSERT
-        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
-        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
-        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().NotBeNull();
-
-        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
-        dataProp.Should().NotBeNull();
-        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
-        actualWarnings.Should().BeEquivalentTo(warnings);
-
-        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
-        reqOverrideProp.Should().NotBeNull();
-        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
@@ -574,7 +547,7 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
-    public async Task AssignLeader_WhenScheduleWarningExceptionThrown_Returns422UnprocessableEntityWithJSendFail()
+    public async Task AssignLeader_WhenScheduleWarningExceptionThrown_ThrowsScheduleWarningException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpAssignLeaderCommand("ORD-001", "PPA-01", "user-01", "Perubahan operator utama");
@@ -585,23 +558,11 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleWarningException(warnings));
 
         // ACT
-        var result = await _sut.AssignLeader(cmd);
+        var act = () => _sut.AssignLeader(cmd);
 
         // ASSERT
-        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
-        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
-        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().NotBeNull();
-
-        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
-        dataProp.Should().NotBeNull();
-        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
-        actualWarnings.Should().BeEquivalentTo(warnings);
-
-        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
-        reqOverrideProp.Should().NotBeNull();
-        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
@@ -719,7 +680,7 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
-    public async Task ConfirmSchedule_WhenRoomCollisionOccurs_Returns409ConflictWithJSendFail()
+    public async Task ConfirmSchedule_WhenRoomCollisionOccurs_ThrowsScheduleCollisionException()
     {
         // ARRANGE
         var req = new ConfirmScheduleRequest("ORD-001", "user-01");
@@ -730,14 +691,11 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleCollisionException(collisionMessage));
 
         // ACT
-        var result = await _sut.ConfirmSchedule(req);
+        var act = () => _sut.ConfirmSchedule(req);
 
         // ASSERT
-        var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
-        conflict.StatusCode.Should().Be(StatusCodes.Status409Conflict);
-        var jsend = conflict.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(collisionMessage);
+        await act.Should().ThrowAsync<ScheduleCollisionException>()
+            .WithMessage(collisionMessage);
     }
 
     [Fact]
@@ -950,7 +908,7 @@ public class ScheduleOpControllerTest
     }
 
     [Fact]
-    public async Task SaveWorkbench_WhenScheduleCollisionException_Returns409ConflictWithJSendFail()
+    public async Task SaveWorkbench_WhenScheduleCollisionException_ThrowsScheduleCollisionException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSaveWorkbenchCommand(
@@ -968,18 +926,15 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleCollisionException(collisionMessage));
 
         // ACT
-        var result = await _sut.SaveWorkbench(cmd);
+        var act = () => _sut.SaveWorkbench(cmd);
 
         // ASSERT
-        var conflict = result.Should().BeOfType<ConflictObjectResult>().Subject;
-        conflict.StatusCode.Should().Be(StatusCodes.Status409Conflict);
-        var jsend = conflict.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(collisionMessage);
+        await act.Should().ThrowAsync<ScheduleCollisionException>()
+            .WithMessage(collisionMessage);
     }
 
     [Fact]
-    public async Task SaveWorkbench_WhenScheduleWarningException_Returns422UnprocessableEntityWithJSendFail()
+    public async Task SaveWorkbench_WhenScheduleWarningException_ThrowsScheduleWarningException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSaveWorkbenchCommand(
@@ -1000,27 +955,15 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ScheduleWarningException(warnings));
 
         // ACT
-        var result = await _sut.SaveWorkbench(cmd);
+        var act = () => _sut.SaveWorkbench(cmd);
 
         // ASSERT
-        var unprocessable = result.Should().BeOfType<UnprocessableEntityObjectResult>().Subject;
-        unprocessable.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
-        var jsend = unprocessable.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().NotBeNull();
-
-        var dataProp = jsend.Data.GetType().GetProperty("Warnings");
-        dataProp.Should().NotBeNull();
-        var actualWarnings = dataProp!.GetValue(jsend.Data) as IEnumerable<string>;
-        actualWarnings.Should().BeEquivalentTo(warnings);
-
-        var reqOverrideProp = jsend.Data.GetType().GetProperty("RequireOverride");
-        reqOverrideProp.Should().NotBeNull();
-        reqOverrideProp!.GetValue(jsend.Data).Should().Be(true);
+        var ex = await act.Should().ThrowAsync<ScheduleWarningException>();
+        ex.Which.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
-    public async Task SaveWorkbench_WhenArgumentException_Returns400BadRequestWithJSendFail()
+    public async Task SaveWorkbench_WhenArgumentException_ThrowsArgumentException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSaveWorkbenchCommand(
@@ -1038,18 +981,15 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new ArgumentException(errorMessage));
 
         // ACT
-        var result = await _sut.SaveWorkbench(cmd);
+        var act = () => _sut.SaveWorkbench(cmd);
 
         // ASSERT
-        var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequest.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        var jsend = badRequest.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(errorMessage);
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage(errorMessage);
     }
 
     [Fact]
-    public async Task SaveWorkbench_WhenOwnershipViolation_Returns400BadRequestWithJSendFail()
+    public async Task SaveWorkbench_WhenOwnershipViolation_ThrowsInvalidOperationException()
     {
         // ARRANGE
         var cmd = new OkScheduleOpSaveWorkbenchCommand(
@@ -1067,13 +1007,10 @@ public class ScheduleOpControllerTest
             .ThrowsAsync(new InvalidOperationException(errorMessage));
 
         // ACT
-        var result = await _sut.SaveWorkbench(cmd);
+        var act = () => _sut.SaveWorkbench(cmd);
 
         // ASSERT
-        var badRequest = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequest.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
-        var jsend = badRequest.Value.Should().BeOfType<JSendFail>().Subject;
-        jsend.Status.Should().Be("fail");
-        jsend.Data.Should().Be(errorMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage(errorMessage);
     }
 }
