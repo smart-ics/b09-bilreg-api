@@ -20,7 +20,7 @@ public class ScheduleWarningException : Exception
     public IEnumerable<string> Warnings { get; }
 
     public ScheduleWarningException(IEnumerable<string> warnings)
-        : base(warnings != null ? string.Join("; ", warnings) : string.Empty)
+        : base(FormatMessage(warnings))
     {
         Warnings = warnings?.ToList() ?? new List<string>();
     }
@@ -35,5 +35,15 @@ public class ScheduleWarningException : Exception
         : base(message)
     {
         Warnings = new List<string> { message };
+    }
+
+    private static string FormatMessage(IEnumerable<string>? warnings)
+    {
+        var list = warnings?.ToList();
+        if (list == null || list.Count == 0)
+            return string.Empty;
+        if (list.Count == 1)
+            return list[0];
+        return $"Terdapat {list.Count} peringatan pada jadwal operasi.";
     }
 }
