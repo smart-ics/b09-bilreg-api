@@ -166,6 +166,7 @@ public class InpatientOrderDal : IInpatientOrderDal
                 AND (@OrderSource IS NULL OR aa.OrderSource = @OrderSource)
                 AND (@PlannedFrom IS NULL OR aa.PlannedDate >= @PlannedFrom)
                 AND (@PlannedTo IS NULL OR aa.PlannedDate < @PlannedToEnd)
+                AND (@ExternalReferenceId IS NULL OR aa.ExternalReferenceId = @ExternalReferenceId)
             ORDER BY aa.PlannedDate ASC, aa.CrtDate ASC, aa.InpatientOrderId ASC
             """;
 
@@ -176,6 +177,10 @@ public class InpatientOrderDal : IInpatientOrderDal
         dp.AddParam("@PlannedFrom", filter.PlannedFrom, SqlDbType.DateTime);
         dp.AddParam("@PlannedTo", filter.PlannedTo, SqlDbType.DateTime);
         dp.AddParam("@PlannedToEnd", filter.PlannedTo?.Date.AddDays(1), SqlDbType.DateTime);
+        dp.AddParam(
+            "@ExternalReferenceId",
+            string.IsNullOrWhiteSpace(filter.ExternalReferenceId) ? null : filter.ExternalReferenceId.Trim(),
+            SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<InpatientOrderDto>(sql, dp) ?? [];

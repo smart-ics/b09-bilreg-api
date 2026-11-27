@@ -31,7 +31,7 @@ public class OperationalWorklistDalTest
     {
         var sql = OperationalWorklistDal.BuildInpatientOrderBranch(includeTerminal: false);
 
-        sql.Should().Contain("WHEN aa.OrderSource IN (1, 2) THEN 'opname'");
+        sql.Should().Contain("WHEN aa.OrderSource IN (1, 2, 5) THEN 'opname'");
         sql.Should().Contain("ELSE 'reservation'");
     }
 
@@ -46,7 +46,7 @@ public class OperationalWorklistDalTest
     }
 
     [Theory]
-    [InlineData("opname", "AND aa.OrderSource IN (1, 2)")]
+    [InlineData("opname", "AND aa.OrderSource IN (1, 2, 5)")]
     [InlineData("reservation", "AND aa.OrderSource IN (3, 4)")]
     [InlineData(null, "")]
     public void UT04_BuildInpatientOrderBranch_AppliesOrderSourceFilterForOpnameAndReservation(
@@ -59,7 +59,7 @@ public class OperationalWorklistDalTest
             sql.Should().Contain(expectedFragment);
         else
         {
-            sql.Should().NotContain("AND aa.OrderSource IN (1, 2)");
+            sql.Should().NotContain("AND aa.OrderSource IN (1, 2, 5)");
             sql.Should().NotContain("AND aa.OrderSource IN (3, 4)");
         }
     }

@@ -119,7 +119,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
 
         var sourceFilter = jenisFilter switch
         {
-            "opname" => " AND aa.OrderSource IN (1, 2)",
+            "opname" => " AND aa.OrderSource IN (1, 2, 5)",
             "reservation" => " AND aa.OrderSource IN (3, 4)",
             _ => ""
         };
@@ -128,7 +128,7 @@ public class OperationalWorklistDal : IOperationalWorklistDal
             SELECT
                 aa.InpatientOrderId AS ItemId,
                 CASE 
-                    WHEN aa.OrderSource IN (1, 2) THEN 'opname'
+                    WHEN aa.OrderSource IN (1, 2, 5) THEN 'opname'
                     ELSE 'reservation'
                 END AS Jenis,
                 aa.OrderStatus AS AggregateStatus,

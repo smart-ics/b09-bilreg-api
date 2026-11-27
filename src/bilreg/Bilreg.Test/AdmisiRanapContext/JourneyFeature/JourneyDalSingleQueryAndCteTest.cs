@@ -83,7 +83,7 @@ public class JourneyDalSingleQueryAndCteTest
         // Assert: Projection uses io.OrderSource and InpatientOrderId, legacy columns eliminated
         sql.Should().NotContain("WHEN a.OpnameRequestId NOT IN");
         sql.Should().NotContain("WHEN a.ReservationId NOT IN");
-        sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2) THEN a.InpatientOrderId");
+        sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (1, 2, 5) THEN a.InpatientOrderId");
         sql.Should().Contain("WHEN a.InpatientOrderId NOT IN ('','-') AND io.OrderSource IN (3, 4) THEN a.InpatientOrderId");
     }
 
@@ -102,7 +102,8 @@ public class JourneyDalSingleQueryAndCteTest
         cteSql.Should().Contain("SELECT * FROM AdmissionRoots");
         cteSql.Should().NotContain("SELECT * FROM ProspectiveOpname");
         cteSql.Should().NotContain("SELECT * FROM ProspectiveReservation");
-        cteSql.Should().Contain("WHEN o.OrderSource IN (1, 2) THEN 'opn:' + o.InpatientOrderId");
+        cteSql.Should().Contain("WHEN o.OrderSource IN (1, 2, 5) THEN 'opn:' + o.InpatientOrderId");
+        cteSql.Should().Contain("AND o.OrderSource IN (1, 2, 3, 4, 5)");
         cteSql.Should().Contain("ELSE 'rsv:' + o.InpatientOrderId");
     }
 }
