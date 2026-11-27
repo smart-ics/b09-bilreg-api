@@ -15,11 +15,26 @@ public record PolisDto(
     bool fb_cover_rj,
     //
     string fs_nm_tipe_jaminan,
-    string fs_nm_kelas
+    string fs_nm_kelas,
+    //
+    string fs_kd_bu = "",
+    string fs_departemen = "",
+    string fs_no_payroll = "",
+    string crttgl = "3000-01-01",
+    string crtjam = "00:00:00",
+    string crtipa = "",
+    string crtver = "",
+    string crtusr = "",
+    string updtgl = "3000-01-01",
+    string updjam = "00:00:00",
+    string updipa = "",
+    string updver = "",
+    string updusr = ""
 )
 {
     public static PolisDto FromModel(PolisModel model)
     {
+        var now = DateTime.Now;
         return new PolisDto(
             model.PolisId,
             model.TipeJaminan.TipeJaminanId,
@@ -29,7 +44,20 @@ public record PolisDto(
             model.ExpiredDate.ToString("yyyy-MM-dd"),
             model.IsCoverRajal,
             model.TipeJaminan.TipeJaminanName,
-            model.Kelas.KelasName);
+            model.Kelas.KelasName,
+            fs_kd_bu: "",
+            fs_departemen: "",
+            fs_no_payroll: "",
+            crttgl: now.ToString("yyyy-MM-dd"),
+            crtjam: now.ToString("HH:mm:ss"),
+            crtipa: "",
+            crtver: "",
+            crtusr: "",
+            updtgl: "3000-01-01",
+            updjam: "00:00:00",
+            updipa: "",
+            updver: "",
+            updusr: "");
     }
 
     public PolisModel ToModel(IEnumerable<PolisCoverModel> listCover)
