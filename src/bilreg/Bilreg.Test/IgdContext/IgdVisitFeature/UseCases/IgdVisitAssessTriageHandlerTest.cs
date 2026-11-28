@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
@@ -25,6 +26,8 @@ public class IgdVisitAssessTriageHandlerTest
     private readonly Mock<IPpaRepo> _ppaRepo = new();
     private readonly Mock<IIgdVisitSmassTaskRepo> _smassTaskRepo = new();
     private readonly Mock<ISmassAssessmentGateway> _smassGateway = new();
+    private readonly Mock<IEmrLabelGateway> _emrLabelGateway = new();
+    private readonly Mock<IRegRepo> _regRepo = new();
     private readonly ITglJamProvider _tglJamProvider = new TestTglJamProvider(new DateTime(2026, 1, 1, 9, 0, 0));
     private readonly ITriageMethodEngineResolver _engineResolver =
         new TriageMethodEngineResolver(new[] { new AtsTriageEngine() });
@@ -47,6 +50,8 @@ public class IgdVisitAssessTriageHandlerTest
             _tglJamProvider,
             _smassTaskRepo.Object,
             _smassGateway.Object,
+            _emrLabelGateway.Object,
+            _regRepo.Object,
             Options.Create(_options));
     }
 

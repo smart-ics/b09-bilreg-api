@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
 using Nuna.Lib.AutoNumberHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -22,15 +23,18 @@ public class MutasiBrgCreateDraftHandler : IRequestHandler<MutasiBrgCreateDraftC
     private readonly ILayananRepo _layananRepo;
     private readonly IOrderMutasiRepo _orderMutasiRepo;
     private readonly IMutasiBrgRepo _mutasiBrgRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public MutasiBrgCreateDraftHandler(
         ILayananRepo layananRepo,
         IOrderMutasiRepo orderMutasiRepo,
-        IMutasiBrgRepo mutasiBrgRepo)
+        IMutasiBrgRepo mutasiBrgRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _layananRepo = layananRepo;
         _orderMutasiRepo = orderMutasiRepo;
         _mutasiBrgRepo = mutasiBrgRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<MutasiBrgCreateDraftResponse> Handle(MutasiBrgCreateDraftCommand request, CancellationToken cancellationToken)
@@ -75,9 +79,10 @@ public class MutasiBrgCreateDraftHandler : IRequestHandler<MutasiBrgCreateDraftC
 
         // 4. Create and persist draft model with 10-char legacy ID (NunaId.NewLegacy("MT", 'A'))
         var mutasiId = NunaId.NewLegacy("MT", 'A');
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
         var model = MutasiBrgModel.Create(
             id: mutasiId,
-            date: DateTime.Now,
+            date: now,
             asal: asal.ToReff(),
             tujuan: tujuan.ToReff(),
             orderMutasiId: orderMutasiId,

@@ -82,4 +82,12 @@ public class MutasiBrgController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet("stok/{layananId}")]
+    public async Task<IActionResult> ListStok(string layananId, [FromQuery] string? keyword = null)
+    {
+        var query = new MutasiBrgListStokLokasiQuery(layananId, keyword);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }

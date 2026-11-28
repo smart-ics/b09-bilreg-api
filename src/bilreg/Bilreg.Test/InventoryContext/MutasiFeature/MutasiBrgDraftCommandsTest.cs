@@ -9,6 +9,7 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
 
@@ -19,9 +20,15 @@ public class MutasiBrgDraftCommandsTest
     private readonly Mock<IMutasiBrgRepo> _mutasiBrgRepoMock = new();
     private readonly Mock<IBrgRepo> _brgRepoMock = new();
     private readonly Mock<ISatuanRepo> _satuanRepoMock = new();
+    private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
+
+    public MutasiBrgDraftCommandsTest()
+    {
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 26, 9, 30, 0));
+    }
 
     private MutasiBrgCreateDraftHandler CreateCreateDraftHandler() =>
-        new(_layananRepoMock.Object, _orderMutasiRepoMock.Object, _mutasiBrgRepoMock.Object);
+        new(_layananRepoMock.Object, _orderMutasiRepoMock.Object, _mutasiBrgRepoMock.Object, _tglJamProviderMock.Object);
 
     private MutasiBrgAddItemHandler CreateAddItemHandler() =>
         new(_mutasiBrgRepoMock.Object, _brgRepoMock.Object, _satuanRepoMock.Object);
@@ -81,6 +88,32 @@ public class MutasiBrgDraftCommandsTest
             m.LayananTujuan.LayananId == "L02" &&
             m.OrderMutasiId == string.Empty &&
             m.DispatchNote == "Kiriman rutin"
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateDraft_UsesTglJamProvider_ForMutasiBrgDate()
+    {
+        // Arrange
+        var expectedDate = new DateTime(2026, 11, 26, 9, 30, 0);
+        var asal = LayananType.Default with { LayananId = "L01", LayananName = "Gudang Farmasi" };
+        var tujuan = LayananType.Default with { LayananId = "L02", LayananName = "Rawat Inap" };
+
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L01")))
+            .Returns(MayBe.From(asal));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L02")))
+            .Returns(MayBe.From(tujuan));
+
+        var handler = CreateCreateDraftHandler();
+        var command = new MutasiBrgCreateDraftCommand("L01", "L02", DispatchNote: "Kiriman rutin", UserId: "USER01");
+
+        // Act
+        var response = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        _mutasiBrgRepoMock.Verify(x => x.SaveChanges(It.Is<MutasiBrgModel>(m =>
+            m.MutasiBrgId == response.MutasiBrgId &&
+            m.MutasiBrgDate == expectedDate
         )), Times.Once);
     }
 
@@ -637,6 +670,41 @@ public class MutasiBrgDraftCommandsTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task CreateDraft_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 9, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var asal = LayananType.Default with { LayananId = "L01", LayananName = "Gudang Farmasi" };
+        var tujuan = LayananType.Default with { LayananId = "L02", LayananName = "Rawat Inap" };
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L01")))
+            .Returns(MayBe.From(asal));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L02")))
+            .Returns(MayBe.From(tujuan));
+
+        MutasiBrgModel? savedMutasi = null;
+        _mutasiBrgRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<MutasiBrgModel>()))
+            .Callback<MutasiBrgModel>(m => savedMutasi = m);
+
+        var handler = new MutasiBrgCreateDraftHandler(
+            _layananRepoMock.Object,
+            _orderMutasiRepoMock.Object,
+            _mutasiBrgRepoMock.Object,
+            tglJamMock.Object);
+
+        // Act
+        await handler.Handle(new MutasiBrgCreateDraftCommand("L01", "L02", UserId: "USER01"), CancellationToken.None);
+
+        // Assert
+        savedMutasi.Should().NotBeNull();
+        savedMutasi!.MutasiBrgDate.Should().Be(businessNow);
+        savedMutasi.AuditTrail.Created.Timestamp.Should().Be(businessNow);
     }
 
     #endregion

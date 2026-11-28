@@ -4,6 +4,7 @@ using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -24,28 +25,42 @@ public class MutasiBrgCancelHandler : IRequestHandler<MutasiBrgCancelCommand>
     private readonly ISqlDatabase _sqlDatabase;
     private readonly IAuditRepo _auditRepo;
     private readonly IOrderMutasiRepo? _orderMutasiRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public MutasiBrgCancelHandler(
         IMutasiBrgRepo mutasiBrgRepo,
         IMutasiBrgMovementService movementService,
         ISqlDatabase sqlDatabase,
         IAuditRepo auditRepo,
-        IOrderMutasiRepo? orderMutasiRepo = null)
+        IOrderMutasiRepo? orderMutasiRepo = null,
+        ITglJamProvider? tglJamProvider = null)
     {
         _mutasiBrgRepo = mutasiBrgRepo;
         _movementService = movementService;
         _sqlDatabase = sqlDatabase;
         _auditRepo = auditRepo;
         _orderMutasiRepo = orderMutasiRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
-    [Obsolete("Use constructor with IAuditRepo")]
+    public MutasiBrgCancelHandler(
+        IMutasiBrgRepo mutasiBrgRepo,
+        IMutasiBrgMovementService movementService,
+        ISqlDatabase sqlDatabase,
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider,
+        IOrderMutasiRepo? orderMutasiRepo = null)
+        : this(mutasiBrgRepo, movementService, sqlDatabase, auditRepo, orderMutasiRepo, tglJamProvider)
+    {
+    }
+
+    [Obsolete("Use constructor with IAuditRepo and ITglJamProvider")]
     public MutasiBrgCancelHandler(
         IMutasiBrgRepo mutasiBrgRepo,
         IMutasiBrgMovementService movementService,
         ISqlDatabase sqlDatabase,
         IOrderMutasiRepo? orderMutasiRepo = null)
-        : this(mutasiBrgRepo, movementService, sqlDatabase, null!, orderMutasiRepo)
+        : this(mutasiBrgRepo, movementService, sqlDatabase, null!, orderMutasiRepo, null)
     {
     }
 
@@ -74,9 +89,10 @@ public class MutasiBrgCancelHandler : IRequestHandler<MutasiBrgCancelCommand>
         var snapshotJson = AuditLogSnapshotJson.Serialize(mutasi);
 
         // 5. Atomic transaction
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
         _sqlDatabase.ExecuteTransaction((conn, trans) =>
         {
-            mutasi.Cancel(request.Reason, request.UserId);
+            mutasi.Cancel(request.Reason, request.UserId, now);
             _movementService.RestoreStock(mutasi, conn, trans);
 
             if (!string.IsNullOrWhiteSpace(mutasi.OrderMutasiId) && _orderMutasiRepo is not null)
@@ -98,7 +114,7 @@ public class MutasiBrgCancelHandler : IRequestHandler<MutasiBrgCancelCommand>
 
             var auditLog = AuditLog.Create(
                 request.UserId,
-                DateTime.Now,
+                now,
                 actionType: "VOID",
                 entityName: nameof(MutasiBrgModel),
                 entityId: mutasi.MutasiBrgId,

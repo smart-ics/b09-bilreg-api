@@ -3,6 +3,7 @@ using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -23,19 +24,22 @@ public class TerimaMutasiConfirmHandler : IRequestHandler<TerimaMutasiConfirmCom
     private readonly ITerimaMutasiMovementService _movementService;
     private readonly ISqlDatabase _sqlDatabase;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public TerimaMutasiConfirmHandler(
         IMutasiBrgRepo mutasiBrgRepo,
         ITerimaMutasiRepo terimaMutasiRepo,
         ITerimaMutasiMovementService movementService,
         ISqlDatabase sqlDatabase,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _mutasiBrgRepo = mutasiBrgRepo;
         _terimaMutasiRepo = terimaMutasiRepo;
         _movementService = movementService;
         _sqlDatabase = sqlDatabase;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<TerimaMutasiConfirmResponse> Handle(TerimaMutasiConfirmCommand request, CancellationToken cancellationToken)
@@ -46,6 +50,7 @@ public class TerimaMutasiConfirmHandler : IRequestHandler<TerimaMutasiConfirmCom
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
         TerimaMutasiConfirmResponse? response = null;
+        AuditLog? auditLog = null;
 
         _sqlDatabase.ExecuteTransaction((conn, trans) =>
         {
@@ -62,7 +67,7 @@ public class TerimaMutasiConfirmHandler : IRequestHandler<TerimaMutasiConfirmCom
                 throw new InvalidOperationException($"Unit penerima '{request.LayananPenerimaId}' tidak sesuai dengan unit tujuan mutasi '{mutasi.LayananTujuan.LayananId}'.");
 
             var snapshotJson = AuditLogSnapshotJson.Serialize(mutasi);
-            var receiveDate = DateTime.Now;
+            var receiveDate = _tglJamProvider?.Now ?? DateTime.Now;
 
             var terimaItems = mutasi.ListItem
                 .Select(item => TerimaMutasiItemModel.CreateConfirmed(
@@ -90,7 +95,7 @@ public class TerimaMutasiConfirmHandler : IRequestHandler<TerimaMutasiConfirmCom
             _terimaMutasiRepo.SaveChanges(terimaMutasi, conn, trans);
             _mutasiBrgRepo.SaveChanges(mutasi, conn, trans);
 
-            var auditLog = AuditLog.Create(
+            auditLog = AuditLog.Create(
                 request.UserId.Trim(),
                 receiveDate,
                 actionType: "CONFIRM_TERIMA_MUTASI",
@@ -99,10 +104,14 @@ public class TerimaMutasiConfirmHandler : IRequestHandler<TerimaMutasiConfirmCom
                 reason: string.IsNullOrWhiteSpace(request.Note) ? "Penerimaan mutasi penuh" : request.Note.Trim(),
                 originalDataJson: snapshotJson,
                 correlationId: mutasi.MutasiBrgId);
-            _auditRepo.SaveChanges(auditLog);
 
             response = new TerimaMutasiConfirmResponse(terimaMutasi.TerimaMutasiId, terimaMutasi.State.ToString());
         });
+
+        if (auditLog is not null)
+        {
+            _auditRepo.SaveChanges(auditLog);
+        }
 
         return Task.FromResult(response!);
     }

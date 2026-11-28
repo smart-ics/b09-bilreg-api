@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
@@ -46,6 +47,8 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IIgdVisitSmassTaskRepo _smassTaskRepo;
     private readonly ISmassAssessmentGateway _smassGateway;
+    private readonly IEmrLabelGateway _emrLabelGateway;
+    private readonly IRegRepo _regRepo;
     private readonly IgdVisitOptions _igdVisitOptions;
 
     public IgdVisitAssessTriageHandler(IIgdVisitRepo igdVisitRepo,
@@ -54,6 +57,8 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
         ITglJamProvider tglJamProvider,
         IIgdVisitSmassTaskRepo smassTaskRepo,
         ISmassAssessmentGateway smassGateway,
+        IEmrLabelGateway emrLabelGateway,
+        IRegRepo regRepo,
         IOptions<IgdVisitOptions> igdVisitOptions)
     {
         _igdVisitRepo = igdVisitRepo;
@@ -62,6 +67,8 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
         _tglJamProvider = tglJamProvider;
         _smassTaskRepo = smassTaskRepo;
         _smassGateway = smassGateway;
+        _emrLabelGateway = emrLabelGateway;
+        _regRepo = regRepo;
         _igdVisitOptions = igdVisitOptions.Value;
     }
 
@@ -122,12 +129,14 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
         // §6.6 steps 6–9: post-commit SMASS hook (toggle → task upsert → gateway → task save).
         // The HTTP call happens after the TransHelper scope has been disposed and never
         // propagates an exception into this handler (BR-10).
-        var smass = await IgdVisitSmassGenerationHook.RunAsync(
+        var smass = await IgdVisitSmassGenerationHook.RunAndLinkIfRegisteredAsync(
             _smassTaskRepo,
             _smassGateway,
+            _emrLabelGateway,
+            _regRepo,
             _igdVisitOptions,
-            visit.IgdVisitId,
-            visit.Triage,
+            visit,
+            request.UserId,
             cancellationToken);
 
         return new IgdVisitAssessTriageResponse(

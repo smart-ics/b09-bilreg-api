@@ -171,8 +171,10 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
 
             var response = await client.ExecuteDeleteAsync(restRequest, cancellationToken);
 
-            // HTTP 2xx and 404 NotFound are both treated as idempotent success (TD-03).
-            if (response.IsSuccessful || response.StatusCode == HttpStatusCode.NotFound)
+            // HTTP 2xx, 404 NotFound, and 400 "has been deleted" are treated as idempotent success (TD-03).
+            if (response.IsSuccessful
+                || response.StatusCode == HttpStatusCode.NotFound
+                || IsAlreadyDeletedBadRequest(response))
                 return new SmassGatewayResult(true, trimmedId, null);
 
             return Failed(DescribeHttpFailure("deleteAssesment", response));
@@ -225,6 +227,11 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
         return null;
     }
 
+    private static bool IsAlreadyDeletedBadRequest(RestResponse response)
+        => response.StatusCode == HttpStatusCode.BadRequest
+           && !string.IsNullOrWhiteSpace(response.Content)
+           && response.Content.Contains("has been deleted", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsSuccess(string? status)
         => string.Equals(status, "success", StringComparison.OrdinalIgnoreCase);
 
@@ -236,7 +243,12 @@ public class SmassAssessmentGateway : ISmassAssessmentGateway
         var detail = string.IsNullOrWhiteSpace(response.ErrorMessage)
             ? response.StatusDescription
             : response.ErrorMessage;
-        return $"SMASS {operation} gagal: HTTP {(int)response.StatusCode} {detail}";
+        var body = string.IsNullOrWhiteSpace(response.Content)
+            ? string.Empty
+            : response.Content.Length > ErrorBodyLength
+                ? $" - {response.Content[..ErrorBodyLength]}"
+                : $" - {response.Content}";
+        return $"SMASS {operation} gagal: HTTP {(int)response.StatusCode} {detail}{body}";
     }
 
     private static string DescribeEnvelopeFailure(

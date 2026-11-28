@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -12,17 +13,30 @@ public class MutasiBrgDispatchHandler : IRequestHandler<MutasiBrgDispatchCommand
     private readonly IMutasiBrgMovementService _movementService;
     private readonly ISqlDatabase _sqlDatabase;
     private readonly IOrderMutasiRepo? _orderMutasiRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public MutasiBrgDispatchHandler(
         IMutasiBrgRepo mutasiBrgRepo,
         IMutasiBrgMovementService movementService,
         ISqlDatabase sqlDatabase,
-        IOrderMutasiRepo? orderMutasiRepo = null)
+        IOrderMutasiRepo? orderMutasiRepo = null,
+        ITglJamProvider? tglJamProvider = null)
     {
         _mutasiBrgRepo = mutasiBrgRepo;
         _movementService = movementService;
         _sqlDatabase = sqlDatabase;
         _orderMutasiRepo = orderMutasiRepo;
+        _tglJamProvider = tglJamProvider;
+    }
+
+    public MutasiBrgDispatchHandler(
+        IMutasiBrgRepo mutasiBrgRepo,
+        IMutasiBrgMovementService movementService,
+        ISqlDatabase sqlDatabase,
+        ITglJamProvider tglJamProvider,
+        IOrderMutasiRepo? orderMutasiRepo = null)
+        : this(mutasiBrgRepo, movementService, sqlDatabase, orderMutasiRepo, tglJamProvider)
+    {
     }
 
     public Task Handle(MutasiBrgDispatchCommand request, CancellationToken cancellationToken)
@@ -47,9 +61,10 @@ public class MutasiBrgDispatchHandler : IRequestHandler<MutasiBrgDispatchCommand
             throw new InvalidOperationException("Mutasi barang harus memiliki minimal 1 item untuk di-dispatch.");
 
         // 4. Atomic transaction
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
         _sqlDatabase.ExecuteTransaction((conn, trans) =>
         {
-            mutasi.Dispatch(request.UserId);
+            mutasi.Dispatch(request.UserId, now);
             _movementService.DeductStock(mutasi, conn, trans);
 
             if (!string.IsNullOrWhiteSpace(mutasi.OrderMutasiId) && _orderMutasiRepo is not null)

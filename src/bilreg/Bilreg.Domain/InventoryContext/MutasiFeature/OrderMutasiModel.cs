@@ -49,14 +49,15 @@ public class OrderMutasiModel : IOrderMutasiKey
         string orderNote,
         string userId,
         IEnumerable<OrderMutasiItemModel> listItem,
-        OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin)
+        OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin,
+        DateTime? trxDate = null)
     {
         Guard.Against.Null(layananOrder, nameof(layananOrder));
         Guard.Against.Null(layananTujuan, nameof(layananTujuan));
         Guard.Against.Null(listItem, nameof(listItem));
 
         var id = Ulid.NewUlid().ToString();
-        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
+        var auditTrail = AuditTrailType.Create(userId, trxDate ?? DateTime.Now);
 
         var result = new OrderMutasiModel(id, auditTrail.Created.Timestamp, OrderMutasiStateEnum.Draft,
             layananOrder.ToReff(), layananTujuan.ToReff(), 
@@ -104,7 +105,7 @@ public class OrderMutasiModel : IOrderMutasiKey
         _listItem.Add(item);
     }
 
-    public void SetItemQty(IBrgKey key, decimal qty, string userId, decimal? stokCurrent = null)
+    public void SetItemQty(IBrgKey key, decimal qty, string userId, decimal? stokCurrent = null, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Draft, OrderMutasiStateEnum.Submitted);
         if (qty < 0)
@@ -112,7 +113,7 @@ public class OrderMutasiModel : IOrderMutasiKey
 
         if (qty == 0)
         {
-            RemoveItem(key, userId);
+            RemoveItem(key, userId, trxDate);
             return;
         }
 
@@ -124,21 +125,21 @@ public class OrderMutasiModel : IOrderMutasiKey
         {
             item.SetStokCurrent(stokCurrent.Value);
         }
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, trxDate ?? DateTime.Now);
     }
 
-    public void RemoveItem(IBrgKey key, string? userId = null)
+    public void RemoveItem(IBrgKey key, string? userId = null, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Draft, OrderMutasiStateEnum.Submitted);
         _listItem.RemoveAll(x => x.Brg.BrgId == key.BrgId);
         Reorder();
         if (!string.IsNullOrWhiteSpace(userId))
         {
-            AuditTrail.Modif(userId, DateTime.Now);
+            AuditTrail.Modif(userId, trxDate ?? DateTime.Now);
         }
     }
 
-    public void Submit(LayananReff layananTujuan, string userId, OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin, string? orderNote = null, bool autoApprove = false)
+    public void Submit(LayananReff layananTujuan, string userId, OrderMutasiPriorityEnum priority = OrderMutasiPriorityEnum.Rutin, string? orderNote = null, bool autoApprove = false, DateTime? trxDate = null)
     {
         GuardDraft();
         GuardHasItem();
@@ -152,34 +153,37 @@ public class OrderMutasiModel : IOrderMutasiKey
         {
             OrderNote = orderNote;
         }
-        OrderMutasiDate = DateTime.Now;
+        var now = trxDate ?? DateTime.Now;
+        OrderMutasiDate = now;
         State = OrderMutasiStateEnum.Submitted;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, now);
 
         if (autoApprove)
         {
-            Approve(userId);
+            Approve(userId, now);
         }
     }
 
-    public void Approve(string userId)
+    public void Approve(string userId, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Submitted);
+        var now = trxDate ?? DateTime.Now;
         State = OrderMutasiStateEnum.Approved;
-        Approval = new ApprovalType(userId, DateTime.Now);
-        AuditTrail.Modif(userId, DateTime.Now);
+        Approval = new ApprovalType(userId, now);
+        AuditTrail.Modif(userId, now);
     }
 
-    public void Reject(string note, string userId)
+    public void Reject(string note, string userId, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Submitted);
+        var now = trxDate ?? DateTime.Now;
         State = OrderMutasiStateEnum.Rejected;
-        Rejection = new ApprovalType(userId, DateTime.Now);
+        Rejection = new ApprovalType(userId, now);
         UpdateNote(note);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, now);
     }
 
-    public void RecordFulfillment(IBrgKey brgKey, decimal fulfilledQty, string userId)
+    public void RecordFulfillment(IBrgKey brgKey, decimal fulfilledQty, string userId, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Approved, OrderMutasiStateEnum.PartiallyFulfilled);
         var item = _listItem.FirstOrDefault(x => x.Brg.BrgId == brgKey.BrgId)
@@ -196,10 +200,10 @@ public class OrderMutasiModel : IOrderMutasiKey
             State = OrderMutasiStateEnum.PartiallyFulfilled;
         }
 
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, trxDate ?? DateTime.Now);
     }
 
-    public void ForceClose(string reason, string userId)
+    public void ForceClose(string reason, string userId, DateTime? trxDate = null)
     {
         GuardStatus(OrderMutasiStateEnum.Approved, OrderMutasiStateEnum.PartiallyFulfilled);
         if (string.IsNullOrWhiteSpace(reason))
@@ -207,10 +211,10 @@ public class OrderMutasiModel : IOrderMutasiKey
 
         State = OrderMutasiStateEnum.ForceClosed;
         UpdateNote(reason);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, trxDate ?? DateTime.Now);
     }
 
-    public void Cancel(string reason, string userId)
+    public void Cancel(string reason, string userId, DateTime? trxDate = null)
     {
         if (State == OrderMutasiStateEnum.PartiallyFulfilled || _listItem.Any(x => x.QtyTerpenuhi > 0))
         {
@@ -224,7 +228,7 @@ public class OrderMutasiModel : IOrderMutasiKey
         {
             UpdateNote(reason);
         }
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, trxDate ?? DateTime.Now);
     }
 
     public void Complete()

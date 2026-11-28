@@ -1,7 +1,10 @@
+using Bilreg.Application.InventoryContext.LogistikMedisFeature;
 using Bilreg.Application.InventoryContext.MutasiFeature;
 using Bilreg.Application.InventoryContext.OpnameFeature.Ports;
 using Bilreg.Application.InventoryContext.OpnameFeature.UseCases.Commands;
+using Bilreg.Infrastructure.InventoryContext.LogistikMedisFeature;
 using Bilreg.Infrastructure.InventoryContext.MutasiFeature;
+using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Dals;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Repos;
 using Bilreg.Infrastructure.InventoryContext.OpnameFeature.Services;
@@ -22,6 +25,10 @@ public static class InventoryContextConfig
         services.AddScoped<ITerimaMutasiRepo, TerimaMutasiRepo>();
         services.AddScoped<ITerimaMutasiMovementService, TerimaMutasiMovementService>();
         services.AddScoped<ISqlDatabase, SqlDatabase>();
+        services.AddScoped<Bilreg.Application.InventoryContext.MutasiFeature.IStokLokasiDal, StokLokasiDal>();
+
+        // LogistikMedisFeature (BFF)
+        services.AddScoped<ILogistikMedisBffDal, LogistikMedisBffDal>();
 
         // OpnameFeature
         services.AddScoped<IStockOpnameSessionDal, StockOpnameSessionDal>();

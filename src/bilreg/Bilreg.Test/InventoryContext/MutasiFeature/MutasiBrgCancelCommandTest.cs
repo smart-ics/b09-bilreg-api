@@ -9,6 +9,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
@@ -20,12 +21,14 @@ public class MutasiBrgCancelCommandTest
     private readonly Mock<ISqlDatabase> _sqlDatabaseMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
     private readonly Mock<IOrderMutasiRepo> _orderMutasiRepoMock = new();
+    private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
 
     public MutasiBrgCancelCommandTest()
     {
         _sqlDatabaseMock
             .Setup(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()))
             .Callback<Action<SqlConnection, SqlTransaction>>(action => action(null!, null!));
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 26, 11, 0, 0));
     }
 
     private MutasiBrgCancelHandler CreateSut() =>
@@ -34,6 +37,7 @@ public class MutasiBrgCancelCommandTest
             _movementServiceMock.Object,
             _sqlDatabaseMock.Object,
             _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
             _orderMutasiRepoMock.Object);
 
     private static MutasiBrgModel CreateDispatchedMutasi(
@@ -85,7 +89,8 @@ public class MutasiBrgCancelCommandTest
         _auditRepoMock.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
             a.ActionType == "VOID" &&
             a.Reason == "Salah kirim barang" &&
-            a.EntityId == "MT2600001A")), Times.Once);
+            a.EntityId == "MT2600001A" &&
+            a.EventTime == new DateTime(2026, 11, 26, 11, 0, 0))), Times.Once);
     }
 
     [Fact]
@@ -234,5 +239,40 @@ public class MutasiBrgCancelCommandTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 15, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var mutasi = CreateDispatchedMutasi("MT2600001A");
+        _mutasiBrgRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A")))
+            .Returns(MayBe.From(mutasi));
+
+        AuditLog? savedAudit = null;
+        _auditRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<AuditLog>()))
+            .Callback<AuditLog>(log => savedAudit = log);
+
+        var sut = new MutasiBrgCancelHandler(
+            _mutasiBrgRepoMock.Object,
+            _movementServiceMock.Object,
+            _sqlDatabaseMock.Object,
+            _auditRepoMock.Object,
+            _orderMutasiRepoMock.Object,
+            tglJamMock.Object);
+
+        // Act
+        await sut.Handle(new MutasiBrgCancelCommand("MT2600001A", "USER_CANCEL", "Salah kirim barang"), CancellationToken.None);
+
+        // Assert
+        mutasi.AuditTrail.Voided.Timestamp.Should().Be(businessNow);
+        savedAudit.Should().NotBeNull();
+        savedAudit!.EventTime.Should().Be(businessNow);
     }
 }

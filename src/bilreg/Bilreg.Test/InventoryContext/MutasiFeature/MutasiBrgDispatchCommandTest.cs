@@ -7,6 +7,7 @@ using Bilreg.Domain.InventoryContext.MutasiFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
@@ -17,12 +18,14 @@ public class MutasiBrgDispatchCommandTest
     private readonly Mock<IMutasiBrgMovementService> _movementServiceMock = new();
     private readonly Mock<ISqlDatabase> _sqlDatabaseMock = new();
     private readonly Mock<IOrderMutasiRepo> _orderMutasiRepoMock = new();
+    private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
 
     public MutasiBrgDispatchCommandTest()
     {
         _sqlDatabaseMock
             .Setup(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()))
             .Callback<Action<SqlConnection, SqlTransaction>>(action => action(null!, null!));
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 26, 10, 0, 0));
     }
 
     private MutasiBrgDispatchHandler CreateSut() =>
@@ -30,6 +33,7 @@ public class MutasiBrgDispatchCommandTest
             _mutasiBrgRepoMock.Object,
             _movementServiceMock.Object,
             _sqlDatabaseMock.Object,
+            _tglJamProviderMock.Object,
             _orderMutasiRepoMock.Object);
 
     private static MutasiBrgModel CreateDraftMutasi(
@@ -75,6 +79,7 @@ public class MutasiBrgDispatchCommandTest
         // Assert
         mutasi.State.Should().Be(MutasiBrgStateEnum.Dispatched);
         mutasi.IssuerUserId.Should().Be("USER_DISPATCH");
+        mutasi.MutasiBrgDate.Should().Be(new DateTime(2026, 11, 26, 10, 0, 0));
         _sqlDatabaseMock.Verify(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()), Times.Once);
         _movementServiceMock.Verify(x => x.DeductStock(mutasi, It.IsAny<SqlConnection>(), It.IsAny<SqlTransaction>()), Times.Once);
         _mutasiBrgRepoMock.Verify(x => x.SaveChanges(mutasi), Times.Once);
@@ -267,5 +272,33 @@ public class MutasiBrgDispatchCommandTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 13, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var mutasi = CreateDraftMutasi("MT2600001A");
+        _mutasiBrgRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A")))
+            .Returns(MayBe.From(mutasi));
+
+        var sut = new MutasiBrgDispatchHandler(
+            _mutasiBrgRepoMock.Object,
+            _movementServiceMock.Object,
+            _sqlDatabaseMock.Object,
+            _orderMutasiRepoMock.Object,
+            tglJamMock.Object);
+
+        // Act
+        await sut.Handle(new MutasiBrgDispatchCommand("MT2600001A", "USER_DISPATCH"), CancellationToken.None);
+
+        // Assert
+        mutasi.MutasiBrgDate.Should().Be(businessNow);
+        mutasi.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
     }
 }
