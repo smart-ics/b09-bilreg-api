@@ -367,6 +367,50 @@ public class SmassAssessmentGatewayTest : IDisposable
     }
 
     [Fact]
+    public async Task DeleteAssesment_WhenHttp400AlreadyDeleted_ReturnsIdempotentSuccess()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-400-DEL")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithBody("{\"status\":\"fail\",\"data\":\"Assesment has been deleted (ASM-DEL-400-DEL)\"}"));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-400-DEL");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.AssessmentId.Should().Be("ASM-DEL-400-DEL");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAssesment_WhenHttp400OtherReason_ReturnsFailureWithoutThrowing()
+    {
+        // Arrange
+        _server
+            .Given(Request.Create()
+                .WithPath("/api/Assesment/ASM-DEL-400-ERR")
+                .UsingDelete())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithBody("Invalid request"));
+
+        // Act
+        var result = await _sut.DeleteAssesment("ASM-DEL-400-ERR");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeFalse();
+        result.AssessmentId.Should().BeNull();
+        result.ErrorMessage.Should().Contain("400");
+    }
+
+    [Fact]
     public async Task DeleteAssesment_WhenHttp500_ReturnsFailureWithoutThrowing()
     {
         // Arrange
