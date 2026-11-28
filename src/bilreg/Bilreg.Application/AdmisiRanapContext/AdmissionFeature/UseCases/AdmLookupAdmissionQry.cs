@@ -21,14 +21,24 @@ public record AdmAdmissionListItem(
     string BangsalName,
     DateTime AdmissionDate,
     string JenisInapId = "",
-    string JenisInapName = "");
+    string JenisInapName = "",
+    string CurrentKelasDkId = "",
+    string CurrentKelasDkName = "",
+    string CurrentBangsalId = "",
+    string CurrentBangsalName = "");
 
 public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, AdmLookupAdmissionResponse>
 {
     private readonly IAdmissionRepo _admissionRepo;
+    private readonly IAdmissionCurrentLocationResolver? _locationResolver;
 
-    public AdmLookupAdmissionHandler(IAdmissionRepo admissionRepo) =>
+    public AdmLookupAdmissionHandler(
+        IAdmissionRepo admissionRepo,
+        IAdmissionCurrentLocationResolver? locationResolver = null)
+    {
         _admissionRepo = admissionRepo;
+        _locationResolver = locationResolver;
+    }
 
     public Task<AdmLookupAdmissionResponse> Handle(
         AdmLookupAdmissionQry request,
@@ -42,8 +52,14 @@ public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, 
         return Task.FromResult(new AdmLookupAdmissionResponse(items));
     }
 
-    private static AdmAdmissionListItem Map(AdmissionModel admission) =>
-        new(
+    private AdmAdmissionListItem Map(AdmissionModel admission)
+    {
+        var isActive = admission.AdmissionStatus is not (AdmissionStatusEnum.Completed or AdmissionStatusEnum.Cancelled);
+        var currentLocation = isActive && _locationResolver is not null
+            ? _locationResolver.Resolve(admission.RegId, admission.KelasDk, admission.Bangsal)
+            : new ActiveLocationResult(admission.KelasDk, admission.Bangsal);
+
+        return new(
             admission.RegId,
             admission.AdmissionStatus,
             admission.Pasien.PasienId,
@@ -54,5 +70,10 @@ public class AdmLookupAdmissionHandler : IRequestHandler<AdmLookupAdmissionQry, 
             admission.Bangsal.BangsalName,
             admission.AdmissionDate,
             admission.JenisInap.JenisInapId,
-            admission.JenisInap.JenisInapName);
+            admission.JenisInap.JenisInapName,
+            currentLocation.KelasDk.KelasDkId,
+            currentLocation.KelasDk.KelasDkName,
+            currentLocation.Bangsal.BangsalId,
+            currentLocation.Bangsal.BangsalName);
+    }
 }
