@@ -1,5 +1,7 @@
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.IgdVisitSmassTaskFeature;
 
@@ -113,6 +115,51 @@ internal static class IgdVisitSmassGenerationHook
         }
 
         return SmassGenerationResult.FromTask(task);
+    }
+
+    /// <summary>
+    /// Runs <see cref="RunAsync"/> and, when generation succeeds for a visit that already has
+    /// a <see cref="RegModel"/> linked, immediately runs <see cref="IgdVisitSmassLinkHook"/>
+    /// so the newly generated SMASS assessment is stamped with <c>RegId</c>.
+    /// </summary>
+    public static async Task<SmassGenerationResult> RunAndLinkIfRegisteredAsync(
+        IIgdVisitSmassTaskRepo taskRepo,
+        ISmassAssessmentGateway gateway,
+        IEmrLabelGateway emrLabelGateway,
+        IRegRepo regRepo,
+        IgdVisitOptions options,
+        IgdVisitModel visit,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var smass = await RunAsync(
+            taskRepo, gateway, options, visit.IgdVisitId, visit.Triage, cancellationToken);
+
+        if (smass.Status == "Generated" && visit.HasReg)
+        {
+            try
+            {
+                var regOpt = regRepo.LoadEntity(RegModel.Key(visit.Reg.RegId));
+                if (regOpt.HasValue)
+                {
+                    await IgdVisitSmassLinkHook.RunAsync(
+                        taskRepo,
+                        gateway,
+                        emrLabelGateway,
+                        options,
+                        visit.IgdVisitId,
+                        regOpt.Value,
+                        userId,
+                        cancellationToken);
+                }
+            }
+            catch
+            {
+                // Post-commit hook must never fail the triage handler (BR-10 / BR-16).
+            }
+        }
+
+        return smass;
     }
 
     /// <summary>
