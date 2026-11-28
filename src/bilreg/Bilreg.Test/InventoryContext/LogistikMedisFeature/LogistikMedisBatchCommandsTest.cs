@@ -300,6 +300,72 @@ public class LogistikMedisBatchCommandsTest
     }
 
     [Fact]
+    public async Task DispatchBatch_AutoFefoSplitsAcrossMultipleBatches_CreatesMultipleItemsInSingleMutasi()
+    {
+        SetupBrg("BRG01", "Paracetamol", true, "OBT");
+        _bffDalMock
+            .Setup(x => x.ListStokBatch("GD01"))
+            .Returns(
+            [
+                new LogistikMedisStokBatchRowDto("BRG01", "Paracetamol", "TAB", "Tablet", "OBT", "FEFO-01", "2026-10-15", 100m, 3m),
+                new LogistikMedisStokBatchRowDto("BRG01", "Paracetamol", "TAB", "Tablet", "OBT", "FEFO-02", "2027-01-20", 100m, 4m),
+            ]);
+
+        MutasiBrgModel? savedMutasi = null;
+        _mutasiBrgRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<MutasiBrgModel>(), It.IsAny<IDbConnection>(), It.IsAny<IDbTransaction>()))
+            .Callback<MutasiBrgModel, IDbConnection, IDbTransaction>((m, _, _) => savedMutasi = m);
+
+        var sut = CreateDispatchBatchHandler();
+        var cmd = new LogistikMedisMutasiKeluarDispatchBatchCommand(
+            LayananAsalId: "GD01",
+            LayananTujuanId: "LY01",
+            UserId: "USER01",
+            DispatchNote: "Kirim lintas batch",
+            OrderMutasiId: "",
+            ListItem: [new LogistikMedisMutasiKeluarDispatchItemRequest("BRG01", "", "", 5m, "TAB")]);
+
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        response.MutasiBrgId.Should().NotBeNullOrWhiteSpace();
+        savedMutasi.Should().NotBeNull();
+        savedMutasi!.ListItem.Should().HaveCount(2);
+        savedMutasi.ListItem[0].BatchNo.Should().Be("FEFO-01");
+        savedMutasi.ListItem[0].ExpiredDate.Should().Be("2026-10-15");
+        savedMutasi.ListItem[0].QtyKirim.Should().Be(3m);
+        savedMutasi.ListItem[1].BatchNo.Should().Be("FEFO-02");
+        savedMutasi.ListItem[1].ExpiredDate.Should().Be("2027-01-20");
+        savedMutasi.ListItem[1].QtyKirim.Should().Be(2m);
+    }
+
+    [Fact]
+    public async Task DispatchBatch_AutoFefoInsufficientTotalStock_ThrowsInvalidOperationException()
+    {
+        SetupBrg("BRG01", "Paracetamol", true, "OBT");
+        _bffDalMock
+            .Setup(x => x.ListStokBatch("GD01"))
+            .Returns(
+            [
+                new LogistikMedisStokBatchRowDto("BRG01", "Paracetamol", "TAB", "Tablet", "OBT", "FEFO-01", "2026-10-15", 100m, 1m),
+                new LogistikMedisStokBatchRowDto("BRG01", "Paracetamol", "TAB", "Tablet", "OBT", "FEFO-02", "2027-01-20", 100m, 3m),
+            ]);
+
+        var sut = CreateDispatchBatchHandler();
+        var cmd = new LogistikMedisMutasiKeluarDispatchBatchCommand(
+            LayananAsalId: "GD01",
+            LayananTujuanId: "LY01",
+            UserId: "USER01",
+            DispatchNote: "Kirim melebihi stok",
+            OrderMutasiId: "",
+            ListItem: [new LogistikMedisMutasiKeluarDispatchItemRequest("BRG01", "", "", 5m, "TAB")]);
+
+        var act = () => sut.Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _sqlDatabaseMock.Verify(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()), Times.Never);
+    }
+
+    [Fact]
     public async Task DispatchBatch_EmptyListItem_ThrowsArgumentException()
     {
         var sut = CreateDispatchBatchHandler();

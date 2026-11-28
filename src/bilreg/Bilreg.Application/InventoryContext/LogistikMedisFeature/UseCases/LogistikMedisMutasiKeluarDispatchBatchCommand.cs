@@ -115,18 +115,35 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
             var isPharmacy = string.Equals(groupRekDkId, "OBT", StringComparison.OrdinalIgnoreCase)
                           || string.Equals(groupRekDkId, "BHP", StringComparison.OrdinalIgnoreCase);
 
-            if (isPharmacy && string.IsNullOrWhiteSpace(expiredDate))
+            if (string.IsNullOrWhiteSpace(batchNo) && string.IsNullOrWhiteSpace(expiredDate))
             {
                 stokBatchesByBrg ??= (_bffDal.ListStokBatch(layananAsalId) ?? [])
                     .Where(x => x.QtySisa > 0m)
                     .ToLookup(x => x.BrgId, StringComparer.OrdinalIgnoreCase);
 
-                var fefoBatch = stokBatchesByBrg[brg.BrgId].FirstOrDefault();
-                if (fefoBatch is not null)
+                var batches = stokBatchesByBrg[brg.BrgId].ToList();
+                if (batches.Count > 0)
                 {
-                    if (string.IsNullOrWhiteSpace(batchNo))
-                        batchNo = fefoBatch.NoBatch ?? string.Empty;
-                    expiredDate = fefoBatch.TglEd ?? string.Empty;
+                    var totalAvailable = batches.Sum(x => x.QtySisa);
+                    if (totalAvailable < item.QtyKirim)
+                        throw new InvalidOperationException(
+                            $"Stok barang '{brg.BrgName}' tidak mencukupi (tersedia {totalAvailable}, diminta {item.QtyKirim}).");
+
+                    var remaining = item.QtyKirim;
+                    foreach (var fefoBatch in batches)
+                    {
+                        var take = Math.Min(remaining, fefoBatch.QtySisa);
+                        preparedItems.Add(MutasiBrgItemModel.Create(
+                            brg: brg.ToReff(),
+                            batchNo: fefoBatch.NoBatch ?? string.Empty,
+                            expiredDate: fefoBatch.TglEd ?? string.Empty,
+                            qtyKirim: take,
+                            satuan: satuan));
+                        remaining -= take;
+                        if (remaining <= 0m)
+                            break;
+                    }
+                    continue;
                 }
             }
 
