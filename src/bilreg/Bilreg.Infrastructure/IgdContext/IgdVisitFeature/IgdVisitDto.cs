@@ -187,5 +187,6 @@ public record IgdVisitDto(
             RegId: RegId,
             BedIgdId: BedIgdId,
             BedIgdName: "",
-            HasPendingBilling: HasPendingBilling);
+            HasPendingBilling: HasPendingBilling,
+            PasienName: PasienName);
 }
