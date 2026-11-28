@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.LogistikMedisFeature.UseCases;
 
@@ -39,6 +40,7 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
     private readonly ISatuanRepo _satuanRepo;
     private readonly ILogistikMedisBffDal _bffDal;
     private readonly IOrderMutasiRepo? _orderMutasiRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public LogistikMedisMutasiKeluarDispatchBatchHandler(
         IMutasiBrgRepo mutasiBrgRepo,
@@ -48,7 +50,8 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
         IBrgRepo brgRepo,
         ISatuanRepo satuanRepo,
         ILogistikMedisBffDal bffDal,
-        IOrderMutasiRepo? orderMutasiRepo = null)
+        IOrderMutasiRepo? orderMutasiRepo = null,
+        ITglJamProvider? tglJamProvider = null)
     {
         _mutasiBrgRepo = mutasiBrgRepo;
         _movementService = movementService;
@@ -58,6 +61,7 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
         _satuanRepo = satuanRepo;
         _bffDal = bffDal;
         _orderMutasiRepo = orderMutasiRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LogistikMedisMutasiKeluarDispatchBatchResponse> Handle(
@@ -140,9 +144,10 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
         }
 
         var userId = request.UserId.Trim();
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
         var mutasi = MutasiBrgModel.Create(
             id: string.Empty,
-            date: DateTime.Now,
+            date: now,
             asal: layananAsal.ToReff(),
             tujuan: layananTujuan.ToReff(),
             orderMutasiId: orderMutasiId,
@@ -156,7 +161,7 @@ public class LogistikMedisMutasiKeluarDispatchBatchHandler
 
         _sqlDatabase.ExecuteTransaction((conn, trans) =>
         {
-            mutasi.Dispatch(userId);
+            mutasi.Dispatch(userId, now);
             _movementService.DeductStock(mutasi, conn, trans);
 
             if (!string.IsNullOrWhiteSpace(mutasi.OrderMutasiId) && _orderMutasiRepo is not null)

@@ -10,6 +10,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
@@ -272,5 +273,70 @@ public class TerimaMutasiConfirmHandlerTest
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
         _sqlDatabaseMock.Verify(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithCustomBusinessDate_UsesTglJamProviderNow_AndSavesAuditAfterTransaction()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 14, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var mutasi = CreateDispatchedMutasi("MT2600001A");
+        _mutasiBrgRepoMock
+            .Setup(x => x.LoadEntityForUpdate(
+                It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A"),
+                It.IsAny<IDbConnection>(),
+                It.IsAny<IDbTransaction>()))
+            .Returns(MayBe.From(mutasi));
+
+        var inTransaction = false;
+        var auditSavedInsideTransaction = false;
+        _sqlDatabaseMock
+            .Setup(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()))
+            .Callback<Action<SqlConnection, SqlTransaction>>(action =>
+            {
+                inTransaction = true;
+                action(null!, null!);
+                inTransaction = false;
+            });
+
+        AuditLog? savedAudit = null;
+        _auditRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<AuditLog>()))
+            .Callback<AuditLog>(log =>
+            {
+                if (inTransaction)
+                    auditSavedInsideTransaction = true;
+                savedAudit = log;
+            });
+
+        TerimaMutasiModel? savedTerima = null;
+        _terimaMutasiRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<TerimaMutasiModel>(), It.IsAny<IDbConnection>(), It.IsAny<IDbTransaction>()))
+            .Callback<TerimaMutasiModel, IDbConnection, IDbTransaction>((m, _, _) => savedTerima = m);
+
+        var sut = new TerimaMutasiConfirmHandler(
+            _mutasiBrgRepoMock.Object,
+            _terimaMutasiRepoMock.Object,
+            _movementServiceMock.Object,
+            _sqlDatabaseMock.Object,
+            _auditRepoMock.Object,
+            tglJamMock.Object);
+
+        var command = new TerimaMutasiConfirmCommand("MT2600001A", "L02", "USR_TERIMA", "Diterima");
+
+        // Act
+        await sut.Handle(command, CancellationToken.None);
+
+        // Assert
+        savedTerima.Should().NotBeNull();
+        savedTerima!.TerimaMutasiDate.Should().Be(businessNow);
+        savedTerima.AuditTrail.Created.Timestamp.Should().Be(businessNow);
+        mutasi.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
+        savedAudit.Should().NotBeNull();
+        savedAudit!.EventTime.Should().Be(businessNow);
+        auditSavedInsideTransaction.Should().BeFalse();
     }
 }

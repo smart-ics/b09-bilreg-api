@@ -11,6 +11,7 @@ using Bilreg.Domain.InventoryContext.MutasiFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.InventoryContext.LogistikMedisFeature;
@@ -332,6 +333,86 @@ public class LogistikMedisBatchCommandsTest
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _sqlDatabaseMock.Verify(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitBatch_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        SetupBrg("BRG01", "Paracetamol", true, "OBT");
+        _bffDalMock.Setup(x => x.ListStokBatch("LY01")).Returns([]);
+
+        var businessNow = new DateTime(2024, 6, 6, 10, 30, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        OrderMutasiModel? savedOrder = null;
+        _orderMutasiRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<OrderMutasiModel>()))
+            .Callback<OrderMutasiModel>(o => savedOrder = o);
+
+        var sut = new LogistikMedisOrderMutasiSubmitBatchHandler(
+            _orderMutasiRepoMock.Object,
+            _layananRepoMock.Object,
+            _brgRepoMock.Object,
+            _satuanRepoMock.Object,
+            _bffDalMock.Object,
+            tglJamMock.Object);
+
+        var cmd = new LogistikMedisOrderMutasiSubmitBatchCommand(
+            LayananOrderId: "LY01",
+            LayananTujuanId: "GD01",
+            UserId: "USER01",
+            Priority: "Rutin",
+            OrderNote: "Request bisnis date",
+            ListItem: [new LogistikMedisOrderMutasiSubmitItemRequest("BRG01", 10m, "TAB")]);
+
+        await sut.Handle(cmd, CancellationToken.None);
+
+        savedOrder.Should().NotBeNull();
+        savedOrder!.OrderMutasiDate.Should().Be(businessNow);
+        savedOrder.AuditTrail.Created.Timestamp.Should().Be(businessNow);
+        savedOrder.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
+    }
+
+    [Fact]
+    public async Task DispatchBatch_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        SetupBrg("BRG01", "Paracetamol", true, "OBT");
+
+        var businessNow = new DateTime(2024, 6, 6, 11, 15, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        MutasiBrgModel? savedMutasi = null;
+        _mutasiBrgRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<MutasiBrgModel>(), It.IsAny<IDbConnection>(), It.IsAny<IDbTransaction>()))
+            .Callback<MutasiBrgModel, IDbConnection, IDbTransaction>((m, _, _) => savedMutasi = m);
+
+        var sut = new LogistikMedisMutasiKeluarDispatchBatchHandler(
+            _mutasiBrgRepoMock.Object,
+            _movementServiceMock.Object,
+            _sqlDatabaseMock.Object,
+            _layananRepoMock.Object,
+            _brgRepoMock.Object,
+            _satuanRepoMock.Object,
+            _bffDalMock.Object,
+            _orderMutasiRepoMock.Object,
+            tglJamMock.Object);
+
+        var cmd = new LogistikMedisMutasiKeluarDispatchBatchCommand(
+            LayananAsalId: "GD01",
+            LayananTujuanId: "LY01",
+            UserId: "USER01",
+            DispatchNote: "Kirim bisnis date",
+            OrderMutasiId: "",
+            ListItem: [new LogistikMedisMutasiKeluarDispatchItemRequest("BRG01", "B1", "2026-12-31", 5m, "TAB")]);
+
+        await sut.Handle(cmd, CancellationToken.None);
+
+        savedMutasi.Should().NotBeNull();
+        savedMutasi!.MutasiBrgDate.Should().Be(businessNow);
+        savedMutasi.AuditTrail.Created.Timestamp.Should().Be(businessNow);
+        savedMutasi.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
     }
 
     #endregion

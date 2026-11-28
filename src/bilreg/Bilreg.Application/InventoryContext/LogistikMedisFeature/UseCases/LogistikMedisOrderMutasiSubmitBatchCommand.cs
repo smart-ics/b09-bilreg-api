@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.LogistikMedisFeature.UseCases;
 
@@ -34,19 +35,22 @@ public class LogistikMedisOrderMutasiSubmitBatchHandler
     private readonly IBrgRepo _brgRepo;
     private readonly ISatuanRepo _satuanRepo;
     private readonly ILogistikMedisBffDal _bffDal;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public LogistikMedisOrderMutasiSubmitBatchHandler(
         IOrderMutasiRepo orderMutasiRepo,
         ILayananRepo layananRepo,
         IBrgRepo brgRepo,
         ISatuanRepo satuanRepo,
-        ILogistikMedisBffDal bffDal)
+        ILogistikMedisBffDal bffDal,
+        ITglJamProvider? tglJamProvider = null)
     {
         _orderMutasiRepo = orderMutasiRepo;
         _layananRepo = layananRepo;
         _brgRepo = brgRepo;
         _satuanRepo = satuanRepo;
         _bffDal = bffDal;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LogistikMedisOrderMutasiSubmitBatchResponse> Handle(
@@ -88,6 +92,7 @@ public class LogistikMedisOrderMutasiSubmitBatchHandler
             .GroupBy(x => x.BrgId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.QtySisa), StringComparer.OrdinalIgnoreCase);
 
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
         var orderNote = string.IsNullOrWhiteSpace(request.OrderNote) ? "-" : request.OrderNote.Trim();
         var order = OrderMutasiModel.Create(
             layananOrder: layananOrder,
@@ -95,7 +100,8 @@ public class LogistikMedisOrderMutasiSubmitBatchHandler
             orderNote: orderNote,
             userId: request.UserId.Trim(),
             listItem: [],
-            priority: priority);
+            priority: priority,
+            trxDate: now);
 
         foreach (var item in items)
         {
@@ -115,7 +121,8 @@ public class LogistikMedisOrderMutasiSubmitBatchHandler
             layananTujuan: layananTujuan.ToReff(),
             userId: request.UserId.Trim(),
             priority: priority,
-            orderNote: orderNote);
+            orderNote: orderNote,
+            trxDate: now);
 
         _orderMutasiRepo.SaveChanges(order);
 
