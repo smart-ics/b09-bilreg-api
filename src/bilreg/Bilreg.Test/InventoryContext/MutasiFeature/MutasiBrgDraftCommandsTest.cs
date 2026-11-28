@@ -9,6 +9,7 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
 
@@ -637,6 +638,41 @@ public class MutasiBrgDraftCommandsTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task CreateDraft_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 9, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var asal = LayananType.Default with { LayananId = "L01", LayananName = "Gudang Farmasi" };
+        var tujuan = LayananType.Default with { LayananId = "L02", LayananName = "Rawat Inap" };
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L01")))
+            .Returns(MayBe.From(asal));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "L02")))
+            .Returns(MayBe.From(tujuan));
+
+        MutasiBrgModel? savedMutasi = null;
+        _mutasiBrgRepoMock
+            .Setup(x => x.SaveChanges(It.IsAny<MutasiBrgModel>()))
+            .Callback<MutasiBrgModel>(m => savedMutasi = m);
+
+        var handler = new MutasiBrgCreateDraftHandler(
+            _layananRepoMock.Object,
+            _orderMutasiRepoMock.Object,
+            _mutasiBrgRepoMock.Object,
+            tglJamMock.Object);
+
+        // Act
+        await handler.Handle(new MutasiBrgCreateDraftCommand("L01", "L02", UserId: "USER01"), CancellationToken.None);
+
+        // Assert
+        savedMutasi.Should().NotBeNull();
+        savedMutasi!.MutasiBrgDate.Should().Be(businessNow);
+        savedMutasi.AuditTrail.Created.Timestamp.Should().Be(businessNow);
     }
 
     #endregion

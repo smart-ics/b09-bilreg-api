@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -12,10 +13,14 @@ public record OrderMutasiForceCloseCommand(
 public class OrderMutasiForceCloseHandler : IRequestHandler<OrderMutasiForceCloseCommand>
 {
     private readonly IOrderMutasiRepo _orderMutasiRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
-    public OrderMutasiForceCloseHandler(IOrderMutasiRepo orderMutasiRepo)
+    public OrderMutasiForceCloseHandler(
+        IOrderMutasiRepo orderMutasiRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _orderMutasiRepo = orderMutasiRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(OrderMutasiForceCloseCommand request, CancellationToken cancellationToken)
@@ -27,7 +32,8 @@ public class OrderMutasiForceCloseHandler : IRequestHandler<OrderMutasiForceClos
 
         // BUILD
         var order = GetOrderMutasi(request);
-        order.ForceClose(request.Reason, request.UserId);
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
+        order.ForceClose(request.Reason, request.UserId, now);
 
         // PERSIST
         _orderMutasiRepo.SaveChanges(order);

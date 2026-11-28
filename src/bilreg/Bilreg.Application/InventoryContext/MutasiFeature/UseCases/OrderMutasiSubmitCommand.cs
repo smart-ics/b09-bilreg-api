@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.MutasiFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.InventoryContext.MutasiFeature.UseCases;
 
@@ -18,13 +19,16 @@ public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand
 {
     private readonly IOrderMutasiRepo _orderMutasiRepo;
     private readonly ILayananRepo _layananRepo;
+    private readonly ITglJamProvider? _tglJamProvider;
 
     public OrderMutasiSubmitHandler(
         IOrderMutasiRepo orderMutasiRepo,
-        ILayananRepo layananRepo)
+        ILayananRepo layananRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _orderMutasiRepo = orderMutasiRepo;
         _layananRepo = layananRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(OrderMutasiSubmitCommand request, CancellationToken cancellationToken)
@@ -37,7 +41,8 @@ public class OrderMutasiSubmitHandler : IRequestHandler<OrderMutasiSubmitCommand
         // BUILD       
         var order = GetOrderMutasi(request);
         var tujuan = GetLayananTujuan(request.LayananTujuanId);
-        order.Submit(tujuan, request.UserId, request.Priority, request.OrderNote, request.AutoApprove);
+        var now = _tglJamProvider?.Now ?? DateTime.Now;
+        order.Submit(tujuan, request.UserId, request.Priority, request.OrderNote, request.AutoApprove, now);
 
         // WRITE
         _orderMutasiRepo.SaveChanges(order);
