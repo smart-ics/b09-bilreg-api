@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.IgdContext;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
@@ -6,7 +7,9 @@ using Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitSmassTaskFeature;
 using Bilreg.Application.IgdContext.Integration;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
+using Bilreg.Domain.IgdContext.IgdVisitSmassTaskFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Test.Shared;
@@ -25,6 +28,8 @@ public class IgdVisitReAssessTriageHandlerTest
     private readonly Mock<IPpaRepo> _ppaRepo = new();
     private readonly Mock<IIgdVisitSmassTaskRepo> _smassTaskRepo = new();
     private readonly Mock<ISmassAssessmentGateway> _smassGateway = new();
+    private readonly Mock<IEmrLabelGateway> _emrLabelGateway = new();
+    private readonly Mock<IRegRepo> _regRepo = new();
     private readonly ITglJamProvider _tglJamProvider = new TestTglJamProvider(new DateTime(2026, 1, 1, 10, 0, 0));
     private readonly ITriageMethodEngineResolver _engineResolver =
         new TriageMethodEngineResolver(new[] { new AtsTriageEngine() });
@@ -47,6 +52,8 @@ public class IgdVisitReAssessTriageHandlerTest
             _tglJamProvider,
             _smassTaskRepo.Object,
             _smassGateway.Object,
+            _emrLabelGateway.Object,
+            _regRepo.Object,
             Options.Create(_options));
     }
 
@@ -278,5 +285,53 @@ public class IgdVisitReAssessTriageHandlerTest
 
         _ppaRepo.Verify(r => r.LoadEntity(It.IsAny<IPpaKey>()), Times.Never);
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenVisitHasRegAndSmassEnabled_LinksGeneratedAssessmentToRegId()
+    {
+        // Arrange
+        _options.EnableSmassIntegration = true;
+        var visit = CreateTestVisitWithInitialTriage();
+        var reg = (RegModel)RegModel.Key("REG-IGD-01");
+        visit.AssignRegister(reg, new AuditInfoType("regUser", new DateTime(2026, 1, 1, 9, 0, 0)));
+
+        _visitRepo.Setup(r => r.LoadEntity(It.Is<IIgdVisitKey>(k => k.IgdVisitId == IgdVisitId)))
+            .Returns(MayBe.From(visit));
+        _regRepo.Setup(r => r.LoadEntity(It.Is<IRegKey>(k => k.RegId == "REG-IGD-01")))
+            .Returns(MayBe.From(reg));
+        _smassTaskRepo.Setup(r => r.FindByBusinessKey(visit.IgdVisitId, It.IsAny<int>(), It.IsAny<SmassTaskTypeEnum>()))
+            .Returns(MayBe<IgdVisitSmassTaskModel>.None);
+        _smassGateway.Setup(g => g.GenerateIgdTriage(It.IsAny<SmassGenerateIgdTriageRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SmassGatewayResult(true, "AS-NEW-02", null));
+        _smassGateway.Setup(g => g.LinkIgdVisit(It.IsAny<SmassLinkIgdVisitRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SmassGatewayResult(true, null, null, new[] { "AS-NEW-02" }));
+
+        var cmd = new IgdVisitReAssessTriageCmd(
+            IgdVisitId: IgdVisitId,
+            AirwaysScore: 0,
+            BreathingScore: 2,
+            BloodCirculationScore: 1,
+            GcsEyeScore: 4,
+            GcsMotorScore: 6,
+            GcsVoiceScore: 5,
+            IsManualOverrideBlack: false,
+            OverrideReason: "",
+            Notes: "Re-triase setelah registrasi",
+            UserId: NurseUserId);
+
+        var sut = CreateSut();
+
+        // Act
+        var response = await sut.Handle(cmd, CancellationToken.None);
+
+        // Assert
+        response.SmassGenerationStatus.Should().Be("Generated");
+        response.SmassAssessmentId.Should().Be("AS-NEW-02");
+        _smassGateway.Verify(
+            g => g.LinkIgdVisit(
+                It.Is<SmassLinkIgdVisitRequest>(r => r.IgdVisitId == visit.IgdVisitId && r.RegId == "REG-IGD-01"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }
