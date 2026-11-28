@@ -223,24 +223,82 @@ public class MutasiBrgControllerTest
     public async Task ListInTransit_GivenLayananTujuanId_WhenExecuted_ThenSendsQueryAndReturnsOk()
     {
         // ARRANGE
-        const string tujuanId = "L02";
+        const string LayananTujuanId = "L02";
         var expectedList = new List<MutasiBrgHeaderView>
         {
             new("MT2600001A", new DateTime(2026, 11, 10), MutasiBrgStateEnum.Dispatched, new LayananReff("L01", "Gudang"), new LayananReff("L02", "Apotek"), "", "", "")
         };
 
         _mediatorMock
-            .Setup(x => x.Send(It.Is<MutasiBrgInTransitListQuery>(q => q.LayananTujuanId == tujuanId), It.IsAny<CancellationToken>()))
+            .Setup(x => x.Send(It.Is<MutasiBrgInTransitListQuery>(q => q.LayananTujuanId == LayananTujuanId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedList);
 
         // ACT
-        var result = await _sut.ListInTransit(tujuanId);
+        var result = await _sut.ListInTransit(LayananTujuanId);
 
         // ASSERT
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
         jsend.data.Should().Be(expectedList);
-        _mediatorMock.Verify(x => x.Send(It.Is<MutasiBrgInTransitListQuery>(q => q.LayananTujuanId == tujuanId), It.IsAny<CancellationToken>()), Times.Once);
+        _mediatorMock.Verify(x => x.Send(It.Is<MutasiBrgInTransitListQuery>(q => q.LayananTujuanId == LayananTujuanId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListStok_GivenLayananIdAndKeyword_WhenExecuted_ThenSendsQueryAndReturnsOk()
+    {
+        // ARRANGE
+        const string layananId = "L01";
+        const string keyword = "amox";
+        var expectedList = new List<MutasiBrgListStokLokasiResponse>
+        {
+            new(
+                "BRG01",
+                "Amoxicillin 500mg",
+                100m,
+                "SAT01",
+                "Tablet",
+                "REK01",
+                1500m,
+                new List<MutasiBrgStokBatchResponse>
+                {
+                    new("BATCH01", "2027-12-31", 100m, 1500m)
+                }
+            )
+        };
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<MutasiBrgListStokLokasiQuery>(q => q.LayananId == layananId && q.Keyword == keyword), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedList);
+
+        // ACT
+        var result = await _sut.ListStok(layananId, keyword);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedList);
+        _mediatorMock.Verify(x => x.Send(It.Is<MutasiBrgListStokLokasiQuery>(q => q.LayananId == layananId && q.Keyword == keyword), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListStok_GivenLayananIdWithoutKeyword_WhenExecuted_ThenSendsQueryWithNullKeywordAndReturnsOk()
+    {
+        // ARRANGE
+        const string layananId = "L01";
+        var expectedList = new List<MutasiBrgListStokLokasiResponse>();
+
+        _mediatorMock
+            .Setup(x => x.Send(It.Is<MutasiBrgListStokLokasiQuery>(q => q.LayananId == layananId && q.Keyword == null), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedList);
+
+        // ACT
+        var result = await _sut.ListStok(layananId);
+
+        // ASSERT
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var jsend = okResult.Value.Should().BeOfType<JSendOk>().Subject;
+        jsend.data.Should().Be(expectedList);
+        _mediatorMock.Verify(x => x.Send(It.Is<MutasiBrgListStokLokasiQuery>(q => q.LayananId == layananId && q.Keyword == null), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -281,5 +339,7 @@ public class MutasiBrgControllerTest
         sp.GetService<IRequestHandler<MutasiBrgGetQuery, MutasiBrgGetResponse>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBrgListQuery, IEnumerable<MutasiBrgHeaderView>>>().Should().NotBeNull();
         sp.GetService<IRequestHandler<MutasiBrgInTransitListQuery, IEnumerable<MutasiBrgHeaderView>>>().Should().NotBeNull();
+        sp.GetService<IRequestHandler<MutasiBrgListStokLokasiQuery, IEnumerable<MutasiBrgListStokLokasiResponse>>>().Should().NotBeNull();
+        sp.GetService<IStokLokasiDal>().Should().NotBeNull();
     }
 }

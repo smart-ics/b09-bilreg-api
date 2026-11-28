@@ -43,7 +43,18 @@ public class MutasiBrgCancelHandler : IRequestHandler<MutasiBrgCancelCommand>
         _tglJamProvider = tglJamProvider;
     }
 
-    [Obsolete("Use constructor with IAuditRepo")]
+    public MutasiBrgCancelHandler(
+        IMutasiBrgRepo mutasiBrgRepo,
+        IMutasiBrgMovementService movementService,
+        ISqlDatabase sqlDatabase,
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider,
+        IOrderMutasiRepo? orderMutasiRepo = null)
+        : this(mutasiBrgRepo, movementService, sqlDatabase, auditRepo, orderMutasiRepo, tglJamProvider)
+    {
+    }
+
+    [Obsolete("Use constructor with IAuditRepo and ITglJamProvider")]
     public MutasiBrgCancelHandler(
         IMutasiBrgRepo mutasiBrgRepo,
         IMutasiBrgMovementService movementService,
