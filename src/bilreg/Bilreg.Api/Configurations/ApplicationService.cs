@@ -2,6 +2,7 @@ using Bilreg.Api.SignalR;
 using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.BrgContext.PricingPolicyFeature;
 using Bilreg.Application.BedUsageContext.WardCockpitFeature;
@@ -36,6 +37,7 @@ public static class ApplicationService
             .AddScoped<ITriageMethodEngine, AtsTriageEngine>()
             .AddScoped<ITriageMethodEngineResolver, TriageMethodEngineResolver>()
             .AddScoped<IAddBillAppService, AddBillAppService>()
+            .AddScoped<IAdmissionCurrentLocationResolver, AdmissionCurrentLocationResolver>()
             .AddScoped<IAdmissionRegistrationOrchestrator, AdmissionRegistrationOrchestrator>()
             .AddScoped<IPasienTrackerInpatientCoordinator, PasienTrackerInpatientCoordinator>()
             .AddScoped<PasienBalanceBootstrapService>()

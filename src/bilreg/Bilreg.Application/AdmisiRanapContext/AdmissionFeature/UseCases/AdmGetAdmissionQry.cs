@@ -28,22 +28,27 @@ public record AdmGetAdmissionResponse(
     string PolisId = "",
     string NoPolis = "",
     string JenisInapId = "",
-    string RegIbu = "");
+    string RegIbu = "",
+    KelasDkType? CurrentKelasDk = null,
+    BangsalReff? CurrentBangsal = null);
 
 public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGetAdmissionResponse>
 {
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IRegRepo _regRepo;
     private readonly IRegInapRepo _regInapRepo;
+    private readonly IAdmissionCurrentLocationResolver? _locationResolver;
 
     public AdmGetAdmissionHandler(
         IAdmissionRepo admissionRepo,
         IRegRepo regRepo,
-        IRegInapRepo regInapRepo)
+        IRegInapRepo regInapRepo,
+        IAdmissionCurrentLocationResolver? locationResolver = null)
     {
         _admissionRepo = admissionRepo;
         _regRepo = regRepo;
         _regInapRepo = regInapRepo;
+        _locationResolver = locationResolver;
     }
 
     public Task<AdmGetAdmissionResponse> Handle(
@@ -96,6 +101,10 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             r => Normalize(r.RegIbu),
             () => string.Empty);
 
+        var currentLocation = _locationResolver is not null
+            ? _locationResolver.Resolve(admission.RegId, admission.KelasDk, admission.Bangsal)
+            : new ActiveLocationResult(admission.KelasDk, admission.Bangsal);
+
         return Task.FromResult(new AdmGetAdmissionResponse(
             admission.RegId,
             admission.AdmissionStatus,
@@ -114,7 +123,9 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             polisId,
             noPolis,
             jenisInapId,
-            regIbu));
+            regIbu,
+            currentLocation.KelasDk,
+            currentLocation.Bangsal));
     }
 
     private static string Normalize(string? value)
