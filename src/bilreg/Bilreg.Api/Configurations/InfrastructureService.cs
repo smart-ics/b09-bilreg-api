@@ -360,6 +360,9 @@ public static class InfrastructureService
         services.AddScoped<LegacyFreshnessGate>();
         services.AddScoped<IOrderOpResourceDal, OrderOpResourceDal>();
         services.AddScoped<IScheduleOpHistDal, ScheduleOpHistDal>();
+        services.AddScoped<IPreOpClearanceDal, PreOpClearanceDal>();
+        services.AddScoped<IPreOpClearanceChecklistDal, PreOpClearanceChecklistDal>();
+        services.AddScoped<Bilreg.Application.BedUsageContext.KamarOperasiFeature.IPreOpClearanceRepo, PreOpClearanceRepo>();
         services.AddScoped<ILabExternalDal, LabExternalDal>();
         services.AddScoped<ILabExternalRepo, LabExternalRepo>();
         services.AddScoped<ILabDisciplineDal, LabDisciplineDal>();

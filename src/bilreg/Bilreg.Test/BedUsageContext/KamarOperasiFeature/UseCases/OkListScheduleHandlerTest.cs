@@ -171,6 +171,7 @@ public class OkListScheduleHandlerTest
 
     [Theory]
     [InlineData(OpCaseStateEnum.Scheduled, "Scheduled")]
+    [InlineData(OpCaseStateEnum.PreOpCleared, "PreOpCleared")]
     [InlineData(OpCaseStateEnum.OpStarted, "In-Progress")]
     [InlineData(OpCaseStateEnum.RecoveryStarted, "In-Recovery")]
     [InlineData(OpCaseStateEnum.Discharged, "Others")]

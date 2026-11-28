@@ -19,6 +19,7 @@ public class StartOpDalTest
             RegId: "REG-1",
             PasienId: "PSN-1",
             KamarOpId: "KOP-1",
+            ClearanceId: "CLR-1",
 
             CrtUser: "CRT",
             CrtDate: new DateTime(2024, 1, 1, 9, 0, 0),

@@ -116,6 +116,28 @@ public class OkScheduleOpCancelHandlerTest
     }
 
     [Fact]
+    public async Task Handle_CancelPreOpClearedSchedule_SuccessAndPreservesClearance()
+    {
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 9, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001");
+        var opCase = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 20));
+        var scheduleOp = CreateSampleScheduleOp("SCH-001", "ORD-001");
+        opCase.Schedule(scheduleOp, new DateTime(2026, 10, 20, 7, 0, 0));
+        opCase.PreOpClear("user1", new DateTime(2026, 10, 20, 8, 0, 0));
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(orderOp));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(opCase));
+        _scheduleOpRepoMock.Setup(x => x.LoadEntity(It.Is<IScheduleOpKey>(k => k.ScheduleOpId == "SCH-001"))).Returns(MayBe.From(scheduleOp));
+
+        await CreateSut().Handle(new OkScheduleOpCancelCommand("ORD-001", "user1", "Clearance no longer applicable"), CancellationToken.None);
+
+        opCase.OrderOpState.Should().Be(OpCaseStateEnum.Requested);
+        scheduleOp.AuditTrail.IsVoided.Should().BeTrue();
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(scheduleOp), Times.Once);
+        _opCaseRepoMock.Verify(x => x.SaveChanges(opCase), Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_CancelSchedule_WithoutAlasanBatal_ThrowsArgumentException()
     {
         // Arrange

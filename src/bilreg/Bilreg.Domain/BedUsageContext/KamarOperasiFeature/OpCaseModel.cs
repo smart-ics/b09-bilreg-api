@@ -125,6 +125,16 @@ public class OpCaseModel : IOrderOpKey
         UpsertStateHistory(OrderOpState, scheduledAt);
     }
 
+    public void PreOpClear(string userId, DateTime clearedAt)
+    {
+        if (OrderOpState != OpCaseStateEnum.Scheduled)
+            throw new InvalidOperationException(
+                $"Pre-Operative Clearance hanya dapat ditetapkan pada OpCase berstatus Scheduled. Status saat ini: {OrderOpState}");
+
+        OrderOpState = OpCaseStateEnum.PreOpCleared;
+        UpsertStateHistory(OrderOpState, clearedAt);
+    }
+
     public void Schedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)

@@ -184,8 +184,24 @@ public class ScheduleOpHistTypeTest
 
         // Assert
         ex.Warnings.Should().BeEquivalentTo(warnings);
-        ex.Message.Should().Contain("Dokter Operator");
-        ex.Message.Should().Contain("turnover buffer");
+        ex.Message.Should().Be("Terdapat 2 peringatan pada jadwal operasi.");
+    }
+
+    [Fact]
+    public void ScheduleWarningException_SingleWarning_ShouldUseWarningAsMessage()
+    {
+        // Arrange
+        var warnings = new List<string>
+        {
+            "Dokter Operator telah terjadwal di kamar lain."
+        };
+
+        // Act
+        var ex = new ScheduleWarningException(warnings);
+
+        // Assert
+        ex.Warnings.Should().BeEquivalentTo(warnings);
+        ex.Message.Should().Be("Dokter Operator telah terjadwal di kamar lain.");
     }
 
     [Fact]

@@ -11,6 +11,7 @@ using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 
 namespace Bilreg.Api.Configurations;
 
@@ -19,6 +20,11 @@ public class ErrorHandlerMiddleware
     private static readonly Meter Meter = new("Bilreg.Api", "1.0");
     private static readonly Counter<long> Errors = Meter.CreateCounter<long>(
         "bilreg.api.errors");
+    private static readonly JsonSerializerOptions KmoJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
     private readonly RequestDelegate _next;
     private readonly ILogger<ErrorHandlerMiddleware> _logger;
 
@@ -124,6 +130,18 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.BadRequest;
                     status = "VALIDATION_FAILED";
                     break;
+                case PreOpChecklistIncompleteException preOpEx:
+                    statusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    status = "KMO_PREOP_CHECKLIST_INCOMPLETE";
+                    break;
+                case ScheduleWarningException warnEx:
+                    statusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    status = "KMO_SCHEDULE_WARNING";
+                    break;
+                case ScheduleCollisionException collEx:
+                    statusCode = (int)HttpStatusCode.Conflict;
+                    status = "KMO_SCHEDULE_COLLISION";
+                    break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
@@ -146,7 +164,7 @@ public class ErrorHandlerMiddleware
                     break;
                 default:
                     statusCode = (int)HttpStatusCode.InternalServerError;
-                    status = "Internal Server Error";
+                    status = IsKmoRoute(context.Request.Path) ? "AQ_UNHANDLED_EXCEPTION" : "Internal Server Error";
                     break;
             }
 
@@ -197,6 +215,25 @@ public class ErrorHandlerMiddleware
                 return;
             }
 
+            if (IsKmoRoute(context.Request.Path))
+            {
+                object? dataPayload = error switch
+                {
+                    ScheduleWarningException warnEx => new { warnings = warnEx.Warnings, requireOverride = true },
+                    _ => null
+                };
+                var payload = new
+                {
+                    status = statusCode >= 500 ? "error" : "fail",
+                    code = status,
+                    message = error.Message,
+                    data = dataPayload
+                };
+                var kmoResult = JsonSerializer.Serialize(payload, KmoJsonOptions);
+                await response.WriteAsync(kmoResult);
+                return;
+            }
+
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
                 ? error.Message
                 : error.Message;
@@ -239,4 +276,12 @@ public class ErrorHandlerMiddleware
         _ when path.EndsWith("/outcomes/established", StringComparison.Ordinal) => "Established",
         _ => "AdmissionQueueOperation"
     };
+
+    private static bool IsKmoRoute(PathString path)
+    {
+        return path.StartsWithSegments("/api/ScheduleOp", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/PreOpClearance", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/Operation", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/OrderOp", StringComparison.OrdinalIgnoreCase);
+    }
 }

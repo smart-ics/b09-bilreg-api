@@ -78,6 +78,15 @@ public class OkScheduleOpAssignLeaderHandlerTest
             []);
     }
 
+    private static OpCaseModel CreatePreOpClearedOpCase(OrderOpModel orderOp)
+    {
+        var opCase = OpCaseModel.Create(orderOp, new DateTime(2026, 10, 20));
+        var schedule = CreateSampleScheduleOp();
+        opCase.Schedule(schedule, new DateTime(2026, 10, 20, 7, 0, 0));
+        opCase.PreOpClear("user-01", new DateTime(2026, 10, 20, 7, 30, 0));
+        return opCase;
+    }
+
     private static ScheduleOpModel CreateSampleScheduleOp(
         string scheduleOpId = "SCH-001",
         string orderOpId = "ORD-001",
@@ -104,6 +113,25 @@ public class OkScheduleOpAssignLeaderHandlerTest
             30,
             [],
             isDraft);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPreOpCleared_ThrowsInvalidOperationExceptionBeforeSaveChanges()
+    {
+        var now = new DateTime(2026, 10, 20, 9, 0, 0);
+        _tglJamProviderMock.Setup(x => x.Now).Returns(now);
+        var orderOp = CreateSampleOrderOp();
+        var opCase = CreatePreOpClearedOpCase(orderOp);
+        var doctor = CreateSampleDoctor("DOC-02", "dr. Pengganti Sp.B");
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(orderOp));
+        _ppaRepoMock.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(doctor));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<IOrderOpKey>())).Returns(MayBe.From(opCase));
+
+        var act = () => CreateSut().Handle(new OkScheduleOpAssignLeaderCommand("ORD-001", "DOC-02", "user-01", "Ganti leader"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pre-Operative Clearance*ditolak*");
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<ScheduleOpModel>()), Times.Never);
+        _opCaseRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpCaseModel>()), Times.Never);
     }
 
     [Theory]

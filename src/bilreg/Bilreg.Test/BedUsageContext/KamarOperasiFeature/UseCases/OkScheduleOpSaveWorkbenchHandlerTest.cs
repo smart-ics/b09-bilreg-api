@@ -130,6 +130,12 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
         {
             opCase.Start(new DateTime(2026, 10, 20, 8, 30, 0));
         }
+        else if (state == OpCaseStateEnum.PreOpCleared)
+        {
+            var schedule = CreateSampleScheduleOp();
+            opCase.Schedule(schedule, new DateTime(2026, 10, 20, 7, 0, 0));
+            opCase.PreOpClear("user-01", new DateTime(2026, 10, 20, 7, 30, 0));
+        }
         return opCase;
     }
 
@@ -351,6 +357,28 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
     }
 
     [Fact]
+    public async Task Handle_GivenPreOpClearedOpCase_ThrowsInvalidOperationExceptionBeforeSaveChanges()
+    {
+        var sut = CreateSut();
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 10, 20, 7, 0, 0));
+        var orderOp = CreateSampleOrderOp("ORD-001", "DOC-01");
+        var kamar = CreateSampleKamar("KAMAR-1");
+        var opCase = CreateSampleOpCase(orderOp, OpCaseStateEnum.PreOpCleared);
+
+        _orderOpRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(orderOp));
+        _kamarRepoMock.Setup(x => x.LoadEntity(It.IsAny<KamarType>())).Returns(MayBe.From(kamar));
+        _opCaseRepoMock.Setup(x => x.LoadEntity(It.IsAny<OrderOpModel>())).Returns(MayBe.From(opCase));
+
+        var cmd = new OkScheduleOpSaveWorkbenchCommand("ORD-001", "KAMAR-1", "2026-10-20", "08:00", 60, "user-01");
+
+        var act = () => sut.Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pre-Operative Clearance*ditolak*");
+        _scheduleOpRepoMock.Verify(x => x.SaveChanges(It.IsAny<ScheduleOpModel>()), Times.Never);
+        _opCaseRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpCaseModel>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_GivenOpCaseStarted_ThrowsInvalidOperationException()
     {
         var sut = CreateSut();
@@ -367,7 +395,7 @@ public class OkScheduleOpSaveWorkbenchHandlerTest
 
         var act = () => sut.Handle(cmd, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*tidak dapat dijadwalkan ulang karena operasi telah dimulai atau selesai*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pre-Operative Clearance*ditolak*");
     }
 
     [Fact]

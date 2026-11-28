@@ -306,6 +306,7 @@
     <None Include="ChargeContext\AmbulanceFeature\Migration_ta_transport_AmbulanceFeature.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
+     <None Include="BedUsageContext\KamarOperasiFeature\20261124_01_AddClearanceIdToStartOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_dtl.sql" />
     <None Include="AccountingContext\UnitFeature\t_jk.sql" />
@@ -336,6 +337,8 @@
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOpHist.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_OrderOpResource.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_PreOpClearance.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_PreOpClearanceChecklist.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedOperational.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessTransaction.sql" />
     <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessCorrection.sql" />
@@ -374,13 +377,8 @@
     <None Include="LabContext\LabResultFeature\BILRG_LabResultItem_M10_Alter.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestComponent.sql" />
     <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition.sql" />
-    <Build Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition_Classification_Alter.sql" />
     <Build Include="LabContext\LabMasterFeature\BILRG_LabDiscipline.sql" />
     <Build Include="LabContext\LabMasterFeature\BILRG_LabTestGroup.sql" />
-    <Build Include="LabContext\LabMasterFeature\Data\BILRG_LabDiscipline_Seed.sql" />
-    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_M12_ExternalSupport_Alter.sql" />
-    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrder_ServiceType_Alter.sql" />
-    <Build Include="LabContext\LabOrderFeature\BILRG_LabOrderItem_ClassificationSnapshot_Alter.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <None Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
@@ -435,6 +433,12 @@
     <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirItem.sql" />
     <Build Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment.sql" />
     <None Include="PaymentContext\KasirFeature\BILRG_TrsKasirPayment_Alter.sql" />
+    <None Include="PaymentContext\KasirFeature\BILRG_LoketKasir.dataseed.sql" />
+    <None Include="LabContext\LabTestDefinitionFeature\BILRG_LabTestDefinition_Classification_Alter.sql" />
+    <None Include="LabContext\LabMasterFeature\Data\BILRG_LabDiscipline_Seed.sql" />
+    <None Include="LabContext\LabOrderFeature\BILRG_LabOrder_M12_ExternalSupport_Alter.sql" />
+    <None Include="LabContext\LabOrderFeature\BILRG_LabOrder_ServiceType_Alter.sql" />
+    <None Include="LabContext\LabOrderItem_ClassificationSnapshot_Alter.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
