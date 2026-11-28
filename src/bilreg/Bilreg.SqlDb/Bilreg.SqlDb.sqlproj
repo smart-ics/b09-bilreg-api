@@ -439,6 +439,7 @@
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
     <Build Include="BrgContext\BrgFeature\tb_barang.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_barang_layanan.sql" />
     <None Include="BrgContext\BrgFeature\tb_grup_rek_dk.dataseed.sql" />
     <Build Include="BrgContext\BrgFeature\tb_grup_rek_dk.sql" />
     <Build Include="BrgContext\BrgFeature\tb_grup_rek.sql" />

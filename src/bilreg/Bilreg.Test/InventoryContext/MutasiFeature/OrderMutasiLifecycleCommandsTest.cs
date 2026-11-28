@@ -7,6 +7,7 @@ using Bilreg.Domain.InventoryContext.MutasiFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
 
@@ -342,6 +343,44 @@ public class OrderMutasiLifecycleCommandsTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task LifecycleHandlers_WithCustomBusinessDate_UseTglJamProviderNow()
+    {
+        var businessNow = new DateTime(2024, 6, 6, 16, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        // Submit
+        var draftOrder = CreateTestOrder("OM001", OrderMutasiStateEnum.Draft);
+        _orderMutasiRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderMutasiKey>(k => k.OrderMutasiId == "OM001")))
+            .Returns(MayBe.From(draftOrder));
+        _layananRepoMock.Setup(x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == UnitTujuan.LayananId)))
+            .Returns(MayBe.From(UnitTujuan));
+
+        var submitSut = new OrderMutasiSubmitHandler(_orderMutasiRepoMock.Object, _layananRepoMock.Object, tglJamMock.Object);
+        await submitSut.Handle(new OrderMutasiSubmitCommand("OM001", UnitTujuan.LayananId, "USER01"), CancellationToken.None);
+        draftOrder.OrderMutasiDate.Should().Be(businessNow);
+        draftOrder.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
+
+        // Cancel
+        var submittedOrder = CreateTestOrder("OM002", OrderMutasiStateEnum.Submitted);
+        _orderMutasiRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderMutasiKey>(k => k.OrderMutasiId == "OM002")))
+            .Returns(MayBe.From(submittedOrder));
+
+        var cancelSut = new OrderMutasiCancelHandler(_orderMutasiRepoMock.Object, tglJamMock.Object);
+        await cancelSut.Handle(new OrderMutasiCancelCommand("OM002", "Batal", "USER01"), CancellationToken.None);
+        submittedOrder.AuditTrail.Voided.Timestamp.Should().Be(businessNow);
+
+        // ForceClose
+        var partialOrder = CreateTestOrder("OM003", OrderMutasiStateEnum.PartiallyFulfilled, initialQty: 10m, fulfilledQty: 3m);
+        _orderMutasiRepoMock.Setup(x => x.LoadEntity(It.Is<IOrderMutasiKey>(k => k.OrderMutasiId == "OM003")))
+            .Returns(MayBe.From(partialOrder));
+
+        var forceCloseSut = new OrderMutasiForceCloseHandler(_orderMutasiRepoMock.Object, tglJamMock.Object);
+        await forceCloseSut.Handle(new OrderMutasiForceCloseCommand("OM003", "Tutup paksa", "USER01"), CancellationToken.None);
+        partialOrder.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
     }
     #endregion
 }

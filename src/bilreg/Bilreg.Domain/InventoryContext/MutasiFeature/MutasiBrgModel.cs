@@ -186,7 +186,7 @@ public class MutasiBrgModel : IMutasiBrgKey
         AuditTrail.Modif(issuerUserId, MutasiBrgDate);
     }
 
-    public void Cancel(string reason, string userId)
+    public void Cancel(string reason, string userId, DateTime? cancelDate = null)
     {
         if (State != MutasiBrgStateEnum.Dispatched)
             throw new InvalidOperationException($"Pembatalan hanya diizinkan jika status Dispatched. Status saat ini: {State}");
@@ -199,7 +199,7 @@ public class MutasiBrgModel : IMutasiBrgKey
 
         CancelReason = reason.Trim();
         State = MutasiBrgStateEnum.Cancelled;
-        AuditTrail.Batal(userId.Trim(), DateTime.Now);
+        AuditTrail.Batal(userId.Trim(), cancelDate ?? DateTime.Now);
     }
 
     [Obsolete("Use Cancel(reason, userId) instead.")]

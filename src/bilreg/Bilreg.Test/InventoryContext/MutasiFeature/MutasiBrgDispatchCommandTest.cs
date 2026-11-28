@@ -7,6 +7,7 @@ using Bilreg.Domain.InventoryContext.MutasiFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Test.InventoryContext.MutasiFeature;
@@ -267,5 +268,33 @@ public class MutasiBrgDispatchCommandTest
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Handle_WithCustomBusinessDate_UsesTglJamProviderNow()
+    {
+        // Arrange
+        var businessNow = new DateTime(2024, 6, 6, 13, 0, 0);
+        var tglJamMock = new Mock<ITglJamProvider>();
+        tglJamMock.Setup(x => x.Now).Returns(businessNow);
+
+        var mutasi = CreateDraftMutasi("MT2600001A");
+        _mutasiBrgRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IMutasiBrgKey>(k => k.MutasiBrgId == "MT2600001A")))
+            .Returns(MayBe.From(mutasi));
+
+        var sut = new MutasiBrgDispatchHandler(
+            _mutasiBrgRepoMock.Object,
+            _movementServiceMock.Object,
+            _sqlDatabaseMock.Object,
+            _orderMutasiRepoMock.Object,
+            tglJamMock.Object);
+
+        // Act
+        await sut.Handle(new MutasiBrgDispatchCommand("MT2600001A", "USER_DISPATCH"), CancellationToken.None);
+
+        // Assert
+        mutasi.MutasiBrgDate.Should().Be(businessNow);
+        mutasi.AuditTrail.Modified.Timestamp.Should().Be(businessNow);
     }
 }
