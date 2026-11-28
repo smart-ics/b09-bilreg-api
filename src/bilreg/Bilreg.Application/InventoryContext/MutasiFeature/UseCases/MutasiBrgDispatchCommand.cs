@@ -29,6 +29,16 @@ public class MutasiBrgDispatchHandler : IRequestHandler<MutasiBrgDispatchCommand
         _tglJamProvider = tglJamProvider;
     }
 
+    public MutasiBrgDispatchHandler(
+        IMutasiBrgRepo mutasiBrgRepo,
+        IMutasiBrgMovementService movementService,
+        ISqlDatabase sqlDatabase,
+        ITglJamProvider tglJamProvider,
+        IOrderMutasiRepo? orderMutasiRepo = null)
+        : this(mutasiBrgRepo, movementService, sqlDatabase, orderMutasiRepo, tglJamProvider)
+    {
+    }
+
     public Task Handle(MutasiBrgDispatchCommand request, CancellationToken cancellationToken)
     {
         // 1. Guard input

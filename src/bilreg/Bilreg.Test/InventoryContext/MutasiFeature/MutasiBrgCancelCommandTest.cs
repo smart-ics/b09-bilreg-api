@@ -21,12 +21,14 @@ public class MutasiBrgCancelCommandTest
     private readonly Mock<ISqlDatabase> _sqlDatabaseMock = new();
     private readonly Mock<IAuditRepo> _auditRepoMock = new();
     private readonly Mock<IOrderMutasiRepo> _orderMutasiRepoMock = new();
+    private readonly Mock<ITglJamProvider> _tglJamProviderMock = new();
 
     public MutasiBrgCancelCommandTest()
     {
         _sqlDatabaseMock
             .Setup(x => x.ExecuteTransaction(It.IsAny<Action<SqlConnection, SqlTransaction>>()))
             .Callback<Action<SqlConnection, SqlTransaction>>(action => action(null!, null!));
+        _tglJamProviderMock.Setup(x => x.Now).Returns(new DateTime(2026, 11, 26, 11, 0, 0));
     }
 
     private MutasiBrgCancelHandler CreateSut() =>
@@ -35,6 +37,7 @@ public class MutasiBrgCancelCommandTest
             _movementServiceMock.Object,
             _sqlDatabaseMock.Object,
             _auditRepoMock.Object,
+            _tglJamProviderMock.Object,
             _orderMutasiRepoMock.Object);
 
     private static MutasiBrgModel CreateDispatchedMutasi(
@@ -86,7 +89,8 @@ public class MutasiBrgCancelCommandTest
         _auditRepoMock.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
             a.ActionType == "VOID" &&
             a.Reason == "Salah kirim barang" &&
-            a.EntityId == "MT2600001A")), Times.Once);
+            a.EntityId == "MT2600001A" &&
+            a.EventTime == new DateTime(2026, 11, 26, 11, 0, 0))), Times.Once);
     }
 
     [Fact]
