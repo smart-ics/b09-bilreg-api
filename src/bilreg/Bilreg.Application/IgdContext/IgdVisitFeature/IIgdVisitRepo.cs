@@ -31,4 +31,5 @@ public record IgdVisitView(
     string RegId,
     string BedIgdId,
     string BedIgdName,
-    bool HasPendingBilling = false);
+    bool HasPendingBilling = false,
+    string PasienName = "");
